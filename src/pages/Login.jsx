@@ -29,31 +29,19 @@ export default function Login() {
 
     setSubmitting(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const endpoint = activeTab === 'signup' ? '/api/auth/register' : '/api/auth/login';
-      const body = activeTab === 'signup' 
-        ? { email, password, name } 
-        : { email, password };
+      // Placeholder for Supabase auth implementation:
+      // const { data, error } = activeTab === 'signup' 
+      //   ? await supabase.auth.signUp({ email, password, options: { data: { name } } })
+      //   : await supabase.auth.signInWithPassword({ email, password });
       
-      const res = await fetch(`${apiUrl}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body)
+      loginMock({
+        name: name || email.split('@')[0],
+        email: email,
       });
-      
-      if (res.ok) {
-        const data = await res.json();
-        // Fallback to loginMock for context update
-        loginMock(data.user);
-        navigate(from, { replace: true });
-      } else {
-        const errorData = await res.json();
-        alert(`Authentication failed: ${errorData.detail || 'Please try again.'}`);
-      }
+      navigate(from, { replace: true });
     } catch (error) {
       console.error("Auth error:", error);
-      alert(`Network error: Could not connect to the server. Please check your connection or CORS settings. Details: ${error.message}`);
+      alert(`Authentication error: ${error.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -62,24 +50,16 @@ export default function Login() {
   const handleGoogleSuccess = async (credentialResponse) => {
     setGoogleLoggingIn(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const res = await fetch(`${apiUrl}/api/auth/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ credential: credentialResponse.credential })
+      // Placeholder for Supabase Google Auth:
+      // const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: credentialResponse.credential });
+      loginMock({
+        name: 'Google User',
+        email: 'user@gmail.com'
       });
-      if (res.ok) {
-        const data = await res.json();
-        // Fallback to loginMock for now until context is updated, but pass real data
-        loginMock(data.user); 
-        navigate(from, { replace: true });
-      } else {
-        alert("Google authentication failed. Please try again.");
-      }
+      navigate(from, { replace: true });
     } catch (error) {
       console.error("Auth error:", error);
-      alert(`Network error during Google Sign-In: Could not connect to the server. Please check your connection or CORS settings. Details: ${error.message}`);
+      alert(`Google authentication error: ${error.message}`);
     } finally {
       setGoogleLoggingIn(false);
     }

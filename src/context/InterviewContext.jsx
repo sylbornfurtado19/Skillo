@@ -16,27 +16,9 @@ export const InterviewProvider = ({ children }) => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-        const res = await fetch(`${apiUrl}/api/auth/me`, {
-          credentials: 'include'
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user);
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-          setUser(null);
-        }
-      } catch (err) {
-        console.error("Auth check failed", err);
-      } finally {
-        setIsAuthLoading(false);
-      }
-    };
-    checkAuth();
+    // Placeholder for Supabase Auth session check:
+    // const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => { ... });
+    setIsAuthLoading(false);
   }, []);
 
   // Theme State
@@ -178,10 +160,8 @@ export const InterviewProvider = ({ children }) => {
   };
 
   const logoutMock = async () => {
-    try {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      await fetch(`${apiUrl}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-    } catch(e) {}
+    // Placeholder for Supabase signOut:
+    // await supabase.auth.signOut();
     setIsAuthenticated(false);
     setUser(null);
     resetSession();
