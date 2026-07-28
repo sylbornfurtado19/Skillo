@@ -1,66 +1,78 @@
 import { supabase } from '../lib/supabase';
 
-/**
- * Sign up user with email, password, and additional user metadata.
- */
 export const signUp = async ({ email, password, name }) => {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { name },
-    },
-  });
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+      },
+    });
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
 };
 
-/**
- * Log in user with email and password.
- */
 export const signIn = async ({ email, password }) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
 };
 
-/**
- * Log in with Google OAuth ID token.
- */
 export const signInWithGoogle = async (token) => {
-  const { data, error } = await supabase.auth.signInWithIdToken({
-    provider: 'google',
-    token,
-  });
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'google',
+      token,
+    });
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
 };
 
-/**
- * Log out current user session.
- */
+export const resetPassword = async (email) => {
+  try {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login?reset=true`,
+    });
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  try {
+    const { error } = await supabase.auth.signOut();
+    return { data: true, error };
+  } catch (error) {
+    return { data: null, error };
+  }
 };
 
-/**
- * Get current active session.
- */
 export const getSession = async () => {
-  const { data: { session }, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  return session;
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    return { data: session, error };
+  } catch (error) {
+    return { data: null, error };
+  }
 };
 
-/**
- * Get currently authenticated user.
- */
 export const getCurrentUser = async () => {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  return user;
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    return { data: user, error };
+  } catch (error) {
+    return { data: null, error };
+  }
 };

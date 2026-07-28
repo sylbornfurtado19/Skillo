@@ -1,10 +1,10 @@
 import { supabase } from '../lib/supabase';
 
-export const saveMockInterview = async (userId, interviewData) => {
+export const saveAnalysis = async (userId, analysisData) => {
   try {
     const { data, error } = await supabase
-      .from('mock_interviews')
-      .insert([{ user_id: userId, ...interviewData }])
+      .from('resume_analysis')
+      .insert([{ user_id: userId, ...analysisData }])
       .select()
       .single();
     return { data, error };
@@ -13,10 +13,10 @@ export const saveMockInterview = async (userId, interviewData) => {
   }
 };
 
-export const getMockInterviews = async (userId) => {
+export const getAnalyses = async (userId) => {
   try {
     const { data, error } = await supabase
-      .from('mock_interviews')
+      .from('resume_analysis')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -26,12 +26,12 @@ export const getMockInterviews = async (userId) => {
   }
 };
 
-export const getMockInterviewById = async (interviewId) => {
+export const getAnalysisById = async (analysisId) => {
   try {
     const { data, error } = await supabase
-      .from('mock_interviews')
+      .from('resume_analysis')
       .select('*')
-      .eq('id', interviewId)
+      .eq('id', analysisId)
       .single();
     return { data, error };
   } catch (error) {

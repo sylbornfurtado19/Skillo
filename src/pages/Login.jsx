@@ -3,12 +3,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaEnvelope, FaLock, FaArrowRight, FaSpinner } from 'react-icons/fa';
 import { GoogleLogin } from '@react-oauth/google';
+import { useAuth } from '../hooks/useAuth';
 import { useInterview } from '../context/InterviewContext';
 import { LogoIcon } from '../components/common/Logo';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
   const { loginMock } = useInterview();
 
   // Local state
@@ -29,16 +31,19 @@ export default function Login() {
 
     setSubmitting(true);
     try {
-      // Placeholder for Supabase auth implementation:
-      // const { data, error } = activeTab === 'signup' 
-      //   ? await supabase.auth.signUp({ email, password, options: { data: { name } } })
-      //   : await supabase.auth.signInWithPassword({ email, password });
-      
-      loginMock({
-        name: name || email.split('@')[0],
-        email: email,
-      });
-      navigate(from, { replace: true });
+      const res = activeTab === 'signup'
+        ? await signUp({ email, password, name })
+        : await signIn({ email, password });
+
+      if (res.error) {
+        alert(`Authentication Error: ${res.error.message}`);
+      } else {
+        loginMock({
+          name: name || email.split('@')[0],
+          email: email,
+        });
+        navigate(from, { replace: true });
+      }
     } catch (error) {
       console.error("Auth error:", error);
       alert(`Authentication error: ${error.message}`);
@@ -50,13 +55,16 @@ export default function Login() {
   const handleGoogleSuccess = async (credentialResponse) => {
     setGoogleLoggingIn(true);
     try {
-      // Placeholder for Supabase Google Auth:
-      // const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: credentialResponse.credential });
-      loginMock({
-        name: 'Google User',
-        email: 'user@gmail.com'
-      });
-      navigate(from, { replace: true });
+      const res = await signInWithGoogle(credentialResponse.credential);
+      if (res.error) {
+        alert(`Google Auth Error: ${res.error.message}`);
+      } else {
+        loginMock({
+          name: 'Google User',
+          email: 'user@gmail.com'
+        });
+        navigate(from, { replace: true });
+      }
     } catch (error) {
       console.error("Auth error:", error);
       alert(`Google authentication error: ${error.message}`);
