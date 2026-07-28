@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "interviewiq-backend"
+version = "0.1.0"
+package-mode = false
+description = "Backend API for InterviewIQ"
+authors = ["InterviewIQ Team"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = ">=0.115.0"
+uvicorn = {extras = ["standard"], version = ">=0.30.0"}
+python-multipart = ">=0.0.9"
+pydantic = ">=2.0"
+sqlalchemy = ">=2.0"
+passlib = {extras = ["bcrypt"], version = ">=1.7.4"}
+python-jose = {extras = ["cryptography"], version = ">=3.3.0"}
+google-auth = ">=2.25.0"
+requests = ">=2.31.0"
+slowapi = ">=0.1.9"
+python-dotenv = "*"
+psycopg2-binary = ">=2.9.9"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
