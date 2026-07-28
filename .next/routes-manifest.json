@@ -1,0 +1,123 @@
+{
+  "version": 3,
+  "pages404": true,
+  "appType": "app",
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "onMatchHeaders": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_global-error",
+      "regex": "^/_global\\-error(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_global\\-error(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/api/interview/evaluate",
+      "regex": "^/api/interview/evaluate(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/interview/evaluate(?:/)?$"
+    },
+    {
+      "page": "/api/resume/analyze",
+      "regex": "^/api/resume/analyze(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/resume/analyze(?:/)?$"
+    },
+    {
+      "page": "/app/dashboard",
+      "regex": "^/app/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/dashboard(?:/)?$"
+    },
+    {
+      "page": "/app/interview",
+      "regex": "^/app/interview(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/interview(?:/)?$"
+    },
+    {
+      "page": "/app/profile",
+      "regex": "^/app/profile(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/profile(?:/)?$"
+    },
+    {
+      "page": "/app/results",
+      "regex": "^/app/results(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/results(?:/)?$"
+    },
+    {
+      "page": "/app/resume",
+      "regex": "^/app/resume(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/resume(?:/)?$"
+    },
+    {
+      "page": "/app/settings",
+      "regex": "^/app/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/settings(?:/)?$"
+    },
+    {
+      "page": "/app/setup",
+      "regex": "^/app/setup(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/setup(?:/)?$"
+    },
+    {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

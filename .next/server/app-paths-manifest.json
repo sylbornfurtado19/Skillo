@@ -1,0 +1,15 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/interview/evaluate/route": "app/api/interview/evaluate/route.js",
+  "/api/resume/analyze/route": "app/api/resume/analyze/route.js",
+  "/app/dashboard/page": "app/app/dashboard/page.js",
+  "/app/interview/page": "app/app/interview/page.js",
+  "/app/profile/page": "app/app/profile/page.js",
+  "/app/results/page": "app/app/results/page.js",
+  "/app/resume/page": "app/app/resume/page.js",
+  "/app/settings/page": "app/app/settings/page.js",
+  "/app/setup/page": "app/app/setup/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js"
+}

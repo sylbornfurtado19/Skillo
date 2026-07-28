@@ -1,0 +1,15 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/interview/evaluate/route": "/api/interview/evaluate",
+  "/api/resume/analyze/route": "/api/resume/analyze",
+  "/app/dashboard/page": "/app/dashboard",
+  "/app/interview/page": "/app/interview",
+  "/app/profile/page": "/app/profile",
+  "/app/results/page": "/app/results",
+  "/app/resume/page": "/app/resume",
+  "/app/settings/page": "/app/settings",
+  "/app/setup/page": "/app/setup",
+  "/login/page": "/login",
+  "/page": "/"
+}
