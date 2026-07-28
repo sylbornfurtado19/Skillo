@@ -27,11 +27,13 @@ export const signIn = async ({ email, password }) => {
   }
 };
 
-export const signInWithGoogle = async (token) => {
+export const signInWithGoogle = async () => {
   try {
-    const { data, error } = await supabase.auth.signInWithIdToken({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      token,
+      options: {
+        redirectTo: `${window.location.origin}/app/dashboard`,
+      },
     });
     return { data, error };
   } catch (error) {
