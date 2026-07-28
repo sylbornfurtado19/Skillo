@@ -18,9 +18,7 @@ import {
   FaBrain,
   FaChartLine
 } from 'react-icons/fa';
-import { LogoIcon } from '../components/common/Logo';
-import { INTERVIEWER_PERSONAS } from '../services/interviewApi';
-import { CAREER_DOMAINS } from '../services/careerApi';
+import { INTERVIEWER_PERSONAS, CAREER_DOMAINS } from '../services/constants';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';

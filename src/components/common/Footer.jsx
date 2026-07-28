@@ -10,12 +10,12 @@ export default function Footer() {
 
 
         <p className="text-sm text-gray-500 text-center md:text-left">
-          &copy; {new Date().getFullYear()} InterviewIQ. Built for interview prep.
+          &copy; {new Date().getFullYear()} Skillo. Intelligent Resume Screening & AI Interview Assistant.
         </p>
 
         <div className="flex items-center gap-4 text-gray-400">
           <a href="#" className="hover:text-white transition duration-200"><FaTwitter size={18} /></a>
-          <a href="https://github.com/AkkiSensei/InterviewIQ" target="_blank" rel="noopener noreferrer" className="hover:text-white transition duration-200"><FaGithub size={18} /></a>
+          <a href="https://github.com/sylbornfurtado19/Skillo" target="_blank" rel="noopener noreferrer" className="hover:text-white transition duration-200"><FaGithub size={18} /></a>
           <a href="#" className="hover:text-white transition duration-200"><FaLinkedin size={18} /></a>
         </div>
       </div>

@@ -14,8 +14,7 @@ import {
   FaChartLine,
   FaLightbulb
 } from 'react-icons/fa';
-import { useInterview } from '../context/InterviewContext';
-import { INTERVIEWER_PERSONAS } from '../services/interviewApi';
+import { INTERVIEWER_PERSONAS } from '../services/constants';
 
 // ChartJS imports
 import { Radar, Line } from 'react-chartjs-2';

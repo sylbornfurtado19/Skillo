@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import { InterviewProvider } from './context/InterviewContext';
 import { ToastProvider } from './components/ui/Toast';
 import MainLayout from './layouts/MainLayout';
@@ -17,8 +18,9 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 
 export default function App() {
   return (
-    <InterviewProvider>
-      <ToastProvider>
+    <AuthProvider>
+      <InterviewProvider>
+        <ToastProvider>
         <BrowserRouter>
           <Routes>
             {/* Visitor Marketing Website Routes */}
@@ -53,6 +55,7 @@ export default function App() {
         </BrowserRouter>
       </ToastProvider>
     </InterviewProvider>
+  </AuthProvider>
   );
 }
 

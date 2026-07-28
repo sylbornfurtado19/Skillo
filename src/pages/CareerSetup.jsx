@@ -14,9 +14,7 @@ import {
   FaExclamationTriangle,
   FaArrowRight
 } from 'react-icons/fa';
-import { useInterview } from '../context/InterviewContext';
-import { CAREER_DOMAINS } from '../services/careerApi';
-import { getQuestionsForSetup } from '../services/interviewApi';
+import { CAREER_DOMAINS, getQuestionsForSetup } from '../services/constants';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';

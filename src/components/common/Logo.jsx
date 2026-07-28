@@ -68,10 +68,10 @@ export function LogoFull({ className = '', iconSize = 36 }) {
       
       <div className="flex flex-col justify-center leading-none">
         <span className="font-heading font-bold text-lg tracking-tight text-white">
-          Interview<span className="bg-gradient-to-r from-[#8B5CF6] to-[#06B6D4] bg-clip-text text-transparent">IQ</span>
+          Skil<span className="bg-gradient-to-r from-[#8B5CF6] to-[#06B6D4] bg-clip-text text-transparent">lo</span>
         </span>
         <span className="text-[7.5px] font-bold text-gray-500 tracking-[0.2em] font-mono mt-0.5 uppercase">
-          Practice. Analyze. Improve.
+          AI Interview & Resume Assistant
         </span>
       </div>
     </div>

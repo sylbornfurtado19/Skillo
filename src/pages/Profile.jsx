@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FaUserAlt, FaBriefcase, FaCalendarAlt, FaFileAlt, FaSlidersH, FaChartLine, FaRobot, FaArrowRight } from 'react-icons/fa';
-import { useInterview } from '../context/InterviewContext';
-import { INTERVIEWER_PERSONAS, getQuestionsForSetup } from '../services/interviewApi';
-import { generateFeedbackReport } from '../services/resultsApi';
+import { INTERVIEWER_PERSONAS, getQuestionsForSetup, generateFeedbackReport } from '../services/constants';
 
 // Re-using chart configurations
 import { Doughnut } from 'react-chartjs-2';

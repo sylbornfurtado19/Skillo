@@ -97,7 +97,7 @@ export default function AppLayout({ children }) {
         {/* Version & GitHub Info */}
         <div className="mt-auto px-6 py-6 pb-2">
           <a 
-            href="https://github.com/AkkiSensei/InterviewIQ" 
+            href="https://github.com/sylbornfurtado19/Skillo" 
             target="_blank" 
             rel="noopener noreferrer" 
             className="hover:text-white transition duration-200 flex items-center gap-1.5 text-[11px] text-gray-500 font-mono"

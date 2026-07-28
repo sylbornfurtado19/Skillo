@@ -10,8 +10,7 @@ import {
   FaExclamationTriangle,
   FaRedo
 } from 'react-icons/fa';
-import { useInterview } from '../context/InterviewContext';
-import { simulateResumeAnalysis } from '../services/resumeApi';
+import { simulateResumeAnalysis } from '../services/constants';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';

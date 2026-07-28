@@ -15,9 +15,7 @@ import {
   FaCheckCircle,
   FaInfoCircle
 } from 'react-icons/fa';
-import { useInterview } from '../context/InterviewContext';
-import { INTERVIEWER_PERSONAS } from '../services/interviewApi';
-import { submitInterviewAnswers } from '../services/resultsApi';
+import { INTERVIEWER_PERSONAS, submitInterviewAnswers } from '../services/constants';
 import { LogoIcon } from '../components/common/Logo';
 import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';

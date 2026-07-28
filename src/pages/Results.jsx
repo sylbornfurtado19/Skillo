@@ -17,8 +17,7 @@ import {
   FaListUl,
   FaCheck
 } from 'react-icons/fa';
-import { useInterview } from '../context/InterviewContext';
-import { INTERVIEWER_PERSONAS } from '../services/interviewApi';
+import { INTERVIEWER_PERSONAS } from '../services/constants';
 import { useToast } from '../components/ui/Toast';
 
 // ChartJS imports
