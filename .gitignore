@@ -7,6 +7,9 @@ build/
 .next/
 *.tsbuildinfo
 
+# local documentation reports
+ProjectReport.md
+
 # environment
 .env
 .env.local
