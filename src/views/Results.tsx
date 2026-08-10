@@ -35,8 +35,9 @@ import SimPOContrastiveCard from '../components/ui/SimPOContrastiveCard';
 export default function Results() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { resumeData, results, setResults, setQuestions, setCurrentQuestionIndex, setAnswers, resetSession } =
+  const { resumeData, results, setResults, setQuestions, setCurrentQuestionIndex, setAnswers, resetSession, sessionHistory } =
     useInterview();
+
 
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
