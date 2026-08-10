@@ -168,11 +168,35 @@ export default function Dashboard() {
     },
   };
 
-  const suggestions = [
-    `Quantify engineering results on your resume to boost the Job Match index.`,
-    `Spend more time discussing edge cases in high-concurrency Backend pipelines.`,
-    `Review system design schemas for distributed notification clusters.`,
-  ];
+  // Dynamic AI Preparation Suggestions derived from lowest category score
+  const getDynamicSuggestions = () => {
+    if (!results?.categories && totalCompleted === 0) {
+      return [
+        `Quantify engineering results on your resume to boost the Job Match index.`,
+        `Spend more time discussing edge cases in high-concurrency Backend pipelines.`,
+        `Review system design schemas for distributed notification clusters.`,
+      ];
+    }
+
+    const catScores = [
+      { key: 'technicalAccuracy', name: 'Technical Accuracy', score: categories.technicalAccuracy ?? 80, tip: 'Practice explaining low-level algorithm time/space complexities & data structure edge cases.' },
+      { key: 'communication', name: 'Communication Clarity', score: categories.communication ?? 84, tip: 'Use structured response frameworks (e.g. STAR method) and avoid long pauses.' },
+      { key: 'depth', name: 'Depth & Reasoning', score: categories.depth ?? 75, tip: 'Deep dive into system architectural trade-offs rather than staying at high-level abstractions.' },
+      { key: 'timeManagement', name: 'Time Management', score: categories.timeManagement ?? 88, tip: 'Pace your answers dynamically to reserve 30 seconds for summary and validation.' },
+    ].sort((a, b) => a.score - b.score);
+
+    const lowest = catScores[0];
+    const secondLowest = catScores[1];
+
+    return [
+      `Focus Track (${lowest.name}: ${lowest.score}%): ${lowest.tip}`,
+      `Secondary Track (${secondLowest.name}: ${secondLowest.score}%): ${secondLowest.tip}`,
+      `Resume Sync: Keep active bullet points aligned with your target seniority (${setupData.experienceLevel || 'Mid-Level'}).`,
+    ];
+  };
+
+  const suggestions = getDynamicSuggestions();
+
 
   const candidateName =
     (user?.user_metadata?.full_name as string | undefined) ??
