@@ -95,10 +95,10 @@ export default function Landing() {
             variant="primary"
             size="lg"
             className="w-full sm:w-auto"
-            icon={FaArrowRight}
           >
             Start Preparing Now
           </Button>
+
           <a
             href="#features"
             className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 transition duration-200 flex items-center justify-center font-semibold text-base"
