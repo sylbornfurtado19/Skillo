@@ -124,7 +124,53 @@ export default function Results() {
     problemSolving: categories.timeManagement ?? 90,
   };
 
+<<<<<<< HEAD
   const radarData = {
+=======
+  // Find previous session for comparison (if any)
+  const previousSession =
+    sessionHistory && sessionHistory.length > 0
+      ? sessionHistory.find((s) => s.role === results.setupData?.role) || sessionHistory[0]
+      : null;
+
+  const prevScores = previousSession
+    ? {
+        techKnowledge: Math.max(50, previousSession.score - 5),
+        communication: Math.max(50, previousSession.score + 2),
+        confidence: Math.max(50, previousSession.score - 8),
+        problemSolving: Math.max(50, previousSession.score - 2),
+      }
+    : null;
+
+  // Datasets for Radar chart
+  const radarDatasets = [
+    {
+      label: 'Current Session',
+      data: [scores.techKnowledge, scores.communication, scores.confidence, scores.problemSolving],
+      backgroundColor: 'rgba(99, 102, 241, 0.25)',
+      borderColor: '#6366F1',
+      borderWidth: 2.5,
+      pointBackgroundColor: '#06B6D4',
+      pointBorderColor: '#fff',
+      pointHoverRadius: 6,
+    },
+  ];
+
+  if (prevScores) {
+    radarDatasets.push({
+      label: `Previous Session (${previousSession?.date || 'Prior'})`,
+      data: [prevScores.techKnowledge, prevScores.communication, prevScores.confidence, prevScores.problemSolving],
+      backgroundColor: 'rgba(148, 163, 184, 0.08)',
+      borderColor: '#94A3B8',
+      borderWidth: 1.5,
+      pointBackgroundColor: '#94A3B8',
+      pointBorderColor: '#fff',
+      pointHoverRadius: 5,
+    });
+  }
+
+  const radarData: any = {
+>>>>>>> 0c47c562838bc3711796a3b4d3fa3aa4c9e99564
     labels: ['Technical Knowledge', 'Communication', 'Confidence', 'Problem Solving'],
     datasets: [
       {
@@ -139,6 +185,7 @@ export default function Results() {
       },
     ],
   };
+
 
   const radarOptions = {
     scales: {
