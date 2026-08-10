@@ -52,8 +52,9 @@ export default function Navbar() {
   const userInitial = userName.charAt(0).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-50 w-full px-4 py-3 bg-[#030712]/80 backdrop-blur-md border-b border-white/5">
-      <nav className="mx-auto max-w-7xl h-16 rounded-2xl bg-[#111827]/40 backdrop-blur-md px-6 flex items-center justify-between border border-white/5 shadow-2xl">
+    <header className="fixed top-4 inset-x-0 z-50 w-full px-4 pointer-events-none">
+      <nav className="mx-auto max-w-7xl h-16 rounded-2xl bg-[#0b0f19]/80 backdrop-blur-xl px-6 flex items-center justify-between border border-white/10 shadow-2xl shadow-black/80 pointer-events-auto">
+
         <div className="flex items-center gap-10">
           <Link href="/" className="hover:opacity-90 transition duration-200 shrink-0">
             <span className="font-heading font-extrabold text-xl text-white tracking-tight">Skillo</span>
