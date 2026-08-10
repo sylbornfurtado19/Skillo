@@ -102,19 +102,8 @@ export default function Navbar() {
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-primary to-accent group-hover:w-full transition-all duration-300 rounded-full" />
               </a>
             ))}
-
-            {/* GitHub Link */}
-            <a
-              href="https://github.com/sylbornfurtado19/Skillo"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-white hover:scale-105 transition-all duration-200 ml-1"
-              aria-label="GitHub Repository"
-            >
-              <FaGithub size={15} />
-              <span className="hidden lg:inline text-[11px] font-mono text-gray-400">v1.0</span>
-            </a>
           </div>
+
         </div>
 
         {/* Desktop CTA / Auth actions */}
