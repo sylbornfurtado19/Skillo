@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { generateVerbalSelfReflection, consolidateReflexionMemory } from './reflexionEngine.server';
 import type {
   RubricCriterion,
   SinglePassEvaluation,
@@ -452,6 +453,19 @@ export async function performInterviewEvaluation(
     };
   });
 
+  // Trigger Reflexion Verbal Self-Reflection & Memory Consolidation (Shinn et al., NeurIPS 2023)
+  const sessionId = `session_${Date.now()}`;
+  const firstAns = typeof answersList[0] === 'string' ? answersList[0] : answersList[0]?.answerText ?? '';
+  const verbalReflection = await generateVerbalSelfReflection({
+    sessionId,
+    question: questionsList[0]?.question ?? 'Technical Assessment Question',
+    candidateAnswer: firstAns,
+    score: overallScore100,
+    role: setupData.role,
+  });
+
+  const skillMemoryStore = consolidateReflexionMemory(userId, [verbalReflection]);
+
   return {
     overallScore: overallScore100,
     categories,
@@ -462,5 +476,6 @@ export async function performInterviewEvaluation(
     evaluatedAt: new Date().toISOString(),
     userId,
     suqEvaluation,
+    skillMemoryStore,
   };
 }

@@ -4,6 +4,7 @@ export interface UserProfile {
   name?: string;
   avatar_url?: string;
   created_at?: string;
+  skillMemoryStore?: CandidateSkillMemoryStore;
 }
 
 export interface JobRecord {
@@ -85,6 +86,36 @@ export interface GraphRAGAnalysisResult {
   missingPrerequisiteChains: PrerequisiteGapChain[];
   extractedEntityCount: number;
   synthesizedSummary: string;
+}
+
+// ── Reflexion Types (Shinn et al., NeurIPS 2023) ────────────────────────────
+
+export interface VerbalReflection {
+  id: string;
+  sessionId: string;
+  skillTag: string;
+  timestamp: string;
+  mistakeSummary: string;
+  rootCauseAnalysis: string;
+  actionableRemediation: string;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+export interface SkillMemoryNode {
+  skillId: string;
+  skillName: string;
+  proficiencyLevel: 'NOVICE' | 'DEVELOPING' | 'PROFICIENT' | 'MASTERED';
+  attemptsCount: number;
+  reflections: VerbalReflection[];
+  persistentDeficiencies: string[];
+  remediationProgress: number; // 0.0 to 100.0%
+  lastUpdated: string;
+}
+
+export interface CandidateSkillMemoryStore {
+  userId: string;
+  nodes: Record<string, SkillMemoryNode>;
+  globalReflectionSummary: string;
 }
 
 export interface ResumeAnalysis {
@@ -207,6 +238,7 @@ export interface EvaluationReport {
   userId?: string;
   suqEvaluation?: SUQEvaluationResult;
   latsTreeState?: LATSTreeState;
+  skillMemoryStore?: CandidateSkillMemoryStore;
 }
 
 export interface MockInterview {
