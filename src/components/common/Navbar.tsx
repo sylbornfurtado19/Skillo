@@ -40,15 +40,20 @@ export default function Navbar() {
 
   const avatarUrl =
     (user?.user_metadata?.avatar_url as string | undefined) ??
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120';
+    (user?.user_metadata?.picture as string | undefined) ??
+    null;
+
+  const userName =
+    (user?.user_metadata?.full_name as string | undefined) ??
+    (user?.user_metadata?.name as string | undefined) ??
+    user?.email ??
+    'User';
+
+  const userInitial = userName.charAt(0).toUpperCase();
 
   return (
     <header className="sticky top-0 z-50 w-full px-4 pt-4 pb-2 bg-[#030712]/80 backdrop-blur-md">
       <nav className="mx-auto max-w-7xl h-16 rounded-2xl bg-[#111827]/40 backdrop-blur-md px-6 flex items-center justify-between border border-white/5 shadow-2xl">
-        <Link href="/" className="hover:opacity-90 transition duration-200">
-          <LogoFull />
-        </Link>
-
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8">
           {links.map((link) => (
@@ -61,18 +66,9 @@ export default function Navbar() {
               {link.name}
             </a>
           ))}
-          <a
-            href="https://github.com/sylbornfurtado19/Skillo"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-400 hover:text-white transition duration-200 flex items-center gap-1.5 text-sm font-medium"
-          >
-            <FaGithub />
-            <span>GitHub</span>
-          </a>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 ml-auto">
           <Button
             onClick={() => router.push('/dashboard')}
             variant="primary"
@@ -85,20 +81,27 @@ export default function Navbar() {
 
           {isAuthenticated ? (
             <>
-              {/* User Profile Avatar Badge */}
+              {/* User Google Profile Avatar Badge */}
               <Link
                 href="/dashboard"
                 className="relative group h-9 w-9 rounded-xl flex items-center justify-center p-[1px] bg-gradient-to-tr from-primary to-accent hover:shadow-lg hover:shadow-primary/25 hover:shadow-indigo-500/20 transition-all duration-300 active:scale-95"
-                title="View Dashboard"
+                title={userName}
               >
-                <div className="h-full w-full rounded-[11px] overflow-hidden bg-[#030712] p-[1.5px] relative">
-                  <Image
-                    src={avatarUrl}
-                    alt="Profile Avatar"
-                    width={36}
-                    height={36}
-                    className="h-full w-full rounded-[10px] object-cover group-hover:scale-105 transition duration-200"
-                  />
+                <div className="h-full w-full rounded-[11px] overflow-hidden bg-[#030712] p-[1.5px] relative flex items-center justify-center">
+                  {avatarUrl ? (
+                    <Image
+                      src={avatarUrl}
+                      alt={userName}
+                      width={36}
+                      height={36}
+                      unoptimized
+                      className="h-full w-full rounded-[10px] object-cover group-hover:scale-105 transition duration-200"
+                    />
+                  ) : (
+                    <div className="h-full w-full rounded-[10px] bg-primary/20 text-primary font-bold text-xs flex items-center justify-center">
+                      {userInitial}
+                    </div>
+                  )}
                 </div>
                 {/* Pulsing online status indicator */}
                 <span className="absolute bottom-[-1.5px] right-[-1.5px] h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-[#030712] shadow-sm animate-pulse" />
@@ -125,3 +128,4 @@ export default function Navbar() {
     </header>
   );
 }
+
