@@ -62,8 +62,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const avatarUrl =
     (user?.user_metadata?.avatar_url as string | undefined) ??
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120';
-  const userName = (user?.user_metadata?.name as string | undefined) ?? user?.email?.split('@')[0] ?? 'Candidate';
+    (user?.user_metadata?.picture as string | undefined) ??
+    null;
+  const userName =
+    (user?.user_metadata?.full_name as string | undefined) ??
+    (user?.user_metadata?.name as string | undefined) ??
+    user?.email?.split('@')[0] ??
+    'Candidate';
+  const userInitial = userName.charAt(0).toUpperCase();
 
   return (
     <div className="flex h-screen bg-[#030712] text-[#F9FAFB] overflow-hidden font-body">
@@ -73,7 +79,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <aside className="hidden md:flex flex-col w-64 bg-[#111827] border-r border-white/5 relative z-30">
         <div className="h-20 flex items-center px-6 border-b border-white/5">
           <Link href="/" className="hover:opacity-90 transition duration-200">
-            <LogoFull />
+            <span className="font-heading font-extrabold text-xl text-white tracking-tight">Skillo</span>
           </Link>
         </div>
 
@@ -106,34 +112,27 @@ export default function AppLayout({ children }: AppLayoutProps) {
           })}
         </nav>
 
-        <div className="mt-auto px-6 py-6 pb-2">
-          <a
-            href="https://github.com/sylbornfurtado19/Skillo"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-white transition duration-200 flex items-center gap-1.5 text-[11px] text-gray-500 font-mono"
-          >
-            <FaGithub />
-            <span>GitHub</span>
-          </a>
-        </div>
-
         <div className="p-4 border-t border-white/5 bg-[#0f1522]">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="relative h-10 w-10 rounded-full border border-white/10 overflow-hidden shrink-0">
-              <Image
-                src={avatarUrl}
-                alt="Avatar"
-                width={40}
-                height={40}
-                className="h-full w-full object-cover"
-              />
+          <Link href="/profile" className="flex items-center gap-3 mb-3 hover:opacity-80 transition cursor-pointer">
+            <div className="relative h-10 w-10 rounded-full border border-white/10 overflow-hidden shrink-0 bg-primary/20 flex items-center justify-center">
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt="Avatar"
+                  width={40}
+                  height={40}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-sm font-bold text-primary">{userInitial}</span>
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-white truncate">{userName}</p>
               <p className="text-[10px] text-[#94A3B8] truncate">{user?.email ?? 'candidate@skillo.ai'}</p>
             </div>
-          </div>
+          </Link>
           <button
             onClick={handleLogout}
             className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/25 transition duration-250 text-xs font-medium cursor-pointer"
@@ -143,6 +142,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </button>
         </div>
       </aside>
+
 
       {/* 2. MOBILE MENU DRAWER OVERLAY */}
       <AnimatePresence>
@@ -309,17 +309,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </div>
 
             <div
-              onClick={() => router.push('/dashboard')}
-              className="relative h-10 w-10 rounded-xl border border-white/10 overflow-hidden cursor-pointer hover:scale-105 active:scale-95 transition duration-200"
+              onClick={() => router.push('/profile')}
+              className="relative h-10 w-10 rounded-full border border-white/10 overflow-hidden cursor-pointer hover:scale-105 active:scale-95 transition duration-200 bg-primary/20 flex items-center justify-center"
+              title="View Profile"
             >
-              <Image
-                src={avatarUrl}
-                alt="User Avatar"
-                width={40}
-                height={40}
-                className="h-full w-full object-cover"
-              />
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt="User Avatar"
+                  width={40}
+                  height={40}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-sm font-bold text-primary">{userInitial}</span>
+              )}
             </div>
+
           </div>
         </header>
 
