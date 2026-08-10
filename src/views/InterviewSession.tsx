@@ -12,13 +12,9 @@ import {
   FaArrowRight,
   FaChevronLeft,
   FaInfoCircle,
-  FaStepForward,
 } from 'react-icons/fa';
-
 import { INTERVIEWER_PERSONAS, submitInterviewAnswers } from '../services/constants';
 import { useInterview } from '../context/InterviewContext';
-import { useAuth } from '../hooks/useAuth';
-import { getProfile } from '../services/profile';
 import { LogoIcon } from '../components/common/Logo';
 import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';
@@ -30,7 +26,6 @@ const AUTOSAVE_STORAGE_KEY_PREFIX = 'skillo_draft_ans_';
 
 export default function InterviewSession() {
   const router = useRouter();
-  const { user } = useAuth();
   const { showToast } = useToast();
   const {
     resumeData,
@@ -42,24 +37,6 @@ export default function InterviewSession() {
     setupData,
     setResults,
   } = useInterview();
-
-  // Settings / Profile Voice Preferences
-  const [voiceRate, setVoiceRate] = useState(1.0);
-  const [voicePitch, setVoicePitch] = useState(1.0);
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
-
-  // Fetch saved user voice settings on mount
-  useEffect(() => {
-    if (!user?.id) return;
-    getProfile(user.id).then(({ data }) => {
-      if (data?.profileSettings) {
-        const ps = data.profileSettings;
-        if (typeof ps.voiceRate === 'number') setVoiceRate(ps.voiceRate);
-        if (typeof ps.voicePitch === 'number') setVoicePitch(ps.voicePitch);
-        if (typeof ps.subtitlesEnabled === 'boolean') setSubtitlesEnabled(ps.subtitlesEnabled);
-      }
-    });
-  }, [user?.id]);
 
   // Redirect to setup if no questions loaded
   useEffect(() => {
@@ -88,75 +65,8 @@ export default function InterviewSession() {
   const [showHint, setShowHint] = useState(false);
   const [confirmSkip, setConfirmSkip] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
-  const [spokenSentenceIndex, setSpokenSentenceIndex] = useState(0);
 
-  // Web Speech Synthesis Utterance Ref
-  const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-
-  // Cancel any ongoing speech narration
-  const cancelSpeechNarration = useCallback(() => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    setInterviewerSpeaking(false);
-  }, []);
-
-  // Split current question into sentences for animated subtitle highlighting
-  const questionSentences = currentQuestionText.match(/[^.!?]+[.!?]+/g) || [currentQuestionText];
-
-  // Speech Synthesis Narration Effect
-  useEffect(() => {
-    setInterviewerSpeaking(true);
-    setSpokenSentenceIndex(0);
-
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(currentQuestionText);
-      utterance.rate = voiceRate;
-      utterance.pitch = voicePitch;
-
-      utterance.onboundary = (event) => {
-        if (event.name === 'sentence' || event.name === 'word') {
-          const charIdx = event.charIndex;
-          let accumLength = 0;
-          for (let i = 0; i < questionSentences.length; i++) {
-            accumLength += questionSentences[i].length;
-            if (charIdx < accumLength) {
-              setSpokenSentenceIndex(i);
-              break;
-            }
-          }
-        }
-      };
-
-      utterance.onend = () => {
-        setInterviewerSpeaking(false);
-      };
-
-      utterance.onerror = (e) => {
-        console.warn('Speech synthesis error fallback:', e);
-        setInterviewerSpeaking(false);
-      };
-
-      activeUtteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
-    } else {
-      // Fallback for browsers without SpeechSynthesis API
-      const fallbackTimer = setTimeout(() => {
-        setInterviewerSpeaking(false);
-      }, 3500);
-      return () => clearTimeout(fallbackTimer);
-    }
-
-    return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, [currentQuestionIndex, currentQuestionText, voiceRate, voicePitch]);
-
-  // Restore autosaved draft for the current question index
+  // Restore autosaved draft for the current question index on mount or question change
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -168,12 +78,12 @@ export default function InterviewSession() {
           if (parsed.transcriptText) setTranscriptText(parsed.transcriptText);
         }
       } catch (err) {
-        console.warn('Failed to restore draft answer:', err);
+        console.warn('Failed to restore draft answer from sessionStorage:', err);
       }
     }
   }, [currentQuestionIndex]);
 
-  // Debounced Autosave
+  // Debounced Autosave to sessionStorage on typedAnswer / transcriptText changes
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -189,7 +99,7 @@ export default function InterviewSession() {
             })
           );
         } catch (err) {
-          console.warn('Failed to autosave draft answer:', err);
+          console.warn('Failed to autosave draft answer to sessionStorage:', err);
         }
       }
     }, 400);
@@ -244,14 +154,14 @@ export default function InterviewSession() {
     };
   }, [showToast]);
 
+  // Declare handleNextQuestion useCallback BEFORE the timer useEffect
   const handleNextQuestion = useCallback(() => {
-    cancelSpeechNarration();
-
+    // Clear draft for this question upon submission
     if (typeof window !== 'undefined') {
       try {
         sessionStorage.removeItem(`${AUTOSAVE_STORAGE_KEY_PREFIX}${currentQuestionIndex}`);
       } catch (err) {
-        console.warn('Failed to clear draft answer:', err);
+        console.warn('Failed to clear draft answer from sessionStorage:', err);
       }
     }
 
@@ -313,12 +223,16 @@ export default function InterviewSession() {
     setupData,
     setResults,
     router,
-    cancelSpeechNarration,
   ]);
 
-  // Question countdown timer effect
+  // Timer useEffect declared AFTER handleNextQuestion
   useEffect(() => {
-    if (interviewerSpeaking) return;
+    if (interviewerSpeaking) {
+      const speechTimer = setTimeout(() => {
+        setInterviewerSpeaking(false);
+      }, 3500);
+      return () => clearTimeout(speechTimer);
+    }
 
     setTimeLeft(currentQuestion.duration);
     const timer = setInterval(() => {
@@ -352,8 +266,6 @@ export default function InterviewSession() {
   }, [hasUnsavedContent]);
 
   const handleConfirmSkip = useCallback(() => {
-    cancelSpeechNarration();
-
     if (typeof window !== 'undefined') {
       try {
         sessionStorage.removeItem(`${AUTOSAVE_STORAGE_KEY_PREFIX}${currentQuestionIndex}`);
@@ -416,13 +328,10 @@ export default function InterviewSession() {
     setupData,
     setResults,
     router,
-    cancelSpeechNarration,
   ]);
 
   const handlePrevQuestion = () => {
-    cancelSpeechNarration();
     setConfirmSkip(false);
-
     if (recording && recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -551,64 +460,49 @@ export default function InterviewSession() {
         <div className="lg:col-span-5 space-y-6 flex flex-col justify-between">
           <Card variant="glass" className="space-y-4 flex-1 flex flex-col justify-between">
             <div>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="relative shrink-0">
-                    <AnimatePresence mode="popLayout">
-                      {interviewerSpeaking ? (
-                        <motion.span
-                          key="speaking-ring"
-                          initial={{ scale: 0.8, opacity: 0.5 }}
-                          animate={{ scale: [1, 1.25, 1], opacity: [0.5, 0, 0.5] }}
-                          exit={{ opacity: 0 }}
-                          transition={{ repeat: Infinity, duration: 1.8 }}
-                          className={`absolute inset-0 rounded-2xl border-2 ${persona.borderColor} pointer-events-none`}
-                        />
-                      ) : (
-                        <motion.span
-                          key="listening-ring"
-                          initial={{ scale: 0.8, opacity: 0.6 }}
-                          animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
-                          exit={{ opacity: 0 }}
-                          transition={{ repeat: Infinity, duration: 2.0 }}
-                          className="absolute inset-0 rounded-2xl border-2 border-emerald-500 pointer-events-none"
-                        />
-                      )}
-                    </AnimatePresence>
-                    <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-white/10 shadow-lg z-10 shrink-0">
-                      <Image
-                        src={persona.avatar}
-                        alt={persona.name}
-                        width={64}
-                        height={64}
-                        className="object-cover h-full w-full"
+              <div className="flex items-start gap-4">
+                <div className="relative shrink-0">
+                  <AnimatePresence mode="popLayout">
+                    {interviewerSpeaking ? (
+                      <motion.span
+                        key="speaking-ring"
+                        initial={{ scale: 0.8, opacity: 0.5 }}
+                        animate={{ scale: [1, 1.25, 1], opacity: [0.5, 0, 0.5] }}
+                        exit={{ opacity: 0 }}
+                        transition={{ repeat: Infinity, duration: 1.8 }}
+                        className={`absolute inset-0 rounded-2xl border-2 ${persona.borderColor} pointer-events-none`}
                       />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <h3 className="font-heading font-bold text-white leading-none">{persona.name}</h3>
-                    <p className="text-[10px] text-gray-500 font-mono uppercase">
-                      {persona.role} &bull; {persona.company}
-                    </p>
-                    <Badge variant={interviewerSpeaking ? 'primary' : 'neutral'} size="sm" className="mt-2.5">
-                      {interviewerSpeaking ? 'Speaking Voice...' : 'Listening'}
-                    </Badge>
+                    ) : (
+                      <motion.span
+                        key="listening-ring"
+                        initial={{ scale: 0.8, opacity: 0.6 }}
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
+                        exit={{ opacity: 0 }}
+                        transition={{ repeat: Infinity, duration: 2.0 }}
+                        className="absolute inset-0 rounded-2xl border-2 border-emerald-500 pointer-events-none"
+                      />
+                    )}
+                  </AnimatePresence>
+                  <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-white/10 shadow-lg z-10 shrink-0">
+                    <Image
+                      src={persona.avatar}
+                      alt={persona.name}
+                      width={64}
+                      height={64}
+                      className="object-cover h-full w-full"
+                    />
                   </div>
                 </div>
 
-                {/* Skip Narration / Mute Button */}
-                {interviewerSpeaking && (
-                  <button
-                    type="button"
-                    onClick={cancelSpeechNarration}
-                    title="Skip voice narration"
-                    className="flex items-center gap-1 text-[10px] font-mono text-gray-400 hover:text-white bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded-lg transition cursor-pointer shrink-0"
-                  >
-                    <FaStepForward size={10} />
-                    <span>Skip Voice</span>
-                  </button>
-                )}
+                <div className="space-y-1">
+                  <h3 className="font-heading font-bold text-white leading-none">{persona.name}</h3>
+                  <p className="text-[10px] text-gray-500 font-mono uppercase">
+                    {persona.role} &bull; {persona.company}
+                  </p>
+                  <Badge variant={interviewerSpeaking ? 'primary' : 'neutral'} size="sm" className="mt-2.5">
+                    {interviewerSpeaking ? 'Speaking...' : 'Listening'}
+                  </Badge>
+                </div>
               </div>
 
               {/* LATS Adaptive Questioning HUD Indicator */}
@@ -622,40 +516,14 @@ export default function InterviewSession() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="space-y-3 w-full"
+                      className="flex items-center gap-3"
                     >
-                      <div className="flex items-center gap-2">
-                        <div className="flex space-x-1">
-                          <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
-                          <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
-                          <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce" />
-                        </div>
-                        <span className="text-[10px] text-primary font-mono font-bold uppercase">
-                          AI Voice Narration Active ({voiceRate}x Speed)
-                        </span>
+                      <div className="flex space-x-1">
+                        <div className="h-1.5 w-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                        <div className="h-1.5 w-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                        <div className="h-1.5 w-1.5 bg-gray-500 rounded-full animate-bounce" />
                       </div>
-
-                      {/* Subtitles Animation (If enabled in settings) */}
-                      {subtitlesEnabled ? (
-                        <div className="text-xs sm:text-sm font-heading font-medium leading-relaxed">
-                          {questionSentences.map((sentence, idx) => (
-                            <span
-                              key={idx}
-                              className={`transition-all duration-300 ${
-                                idx === spokenSentenceIndex
-                                  ? 'text-white font-bold bg-primary/20 px-1 rounded border-b border-primary'
-                                  : 'text-gray-400 opacity-70'
-                              }`}
-                            >
-                              {sentence}{' '}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs sm:text-sm font-heading font-medium text-white leading-relaxed">
-                          {currentQuestion.question}
-                        </p>
-                      )}
+                      <span className="text-xs text-gray-500 font-mono">Presenting questions payload...</span>
                     </motion.div>
                   ) : (
                     <div className="space-y-3 w-full">
