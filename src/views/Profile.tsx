@@ -110,8 +110,9 @@ export default function Profile() {
     location: userProfile?.location ?? null,
     experience: userProfile?.experience ?? null,
     skills: userProfile?.skillMemoryStore?.nodes
-      ? userProfile.skillMemoryStore.nodes.map((n) => n.name).slice(0, 6)
+      ? Object.values(userProfile.skillMemoryStore.nodes).map((n) => n.name).slice(0, 6)
       : ['React 19', 'TypeScript', 'Next.js', 'System Design'],
+
     averageScore: avgScore,
     completedSessions: completedCount,
   };
