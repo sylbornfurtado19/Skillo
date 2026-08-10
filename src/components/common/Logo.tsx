@@ -53,21 +53,25 @@ export function LogoIcon({ className = '', size = 40 }: LogoIconProps) {
 export interface LogoFullProps {
   className?: string;
   iconSize?: number;
+  showTagline?: boolean;
 }
 
-export function LogoFull({ className = '', iconSize = 36 }: LogoFullProps) {
+export function LogoFull({ className = '', iconSize = 34, showTagline = true }: LogoFullProps) {
   return (
     <div className={`flex items-center gap-2.5 text-left select-none ${className}`}>
       <LogoIcon size={iconSize} />
 
       <div className="flex flex-col justify-center leading-none">
-        <span className="font-heading font-bold text-lg tracking-tight text-white">
-          Skil<span className="bg-gradient-to-r from-[#8B5CF6] to-[#06B6D4] bg-clip-text text-transparent">lo</span>
+        <span className="font-heading font-extrabold text-lg tracking-tight text-white flex items-center">
+          Skil<span className="bg-gradient-to-r from-[#8B5CF6] via-[#6366F1] to-[#06B6D4] bg-clip-text text-transparent">lo</span>
         </span>
-        <span className="text-[7.5px] font-bold text-gray-500 tracking-[0.2em] font-mono mt-0.5 uppercase">
-          AI Interview & Resume Assistant
-        </span>
+        {showTagline && (
+          <span className="text-[7.5px] font-bold text-gray-400 tracking-[0.2em] font-mono mt-0.5 uppercase">
+            AI Interview & Resume Assistant
+          </span>
+        )}
       </div>
     </div>
   );
 }
+

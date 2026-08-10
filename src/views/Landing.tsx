@@ -53,12 +53,47 @@ export default function Landing() {
   return (
     <div className="space-y-28 py-8">
       {/* 1. Hero Section */}
+      <section className="relative flex flex-col items-center text-center max-w-4xl mx-auto pt-10 px-4">      {/* Animated gradient mesh & floating particles background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+        <motion.div
+          animate={{
+            scale: [1, 1.15, 1],
+            x: [0, 20, 0],
+            y: [0, -20, 0],
+          }}
+          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-gradient-to-tr from-primary/20 via-secondary/15 to-accent/20 rounded-full blur-[140px] opacity-70"
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            x: [0, -30, 0],
+            y: [0, 30, 0],
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute top-96 -left-20 w-[450px] h-[450px] bg-accent/15 rounded-full blur-[130px] opacity-50"
+        />
+      </div>
+
+      {/* 1. Hero Section */}
       <section className="relative flex flex-col items-center text-center max-w-4xl mx-auto pt-10 px-4">
-        {/* Glow Tag */}
-        <Badge variant="primary" size="md" className="mb-6 animate-pulse">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent mr-1.5 inline-block" />
-          Open Source &middot; Free to Use
-        </Badge>
+        {/* Clickable Open Source Glow Tag */}
+        <a
+          href="https://github.com/sylbornfurtado19/Skillo"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block group cursor-pointer mb-6"
+        >
+          <Badge
+            variant="primary"
+            size="md"
+            className="group-hover:scale-105 group-hover:border-primary/50 group-hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all duration-300"
+          >
+            <span className="h-2 w-2 rounded-full bg-accent mr-2 inline-block animate-pulse" />
+            Open Source &middot; Free to Use
+            <span className="ml-1 text-xs opacity-75 group-hover:translate-x-0.5 transition-transform duration-200 inline-block">&rarr;</span>
+          </Badge>
+        </a>
 
         {/* Headline */}
         <motion.h1
@@ -68,7 +103,7 @@ export default function Landing() {
           className="font-heading font-extrabold text-4xl sm:text-6xl tracking-tight text-white leading-tight"
         >
           Practice interviews that actually{' '}
-          <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent animated-gradient-text">
             prepare you
           </span>
         </motion.h1>
@@ -78,7 +113,7 @@ export default function Landing() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-base sm:text-lg text-gray-400 mt-6 max-w-2xl leading-relaxed mx-auto text-center"
+          className="text-base sm:text-lg text-gray-300 mt-6 max-w-2xl leading-relaxed mx-auto text-center"
         >
           Get real-time feedback on your interview performance. We analyze your responses and provide actionable insights so you can sharpen your skills before the actual day.
         </motion.p>
@@ -94,14 +129,15 @@ export default function Landing() {
             onClick={() => router.push('/dashboard')}
             variant="primary"
             size="lg"
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto relative group overflow-hidden shadow-[0_0_25px_rgba(99,102,241,0.35)] hover:shadow-[0_0_35px_rgba(99,102,241,0.6)] transition-all duration-300"
           >
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
             Start Preparing Now
           </Button>
 
           <a
             href="#features"
-            className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 transition duration-200 flex items-center justify-center font-semibold text-base"
+            className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 hover:border-white/25 hover:scale-102 active:scale-98 transition-all duration-200 flex items-center justify-center font-semibold text-base shadow-md"
           >
             See Features
           </a>
@@ -113,10 +149,16 @@ export default function Landing() {
         {/* PART 1 — "How It Works" Flow */}
         <motion.div
           id="how-it-works"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-50px' }}
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: 0.15 },
+            },
+          }}
           className="space-y-12 scroll-mt-32"
         >
           <SectionHeader
@@ -134,10 +176,17 @@ export default function Landing() {
             ].map((item, idx) => {
               const IconComp = item.icon;
               return (
-                <div key={idx} className="relative flex flex-col md:flex-row items-center w-full">
-                  <Card variant="glass" className="p-5 flex-1 h-full text-center flex flex-col items-center justify-between border border-white/5 relative z-10 w-full">
+                <motion.div
+                  key={idx}
+                  variants={{
+                    hidden: { opacity: 0, y: 35 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+                  }}
+                  className="relative flex flex-col md:flex-row items-center w-full"
+                >
+                  <Card variant="glass" className="p-5 flex-1 h-full text-center flex flex-col items-center justify-between border border-white/5 hover:border-primary/40 hover:shadow-[0_0_25px_rgba(99,102,241,0.2)] transition-all duration-300 relative z-10 w-full group">
                     <div className="flex flex-col items-center">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm mb-3.5 shadow-lg shadow-primary/10 mx-auto">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm mb-3.5 shadow-lg shadow-primary/20 group-hover:scale-110 transition duration-300 mx-auto">
                         <IconComp />
                       </div>
                       <span className="text-[10px] font-mono font-bold text-primary uppercase block mb-1">{item.step}</span>
@@ -146,11 +195,11 @@ export default function Landing() {
                     </div>
                   </Card>
                   {idx < 3 && (
-                    <div className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-[#111827] border border-white/5 items-center justify-center text-gray-500 text-xs shadow-md">
+                    <div className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-[#111827] border border-white/10 items-center justify-center text-gray-500 text-xs shadow-md">
                       <FaArrowRight />
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -159,13 +208,18 @@ export default function Landing() {
         {/* PART 2 — Feature Highlights Grid */}
         <motion.div
           id="features"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.1 }}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-50px' }}
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: 0.12 },
+            },
+          }}
           className="space-y-12 scroll-mt-32"
         >
-
           <SectionHeader
             title="Features"
             description="Tools designed to help you communicate more effectively."
@@ -209,19 +263,28 @@ export default function Landing() {
             ].map((f, idx) => {
               const IconComp = f.icon;
               return (
-                <Card key={idx} variant="glass" className={`p-6 text-center ${f.borderClass} ${f.bgClass} flex flex-col items-center justify-center gap-3`}>
-                  <div className={`h-10 w-10 rounded-xl bg-[#030712]/60 border border-white/5 flex items-center justify-center shrink-0 text-sm ${f.colorClass}`}>
-                    <IconComp />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="font-heading font-bold text-sm text-white">{f.title}</h4>
-                    <p className="text-xs text-gray-400 leading-relaxed max-w-sm mx-auto">{f.desc}</p>
-                  </div>
-                </Card>
+                <motion.div
+                  key={idx}
+                  variants={{
+                    hidden: { opacity: 0, y: 30 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+                  }}
+                >
+                  <Card variant="glass" className={`p-6 text-center ${f.borderClass} ${f.bgClass} flex flex-col items-center justify-center gap-3 hover:scale-102 hover:shadow-xl transition-all duration-300 group`}>
+                    <div className={`h-11 w-11 rounded-xl bg-[#030712]/60 border border-white/10 flex items-center justify-center shrink-0 text-base ${f.colorClass} group-hover:scale-110 transition duration-300`}>
+                      <IconComp />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-heading font-bold text-sm text-white">{f.title}</h4>
+                      <p className="text-xs text-gray-400 leading-relaxed max-w-sm mx-auto">{f.desc}</p>
+                    </div>
+                  </Card>
+                </motion.div>
               );
             })}
           </div>
         </motion.div>
+
 
         {/* PART 3 — Mock Results Preview Banner */}
         <motion.div

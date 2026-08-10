@@ -118,6 +118,29 @@ h1, h2, h3, h4, h5, h6 {
   100% { background-position: 0% 50%; }
 }
 
+/* Animated gradient text loop */
+.animated-gradient-text {
+  background-size: 200% auto;
+  animation: textGradientShift 4s ease infinite;
+}
+
+@keyframes textGradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Conic gradient spin for 3D card borders */
+@keyframes conicSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-conic-spin {
+  animation: conicSpin 8s linear infinite;
+}
+
+
 /* Light Mode Overrides */
 html[data-theme="light"] {
   --color-background: #f9fafb;
