@@ -21,14 +21,17 @@ const answerSchema = z.object({
 });
 
 const setupDataSchema = z.object({
+  company: z.string().default('Generic'),
   domain: z.string().default('Computer Science'),
   role: z.string().default('Software Engineer'),
   experienceLevel: z.string().default('Mid-Level'),
   type: z.string().default('Technical'),
   difficulty: z.string().default('Medium'),
+  duration: z.number().default(45),
   questionCount: z.number().default(5),
   focusAreas: z.array(z.string()).default([]),
   persona: z.string().default('sarah'),
+  interviewModeId: z.string().optional(),
 });
 
 const evaluateSchema = z.object({

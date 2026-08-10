@@ -5,14 +5,18 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface SetupData {
+  company?: string;
   domain: string;
   role: string;
   experienceLevel: string;
   type: string;
   difficulty: string;
+  duration?: number;
   questionCount: number;
   focusAreas: string[];
   persona: string;
+  interviewModeId?: string;
+  modeConfig?: unknown;
   [key: string]: unknown;
 }
 
@@ -41,12 +45,15 @@ export interface InterviewResults {
 
 export interface SessionHistoryItem {
   id: string;
+  company?: string;
   role: string;
   type: string;
   difficulty: string;
+  duration?: number;
   date: string;
   score: number;
   persona: string;
+  interviewModeId?: string;
 }
 
 export interface InterviewContextValue {
@@ -91,14 +98,17 @@ export const useInterview = (): InterviewContextValue => {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 const DEFAULT_SETUP: SetupData = {
+  company: 'Generic',
   domain: 'Computer Science',
   role: 'Software Engineer',
   experienceLevel: 'Mid-Level',
   type: 'Technical',
   difficulty: 'Medium',
+  duration: 45,
   questionCount: 5,
   focusAreas: [],
   persona: 'sarah',
+  interviewModeId: 'generic-technical',
 };
 
 const SESSION_HISTORY_MAX = 20;

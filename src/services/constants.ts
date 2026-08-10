@@ -106,6 +106,7 @@ export const CAREER_DOMAINS: Record<string, string[]> = {
 };
 
 interface QuestionItem {
+  id?: string;
   question: string;
   duration: number;
   hint: string;
@@ -148,20 +149,154 @@ const QUESTION_DATABASE: Record<string, Record<string, QuestionItem[]>> = {
   },
 };
 
+export const PRESET_QUESTION_POOLS: Record<string, QuestionItem[]> = {
+  Google: [
+    {
+      question:
+        '[Google Coding] Design an in-memory caching data structure that supports O(1) time complexity for get and put, with dynamic LRU eviction and memory footprint bounds.',
+      duration: 180,
+      hint: 'Combine a doubly-linked list with a hash map. Discuss pointer overhead and thread-safety.',
+    },
+    {
+      question:
+        '[Google Algorithms] Given a massive stream of integers, how would you find the top-K most frequent elements in real-time with sub-linear space?',
+      duration: 180,
+      hint: 'Consider Min-Heap vs Count-Min Sketch. Analyze time complexity for update and query.',
+    },
+    {
+      question:
+        '[Google Systems] Follow-Up Complexity: What happens if your input graph exceeds machine memory limit? How would you compute shortest paths using external memory or map-reduce?',
+      duration: 210,
+      hint: 'Mention Pregel/GraphX BSP model, partitioning strategies, and disk IO bottlenecks.',
+    },
+    {
+      question:
+        '[Google Coding] Write an algorithm to serialize and deserialize an N-ary tree cleanly, minimizing output string size.',
+      duration: 150,
+      hint: 'Use DFS pre-order traversal with child counts or sentinel markers.',
+    },
+    {
+      question:
+        '[Google Optimization] How would you detect cycles in a concurrent dependency graph where nodes are dynamically registered and deregistered?',
+      duration: 180,
+      hint: 'Discuss Tarjan’s SCC vs Kahn’s algorithm with read-write locks or lock-free atomics.',
+    },
+  ],
+
+  Meta: [
+    {
+      question:
+        '[Meta Fast Coding] Implement a fast function to calculate the lowest common ancestor (LCA) of two nodes in a binary tree with parent pointers in O(1) auxiliary space.',
+      duration: 150,
+      hint: 'Calculate node depths first, align depth pointers, then move upward in parallel.',
+    },
+    {
+      question:
+        '[Meta Scale] How would you design a real-time online status indicator (Active Now / Last Seen) for 3 Billion daily active users?',
+      duration: 180,
+      hint: 'Discuss heartbeat polling, Redis bitmaps/hyperloglog, gateway websockets, and batch flushing.',
+    },
+    {
+      question:
+        '[Meta Coding] Given a matrix of 0s and 1s representing a social network graph, find the largest connected island of mutual connections.',
+      duration: 150,
+      hint: 'Use BFS/DFS with in-place matrix mutating to avoid extra space visited sets.',
+    },
+    {
+      question:
+        '[Meta Systems] How do you handle rapid burst spikes during global live events without dropping critical user posts or notifications?',
+      duration: 180,
+      hint: 'Talk about leaky bucket rate limiting, push vs pull feed architecture, and dynamic queue shedding.',
+    },
+  ],
+
+  Amazon: [
+    {
+      question:
+        '[Amazon Leadership - Customer Obsession] Describe a high-stakes scenario where you advocated for customer experience over short-term engineering convenience. What tradeoffs did you make?',
+      duration: 180,
+      hint: 'Follow strict STAR framework. Quantify impact on customer latency, error rates, or NPS metrics.',
+    },
+    {
+      question:
+        '[Amazon Leadership - Ownership] Tell me about a time when a critical project failed or suffered an outage. What was your personal role, and how did you own the remediation?',
+      duration: 180,
+      hint: 'Detail your exact individual actions ("I" vs "We"), root cause COE analysis, and preventive mechanisms.',
+    },
+    {
+      question:
+        '[Amazon Leadership - Bias for Action] Give an example of when you had to make a high-concurrency technical decision with incomplete data. How did you assess risk?',
+      duration: 180,
+      hint: 'Focus on 2-way vs 1-way door decisions, rollback plans, and rapid iterative deployment.',
+    },
+    {
+      question:
+        '[Amazon Leadership - Deep Dive] Walk through the most complex systemic bug you personally diagnosed in production. How did you trace telemetry to find the root cause?',
+      duration: 210,
+      hint: 'Describe log correlation, flamegraphs, memory dumps, or packet captures.',
+    },
+  ],
+
+  Stripe: [
+    {
+      question:
+        '[Stripe API & Architecture] Design an idempotent Payment Intent API that prevents double-charging customers even during severe client retries and network timeouts.',
+      duration: 210,
+      hint: 'Discuss Idempotency-Key headers, DB row locking/unique constraints, state machines (PENDING/SUCCEEDED), and exponential backoff.',
+    },
+    {
+      question:
+        '[Stripe Reliability] How do you guarantee exact-once event delivery semantics in a distributed webhook delivery engine serving millions of merchant webhooks?',
+      duration: 210,
+      hint: 'Explain dead-letter queues, message deduplication IDs, backoff policies, and transactional outbox patterns.',
+    },
+    {
+      question:
+        '[Stripe Schema & Versioning] How would you safely perform a zero-downtime database schema migration (removing a required column used by external REST clients)?',
+      duration: 180,
+      hint: 'Follow Expand & Contract migration pattern: dual-writing, feature flags, version headers, deprecation timelines.',
+    },
+    {
+      question:
+        '[Stripe Developer Experience] How do you construct clear, actionable JSON API error responses with granular field-level validation and rate-limit headers?',
+      duration: 150,
+      hint: 'Discuss RFC 7807 Problem Details, error codes, doc links, and 429 Retry-After headers.',
+    },
+  ],
+};
+
 export const getQuestionsForSetup = (setupData: {
+  company?: string;
   domain?: string;
+  interviewType?: string;
   questionCount?: number;
   [key: string]: unknown;
 }) => {
+  const company = setupData.company || 'Generic';
   const domain = setupData.domain || 'Computer Science';
-  const domainQuestions =
-    QUESTION_DATABASE[domain]?.technical || QUESTION_DATABASE['Computer Science'].technical;
   const count = setupData.questionCount || 5;
 
-  return domainQuestions.slice(0, count).map((q, idx) => ({
-    id: `q_${idx + 1}`,
-    ...q,
-  }));
+  let pool: QuestionItem[] = [];
+
+  if (PRESET_QUESTION_POOLS[company]) {
+    pool = PRESET_QUESTION_POOLS[company];
+  } else {
+    pool = QUESTION_DATABASE[domain]?.technical || QUESTION_DATABASE['Computer Science'].technical;
+  }
+
+  // Ensure we return requested count
+  const result: QuestionItem[] = [];
+  for (let i = 0; i < count; i++) {
+    const item = pool[i % pool.length];
+    result.push({
+      id: `q_${i + 1}`,
+      question: item.question,
+      duration: item.duration,
+      hint: item.hint,
+    });
+  }
+
+  return result;
 };
 
 export const submitInterviewAnswers = async (

@@ -21,6 +21,9 @@ export interface UserProfile {
   skillMemoryStore?: CandidateSkillMemoryStore;
 }
 
+export * from './interviewModes';
+
+
 
 
 export interface JobRecord {

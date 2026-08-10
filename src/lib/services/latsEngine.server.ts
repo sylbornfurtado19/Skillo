@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { resolveInterviewMode } from '@/types/interviewModes';
 import type { LATSTreeNode, LATSTreeState, LATSActionType, ProcessRewardResult } from '@/types/index';
 
 const C_PUCT = 1.414;
@@ -21,6 +22,8 @@ const branchExpansionSchema = z.object({
 export interface LATSEngineInput {
   sessionId: string;
   role: string;
+  company?: string;
+  interviewModeId?: string;
   currentQuestion: string;
   candidateAnswer: string;
   priorGaps: string[];

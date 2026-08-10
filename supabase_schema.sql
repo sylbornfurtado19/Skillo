@@ -81,6 +81,11 @@ CREATE TABLE IF NOT EXISTS public.mock_interviews (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Migration-safe column additions for existing mock_interviews tables
+ALTER TABLE public.mock_interviews ADD COLUMN IF NOT EXISTS company TEXT DEFAULT 'Generic';
+ALTER TABLE public.mock_interviews ADD COLUMN IF NOT EXISTS duration INTEGER DEFAULT 45;
+ALTER TABLE public.mock_interviews ADD COLUMN IF NOT EXISTS interview_mode_id TEXT DEFAULT 'generic-technical';
+
 -- =========================================================
 -- INDEXES FOR PERFORMANCE
 -- =========================================================

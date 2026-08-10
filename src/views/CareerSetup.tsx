@@ -21,8 +21,26 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import { Progress } from '../components/ui/Loader';
+import { InterviewModePreviewCard } from '../components/interview/InterviewModePreviewCard';
+import { resolveInterviewMode } from '../types/interviewModes';
 
 const SETUP_STORAGE_KEY = 'skillo_career_setup_state';
+
+const COMPANY_OPTIONS = ['Generic', 'Google', 'Meta', 'Amazon', 'Stripe', 'Custom'];
+const TARGET_ROLES = [
+  'Software Engineer',
+  'Frontend Engineer',
+  'Backend Engineer',
+  'Full Stack Engineer',
+  'Data Engineer',
+  'ML Engineer',
+  'DevOps Engineer',
+  'Product Manager',
+  'Custom',
+];
+const INTERVIEW_TYPES = ['Coding', 'System Design', 'Behavioral', 'Technical', 'Mixed'];
+const DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Expert'];
+const DURATIONS = [15, 30, 45, 60];
 
 export default function CareerSetup() {
   const router = useRouter();
@@ -255,13 +273,19 @@ export default function CareerSetup() {
   const questionCounts = [3, 5, 7, 10];
 
   const selectOption = (field: string, value: unknown) => {
-    const updatedSetup = { ...setupData, [field]: value };
+    let updatedSetup = { ...setupData, [field]: value };
 
-    if (field === 'domain' && typeof value === 'string') {
-      const availableRoles = CAREER_DOMAINS[value as keyof typeof CAREER_DOMAINS];
-      if (availableRoles && availableRoles.length > 0) {
-        updatedSetup.role = availableRoles[0];
-      }
+    // Automatically synchronize resolved interview mode preset if company changes
+    if (field === 'company' && typeof value === 'string') {
+      const mode = resolveInterviewMode({ company: value, role: (setupData.role as string) });
+      updatedSetup = {
+        ...updatedSetup,
+        company: value,
+        interviewModeId: mode.id,
+        type: mode.interviewType,
+        difficulty: mode.difficulty,
+        duration: mode.duration,
+      };
     }
 
     setSetupData(updatedSetup);
@@ -287,8 +311,8 @@ export default function CareerSetup() {
     <div className="max-w-6xl mx-auto space-y-8 pb-12 text-left">
       <div className="text-center space-y-2">
         <SectionHeader
-          title="Configure Career Prep Environment"
-          description="Build custom voice or keyboard assessments based on your domain, target seniority, and platform parameters."
+          title="Configure Career Prep Simulator"
+          description="Select target company style, role, track, difficulty, and duration parameters for your AI mock assessment."
           className="text-center max-w-2xl mx-auto"
         />
       </div>
@@ -300,16 +324,16 @@ export default function CareerSetup() {
               <span className="text-[10px] text-gray-500 font-mono font-bold uppercase">
                 Step {currentStep} of {totalSteps} &bull;{' '}
                 {currentStep === 1
-                  ? 'Career Domain'
+                  ? 'Target Company'
                   : currentStep === 2
                   ? 'Target Role'
                   : currentStep === 3
-                  ? 'Seniority Level'
+                  ? 'Interview Track'
                   : currentStep === 4
-                  ? 'Interview Type'
-                  : currentStep === 5
                   ? 'Difficulty Level'
-                  : 'Question Count'}
+                  : currentStep === 5
+                  ? 'Duration'
+                  : 'Mode Review & Confirmation'}
               </span>
               <span className="text-[10px] text-primary font-mono font-bold">
                 {Math.round((currentStep / totalSteps) * 100)}% Complete
@@ -329,20 +353,20 @@ export default function CareerSetup() {
                     className="space-y-4"
                   >
                     <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
-                      Select Career Domain
+                      Select Target Company Preset
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {domains.map((domain) => (
+                      {COMPANY_OPTIONS.map((comp) => (
                         <Card
-                          key={domain}
-                          onClick={() => selectOption('domain', domain)}
-                          variant={setupData.domain === domain ? 'glow-primary' : 'glass'}
+                          key={comp}
+                          onClick={() => selectOption('company', comp)}
+                          variant={setupData.company === comp ? 'glow-primary' : 'glass'}
                           className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
-                            setupData.domain === domain ? 'border-primary' : 'border-white/5'
+                            setupData.company === comp ? 'border-primary' : 'border-white/5'
                           }`}
                         >
-                          <span className="text-xs font-semibold text-white">{domain}</span>
-                          {setupData.domain === domain && <FaCheckCircle className="text-primary text-sm" />}
+                          <span className="text-xs font-semibold text-white">{comp} Style</span>
+                          {setupData.company === comp && <FaCheckCircle className="text-primary text-sm" />}
                         </Card>
                       ))}
                     </div>
@@ -361,17 +385,17 @@ export default function CareerSetup() {
                       Select Target Role
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
-                      {roles.map((role) => (
+                      {TARGET_ROLES.map((r) => (
                         <Card
-                          key={role}
-                          onClick={() => selectOption('role', role)}
-                          variant={setupData.role === role ? 'glow-primary' : 'glass'}
+                          key={r}
+                          onClick={() => selectOption('role', r)}
+                          variant={setupData.role === r ? 'glow-primary' : 'glass'}
                           className={`hover:scale-[1.01] transition-all py-3.5 px-4 border flex items-center justify-between cursor-pointer ${
-                            setupData.role === role ? 'border-primary' : 'border-white/5'
+                            setupData.role === r ? 'border-primary' : 'border-white/5'
                           }`}
                         >
-                          <span className="text-xs font-semibold text-white">{role}</span>
-                          {setupData.role === role && <FaCheckCircle className="text-primary text-sm" />}
+                          <span className="text-xs font-semibold text-white">{r}</span>
+                          {setupData.role === r && <FaCheckCircle className="text-primary text-sm" />}
                         </Card>
                       ))}
                     </div>
@@ -387,20 +411,20 @@ export default function CareerSetup() {
                     className="space-y-4"
                   >
                     <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
-                      Select Seniority Level
+                      Select Interview Type / Track
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {experienceLevels.map((exp) => (
+                      {INTERVIEW_TYPES.map((t) => (
                         <Card
-                          key={exp}
-                          onClick={() => selectOption('experienceLevel', exp)}
-                          variant={setupData.experienceLevel === exp ? 'glow-primary' : 'glass'}
+                          key={t}
+                          onClick={() => selectOption('type', t)}
+                          variant={setupData.type === t ? 'glow-primary' : 'glass'}
                           className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
-                            setupData.experienceLevel === exp ? 'border-primary' : 'border-white/5'
+                            setupData.type === t ? 'border-primary' : 'border-white/5'
                           }`}
                         >
-                          <span className="text-xs font-semibold text-white">{exp}</span>
-                          {setupData.experienceLevel === exp && <FaCheckCircle className="text-primary text-sm" />}
+                          <span className="text-xs font-semibold text-white">{t} Track</span>
+                          {setupData.type === t && <FaCheckCircle className="text-primary text-sm" />}
                         </Card>
                       ))}
                     </div>
@@ -416,39 +440,10 @@ export default function CareerSetup() {
                     className="space-y-4"
                   >
                     <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
-                      Select Interview Track
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {interviewTypes.map((type) => (
-                        <Card
-                          key={type}
-                          onClick={() => selectOption('type', type)}
-                          variant={setupData.type === type ? 'glow-primary' : 'glass'}
-                          className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
-                            setupData.type === type ? 'border-primary' : 'border-white/5'
-                          }`}
-                        >
-                          <span className="text-xs font-semibold text-white">{type}</span>
-                          {setupData.type === type && <FaCheckCircle className="text-primary text-sm" />}
-                        </Card>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {currentStep === 5 && (
-                  <motion.div
-                    key="step5"
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    className="space-y-4"
-                  >
-                    <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
                       Select Difficulty Mode
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {difficulties.map((diff) => (
+                      {DIFFICULTIES.map((diff) => (
                         <Card
                           key={diff}
                           onClick={() => selectOption('difficulty', diff)}
@@ -465,6 +460,35 @@ export default function CareerSetup() {
                   </motion.div>
                 )}
 
+                {currentStep === 5 && (
+                  <motion.div
+                    key="step5"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="space-y-4"
+                  >
+                    <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
+                      Select Interview Duration
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {DURATIONS.map((dur) => (
+                        <Card
+                          key={dur}
+                          onClick={() => selectOption('duration', dur)}
+                          variant={setupData.duration === dur ? 'glow-primary' : 'glass'}
+                          className={`hover:scale-[1.01] transition-all py-6 px-4 border flex flex-col items-center justify-center gap-2 cursor-pointer text-center ${
+                            setupData.duration === dur ? 'border-primary' : 'border-white/5'
+                          }`}
+                        >
+                          <span className="text-2xl font-heading font-extrabold text-white">{dur}</span>
+                          <span className="text-[10px] text-gray-400 font-mono uppercase">Minutes</span>
+                        </Card>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
                 {currentStep === 6 && (
                   <motion.div
                     key="step6"
@@ -473,24 +497,10 @@ export default function CareerSetup() {
                     exit={{ opacity: 0, x: -10 }}
                     className="space-y-4"
                   >
-                    <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
-                      Select Question Volume
+                    <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-2">
+                      Review Simulation Parameters
                     </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {questionCounts.map((count) => (
-                        <Card
-                          key={count}
-                          onClick={() => selectOption('questionCount', count)}
-                          variant={setupData.questionCount === count ? 'glow-primary' : 'glass'}
-                          className={`hover:scale-[1.01] transition-all py-6 px-4 border flex flex-col items-center justify-center gap-2 cursor-pointer text-center ${
-                            setupData.questionCount === count ? 'border-primary' : 'border-white/5'
-                          }`}
-                        >
-                          <span className="text-2xl font-heading font-extrabold text-white">{count}</span>
-                          <span className="text-[10px] text-gray-400 font-mono uppercase">Questions</span>
-                        </Card>
-                      ))}
-                    </div>
+                    <InterviewModePreviewCard setupData={setupData} />
                   </motion.div>
                 )}
               </AnimatePresence>

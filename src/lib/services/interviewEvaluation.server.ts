@@ -8,6 +8,7 @@ import {
 } from './reflexionEngine.server';
 import { generateSimPOContrastiveEvaluation } from './simpoEngine.server';
 import { runLATSMCTS } from './latsEngine.server';
+import { resolveInterviewMode } from '@/types/interviewModes';
 import type {
   RubricCriterion,
   SinglePassEvaluation,
@@ -32,14 +33,17 @@ export interface AnswerItemInput {
 }
 
 export interface SetupDataInput {
+  company?: string;
   domain: string;
   role: string;
   experienceLevel: string;
   type: string;
   difficulty: string;
+  duration?: number;
   questionCount: number;
   focusAreas: string[];
   persona: string;
+  interviewModeId?: string;
 }
 
 export interface EvaluateInterviewInput {

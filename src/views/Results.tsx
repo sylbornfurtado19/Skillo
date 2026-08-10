@@ -241,11 +241,18 @@ export default function Results() {
 
   return (
     <div ref={reportRef} className="max-w-6xl mx-auto space-y-8 pb-16 text-left p-4">
-      <SectionHeader
-        title="Performance Report"
-        description="A review of your logical accuracy, communication metrics, and technical dimension matrices."
-        className="text-center max-w-2xl mx-auto"
-      />
+      <div className="flex flex-col items-center gap-2 text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-bold border border-primary/30 bg-primary/10 text-primary">
+          <span>{results.setupData?.company || 'Generic'} Simulation Preset</span>
+          &bull;
+          <span>{results.setupData?.role || 'Software Engineer'}</span>
+        </div>
+        <SectionHeader
+          title="Performance Report"
+          description="A review of your logical accuracy, communication metrics, and technical dimension matrices."
+          className="text-center max-w-2xl mx-auto"
+        />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         <Card variant="glow-secondary" className="lg:col-span-4 flex flex-col justify-between items-center text-center py-8 min-h-[340px]">

@@ -499,9 +499,14 @@ export default function InterviewSession() {
                   <p className="text-[10px] text-gray-500 font-mono uppercase">
                     {persona.role} &bull; {persona.company}
                   </p>
-                  <Badge variant={interviewerSpeaking ? 'primary' : 'neutral'} size="sm" className="mt-2.5">
-                    {interviewerSpeaking ? 'Speaking...' : 'Listening'}
-                  </Badge>
+                  <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+                    <Badge variant={interviewerSpeaking ? 'primary' : 'neutral'} size="sm">
+                      {interviewerSpeaking ? 'Speaking...' : 'Listening'}
+                    </Badge>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-primary/10 border border-primary/20 text-primary uppercase">
+                      {setupData.company || 'Generic'} Mode
+                    </span>
+                  </div>
                 </div>
               </div>
 
