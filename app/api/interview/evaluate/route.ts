@@ -18,6 +18,7 @@ const answerSchema = z.object({
   answerText: z.string(),
   timeSpent: z.number().optional(),
   speakMode: z.boolean().optional(),
+  diagramState: z.any().optional(),
 });
 
 const setupDataSchema = z.object({

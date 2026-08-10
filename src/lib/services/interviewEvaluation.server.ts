@@ -9,6 +9,7 @@ import {
 import { generateSimPOContrastiveEvaluation } from './simpoEngine.server';
 import { runLATSMCTS } from './latsEngine.server';
 import { resolveInterviewMode } from '@/types/interviewModes';
+import { summarizeDiagramTopology, SystemDesignDiagramState } from '@/types/systemDesign';
 import type {
   RubricCriterion,
   SinglePassEvaluation,
@@ -30,6 +31,7 @@ export interface AnswerItemInput {
   answerText: string;
   timeSpent?: number;
   speakMode?: boolean;
+  diagramState?: SystemDesignDiagramState;
 }
 
 export interface SetupDataInput {
@@ -131,7 +133,10 @@ async function executeSingleCoTPass(
   const combinedSubmission = questionsList.map((q, idx) => {
     const rawAns = answersList[idx];
     const answerText = typeof rawAns === 'string' ? rawAns : rawAns?.answerText ?? 'No response provided.';
-    return `Question ${idx + 1}: ${q.question}\nCandidate Answer: ${answerText}\n`;
+    const diagramInfo = (typeof rawAns === 'object' && rawAns?.diagramState)
+      ? `\nArchitecture Whiteboard Diagram: ${summarizeDiagramTopology(rawAns.diagramState)}\n`
+      : '';
+    return `Question ${idx + 1}: ${q.question}\nCandidate Answer: ${answerText}${diagramInfo}\n`;
   }).join('\n');
 
   if (anthropicApiKey) {

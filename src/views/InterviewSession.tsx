@@ -21,6 +21,8 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import AdaptiveHUDHeader from '../components/ui/AdaptiveHUDHeader';
+import { SystemDesignCanvas } from '../components/interview/SystemDesignCanvas';
+import { SystemDesignDiagramState, createInitialDiagramState, deserializeDiagram, serializeDiagram } from '../types/systemDesign';
 
 const AUTOSAVE_STORAGE_KEY_PREFIX = 'skillo_draft_ans_';
 
@@ -65,8 +67,14 @@ export default function InterviewSession() {
   const [showHint, setShowHint] = useState(false);
   const [confirmSkip, setConfirmSkip] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const [diagramState, setDiagramState] = useState<SystemDesignDiagramState>(createInitialDiagramState());
 
-  // Restore autosaved draft for the current question index on mount or question change
+  const isSystemDesignTrack =
+    setupData.type === 'System Design' ||
+    setupData.type?.toLowerCase().includes('system') ||
+    setupData.interviewModeId?.includes('system');
+
+  // Restore autosaved draft & diagram for the current question index on mount or question change
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -76,6 +84,7 @@ export default function InterviewSession() {
           if (parsed.mode) setResponseMode(parsed.mode);
           if (parsed.typedAnswer) setTypedAnswer(parsed.typedAnswer);
           if (parsed.transcriptText) setTranscriptText(parsed.transcriptText);
+          if (parsed.diagramState) setDiagramState(parsed.diagramState);
         }
       } catch (err) {
         console.warn('Failed to restore draft answer from sessionStorage:', err);
@@ -83,12 +92,12 @@ export default function InterviewSession() {
     }
   }, [currentQuestionIndex]);
 
-  // Debounced Autosave to sessionStorage on typedAnswer / transcriptText changes
+  // Debounced Autosave to sessionStorage on typedAnswer / transcriptText / diagramState changes
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const timer = setTimeout(() => {
-      if (typedAnswer || transcriptText) {
+      if (typedAnswer || transcriptText || isSystemDesignTrack) {
         try {
           sessionStorage.setItem(
             `${AUTOSAVE_STORAGE_KEY_PREFIX}${currentQuestionIndex}`,
@@ -96,6 +105,7 @@ export default function InterviewSession() {
               mode: responseMode,
               typedAnswer,
               transcriptText,
+              diagramState,
             })
           );
         } catch (err) {
@@ -105,7 +115,7 @@ export default function InterviewSession() {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [typedAnswer, transcriptText, responseMode, currentQuestionIndex]);
+  }, [typedAnswer, transcriptText, responseMode, diagramState, currentQuestionIndex, isSystemDesignTrack]);
 
   // Web Speech API recognition ref
   const recognitionRef = useRef<any>(null);
@@ -178,6 +188,7 @@ export default function InterviewSession() {
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = {
       answerText: finalAnswer || 'No response provided.',
+      ...(isSystemDesignTrack ? { diagramState } : {}),
     };
     setAnswers(newAnswers);
 
@@ -658,6 +669,26 @@ export default function InterviewSession() {
               </div>
             )}
 
+            {isSystemDesignTrack && (
+              <div className="mb-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-heading font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                    Interactive System Architecture Whiteboard
+                  </span>
+                  <span className="text-[10px] font-mono text-gray-400">
+                    {diagramState.nodes.length} Nodes &bull; {diagramState.edges.length} Data Flows
+                  </span>
+                </div>
+                <div className="h-[360px] w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+                  <SystemDesignCanvas
+                    initialState={diagramState}
+                    onChange={(newState) => setDiagramState(newState)}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="min-h-[220px] relative">
               {responseMode === 'type' ? (
                 <div className="space-y-2">
@@ -665,8 +696,12 @@ export default function InterviewSession() {
                     value={typedAnswer}
                     onChange={(e) => setTypedAnswer(e.target.value)}
                     disabled={interviewerSpeaking}
-                    placeholder="Provide your response here..."
-                    className="w-full h-56 rounded-xl bg-[#030712]/50 border border-white/10 p-4 text-xs sm:text-sm text-gray-200 focus:outline-none focus:border-primary/50 transition duration-200 resize-none font-mono disabled:opacity-40"
+                    placeholder={
+                      isSystemDesignTrack
+                        ? "Explain your architecture choices, database strategy, caching layers, and trade-offs drawn above..."
+                        : "Provide your response here..."
+                    }
+                    className="w-full h-44 rounded-xl bg-[#030712]/50 border border-white/10 p-4 text-xs sm:text-sm text-gray-200 focus:outline-none focus:border-primary/50 transition duration-200 resize-none font-mono disabled:opacity-40"
                   />
                 </div>
               ) : (

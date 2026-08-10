@@ -27,6 +27,7 @@ export interface LATSEngineInput {
   currentQuestion: string;
   candidateAnswer: string;
   priorGaps: string[];
+  diagramState?: any;
   anthropicApiKey?: string;
 }
 

@@ -22,6 +22,7 @@ export interface UserProfile {
 }
 
 export * from './interviewModes';
+export * from './systemDesign';
 
 
 
