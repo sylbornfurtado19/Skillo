@@ -13,9 +13,9 @@ import {
   FaChartLine,
   FaLightbulb,
   FaRocket,
-  FaCheckCircle,
   FaSortAmountDown,
 } from 'react-icons/fa';
+
 
 import '../lib/chartSetup';
 

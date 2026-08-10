@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaUserAlt, FaVolumeUp, FaSave, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
+import { FaUserAlt, FaVolumeUp, FaSave, FaCheckCircle } from 'react-icons/fa';
+
 import { useAuth } from '../hooks/useAuth';
 import { getProfile, updateProfile } from '../services/profile';
 import { useToast } from '../components/ui/Toast';
