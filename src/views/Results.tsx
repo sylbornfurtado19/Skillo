@@ -23,12 +23,13 @@ const Radar = dynamic(() => import('react-chartjs-2').then((m) => m.Radar), { ss
 
 import { INTERVIEWER_PERSONAS } from '../services/constants';
 import { useInterview } from '../context/InterviewContext';
-import type { EvaluationCategories, AnswerBreakdown } from '../types/index';
+import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult } from '../types/index';
 import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
+import SUQConfidenceDashboard from '../components/ui/SUQConfidenceDashboard';
 
 export default function Results() {
   const router = useRouter();
@@ -199,6 +200,10 @@ export default function Results() {
     { topic: 'Quantitative STAR Metrics', desc: 'Focus on integrating numerical output measurements into behavioral scenario explanations.' },
   ];
 
+  const handleTriggerValidationPass = () => {
+    showToast('Initiating secondary validation evaluation pass...', 'info');
+  };
+
   return (
     <div ref={reportRef} className="max-w-6xl mx-auto space-y-8 pb-16 text-left p-4">
       <SectionHeader
@@ -316,6 +321,12 @@ export default function Results() {
           </p>
         </div>
       </Card>
+
+      {/* Prometheus-2 & SUQ Confidence Dashboard Component */}
+      <SUQConfidenceDashboard
+        suqEvaluation={results.suqEvaluation as SUQEvaluationResult | undefined}
+        onTriggerValidationPass={handleTriggerValidationPass}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card variant="glass" className="space-y-4">
