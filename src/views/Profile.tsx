@@ -1,45 +1,68 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getProfile } from '../services/profile';
-import type { UserProfile } from '../types/index';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { FaBriefcase, FaArrowRight } from 'react-icons/fa';
+import { FaBriefcase, FaArrowRight, FaEdit, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
+import { getProfile, updateProfile } from '../services/profile';
+import type { UserProfile } from '../types/index';
 import { INTERVIEWER_PERSONAS, getQuestionsForSetup } from '../services/constants';
 import { useAuth } from '../hooks/useAuth';
 import { useInterview } from '../context/InterviewContext';
-
 import { LogoIcon } from '../components/common/Logo';
-
-// Task 5: Dynamic import for Doughnut chart
-const Doughnut = dynamic(() => import('react-chartjs-2').then((m) => m.Doughnut), { ssr: false });
-
 import '../lib/chartSetup';
 import SkillMemoryGraph from '../components/ui/SkillMemoryGraph';
+
+const Doughnut = dynamic(() => import('react-chartjs-2').then((m) => m.Doughnut), { ssr: false });
 
 export default function Profile() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
-  const { setResumeData, setQuestions, setCurrentQuestionIndex, setAnswers, setResults, setSetupData } =
-    useInterview();
+  const {
+    sessionHistory,
+    setResumeData,
+    setQuestions,
+    setAnswers,
+    setResults,
+    setSetupData,
+  } = useInterview();
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-
-  useEffect(() => {
-    if (user?.id) {
-      getProfile(user.id).then(({ data }) => {
-        if (data) setUserProfile(data);
-      });
-    }
-  }, [user?.id]);
 
   const [profileSettings, setProfileSettings] = useState({
     defaultInterviewer: 'sarah',
     defaultDifficulty: 'senior',
     preferredMode: 'speak',
   });
+
+  useEffect(() => {
+    if (user?.id) {
+      getProfile(user.id).then(({ data }) => {
+        if (data) {
+          setUserProfile(data);
+          if (data.profileSettings) {
+            setProfileSettings({
+              defaultInterviewer: data.profileSettings.defaultInterviewer || 'sarah',
+              defaultDifficulty: data.profileSettings.defaultDifficulty || 'senior',
+              preferredMode: data.profileSettings.preferredMode || 'speak',
+            });
+          }
+        }
+      });
+    }
+  }, [user?.id]);
+
+  const handleUpdateSetting = async (key: string, val: string) => {
+    const updated = { ...profileSettings, [key]: val };
+    setProfileSettings(updated);
+    if (user?.id) {
+      const currentPs = userProfile?.profileSettings || {};
+      await updateProfile(user.id, {
+        profileSettings: { ...currentPs, [key]: val },
+      });
+    }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -60,29 +83,38 @@ export default function Profile() {
   }
 
   const candidateName =
+    userProfile?.name ??
     (user?.user_metadata?.full_name as string | undefined) ??
     (user?.user_metadata?.name as string | undefined) ??
     user?.email?.split('@')[0] ??
-    'Alex Mercer';
+    'Candidate';
 
   const avatarUrl =
+    userProfile?.avatar_url ??
     (user?.user_metadata?.avatar_url as string | undefined) ??
     (user?.user_metadata?.picture as string | undefined) ??
     null;
 
   const userInitial = candidateName.charAt(0).toUpperCase();
 
+  const completedCount = sessionHistory ? sessionHistory.length : 0;
+  const avgScore =
+    completedCount > 0
+      ? Math.round(sessionHistory.reduce((sum, item) => sum + item.score, 0) / completedCount)
+      : 0;
+
   const candidate = {
     name: candidateName,
     avatar: avatarUrl,
-    title: 'Senior Frontend Architect',
-    location: 'San Francisco, CA (Remote)',
-    experience: '6 Years',
-    skills: ['React 19', 'TypeScript', 'Tailwind CSS', 'Next.js', 'GraphQL', 'System Design'],
-    averageScore: 82,
-    completedSessions: 8,
+    title: userProfile?.title ?? null,
+    location: userProfile?.location ?? null,
+    experience: userProfile?.experience ?? null,
+    skills: userProfile?.skillMemoryStore?.nodes
+      ? userProfile.skillMemoryStore.nodes.map((n) => n.name).slice(0, 6)
+      : ['React 19', 'TypeScript', 'Next.js', 'System Design'],
+    averageScore: avgScore,
+    completedSessions: completedCount,
   };
-
 
   const pastInterviews = [
     {
@@ -93,9 +125,8 @@ export default function Profile() {
       assessor: 'sarah',
       score: 86,
       answers: [
-        'React 19 introduces automated memoization, meaning we can write code without useMemo and useCallback in most cases. Data mutations are also improved via transitions.',
-        'Reconciliation works by comparing trees. Keys give elements a persistent identity across renders, allowing React to move nodes instead of recreating them.',
-        'I optimize page loads via code-splitting using React.lazy, using modern formats, compressing assets, and monitoring core web vitals like INP.',
+        'React 19 introduces automated memoization, meaning we can write code without useMemo and useCallback in most cases.',
+        'Reconciliation works by comparing trees using persistent keys.',
       ],
     },
     {
@@ -106,46 +137,16 @@ export default function Profile() {
       assessor: 'david',
       score: 80,
       answers: [
-        'I had a technical disagreement regarding state stores. We resolved it by building a lightweight sandbox and benchmarking performance profiles.',
-        'I communicated a delay proactively by explaining that database migrations had unexpected schema conflicts, and delivered a clean roll-back plan.',
+        'I resolved a state store disagreement by building a lightweight sandbox and benchmarking performance profiles.',
       ],
-    },
-    {
-      id: 'past_3',
-      date: 'Jun 12, 2026',
-      track: 'System Scalability Design',
-      difficulty: 'Lead',
-      assessor: 'techbot',
-      score: 78,
-      answers: [
-        'A notification system needs a message bus (like Kafka), email delivery integrations (like SendGrid), and database rate limiters to avoid spamming.',
-        'Google Docs concurrent editing works via Operational Transformation or CRDTs. WebSockets are used to broadcast operation lists in real-time.',
-      ],
-    },
-  ];
-
-  const resumeHistory = [
-    {
-      id: 'res_1',
-      fileName: 'Alex_Mercer_Resume_Architect.pdf',
-      date: 'Jun 24, 2026',
-      targetRole: 'Staff Frontend Engineer',
-      matchScore: 88,
-    },
-    {
-      id: 'res_2',
-      fileName: 'Alex_Mercer_Resume_General.pdf',
-      date: 'Jun 10, 2026',
-      targetRole: 'Senior Software Engineer',
-      matchScore: 78,
     },
   ];
 
   const doughnutData = {
-    labels: ['Completed', 'Target'],
+    labels: ['Score', 'Remaining'],
     datasets: [
       {
-        data: [candidate.averageScore, 100 - candidate.averageScore],
+        data: [candidate.averageScore || 75, 100 - (candidate.averageScore || 75)],
         backgroundColor: ['#6366F1', 'rgba(255, 255, 255, 0.03)'],
         borderColor: ['#6366F1', 'rgba(255, 255, 255, 0.05)'],
         borderWidth: 1,
@@ -164,7 +165,7 @@ export default function Profile() {
       domain: 'Computer Science',
       role: 'Software Engineer',
       experienceLevel: interview.difficulty,
-      type: interview.assessor === 'david' ? 'Behavioral' : interview.assessor === 'techbot' ? 'System Design' : 'Technical',
+      type: interview.assessor === 'david' ? 'Behavioral' : 'Technical',
       difficulty: interview.difficulty,
       questionCount: interview.answers.length,
       focusAreas: ['React 19', 'System Design'],
@@ -173,10 +174,6 @@ export default function Profile() {
 
     const questionsList = getQuestionsForSetup(setupDataObj);
 
-    setResumeData({
-      fileName: 'Alex_Mercer_Resume_Architect.pdf',
-      fileSize: '1.24 MB',
-    });
     setSetupData(setupDataObj);
     setQuestions(questionsList.map((q) => q.question));
     setAnswers(interview.answers.map((a) => ({ answerText: a })));
@@ -184,23 +181,18 @@ export default function Profile() {
     setResults({
       overallScore: interview.score,
       categories: {
-        technicalAccuracy: interview.score - 2,
-        communication: interview.score + 5,
-        depth: interview.score - 4,
+        technicalAccuracy: interview.score,
+        communication: interview.score + 2,
+        depth: interview.score - 3,
         timeManagement: interview.score + 1,
       },
       breakdown: questionsList.slice(0, interview.answers.length).map((q, idx) => ({
-        id: q.id,
         question: q.question,
-        userAnswer: interview.answers[idx],
         score: interview.score + (idx % 2 === 0 ? 3 : -3),
-        idealConcepts: q.hint,
         feedback: 'Highly robust description covering core architecture mechanics.',
-        suggestions: ['Explain specific production scale issues to push this score higher.'],
         strengths: ['Excellent command of terminology.'],
       })),
-      interviewerComments:
-        'A very solid assessment. Exhibits strong depth in framework architecture and modular design.',
+      interviewerComments: 'A solid assessment exhibiting strong depth in modular design.',
       personaId: interview.assessor,
       setupData: setupDataObj,
     });
@@ -209,7 +201,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-16">
+    <div className="max-w-6xl mx-auto space-y-8 pb-16 text-left">
       <div className="glass-card rounded-2xl p-6 sm:p-8 border border-white/5 glow-primary relative overflow-hidden">
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
           <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-white/10 shadow-2xl shrink-0 bg-primary/20 flex items-center justify-center">
@@ -227,34 +219,55 @@ export default function Profile() {
             )}
           </div>
 
-
           <div className="text-center md:text-left space-y-2 flex-1">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-white">{candidate.name}</h1>
-                <p className="text-sm text-gray-400 font-medium flex items-center justify-center md:justify-start gap-1.5 mt-1">
-                  <FaBriefcase className="text-primary" /> {candidate.title}
-                </p>
+                <div className="text-sm text-gray-400 font-medium flex items-center justify-center md:justify-start gap-1.5 mt-1">
+                  <FaBriefcase className="text-primary text-xs" />
+                  {candidate.title ? (
+                    <span className="text-gray-200">{candidate.title}</span>
+                  ) : (
+                    <button
+                      onClick={() => router.push('/settings')}
+                      className="text-xs text-primary/80 hover:text-primary flex items-center gap-1 font-mono hover:underline cursor-pointer"
+                    >
+                      <FaEdit size={10} /> Add target role title in Settings
+                    </button>
+                  )}
+                </div>
               </div>
 
               <button
-                onClick={() => {
-                  setResumeData({
-                    fileName: 'Alex_Mercer_Resume_Architect.pdf',
-                    fileSize: '1.24 MB',
-                  });
-                  router.push('/setup');
-                }}
+                onClick={() => router.push('/setup')}
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-accent font-semibold text-xs text-white shadow-lg cursor-pointer hover:scale-102 transition active:scale-98"
               >
                 Start New Session
               </button>
             </div>
 
-            <div className="flex flex-wrap justify-center md:justify-start gap-3.5 text-xs text-gray-500 pt-2 font-mono">
-              <span>Location: {candidate.location}</span>
+            <div className="flex flex-wrap justify-center md:justify-start gap-3.5 text-xs text-gray-500 pt-2 font-mono items-center">
+              <span className="flex items-center gap-1">
+                <FaMapMarkerAlt className="text-gray-600 text-[10px]" />
+                {candidate.location ? (
+                  candidate.location
+                ) : (
+                  <button onClick={() => router.push('/settings')} className="hover:text-gray-300 underline">
+                    Not set
+                  </button>
+                )}
+              </span>
               <span>&bull;</span>
-              <span>Exp: {candidate.experience}</span>
+              <span className="flex items-center gap-1">
+                <FaClock className="text-gray-600 text-[10px]" />
+                {candidate.experience ? (
+                  candidate.experience
+                ) : (
+                  <button onClick={() => router.push('/settings')} className="hover:text-gray-300 underline">
+                    Not set
+                  </button>
+                )}
+              </span>
               <span>&bull;</span>
               <span>Sessions: {candidate.completedSessions} completed</span>
             </div>
@@ -273,7 +286,6 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Reflexion Agent Skill Memory Graph & Reflection Store */}
       <SkillMemoryGraph memoryStore={userProfile?.skillMemoryStore} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -287,13 +299,19 @@ export default function Profile() {
               <Doughnut data={doughnutData} options={doughnutOptions} />
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-4xl font-heading font-extrabold text-white">{candidate.averageScore}%</span>
-              <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider font-mono">Overall AVG</span>
+              <span className="text-4xl font-heading font-extrabold text-white">
+                {candidate.averageScore ? `${candidate.averageScore}%` : 'N/A'}
+              </span>
+              <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider font-mono">
+                Overall AVG
+              </span>
             </div>
           </div>
 
           <div className="w-full text-xs text-gray-400 leading-normal">
-            Your performance ranks in the <strong className="text-primary">top 12%</strong> for Senior engineering roles.
+            {candidate.completedSessions > 0
+              ? 'Performance score calculated across your historical assessment sessions.'
+              : 'Complete your first practice session to generate your average rating rating.'}
           </div>
         </div>
 
@@ -307,7 +325,7 @@ export default function Profile() {
               <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Default Assessor</label>
               <select
                 value={profileSettings.defaultInterviewer}
-                onChange={(e) => setProfileSettings({ ...profileSettings, defaultInterviewer: e.target.value })}
+                onChange={(e) => handleUpdateSetting('defaultInterviewer', e.target.value)}
                 className="w-full rounded-xl bg-background border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:border-primary/50"
               >
                 <option value="sarah">Sarah Chen (Staff)</option>
@@ -320,13 +338,13 @@ export default function Profile() {
               <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Default Seniority</label>
               <select
                 value={profileSettings.defaultDifficulty}
-                onChange={(e) => setProfileSettings({ ...profileSettings, defaultDifficulty: e.target.value })}
+                onChange={(e) => handleUpdateSetting('defaultDifficulty', e.target.value)}
                 className="w-full rounded-xl bg-background border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:border-primary/50"
               >
-                <option value="junior">Junior</option>
-                <option value="mid">Mid-Level</option>
-                <option value="senior">Senior</option>
-                <option value="lead">Tech Lead</option>
+                <option value="Junior">Junior</option>
+                <option value="Mid-Level">Mid-Level</option>
+                <option value="Senior">Senior</option>
+                <option value="Tech Lead">Tech Lead</option>
               </select>
             </div>
 
@@ -334,7 +352,7 @@ export default function Profile() {
               <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Default Response Mode</label>
               <select
                 value={profileSettings.preferredMode}
-                onChange={(e) => setProfileSettings({ ...profileSettings, preferredMode: e.target.value })}
+                onChange={(e) => handleUpdateSetting('preferredMode', e.target.value)}
                 className="w-full rounded-xl bg-background border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:border-primary/50"
               >
                 <option value="speak">Speak Mode (Voice)</option>
@@ -348,7 +366,7 @@ export default function Profile() {
               i
             </div>
             <p className="text-[11px] text-gray-400 leading-relaxed">
-              These choices will automatically pre-populate the parameters on your next mock interview session, skipping manual configuration steps.
+              These saved settings automatically pre-fill your practice session parameters, saving setup steps when starting new assessments.
             </p>
           </div>
         </div>
@@ -396,25 +414,22 @@ export default function Profile() {
           </div>
 
           <div className="space-y-3">
-            {resumeHistory.map((res) => (
-              <div
-                key={res.id}
-                className="bg-[#030712]/50 rounded-xl p-4 border border-white/5 flex items-center justify-between text-left"
-              >
-                <div className="space-y-1 min-w-0 pr-4">
-                  <h4 className="text-xs font-semibold text-white truncate">{res.fileName}</h4>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-500 font-mono">
-                    <span>{res.date}</span>
-                    <span>&bull;</span>
-                    <span>Role: {res.targetRole}</span>
-                  </div>
+            <div className="bg-[#030712]/50 rounded-xl p-4 border border-white/5 flex items-center justify-between text-left">
+              <div className="space-y-1 min-w-0 pr-4">
+                <h4 className="text-xs font-semibold text-white truncate">
+                  {userProfile?.name ? `${userProfile.name.replace(/\s+/g, '_')}_Resume.pdf` : 'Candidate_Resume.pdf'}
+                </h4>
+                <div className="flex items-center gap-2 text-[10px] text-gray-500 font-mono">
+                  <span>Current</span>
+                  <span>&bull;</span>
+                  <span>Role: {userProfile?.title || 'Software Engineer'}</span>
                 </div>
-
-                <span className="text-xs font-mono font-bold text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded">
-                  {res.matchScore}% Match
-                </span>
               </div>
-            ))}
+
+              <span className="text-xs font-mono font-bold text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded">
+                Active
+              </span>
+            </div>
           </div>
         </div>
       </div>

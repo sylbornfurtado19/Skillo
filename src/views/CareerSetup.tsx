@@ -12,7 +12,8 @@ import {
   FaExclamationTriangle,
 } from 'react-icons/fa';
 import { CAREER_DOMAINS, getQuestionsForSetup } from '../services/constants';
-import { useInterview } from '../context/InterviewContext';
+import { useAuth } from '../hooks/useAuth';
+import { getProfile } from '../services/profile';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -21,7 +22,24 @@ import { Progress } from '../components/ui/Loader';
 
 export default function CareerSetup() {
   const router = useRouter();
+  const { user } = useAuth();
   const { resumeData, setupData, setSetupData, setQuestions, setCurrentQuestionIndex, setAnswers } = useInterview();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    getProfile(user.id).then(({ data }) => {
+      if (data?.profileSettings) {
+        const ps = data.profileSettings;
+        setSetupData({
+          ...setupData,
+          ...(ps.defaultDifficulty ? { difficulty: ps.defaultDifficulty, experienceLevel: ps.defaultDifficulty } : {}),
+          ...(ps.defaultInterviewer ? { persona: ps.defaultInterviewer } : {}),
+          ...(ps.preferredMode ? { responseMode: ps.preferredMode } : {}),
+        });
+      }
+    });
+  }, [user?.id]);
+
 
   // Wizard Step State
   const [currentStep, setCurrentStep] = useState(1);

@@ -1,36 +1,95 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaUserAlt, FaVolumeUp, FaSave, FaCheckCircle } from 'react-icons/fa';
+import { FaUserAlt, FaVolumeUp, FaSave, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import { useAuth } from '../hooks/useAuth';
-import { useInterview } from '../context/InterviewContext';
+import { getProfile, updateProfile } from '../services/profile';
+import { useToast } from '../components/ui/Toast';
 
 export default function Settings() {
   const { user } = useAuth();
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const { showToast } = useToast();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const candidateName =
-    (user?.user_metadata?.name as string | undefined) ?? user?.email?.split('@')[0] ?? 'Alex Mercer';
-  const candidateEmail = user?.email ?? 'alex.mercer@gmail.com';
+    (user?.user_metadata?.full_name as string | undefined) ??
+    (user?.user_metadata?.name as string | undefined) ??
+    user?.email?.split('@')[0] ??
+    'Candidate';
+  const candidateEmail = user?.email ?? '';
 
   const [profileName, setProfileName] = useState(candidateName);
   const [profileEmail, setProfileEmail] = useState(candidateEmail);
-  const [targetTitle, setTargetTitle] = useState('Senior Frontend Architect');
+  const [targetTitle, setTargetTitle] = useState('');
   const [voiceRate, setVoiceRate] = useState(1.0);
   const [voicePitch, setVoicePitch] = useState(1.0);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
 
   const [saved, setSaved] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!user?.id) return;
+
+    getProfile(user.id).then(({ data }) => {
+      if (data) {
+        if (data.name) setProfileName(data.name);
+        if (data.email) setProfileEmail(data.email);
+        if (data.title) setTargetTitle(data.title);
+
+        if (data.profileSettings) {
+          const ps = data.profileSettings;
+          if (typeof ps.voiceRate === 'number') setVoiceRate(ps.voiceRate);
+          if (typeof ps.voicePitch === 'number') setVoicePitch(ps.voicePitch);
+          if (typeof ps.subtitlesEnabled === 'boolean') setSubtitlesEnabled(ps.subtitlesEnabled);
+        }
+      }
+      setLoading(false);
+    });
+  }, [user?.id]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    if (!user?.id) {
+      showToast('You must be logged in to save settings', 'error');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const updates = {
+        name: profileName,
+        email: profileEmail,
+        title: targetTitle,
+        profileSettings: {
+          voiceRate,
+          voicePitch,
+          subtitlesEnabled,
+        },
+      };
+
+      const { error } = await updateProfile(user.id, updates);
+
+      if (error) {
+        const errObj = error as { message?: string };
+        showToast(`Save Error: ${errObj.message ?? 'Failed to update preferences'}`, 'error');
+      } else {
+        setSaved(true);
+        showToast('Settings & Profile saved successfully!', 'success');
+        setTimeout(() => setSaved(false), 3500);
+      }
+    } catch (err: unknown) {
+      const errObj = err as { message?: string };
+      showToast(`Error: ${errObj.message ?? 'An unknown error occurred'}`, 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 pb-10">
+    <div className="max-w-3xl mx-auto space-y-8 pb-10 text-left">
       <div>
         <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-white">Settings</h2>
         <p className="text-xs sm:text-sm text-gray-400 mt-1">
@@ -52,7 +111,8 @@ export default function Settings() {
                 type="text"
                 value={profileName}
                 onChange={(e) => setProfileName(e.target.value)}
-                className="w-full bg-background border border-white/8 focus:border-primary/50 focus:ring-1 focus:ring-primary rounded-xl px-4 py-2.5 text-xs text-white outline-none transition"
+                placeholder="e.g. Alex Mercer"
+                className="w-full bg-background border border-white/10 focus:border-primary/60 rounded-xl px-4 py-2.5 text-xs text-white outline-none transition"
               />
             </div>
             <div className="space-y-2">
@@ -61,7 +121,8 @@ export default function Settings() {
                 type="email"
                 value={profileEmail}
                 onChange={(e) => setProfileEmail(e.target.value)}
-                className="w-full bg-background border border-white/8 focus:border-primary/50 focus:ring-1 focus:ring-primary rounded-xl px-4 py-2.5 text-xs text-white outline-none transition"
+                placeholder="name@company.com"
+                className="w-full bg-background border border-white/10 focus:border-primary/60 rounded-xl px-4 py-2.5 text-xs text-white outline-none transition"
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
@@ -70,7 +131,8 @@ export default function Settings() {
                 type="text"
                 value={targetTitle}
                 onChange={(e) => setTargetTitle(e.target.value)}
-                className="w-full bg-background border border-white/8 focus:border-primary/50 focus:ring-1 focus:ring-primary rounded-xl px-4 py-2.5 text-xs text-white outline-none transition"
+                placeholder="e.g. Senior Frontend Architect / Staff Engineer"
+                className="w-full bg-background border border-white/10 focus:border-primary/60 rounded-xl px-4 py-2.5 text-xs text-white outline-none transition"
               />
             </div>
           </div>
@@ -136,30 +198,10 @@ export default function Settings() {
                 />
               </button>
             </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-white/5">
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-white">Interface Theme</p>
-                <p className="text-[10px] text-gray-500">Switch between dark mode and light mode.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none ${
-                  theme === 'light' ? 'bg-primary' : 'bg-background border-white/10'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    theme === 'light' ? 'translate-x-4' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+        <div className="flex justify-end gap-3 pt-4 border-t border-white/5 items-center">
           <motion.div
             animate={{ opacity: saved ? 1 : 0, x: saved ? 0 : 10 }}
             className="flex items-center gap-2 text-emerald-400 text-xs font-semibold mr-auto"
@@ -170,10 +212,11 @@ export default function Settings() {
 
           <button
             type="submit"
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 font-semibold text-xs text-white hover:scale-102 active:scale-98 transition duration-250 cursor-pointer shadow-lg shadow-primary/15"
+            disabled={saving}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 font-semibold text-xs text-white hover:scale-102 active:scale-98 transition duration-250 cursor-pointer shadow-lg shadow-primary/15 disabled:opacity-50"
           >
             <FaSave />
-            <span>Save Settings</span>
+            <span>{saving ? 'Saving...' : 'Save Settings'}</span>
           </button>
         </div>
       </form>

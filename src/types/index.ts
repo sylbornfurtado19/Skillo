@@ -1,11 +1,25 @@
+export interface ProfileSettings {
+  defaultInterviewer?: string;
+  defaultDifficulty?: string;
+  preferredMode?: string;
+  voiceRate?: number;
+  voicePitch?: number;
+  subtitlesEnabled?: boolean;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
   name?: string;
   avatar_url?: string;
   created_at?: string;
+  title?: string;
+  location?: string;
+  experience?: string;
+  profileSettings?: ProfileSettings;
   skillMemoryStore?: CandidateSkillMemoryStore;
 }
+
 
 export interface JobRecord {
   id: string;

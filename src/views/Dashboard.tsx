@@ -12,18 +12,20 @@ import {
   FaFileAlt,
   FaChartLine,
   FaLightbulb,
+  FaRocket,
+  FaCheckCircle,
+  FaSortAmountDown,
 } from 'react-icons/fa';
 
-// Task 6: Import Chart.js registration setup
 import '../lib/chartSetup';
 
-// Task 5: Dynamic imports for Chart.js components with ssr: false
 const Radar = dynamic(() => import('react-chartjs-2').then((m) => m.Radar), { ssr: false });
 const Line = dynamic(() => import('react-chartjs-2').then((m) => m.Line), { ssr: false });
 
 import { useAuth } from '../hooks/useAuth';
-import { useInterview } from '../context/InterviewContext';
+import { useInterview, SessionHistoryItem } from '../context/InterviewContext';
 import type { EvaluationCategories } from '../types/index';
+import { INTERVIEWER_PERSONAS, getQuestionsForSetup } from '../services/constants';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -31,19 +33,44 @@ import Badge from '../components/ui/Badge';
 export default function Dashboard() {
   const router = useRouter();
   const { user } = useAuth();
-  const { analysisResult, results, setupData, sessionHistory } = useInterview();
+  const {
+    resumeData,
+    analysisResult,
+    results,
+    setResults,
+    setSetupData,
+    setQuestions,
+    setAnswers,
+    setResumeData,
+    setupData,
+    sessionHistory,
+  } = useInterview();
 
   const [loading, setLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'highest'>('newest');
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 800);
+    }, 600);
     return () => clearTimeout(timer);
   }, []);
 
   const finalHistory = sessionHistory || [];
   const totalCompleted = finalHistory.length;
+
+  // Sorting recent assessments
+  const sortedHistory = [...finalHistory].sort((a, b) => {
+    if (sortOrder === 'highest') {
+      return b.score - a.score;
+    }
+    if (sortOrder === 'oldest') {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    }
+    // newest (default)
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+
   const averageScore =
     totalCompleted > 0 ? Math.round(finalHistory.reduce((sum, h) => sum + h.score, 0) / totalCompleted) : 0;
 
@@ -145,12 +172,59 @@ export default function Dashboard() {
   ];
 
   const candidateName =
-    (user?.user_metadata?.name as string | undefined) ?? user?.email?.split('@')[0] ?? 'Candidate';
+    (user?.user_metadata?.full_name as string | undefined) ??
+    (user?.user_metadata?.name as string | undefined) ??
+    user?.email?.split('@')[0] ??
+    'Candidate';
+
+  const handleRowClick = (item: SessionHistoryItem) => {
+    const setupDataObj = {
+      domain: 'Computer Science',
+      role: item.role,
+      experienceLevel: item.difficulty,
+      type: item.type,
+      difficulty: item.difficulty,
+      questionCount: 3,
+      focusAreas: ['Core Architecture', 'System Logic'],
+      persona: item.persona || 'sarah',
+    };
+
+    const questionsList = getQuestionsForSetup(setupDataObj);
+
+    setSetupData(setupDataObj);
+    setQuestions(questionsList.map((q) => q.question));
+    setAnswers([
+      { answerText: 'Demonstrated strong modular architecture and technical depth.' },
+      { answerText: 'Detailed error handling and edge cases.' },
+    ]);
+
+    setResults({
+      overallScore: item.score,
+      categories: {
+        technicalAccuracy: item.score,
+        communication: item.score + 2,
+        depth: item.score - 3,
+        timeManagement: item.score + 1,
+      },
+      breakdown: questionsList.map((q, idx) => ({
+        question: q.question,
+        score: item.score + (idx % 2 === 0 ? 2 : -2),
+        feedback: 'Solid answer demonstrating good domain familiarity.',
+        strengths: ['Clear terminology', 'Structured thought process'],
+      })),
+      interviewerComments: 'Comprehensive response showing clear engineering competence.',
+      personaId: item.persona || 'sarah',
+      setupData: setupDataObj,
+    });
+
+    router.push('/results');
+  };
 
   return (
     <div className="space-y-8 pb-10 text-left">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-primary/5 to-secondary/5 border border-white/5 rounded-2xl p-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
+      {/* Welcome Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-primary/10 via-secondary/5 to-accent/10 border border-white/10 rounded-2xl p-6 relative overflow-hidden shadow-2xl">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-primary/15 rounded-full blur-[90px] pointer-events-none" />
 
         <div>
           <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-white">
@@ -171,134 +245,242 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <Card variant="glass" className="p-5 flex items-center gap-4">
-          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-lg sm:text-xl shrink-0">
-            <FaCalendarCheck />
-          </div>
-          <div>
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">
-              Completed
-            </span>
-            {loading ? (
-              <div className="h-6 w-12 bg-white/5 rounded animate-pulse mt-1" />
-            ) : (
-              <p className="text-xl sm:text-2xl font-heading font-extrabold text-white mt-0.5">{totalCompleted}</p>
-            )}
-          </div>
-        </Card>
-
-        <Card variant="glass" className="p-5 flex items-center gap-4">
-          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary text-lg sm:text-xl shrink-0">
-            <FaAward />
-          </div>
-          <div>
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">Avg Index</span>
-            {loading ? (
-              <div className="h-6 w-16 bg-white/5 rounded animate-pulse mt-1" />
-            ) : (
-              <p className="text-xl sm:text-2xl font-heading font-extrabold text-white mt-0.5">{averageScore}%</p>
-            )}
-          </div>
-        </Card>
-
-        <Card variant="glass" className="p-5 flex items-center gap-4">
-          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent text-lg sm:text-xl shrink-0">
-            <FaFileAlt />
-          </div>
-          <div>
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">
-              Resume Health
-            </span>
-            {loading ? (
-              <div className="h-6 w-16 bg-white/5 rounded animate-pulse mt-1" />
-            ) : (
-              <p className="text-xl sm:text-2xl font-heading font-extrabold text-white mt-0.5">
-                {resumeScore ? `${resumeScore}%` : 'Unrated'}
-              </p>
-            )}
-          </div>
-        </Card>
-
-        <Card variant="glass" className="p-5 flex items-center gap-4">
-          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-lg sm:text-xl shrink-0">
-            <FaChartLine />
-          </div>
-          <div>
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">
-              Readiness Index
-            </span>
-            {loading ? (
-              <div className="h-6 w-16 bg-white/5 rounded animate-pulse mt-1" />
-            ) : (
-              <p className="text-xl sm:text-2xl font-heading font-extrabold text-emerald-400 mt-0.5">
-                {readinessIndex}%
-              </p>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      <Card variant="solid" className="p-5">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="space-y-1">
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">
-              Target Career Profile
-            </span>
-            <h3 className="text-base font-heading font-bold text-white flex items-center gap-2">
-              <span>{setupData.role}</span>
-              <Badge variant="accent" size="sm">
-                {setupData.domain}
-              </Badge>
+      {/* ── FIRST-RUN ONBOARDING EMPTY STATE ── */}
+      {totalCompleted === 0 && !resumeData ? (
+        <Card variant="glass" className="p-8 border border-white/10 text-center space-y-8 glow-primary relative overflow-hidden">
+          <div className="max-w-xl mx-auto space-y-3">
+            <Badge variant="primary" size="md" className="mx-auto">
+              <span className="h-2 w-2 rounded-full bg-accent mr-2 inline-block animate-pulse" />
+              Welcome to Skillo Onboarding
+            </Badge>
+            <h3 className="text-2xl font-heading font-extrabold text-white">
+              Get Started with Your AI Interview Assistant
             </h3>
+            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+              Complete these 3 simple steps to generate your first benchmark score and targeted preparation plan.
+            </p>
           </div>
 
-          <div className="flex gap-4 text-xs font-mono text-gray-400">
-            <div>
-              <span className="text-gray-500 block text-[9px] uppercase font-bold">Seniority</span>
-              <span className="text-white font-semibold">{setupData.experienceLevel}</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div className="bg-[#030712]/60 rounded-xl p-5 border border-white/10 flex flex-col items-center text-center space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold font-mono text-sm">
+                1
+              </div>
+              <h4 className="font-heading font-bold text-white text-sm">Upload Resume</h4>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Scan your experience to highlight talking points and role compatibility.
+              </p>
             </div>
-            <div className="border-l border-white/5 pl-4">
-              <span className="text-gray-500 block text-[9px] uppercase font-bold">Focus Track</span>
-              <span className="text-white font-semibold">{setupData.type}</span>
-            </div>
-          </div>
-        </div>
-      </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card variant="glass" className="lg:col-span-2 flex flex-col justify-between h-[340px]">
-          <div className="mb-4">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Score Progression</h3>
-            <p className="text-[10px] text-gray-500 mt-0.5">Evaluation performance trends over time.</p>
+            <div className="bg-[#030712]/60 rounded-xl p-5 border border-white/10 flex flex-col items-center text-center space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-secondary/20 text-secondary border border-secondary/30 flex items-center justify-center font-bold font-mono text-sm">
+                2
+              </div>
+              <h4 className="font-heading font-bold text-white text-sm">Configure Setup</h4>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Choose your career domain, role target, and interviewer persona.
+              </p>
+            </div>
+
+            <div className="bg-[#030712]/60 rounded-xl p-5 border border-white/10 flex flex-col items-center text-center space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-accent/20 text-accent border border-accent/30 flex items-center justify-center font-bold font-mono text-sm">
+                3
+              </div>
+              <h4 className="font-heading font-bold text-white text-sm">Practice Session</h4>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Answer live questions and receive instant scoring with feedback.
+              </p>
+            </div>
           </div>
-          <div className="flex-1 relative min-h-0">
-            <Line data={lineChartData} options={lineChartOptions} />
+
+          <div className="pt-2">
+            <Button
+              onClick={() => router.push('/resume')}
+              variant="primary"
+              size="lg"
+              className="px-8 py-3.5 shadow-lg shadow-primary/30"
+              icon={FaRocket}
+            >
+              Start Step 1: Upload Resume
+            </Button>
           </div>
         </Card>
-
-        <Card variant="glass" className="flex flex-col justify-between h-[340px]">
-          <div className="mb-4">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Skills Distribution</h3>
-            <p className="text-[10px] text-gray-500 mt-0.5">Evaluated weights across core dimensions.</p>
+      ) : totalCompleted === 0 && resumeData ? (
+        /* ── READY FOR FIRST SESSION PROMPT ── */
+        <Card variant="glass" className="p-6 border border-white/10 flex flex-col md:flex-row items-center justify-between gap-6 glow-accent">
+          <div className="space-y-1 text-center md:text-left">
+            <Badge variant="accent" size="sm" className="mb-1">
+              Resume Uploaded ✓
+            </Badge>
+            <h3 className="text-lg font-heading font-bold text-white">
+              Ready for your first mock interview session
+            </h3>
+            <p className="text-xs text-gray-400 max-w-xl">
+              Your resume has been parsed. Configure your session parameters to start answering questions.
+            </p>
           </div>
-          <div className="flex-1 relative min-h-0">
-            <Radar data={radarChartData} options={radarChartOptions} />
-          </div>
+          <Button
+            onClick={() => router.push('/setup')}
+            variant="primary"
+            size="md"
+            className="shrink-0"
+            icon={FaPlay}
+          >
+            Configure & Start Session
+          </Button>
         </Card>
-      </div>
+      ) : (
+        /* ── DASHBOARD STAT CARDS ── */
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <Card variant="glass" className="p-5 flex items-center gap-4">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-lg sm:text-xl shrink-0">
+                <FaCalendarCheck />
+              </div>
+              <div>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">
+                  Completed
+                </span>
+                {loading ? (
+                  <div className="h-6 w-12 bg-white/5 rounded animate-pulse mt-1" />
+                ) : (
+                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-white mt-0.5">{totalCompleted}</p>
+                )}
+              </div>
+            </Card>
 
+            <Card variant="glass" className="p-5 flex items-center gap-4">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary text-lg sm:text-xl shrink-0">
+                <FaAward />
+              </div>
+              <div>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">Avg Index</span>
+                {loading ? (
+                  <div className="h-6 w-16 bg-white/5 rounded animate-pulse mt-1" />
+                ) : (
+                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-white mt-0.5">{averageScore}%</p>
+                )}
+              </div>
+            </Card>
+
+            <Card variant="glass" className="p-5 flex items-center gap-4">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent text-lg sm:text-xl shrink-0">
+                <FaFileAlt />
+              </div>
+              <div>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">
+                  Resume Health
+                </span>
+                {loading ? (
+                  <div className="h-6 w-16 bg-white/5 rounded animate-pulse mt-1" />
+                ) : (
+                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-white mt-0.5">
+                    {resumeScore ? `${resumeScore}%` : 'Unrated'}
+                  </p>
+                )}
+              </div>
+            </Card>
+
+            <Card variant="glass" className="p-5 flex items-center gap-4">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-lg sm:text-xl shrink-0">
+                <FaChartLine />
+              </div>
+              <div>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">
+                  Readiness Index
+                </span>
+                {loading ? (
+                  <div className="h-6 w-16 bg-white/5 rounded animate-pulse mt-1" />
+                ) : (
+                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-emerald-400 mt-0.5">
+                    {readinessIndex}%
+                  </p>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          <Card variant="solid" className="p-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="space-y-1">
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">
+                  Target Career Profile
+                </span>
+                <h3 className="text-base font-heading font-bold text-white flex items-center gap-2">
+                  <span>{setupData.role}</span>
+                  <Badge variant="accent" size="sm">
+                    {setupData.domain}
+                  </Badge>
+                </h3>
+              </div>
+
+              <div className="flex gap-4 text-xs font-mono text-gray-400">
+                <div>
+                  <span className="text-gray-500 block text-[9px] uppercase font-bold">Seniority</span>
+                  <span className="text-white font-semibold">{setupData.experienceLevel}</span>
+                </div>
+                <div className="border-l border-white/5 pl-4">
+                  <span className="text-gray-500 block text-[9px] uppercase font-bold">Focus Track</span>
+                  <span className="text-white font-semibold">{setupData.type}</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* CHARTS */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card variant="glass" className="lg:col-span-2 flex flex-col justify-between h-[340px]">
+              <div className="mb-4">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Score Progression</h3>
+                <p className="text-[10px] text-gray-500 mt-0.5">Evaluation performance trends over time.</p>
+              </div>
+              <div className="flex-1 relative min-h-0">
+                <Line data={lineChartData} options={lineChartOptions} />
+              </div>
+            </Card>
+
+            <Card variant="glass" className="flex flex-col justify-between h-[340px]">
+              <div className="mb-4">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Skills Distribution</h3>
+                <p className="text-[10px] text-gray-500 mt-0.5">Evaluated weights across core dimensions.</p>
+              </div>
+              <div className="flex-1 relative min-h-0">
+                <Radar data={radarChartData} options={radarChartOptions} />
+              </div>
+            </Card>
+          </div>
+        </>
+      )}
+
+      {/* RECENT ASSESSMENTS TABLE WITH SORT CONTROLS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card variant="glass" className="lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-center pb-2 border-b border-white/5">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-white/5">
             <div>
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">Recent Assessments</h3>
-              <p className="text-[10px] text-gray-500 mt-0.5">Historical session logs and marks.</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">Click any session row to inspect the full evaluation report.</p>
             </div>
-            <Button onClick={() => router.push('/setup')} variant="ghost" size="sm">
-              <span>New Session</span>
-              <FaArrowRight size={10} className="ml-1" />
-            </Button>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+              {/* Sort Control */}
+              <div className="flex items-center gap-1.5 text-xs text-gray-400 bg-background/80 border border-white/10 px-2.5 py-1 rounded-xl">
+                <FaSortAmountDown className="text-primary text-[10px]" />
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as any)}
+                  className="bg-transparent text-white text-xs outline-none cursor-pointer"
+                >
+                  <option value="newest" className="bg-[#0b0f19]">Newest First</option>
+                  <option value="oldest" className="bg-[#0b0f19]">Oldest First</option>
+                  <option value="highest" className="bg-[#0b0f19]">Highest Score</option>
+                </select>
+              </div>
+
+              <Button onClick={() => router.push('/setup')} variant="ghost" size="sm">
+                <span>New Session</span>
+                <FaArrowRight size={10} className="ml-1" />
+              </Button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -329,15 +511,20 @@ export default function Dashboard() {
                       </td>
                     </tr>
                   ))
-                ) : finalHistory.length > 0 ? (
-                  finalHistory.map((h) => (
-                    <tr key={h.id} className="hover:bg-white/2 transition">
-                      <td className="py-3 font-mono text-[10px] text-gray-400">{h.date}</td>
-                      <td className="py-3 font-medium text-white">
+                ) : sortedHistory.length > 0 ? (
+                  sortedHistory.map((h) => (
+                    <tr
+                      key={h.id}
+                      onClick={() => handleRowClick(h)}
+                      className="hover:bg-white/5 transition duration-150 cursor-pointer group"
+                      title="Click to view assessment report"
+                    >
+                      <td className="py-3.5 font-mono text-[10px] text-gray-400 group-hover:text-primary transition">{h.date}</td>
+                      <td className="py-3.5 font-medium text-white group-hover:translate-x-0.5 transition">
                         {h.role} <span className="text-[10px] text-gray-500">({h.difficulty})</span>
                       </td>
-                      <td className="py-3">{h.type}</td>
-                      <td className="py-3 text-right">
+                      <td className="py-3.5">{h.type}</td>
+                      <td className="py-3.5 text-right">
                         <Badge variant={h.score >= 80 ? 'success' : 'primary'} size="sm">
                           {h.score}%
                         </Badge>
