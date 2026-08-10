@@ -24,7 +24,8 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const baseStyle =
-    'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none relative overflow-hidden group whitespace-nowrap';
+    'inline-flex flex-row items-center justify-center gap-2 rounded-xl font-semibold transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none relative overflow-hidden group whitespace-nowrap';
+
 
   const variants = {
     primary:
