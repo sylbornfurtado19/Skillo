@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { performInterviewEvaluation } from '@/lib/services/interviewEvaluation.server';
 
+export const dynamic = 'force-dynamic';
+
+
 const questionSchema = z.object({
   id: z.string().optional(),
   question: z.string().min(1),

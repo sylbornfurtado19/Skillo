@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { performResumeAnalysis } from '@/lib/services/resumeAnalysis.server';
 
+export const dynamic = 'force-dynamic';
+
+
 const analyzeSchema = z.object({
   fileName: z.string().min(1, 'fileName is required').max(255),
   jobTitle: z.string().min(1, 'jobTitle is required').max(150),
