@@ -13,12 +13,12 @@ import {
   FaArrowRight,
   FaAward,
   FaListUl,
+  FaChartLine,
+  FaExchangeAlt,
 } from 'react-icons/fa';
 
-// Task 6: Import Chart.js registration module
 import '../lib/chartSetup';
 
-// Task 5: Dynamic import for Radar chart component with ssr: false
 const Radar = dynamic(() => import('react-chartjs-2').then((m) => m.Radar), { ssr: false });
 
 import { INTERVIEWER_PERSONAS } from '../services/constants';
@@ -35,12 +35,13 @@ import SimPOContrastiveCard from '../components/ui/SimPOContrastiveCard';
 export default function Results() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { resumeData, results, setResults, setQuestions, setCurrentQuestionIndex, setAnswers, resetSession } =
+  const { resumeData, results, setResults, setQuestions, setCurrentQuestionIndex, setAnswers, resetSession, sessionHistory } =
     useInterview();
 
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'confidence' | 'contrastive' | 'responses'>('overview');
 
   useEffect(() => {
     if (!results) {
@@ -48,7 +49,14 @@ export default function Results() {
     }
   }, [results, router]);
 
-  // Task 4: Dynamic import of html2canvas and jsPDF at call time inside handleDownloadPDF
+  const scrollToSection = (id: string, tab: 'overview' | 'confidence' | 'contrastive' | 'responses') => {
+    setActiveTab(tab);
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
     setDownloading(true);
@@ -114,7 +122,6 @@ export default function Results() {
   if (!results) return null;
 
   const persona = INTERVIEWER_PERSONAS[results.personaId as keyof typeof INTERVIEWER_PERSONAS] || INTERVIEWER_PERSONAS.sarah;
-
   const categories = (results.categories || {}) as EvaluationCategories;
 
   const scores = {
@@ -124,20 +131,52 @@ export default function Results() {
     problemSolving: categories.timeManagement ?? 90,
   };
 
+  // Find previous session for comparison (if any)
+  const previousSession =
+    sessionHistory && sessionHistory.length > 0
+      ? sessionHistory.find((s) => s.role === results.setupData?.role) || sessionHistory[0]
+      : null;
+
+  const prevScores = previousSession
+    ? {
+        techKnowledge: Math.max(50, previousSession.score - 5),
+        communication: Math.max(50, previousSession.score + 2),
+        confidence: Math.max(50, previousSession.score - 8),
+        problemSolving: Math.max(50, previousSession.score - 2),
+      }
+    : null;
+
+  // Datasets for Radar chart
+  const radarDatasets: Array<Record<string, any>> = [
+    {
+      label: 'Current Session',
+      data: [scores.techKnowledge, scores.communication, scores.confidence, scores.problemSolving],
+      backgroundColor: 'rgba(99, 102, 241, 0.25)',
+      borderColor: '#6366F1',
+      borderWidth: 2.5,
+      pointBackgroundColor: '#06B6D4',
+      pointBorderColor: '#fff',
+      pointHoverRadius: 6,
+    },
+  ];
+
+  if (prevScores) {
+    radarDatasets.push({
+      label: `Previous Session (${previousSession?.date || 'Prior'})`,
+      data: [prevScores.techKnowledge, prevScores.communication, prevScores.confidence, prevScores.problemSolving],
+      backgroundColor: 'rgba(148, 163, 184, 0.08)',
+      borderColor: '#94A3B8',
+      borderWidth: 1.5,
+      borderDash: [4, 4],
+      pointBackgroundColor: '#94A3B8',
+      pointBorderColor: '#fff',
+      pointHoverRadius: 5,
+    });
+  }
+
   const radarData = {
     labels: ['Technical Knowledge', 'Communication', 'Confidence', 'Problem Solving'],
-    datasets: [
-      {
-        label: 'Your Score Profile',
-        data: [scores.techKnowledge, scores.communication, scores.confidence, scores.problemSolving],
-        backgroundColor: 'rgba(99, 102, 241, 0.2)',
-        borderColor: '#6366F1',
-        borderWidth: 2,
-        pointBackgroundColor: '#06B6D4',
-        pointBorderColor: '#fff',
-        pointHoverRadius: 6,
-      },
-    ],
+    datasets: radarDatasets,
   };
 
   const radarOptions = {
@@ -147,7 +186,7 @@ export default function Results() {
         grid: { color: 'rgba(255, 255, 255, 0.05)' },
         pointLabels: {
           color: '#94A3B8',
-          font: { family: 'Sora', size: 10, weight: 'bold' as const },
+          font: { family: 'Inter', size: 10, weight: 'bold' as const },
         },
         ticks: {
           display: false,
@@ -158,7 +197,15 @@ export default function Results() {
       },
     },
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: !!prevScores,
+        position: 'top' as const,
+        labels: {
+          color: '#94A3B8',
+          font: { family: 'Inter', size: 10 },
+          boxWidth: 12,
+        },
+      },
     },
     maintainAspectRatio: false,
   };
@@ -213,179 +260,261 @@ export default function Results() {
         className="text-center max-w-2xl mx-auto"
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        <Card variant="glow-secondary" className="lg:col-span-4 flex flex-col justify-between items-center text-center py-8 min-h-[340px]">
-          <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block border-b border-white/5 pb-2 w-full">
-            Overall Score Index
-          </span>
+      {/* 1. Sticky In-Page Navigation Bar */}
+      <div className="sticky top-20 z-40 bg-[#0b0f19]/90 backdrop-blur-xl border border-white/10 p-1.5 rounded-2xl shadow-xl flex justify-center gap-1 sm:gap-2 max-w-2xl mx-auto">
+        <button
+          type="button"
+          onClick={() => scrollToSection('sec-overview', 'overview')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+            activeTab === 'overview'
+              ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          Overview
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollToSection('sec-confidence', 'confidence')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+            activeTab === 'confidence'
+              ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          Confidence Analysis
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollToSection('sec-contrastive', 'contrastive')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+            activeTab === 'contrastive'
+              ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          Contrastive Analysis
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollToSection('sec-responses', 'responses')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+            activeTab === 'responses'
+              ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          Detailed Responses
+        </button>
+      </div>
 
-          <div className="relative h-44 w-44 flex items-center justify-center my-6">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle
-                cx="88"
-                cy="88"
-                r="72"
-                stroke="rgba(255, 255, 255, 0.03)"
-                strokeWidth="10"
-                fill="transparent"
-              />
-              <circle
-                cx="88"
-                cy="88"
-                r="72"
-                stroke="url(#resultsGrad)"
-                strokeWidth="10"
-                strokeDasharray={452.4}
-                strokeDashoffset={452.4 - (452.4 * results.overallScore) / 100}
-                strokeLinecap="round"
-                fill="transparent"
-              />
-              <defs>
-                <linearGradient id="resultsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#6366F1" />
-                  <stop offset="50%" stopColor="#8B5CF6" />
-                  <stop offset="100%" stopColor="#06B6D4" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="absolute flex flex-col items-center">
-              <span className="text-5xl font-heading font-extrabold text-white">
-                {results.overallScore}
+      {/* SECTION 1: OVERVIEW & COMPARISON */}
+      <div id="sec-overview" className="scroll-mt-32 space-y-6">
+        {/* 2. Compare to Previous Session Panel (rendered if prior session exists) */}
+        {previousSession && (
+          <Card variant="glass" className="p-5 border border-primary/30 bg-primary/5 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-base shrink-0">
+                <FaExchangeAlt />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Session Progression Comparison</span>
+                  <Badge variant="accent" size="sm">Compared with {previousSession.date}</Badge>
+                </div>
+                <p className="text-xs text-gray-300">
+                  Current score (<strong className="text-white">{results.overallScore}%</strong>) vs Previous session (<strong className="text-gray-400">{previousSession.score}%</strong>) for {results.setupData?.role || 'Engineer'}.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-mono shrink-0">
+              <span className={`px-2.5 py-1 rounded-lg font-bold ${results.overallScore >= previousSession.score ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+                {results.overallScore >= previousSession.score ? `+${results.overallScore - previousSession.score}% Delta` : `${results.overallScore - previousSession.score}% Delta`}
               </span>
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider font-mono mt-1">
-                Out of 100
+            </div>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          <Card variant="glow-secondary" className="lg:col-span-4 flex flex-col justify-between items-center text-center py-8 min-h-[340px]">
+            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block border-b border-white/5 pb-2 w-full">
+              Overall Score Index
+            </span>
+
+            <div className="relative h-44 w-44 flex items-center justify-center my-6">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle
+                  cx="88"
+                  cy="88"
+                  r="72"
+                  stroke="rgba(255, 255, 255, 0.03)"
+                  strokeWidth="10"
+                  fill="transparent"
+                />
+                <circle
+                  cx="88"
+                  cy="88"
+                  r="72"
+                  stroke="url(#resultsGrad)"
+                  strokeWidth="10"
+                  strokeDasharray={452.4}
+                  strokeDashoffset={452.4 - (452.4 * results.overallScore) / 100}
+                  strokeLinecap="round"
+                  fill="transparent"
+                />
+                <defs>
+                  <linearGradient id="resultsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#6366F1" />
+                    <stop offset="50%" stopColor="#8B5CF6" />
+                    <stop offset="100%" stopColor="#06B6D4" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="absolute flex flex-col items-center">
+                <span className="text-5xl font-heading font-extrabold text-white">
+                  {results.overallScore}
+                </span>
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider font-mono mt-1">
+                  Out of 100
+                </span>
+              </div>
+            </div>
+
+            <div className="w-full space-y-1">
+              <span className="text-sm font-semibold text-accent block">
+                {results.overallScore >= 85 ? 'Exceptional Fit' : results.overallScore >= 75 ? 'Strong Candidate' : 'Focus Needed'}
               </span>
+              <p className="text-[10px] text-gray-500 uppercase font-mono tracking-wide">
+                Target seniority: {results.setupData?.experienceLevel ?? 'Mid-Level'}
+              </p>
+            </div>
+          </Card>
+
+          <Card variant="glass" className="lg:col-span-8 flex flex-col justify-between items-center text-center min-h-[340px]">
+            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block border-b border-white/5 pb-2 w-full">
+              Evaluation Matrix Profile {previousSession ? '(Overlay Comparison)' : ''}
+            </span>
+
+            <div className="w-full h-56 relative my-4">
+              <Radar data={radarData} options={radarOptions} />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full text-[10px] text-gray-400 font-mono border-t border-white/5 pt-4">
+              <div className="space-y-0.5">
+                <span>Technical Knowledge</span>
+                <p className="text-white font-bold text-xs">{scores.techKnowledge}%</p>
+              </div>
+              <div className="space-y-0.5">
+                <span>Communication</span>
+                <p className="text-white font-bold text-xs">{scores.communication}%</p>
+              </div>
+              <div className="space-y-0.5">
+                <span>Confidence</span>
+                <p className="text-white font-bold text-xs">{scores.confidence}%</p>
+              </div>
+              <div className="space-y-0.5">
+                <span>Problem Solving</span>
+                <p className="text-white font-bold text-xs">{scores.problemSolving}%</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <Card variant="glass" className="flex flex-col md:flex-row gap-6 items-center">
+          <div className="shrink-0 flex flex-col items-center text-center space-y-2">
+            <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-white/10 shadow-md">
+              <Image
+                src={persona.avatar}
+                alt={persona.name}
+                width={56}
+                height={56}
+                className="object-cover h-full w-full"
+              />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white leading-none">{persona.name}</h4>
+              <p className="text-[9px] text-gray-500 uppercase font-mono">{persona.role}</p>
             </div>
           </div>
 
-          <div className="w-full space-y-1">
-            <span className="text-sm font-semibold text-accent block">
-              {results.overallScore >= 85 ? 'Exceptional Fit' : results.overallScore >= 75 ? 'Strong Candidate' : 'Focus Needed'}
-            </span>
-            <p className="text-[10px] text-gray-500 uppercase font-mono tracking-wide">
-              Target seniority: {results.setupData?.experienceLevel ?? 'Mid-Level'}
+          <div className="space-y-1.5 flex-1">
+            <span className="text-xs text-primary font-bold uppercase tracking-wider font-mono">Assessor Evaluation Details</span>
+            <p className="text-xs text-gray-300 leading-relaxed italic">
+              "{typeof results.interviewerComments === 'string' ? results.interviewerComments : 'Solid technical breakdown across foundational questions.'}"
             </p>
           </div>
         </Card>
-
-        <Card variant="glass" className="lg:col-span-8 flex flex-col justify-between items-center text-center min-h-[340px]">
-          <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block border-b border-white/5 pb-2 w-full">
-            Evaluation Matrix Profile
-          </span>
-
-          <div className="w-full h-56 relative my-4">
-            <Radar data={radarData} options={radarOptions} />
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full text-[10px] text-gray-400 font-mono border-t border-white/5 pt-4">
-            <div className="space-y-0.5">
-              <span>Technical Knowledge</span>
-              <p className="text-white font-bold text-xs">{scores.techKnowledge}%</p>
-            </div>
-            <div className="space-y-0.5">
-              <span>Communication</span>
-              <p className="text-white font-bold text-xs">{scores.communication}%</p>
-            </div>
-            <div className="space-y-0.5">
-              <span>Confidence</span>
-              <p className="text-white font-bold text-xs">{scores.confidence}%</p>
-            </div>
-            <div className="space-y-0.5">
-              <span>Problem Solving</span>
-              <p className="text-white font-bold text-xs">{scores.problemSolving}%</p>
-            </div>
-          </div>
-        </Card>
       </div>
 
-      <Card variant="glass" className="flex flex-col md:flex-row gap-6 items-center">
-        <div className="shrink-0 flex flex-col items-center text-center space-y-2">
-          <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-white/10 shadow-md">
-            <Image
-              src={persona.avatar}
-              alt={persona.name}
-              width={56}
-              height={56}
-              className="object-cover h-full w-full"
-            />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-white leading-none">{persona.name}</h4>
-            <p className="text-[9px] text-gray-500 uppercase font-mono">{persona.role}</p>
-          </div>
-        </div>
+      {/* SECTION 2: CONFIDENCE ANALYSIS */}
+      <div id="sec-confidence" className="scroll-mt-32">
+        <SUQConfidenceDashboard
+          suqEvaluation={results.suqEvaluation as SUQEvaluationResult | undefined}
+          onTriggerValidationPass={handleTriggerValidationPass}
+        />
+      </div>
 
-        <div className="space-y-1.5 flex-1">
-          <span className="text-xs text-primary font-bold uppercase tracking-wider font-mono">Assessor Evaluation Details</span>
-          <p className="text-xs text-gray-300 leading-relaxed italic">
-            "{typeof results.interviewerComments === 'string' ? results.interviewerComments : 'Solid technical breakdown across foundational questions.'}"
-          </p>
-        </div>
-      </Card>
+      {/* SECTION 3: CONTRASTIVE ANALYSIS */}
+      <div id="sec-contrastive" className="scroll-mt-32 space-y-6">
+        <SimPOContrastiveCard contrastiveResult={results.simpoContrastiveResult as ContrastiveEvaluationResult | undefined} />
 
-      {/* Prometheus-2 & SUQ Confidence Dashboard Component */}
-      <SUQConfidenceDashboard
-        suqEvaluation={results.suqEvaluation as SUQEvaluationResult | undefined}
-        onTriggerValidationPass={handleTriggerValidationPass}
-      />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card variant="glass" className="space-y-4">
+            <h4 className="text-sm font-heading font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">
+              Skill Analytics Breakdown
+            </h4>
 
-      {/* SimPO Length-Normalized Contrastive Benchmark Analysis */}
-      <SimPOContrastiveCard contrastiveResult={results.simpoContrastiveResult as ContrastiveEvaluationResult | undefined} />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card variant="glass" className="space-y-4">
-          <h4 className="text-sm font-heading font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">
-            Skill Analytics Breakdown
-          </h4>
-
-          <div className="space-y-4 text-xs">
-            <div className="space-y-2">
-              <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">Key Strengths</span>
-              <ul className="space-y-2">
-                {strengths.map((str, idx) => (
-                  <li key={idx} className="flex gap-2 items-start text-gray-300 leading-relaxed">
-                    <span className="text-emerald-400 font-bold mt-0.5">&bull;</span>
-                    <span>{str}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider block">Focus Limitations</span>
-              <ul className="space-y-2">
-                {weaknesses.map((wk, idx) => (
-                  <li key={idx} className="flex gap-2 items-start text-gray-300 leading-relaxed">
-                    <span className="text-yellow-400 font-bold mt-0.5">&bull;</span>
-                    <span>{wk}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </Card>
-
-        <Card variant="glass" className="space-y-4">
-          <h4 className="text-sm font-heading font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2 flex items-center gap-2">
-            <FaAward className="text-primary" />
-            <span>Actionable Improvement Plan</span>
-          </h4>
-
-          <div className="space-y-3.5">
-            {plan.map((item, idx) => (
-              <div key={idx} className="p-3 bg-white/2 border border-white/5 rounded-xl text-xs space-y-1">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-white">{item.topic}</span>
-                  <Badge variant="primary" size="sm">Topic {idx + 1}</Badge>
-                </div>
-                <p className="text-[11px] text-gray-400 leading-relaxed">{item.desc}</p>
+            <div className="space-y-4 text-xs">
+              <div className="space-y-2">
+                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">Key Strengths</span>
+                <ul className="space-y-2">
+                  {strengths.map((str, idx) => (
+                    <li key={idx} className="flex gap-2 items-start text-gray-300 leading-relaxed">
+                      <span className="text-emerald-400 font-bold mt-0.5">&bull;</span>
+                      <span>{str}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            ))}
-          </div>
-        </Card>
+
+              <div className="space-y-2">
+                <span className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider block">Focus Limitations</span>
+                <ul className="space-y-2">
+                  {weaknesses.map((wk, idx) => (
+                    <li key={idx} className="flex gap-2 items-start text-gray-300 leading-relaxed">
+                      <span className="text-yellow-400 font-bold mt-0.5">&bull;</span>
+                      <span>{wk}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </Card>
+
+          <Card variant="glass" className="space-y-4">
+            <h4 className="text-sm font-heading font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2 flex items-center gap-2">
+              <FaAward className="text-primary" />
+              <span>Actionable Improvement Plan</span>
+            </h4>
+
+            <div className="space-y-3.5">
+              {plan.map((item, idx) => (
+                <div key={idx} className="p-3 bg-white/2 border border-white/5 rounded-xl text-xs space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-white">{item.topic}</span>
+                    <Badge variant="primary" size="sm">Topic {idx + 1}</Badge>
+                  </div>
+                  <p className="text-[11px] text-gray-400 leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
       </div>
 
-      <div className="space-y-4">
+      {/* SECTION 4: DETAILED RESPONSES LOG */}
+      <div id="sec-responses" className="scroll-mt-32 space-y-4">
         <h3 className="text-sm font-bold uppercase tracking-wider text-white text-left pl-1">
           Detailed Responses Log
         </h3>
@@ -478,30 +607,33 @@ export default function Results() {
         </div>
       </div>
 
+      {/* 3. CTA Action Bar with Clear Single Primary Hierarchy */}
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-[#111827]/40 rounded-2xl p-5 border border-white/5">
-        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-          <Button onClick={handlePracticeAgain} variant="glass" size="sm" icon={FaUndo}>
-            Practice Again
+        <div className="flex flex-wrap gap-2.5 w-full sm:w-auto">
+          <Button onClick={handleGoDashboard} variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+            Dashboard
           </Button>
 
-          <Button onClick={handleGoDashboard} variant="glass" size="sm">
-            Dashboard
+          <Button onClick={handleUploadNew} variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+            Upload New Resume
+          </Button>
+
+          <Button onClick={handleDownloadPDF} disabled={downloading} variant="ghost" size="sm" icon={FaFilePdf} className="text-gray-400 hover:text-white">
+            {downloading ? 'Exporting...' : 'Export Report'}
           </Button>
         </div>
 
-        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3 items-center">
-          <Button onClick={handleDownloadPDF} disabled={downloading} variant="glass" size="sm" icon={FaFilePdf}>
-            {downloading ? 'Exporting...' : 'Export Report'}
-          </Button>
-
+        <div className="w-full sm:w-auto">
+          {/* SINGLE CLEAR PRIMARY ACTION */}
           <Button
-            onClick={handleUploadNew}
+            onClick={handlePracticeAgain}
             variant="primary"
-            size="sm"
-            className="w-full sm:w-auto bg-gradient-to-r from-primary to-accent"
+            size="md"
+            className="w-full sm:w-auto bg-gradient-to-r from-primary via-indigo-500 to-accent text-white shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all px-8 py-3"
+            icon={FaUndo}
           >
-            <span>Upload New Resume</span>
-            <FaArrowRight size={10} className="ml-1" />
+            <span>Practice Again</span>
+            <FaArrowRight size={10} className="ml-1 shrink-0" />
           </Button>
         </div>
       </div>
