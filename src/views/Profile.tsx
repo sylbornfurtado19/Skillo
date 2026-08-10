@@ -15,6 +15,7 @@ import { LogoIcon } from '../components/common/Logo';
 const Doughnut = dynamic(() => import('react-chartjs-2').then((m) => m.Doughnut), { ssr: false });
 
 import '../lib/chartSetup';
+import SkillMemoryGraph from '../components/ui/SkillMemoryGraph';
 
 export default function Profile() {
   const router = useRouter();
@@ -239,6 +240,9 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Reflexion Agent Skill Memory Graph & Reflection Store */}
+      <SkillMemoryGraph />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="glass-card rounded-2xl p-6 border border-white/5 flex flex-col justify-between items-center text-center relative overflow-hidden glow-secondary">
