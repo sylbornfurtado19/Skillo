@@ -1,17 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
+const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-skillo.supabase.co';
-const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+  rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))
+    ? rawUrl
+    : 'https://rszgkhoqniicksgtllqp.supabase.co';
 
-if (
-  process.env.NODE_ENV === 'development' &&
-  (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-) {
-  console.warn(
-    '[Supabase Client] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.'
-  );
-}
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzemdraG9xbmlpY2tzZ3RsbHFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyNTE1ODAsImV4cCI6MjEwMDgyNzU4MH0.xBZNXKP7K9Fn8aFU1N8N6O4VO2yfuLH8qP5hNnihMAM';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
