@@ -52,8 +52,7 @@ export default function Landing() {
 
   return (
     <div className="space-y-28 py-8">
-      {/* 1. Hero Section */}
-      <section className="relative flex flex-col items-center text-center max-w-4xl mx-auto pt-10 px-4">      {/* Animated gradient mesh & floating particles background */}
+      {/* Animated gradient mesh & floating particles background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
         <motion.div
           animate={{
@@ -77,6 +76,7 @@ export default function Landing() {
 
       {/* 1. Hero Section */}
       <section className="relative flex flex-col items-center text-center max-w-4xl mx-auto pt-10 px-4">
+
         {/* Clickable Open Source Glow Tag */}
         <a
           href="https://github.com/sylbornfurtado19/Skillo"
