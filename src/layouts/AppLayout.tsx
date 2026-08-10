@@ -208,14 +208,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
               <div className="p-4 border-t border-white/5 bg-[#0f1522]">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="relative h-10 w-10 rounded-full border border-white/10 overflow-hidden shrink-0">
-                    <Image
-                      src={avatarUrl}
-                      alt="Avatar"
-                      width={40}
-                      height={40}
-                      className="h-full w-full object-cover"
-                    />
+                  <div className="relative h-10 w-10 rounded-full border border-white/10 overflow-hidden shrink-0 bg-primary/20 flex items-center justify-center">
+                    {avatarUrl ? (
+                      <Image
+                        src={avatarUrl}
+                        alt="Avatar"
+                        width={40}
+                        height={40}
+                        unoptimized
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-primary">{userInitial}</span>
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold text-white truncate">{userName}</p>
@@ -224,6 +229,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     </p>
                   </div>
                 </div>
+
                 <button
                   onClick={handleLogout}
                   className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/25 transition duration-250 text-xs font-medium cursor-pointer"
