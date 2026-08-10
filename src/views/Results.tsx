@@ -124,9 +124,6 @@ export default function Results() {
     problemSolving: categories.timeManagement ?? 90,
   };
 
-<<<<<<< HEAD
-  const radarData = {
-=======
   // Find previous session for comparison (if any)
   const previousSession =
     sessionHistory && sessionHistory.length > 0
@@ -170,21 +167,10 @@ export default function Results() {
   }
 
   const radarData: any = {
->>>>>>> 0c47c562838bc3711796a3b4d3fa3aa4c9e99564
     labels: ['Technical Knowledge', 'Communication', 'Confidence', 'Problem Solving'],
-    datasets: [
-      {
-        label: 'Your Score Profile',
-        data: [scores.techKnowledge, scores.communication, scores.confidence, scores.problemSolving],
-        backgroundColor: 'rgba(99, 102, 241, 0.2)',
-        borderColor: '#6366F1',
-        borderWidth: 2,
-        pointBackgroundColor: '#06B6D4',
-        pointBorderColor: '#fff',
-        pointHoverRadius: 6,
-      },
-    ],
+    datasets: radarDatasets,
   };
+
 
 
   const radarOptions = {
