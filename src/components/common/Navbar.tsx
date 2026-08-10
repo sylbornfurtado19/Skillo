@@ -52,14 +52,16 @@ export default function Navbar() {
   const userInitial = userName.charAt(0).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-50 w-full px-4 pt-4 pb-2 bg-[#030712]/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full px-4 py-3 bg-[#030712]/80 backdrop-blur-md border-b border-white/5">
       <nav className="mx-auto max-w-7xl h-16 rounded-2xl bg-[#111827]/40 backdrop-blur-md px-6 flex items-center justify-between border border-white/5 shadow-2xl">
-        <Link href="/" className="hover:opacity-90 transition duration-200 shrink-0">
-          <span className="font-heading font-extrabold text-xl text-white tracking-tight">Skillo</span>
-        </Link>
+        <div className="flex items-center gap-10">
+          <Link href="/" className="hover:opacity-90 transition duration-200 shrink-0">
+            <span className="font-heading font-extrabold text-xl text-white tracking-tight">Skillo</span>
+          </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-8">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-8">
+
 
           {links.map((link) => (
             <a
@@ -72,8 +74,11 @@ export default function Navbar() {
             </a>
           ))}
         </div>
+      </div>
+
 
         <div className="flex items-center gap-4 ml-auto">
+
           <Button
             onClick={() => router.push('/dashboard')}
             variant="primary"
