@@ -48,10 +48,17 @@ export default function Profile() {
   }
 
   const candidateName =
-    (user?.user_metadata?.name as string | undefined) ?? user?.email?.split('@')[0] ?? 'Alex Mercer';
+    (user?.user_metadata?.full_name as string | undefined) ??
+    (user?.user_metadata?.name as string | undefined) ??
+    user?.email?.split('@')[0] ??
+    'Alex Mercer';
+
   const avatarUrl =
     (user?.user_metadata?.avatar_url as string | undefined) ??
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120';
+    (user?.user_metadata?.picture as string | undefined) ??
+    null;
+
+  const userInitial = candidateName.charAt(0).toUpperCase();
 
   const candidate = {
     name: candidateName,
@@ -63,6 +70,7 @@ export default function Profile() {
     averageScore: 82,
     completedSessions: 8,
   };
+
 
   const pastInterviews = [
     {
@@ -192,9 +200,21 @@ export default function Profile() {
     <div className="max-w-6xl mx-auto space-y-8 pb-16">
       <div className="glass-card rounded-2xl p-6 sm:p-8 border border-white/5 glow-primary relative overflow-hidden">
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-          <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-white/10 shadow-2xl shrink-0">
-            <Image src={candidate.avatar} alt={candidate.name} width={96} height={96} className="object-cover h-full w-full" />
+          <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-white/10 shadow-2xl shrink-0 bg-primary/20 flex items-center justify-center">
+            {candidate.avatar ? (
+              <Image
+                src={candidate.avatar}
+                alt={candidate.name}
+                width={96}
+                height={96}
+                unoptimized
+                className="object-cover h-full w-full"
+              />
+            ) : (
+              <span className="text-3xl font-heading font-extrabold text-primary">{userInitial}</span>
+            )}
           </div>
+
 
           <div className="text-center md:text-left space-y-2 flex-1">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
