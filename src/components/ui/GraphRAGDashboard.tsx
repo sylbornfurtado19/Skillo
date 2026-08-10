@@ -35,131 +35,17 @@ export default function GraphRAGDashboard({
   const [selectedCommunity, setSelectedCommunity] = useState<GraphRAGCommunitySummary | null>(null);
   const [activeLevelFilter, setActiveLevelFilter] = useState<GraphRAGLevel | 'ALL'>('ALL');
 
-  // Fallback default sample data if graphRAGData is unpopulated
-  const defaultGraphData: GraphRAGAnalysisResult = {
-    overallDomainCoverage: 82,
-    extractedEntityCount: 18,
-    synthesizedSummary:
-      'Candidate displays high alignment across Core Backend Systems and API Frameworks. Identified prerequisite gap in Distributed Cache Mutex Protocols.',
-    candidateGraph: {
-      entities: [],
-      nodes: [
-        {
-          id: 'n_0_backend',
-          name: 'Backend Systems Architecture',
-          level: 0,
-          status: 'VERIFIED',
-          communityId: 'c_backend',
-          communityName: 'Backend Core',
-          description: 'Macro domain governing server-side architecture, data pipelines, and distributed APIs.',
-          prerequisites: ['System Architecture'],
-          downstreamImpacts: ['High-Availability APIs'],
-        },
-        {
-          id: 'n_1_databases',
-          name: 'Distributed Databases & Caching',
-          level: 1,
-          status: 'PARTIAL',
-          communityId: 'c_databases',
-          communityName: 'Data Infrastructure',
-          description: 'Core pillar managing persistence engines, storage indexing, and memory caches.',
-          prerequisites: ['Backend Systems Architecture'],
-          downstreamImpacts: ['Sub-Millisecond Query Response'],
-        },
-        {
-          id: 'n_2_redis',
-          name: 'Redis In-Memory Data Store',
-          level: 2,
-          status: 'VERIFIED',
-          communityId: 'c_databases',
-          communityName: 'Data Infrastructure',
-          description: 'Leaf utility for cache-aside caching, session keys, and pub-sub channels.',
-          prerequisites: ['Distributed Databases & Caching'],
-          downstreamImpacts: ['Session Management'],
-        },
-        {
-          id: 'n_2_redlock',
-          name: 'Redis Mutex & Redlock Algorithm',
-          level: 2,
-          status: 'MISSING',
-          communityId: 'c_databases',
-          communityName: 'Data Infrastructure',
-          description: 'Critical protocol for multi-node concurrency locks and atomic mutation safety.',
-          prerequisites: ['Redis In-Memory Data Store'],
-          downstreamImpacts: ['Distributed Cache Consistency'],
-        },
-        {
-          id: 'n_1_frameworks',
-          name: 'Next.js & React 19 Frameworks',
-          level: 1,
-          status: 'VERIFIED',
-          communityId: 'c_frontend',
-          communityName: 'Full-Stack Web',
-          description: 'Core pillar handling server components, server actions, and client state.',
-          prerequisites: ['TypeScript Fundamentals'],
-          downstreamImpacts: ['Production Web Applications'],
-        },
-        {
-          id: 'n_2_ts',
-          name: 'TypeScript Strict Type System',
-          level: 2,
-          status: 'VERIFIED',
-          communityId: 'c_frontend',
-          communityName: 'Full-Stack Web',
-          description: 'Leaf utility ensuring static type verification across component interfaces.',
-          prerequisites: ['JavaScript ESNext'],
-          downstreamImpacts: ['Zero-Type-Error Builds'],
-        },
-      ],
-      relationships: [
-        { sourceId: 'n_0_backend', targetId: 'n_1_databases', relationshipType: 'REQUIRES', strength: 0.9, weight: 0.9, description: 'Backend requires databases' },
-        { sourceId: 'n_1_databases', targetId: 'n_2_redis', relationshipType: 'REQUIRES', strength: 0.85, weight: 0.85, description: 'Databases require Redis' },
-        { sourceId: 'n_2_redis', targetId: 'n_2_redlock', relationshipType: 'BLOCKS', strength: 0.95, weight: 0.95, description: 'Redis blocks Redlock gap' },
-      ],
-      communities: [
-        {
-          communityId: 'c_backend',
-          name: 'Backend Core',
-          level: 0,
-          summary: 'High-level macro domain covering server engineering and cloud microservices.',
-          entityCount: 6,
-          coveragePercentage: 90,
-        },
-        {
-          communityId: 'c_databases',
-          name: 'Data Infrastructure',
-          level: 1,
-          summary: 'Sub-domain cluster governing database indexing, caching strategies, and concurrency locks.',
-          entityCount: 7,
-          coveragePercentage: 72,
-        },
-        {
-          communityId: 'c_frontend',
-          name: 'Full-Stack Web',
-          level: 1,
-          summary: 'Sub-domain cluster governing Next.js 16 App Router, React 19, and TypeScript interfaces.',
-          entityCount: 5,
-          coveragePercentage: 100,
-        },
-      ],
-    },
-    missingPrerequisiteChains: [
-      {
-        id: 'gap_1',
-        missingFoundation: 'Distributed Locks & Mutex protocols',
-        blockedCapability: 'Concurrent Cache Mutation Safety',
-        downstreamImpact: 'High-Concurrency Distributed Data Consistency',
-        severity: 'CRITICAL',
-        remediationPath: [
-          'Study Redis Redlock algorithm and lock TTL auto-renewal.',
-          'Implement idempotency keys for mutative server endpoint handlers.',
-          'Design split-brain network failure handling tests.',
-        ],
-      },
-    ],
-  };
+  if (!graphRAGData || !graphRAGData.candidateGraph || graphRAGData.candidateGraph.nodes.length === 0) {
+    return (
+      <div className={`space-y-4 ${className}`}>
+        <div className="glass-card rounded-2xl p-8 border border-white/5 flex flex-col items-center justify-center gap-3 text-center">
+          <p className="text-sm text-gray-400 font-mono">GraphRAG analysis will appear here after resume upload and job description submission.</p>
+        </div>
+      </div>
+    );
+  }
 
-  const data = graphRAGData || defaultGraphData;
+  const data = graphRAGData;
   const { candidateGraph, overallDomainCoverage, missingPrerequisiteChains } = data;
 
   const filteredNodes =

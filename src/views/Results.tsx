@@ -23,7 +23,7 @@ const Radar = dynamic(() => import('react-chartjs-2').then((m) => m.Radar), { ss
 
 import { INTERVIEWER_PERSONAS } from '../services/constants';
 import { useInterview } from '../context/InterviewContext';
-import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult } from '../types/index';
+import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult, ContrastiveEvaluationResult } from '../types/index';
 import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -330,7 +330,7 @@ export default function Results() {
       />
 
       {/* SimPO Length-Normalized Contrastive Benchmark Analysis */}
-      <SimPOContrastiveCard contrastiveResult={results.simpoContrastiveResult as any} />
+      <SimPOContrastiveCard contrastiveResult={results.simpoContrastiveResult as ContrastiveEvaluationResult | undefined} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card variant="glass" className="space-y-4">

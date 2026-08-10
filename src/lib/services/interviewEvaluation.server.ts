@@ -1,12 +1,20 @@
 import { z } from 'zod';
-import { generateVerbalSelfReflection, consolidateReflexionMemory } from './reflexionEngine.server';
+import {
+  generateVerbalSelfReflection,
+  consolidateReflexionMemory,
+  getRelevantReflexionContext,
+  persistSkillMemoryStore,
+  retrieveSkillMemoryStore,
+} from './reflexionEngine.server';
 import { generateSimPOContrastiveEvaluation } from './simpoEngine.server';
+import { runLATSMCTS } from './latsEngine.server';
 import type {
   RubricCriterion,
   SinglePassEvaluation,
   SemanticCluster,
   SUQEvaluationResult,
   EvaluationReport,
+  LATSTreeState,
 } from '@/types/index';
 
 export interface QuestionItemInput {
@@ -454,23 +462,60 @@ export async function performInterviewEvaluation(
     };
   });
 
-  // Trigger Reflexion Verbal Self-Reflection & Memory Consolidation (Shinn et al., NeurIPS 2023)
   const sessionId = `session_${Date.now()}`;
   const firstAns = typeof answersList[0] === 'string' ? answersList[0] : answersList[0]?.answerText ?? '';
-  const verbalReflection = await generateVerbalSelfReflection({
-    sessionId,
-    question: questionsList[0]?.question ?? 'Technical Assessment Question',
-    candidateAnswer: firstAns,
-    score: overallScore100,
-    role: setupData.role,
-  });
+  const firstQuestion = questionsList[0]?.question ?? 'Technical Assessment Question';
 
-  const skillMemoryStore = consolidateReflexionMemory(userId, [verbalReflection]);
+  // Fix 4.3: Retrieve historical memory BEFORE generating new reflection
+  // Inject prior context so LLM is aware of cross-session deficiencies
+  const existingMemoryStore = await retrieveSkillMemoryStore(userId);
+  const historicalContext = getRelevantReflexionContext(setupData.role, existingMemoryStore);
+
+  // Fix 4.1: Non-blocking fire-and-forget Reflexion generation
+  // Reflexion is NOT in the critical response path — runs after response is sent
+  let skillMemoryStore = existingMemoryStore ?? consolidateReflexionMemory(userId, []);
+
+  void (async () => {
+    try {
+      const verbalReflection = await generateVerbalSelfReflection({
+        sessionId,
+        question: firstQuestion,
+        candidateAnswer: firstAns,
+        score: overallScore100,
+        role: setupData.role,
+        historicalReflections: historicalContext ? [{ id: 'ctx', sessionId: 'prior', skillTag: setupData.role, timestamp: new Date().toISOString(), mistakeSummary: historicalContext, rootCauseAnalysis: '', actionableRemediation: '', severity: 'MEDIUM' as const }] : undefined,
+      });
+      const updatedStore = consolidateReflexionMemory(userId, [verbalReflection], existingMemoryStore);
+      // Fix 4.2: Persist to Supabase profiles table
+      await persistSkillMemoryStore(userId, updatedStore);
+    } catch (err) {
+      console.warn('[Reflexion] Background memory update failed (non-blocking):', err);
+    }
+  })();
+
+  // Fix 2.3: Run LATS MCTS engine to generate adaptive follow-up tree
+  let latsTreeState: LATSTreeState | undefined;
+  try {
+    latsTreeState = await runLATSMCTS({
+      sessionId,
+      role: setupData.role,
+      currentQuestion: firstQuestion,
+      candidateAnswer: firstAns,
+      priorGaps: skillMemoryStore
+        ? Object.values(skillMemoryStore.nodes)
+            .flatMap((n) => n.persistentDeficiencies)
+            .slice(0, 3)
+        : [],
+      anthropicApiKey,
+    });
+  } catch (err) {
+    console.warn('[LATS] MCTS engine failed, latsTreeState will be undefined:', err);
+  }
 
   // Trigger SimPO Length-Normalized Contrastive Evaluation Engine (Meng et al., ICML 2024)
   const simpoContrastiveResult = await generateSimPOContrastiveEvaluation({
     evaluationId: `simpo_${sessionId}`,
-    question: questionsList[0]?.question ?? 'Technical Assessment Question',
+    question: firstQuestion,
     candidateAnswer: firstAns,
     role: setupData.role,
     score: overallScore100,
@@ -486,6 +531,7 @@ export async function performInterviewEvaluation(
     evaluatedAt: new Date().toISOString(),
     userId,
     suqEvaluation,
+    latsTreeState,
     skillMemoryStore,
     simpoContrastiveResult,
   };

@@ -39,11 +39,25 @@ export async function performResumeAnalysis(
     resumeText: input.resumeText,
   });
 
+  // Derive skillsMatched from VERIFIED nodes
+  const skillsMatched = graphRAGResult.candidateGraph.nodes
+    .filter(n => n.status === 'VERIFIED')
+    .map(n => n.name);
+
+  // Derive skillsMissing from MISSING nodes + prerequisite gap chain skills
+  const missingFromNodes = graphRAGResult.candidateGraph.nodes
+    .filter(n => n.status === 'MISSING')
+    .map(n => n.name);
+  const missingFromChains = graphRAGResult.missingPrerequisiteChains
+    .map(c => c.missingSkill ?? c.missingFoundation ?? '')
+    .filter(Boolean);
+  const skillsMissing = [...new Set([...missingFromNodes, ...missingFromChains])];
+
   return {
     matchPercentage: graphRAGResult.overallDomainCoverage,
     fileName: input.fileName,
-    skillsMatched: ['React 19', 'TypeScript', 'Tailwind CSS', 'Next.js App Router'],
-    skillsMissing: ['Redis Redlock Protocol', 'Distributed Lock Synchronization'],
+    skillsMatched,
+    skillsMissing,
     summary: `GraphRAG Hierarchical Analysis completed for ${sanitizedJobTitle}. ${graphRAGResult.synthesizedSummary}`,
     scoreBreakdown: {
       formatting: 90,
@@ -52,7 +66,9 @@ export async function performResumeAnalysis(
       impactMetrics: 80,
     },
     recommendations: [
-      'Bridge identified prerequisite gaps in Distributed Mutex protocols to achieve 100% domain coverage.',
+      skillsMissing.length > 0
+        ? `Bridge identified prerequisite gaps: ${skillsMissing.slice(0, 3).join(', ')}.`
+        : 'Excellent domain coverage — no critical skill gaps detected.',
       'Quantify production impact metrics across full-stack API handlers.',
     ],
     analyzedAt: new Date().toISOString(),

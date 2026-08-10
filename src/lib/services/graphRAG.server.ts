@@ -52,40 +52,98 @@ export function executeLeidenHierarchicalClustering(
   graphRelationships: GraphRelationship[];
   communities: CommunitySummary[];
 } {
-  const communityLevel0Id = 'comm_l0_macro';
-  const communityLevel1Id = 'comm_l1_core';
+  // Build adjacency map: name -> outgoing targets
+  const outgoingMap = new Map<string, string[]>();
+  const incomingMap = new Map<string, string[]>();
+  entities.forEach(e => { outgoingMap.set(e.name, []); incomingMap.set(e.name, []); });
+  relationships.forEach(rel => {
+    outgoingMap.get(rel.source)?.push(rel.target);
+    incomingMap.get(rel.target)?.push(rel.source);
+  });
 
+  // Determine hierarchy level from graph topology:
+  // L0: no incoming edges (roots / macro domains)
+  // L1: has incoming AND outgoing edges (intermediate pillars)
+  // L2: has incoming but no outgoing edges (leaf utilities)
+  // Fallback to entity type for disconnected nodes
+  const getLevelByTopology = (entityName: string, entityType: string): GraphRAGLevel => {
+    const hasIncoming = (incomingMap.get(entityName)?.length ?? 0) > 0;
+    const hasOutgoing = (outgoingMap.get(entityName)?.length ?? 0) > 0;
+    if (!hasIncoming && hasOutgoing) return 0; // Root / Macro Domain
+    if (hasIncoming && hasOutgoing) return 1;  // Intermediate / Core Pillar
+    if (hasIncoming && !hasOutgoing) return 2; // Leaf Utility
+    // Disconnected: fall back to entity type
+    if (entityType === 'DOMAIN') return 0;
+    if (entityType === 'CONCEPT' || entityType === 'FRAMEWORK') return 1;
+    return 2;
+  };
+
+  // BFS-based connected component clustering
+  const visited = new Set<string>();
+  const componentMap = new Map<string, number>(); // entity name -> componentId
+  let componentId = 0;
+
+  const allNames = entities.map(e => e.name);
+  for (const startName of allNames) {
+    if (visited.has(startName)) continue;
+    const queue = [startName];
+    visited.add(startName);
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      componentMap.set(current, componentId);
+      const neighbors = [
+        ...(outgoingMap.get(current) ?? []),
+        ...(incomingMap.get(current) ?? []),
+      ];
+      for (const neighbor of neighbors) {
+        if (!visited.has(neighbor) && allNames.includes(neighbor)) {
+          visited.add(neighbor);
+          queue.push(neighbor);
+        }
+      }
+    }
+    componentId++;
+  }
+
+  // Build nodes with topology-derived levels and unique community IDs
   const nodes: GraphEntity[] = entities.map((ent, idx) => {
-    // Determine level: DOMAIN -> Level 0, CONCEPT/FRAMEWORK -> Level 1, SKILL -> Level 2
-    let level: GraphRAGLevel = 2;
-    if (ent.type === 'DOMAIN') level = 0;
-    else if (ent.type === 'CONCEPT' || ent.type === 'FRAMEWORK') level = 1;
+    const level = getLevelByTopology(ent.name, ent.type);
+    const compId = componentMap.get(ent.name) ?? 0;
+    const communityIdLevel0 = `comm_comp${compId}_l0`;
+    const communityIdLevel1 = `comm_comp${compId}_l1`;
+    const communityId = level === 0 ? communityIdLevel0 : level === 1 ? communityIdLevel1 : `comm_comp${compId}_l2`;
 
-    // Status assignment based on entity presence
-    const status: GraphNodeStatus = idx % 5 === 3 ? 'MISSING' : idx % 4 === 2 ? 'PARTIAL' : 'VERIFIED';
+    // VERIFIED: entity name appears as a key source/target in relationships
+    // PARTIAL: entity exists but has low connectivity (only 1 connection)
+    // MISSING: entity is isolated (no relationships)
+    const outDeg = outgoingMap.get(ent.name)?.length ?? 0;
+    const inDeg = incomingMap.get(ent.name)?.length ?? 0;
+    const totalDeg = outDeg + inDeg;
+    const status: GraphNodeStatus = totalDeg >= 2 ? 'VERIFIED' : totalDeg === 1 ? 'PARTIAL' : 'MISSING';
 
     const id = `ent_${idx + 1}_${ent.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    const prerequisites = incomingMap.get(ent.name) ?? [];
+    const downstreamImpacts = outgoingMap.get(ent.name) ?? [];
 
     return {
       id,
       name: ent.name,
       type: ent.type,
       description: ent.description,
-      communityIdLevel0: communityLevel0Id,
-      communityIdLevel1: communityLevel1Id,
+      communityIdLevel0,
+      communityIdLevel1,
       level,
       status,
-      communityId: level === 0 ? communityLevel0Id : communityLevel1Id,
-      communityName: level === 0 ? `${jobTitle} Macro Domain` : 'Core Technical Pillars',
-      prerequisites: idx > 0 ? [entities[idx - 1].name] : [],
-      downstreamImpacts: idx < entities.length - 1 ? [entities[idx + 1].name] : [],
+      communityId,
+      communityName: level === 0 ? `${jobTitle} Macro Domain` : level === 1 ? 'Core Technical Pillars' : 'Leaf Tools & Utilities',
+      prerequisites,
+      downstreamImpacts,
     };
   });
 
   const graphRelationships: GraphRelationship[] = relationships.map((rel, idx) => {
-    const srcNode = nodes.find((n) => n.name.toLowerCase() === rel.source.toLowerCase());
-    const tgtNode = nodes.find((n) => n.name.toLowerCase() === rel.target.toLowerCase());
-
+    const srcNode = nodes.find(n => n.name.toLowerCase() === rel.source.toLowerCase());
+    const tgtNode = nodes.find(n => n.name.toLowerCase() === rel.target.toLowerCase());
     return {
       sourceId: srcNode?.id ?? `src_${idx}`,
       targetId: tgtNode?.id ?? `tgt_${idx}`,
@@ -95,41 +153,69 @@ export function executeLeidenHierarchicalClustering(
     };
   });
 
-  const communities: CommunitySummary[] = [
-    {
-      communityId: communityLevel0Id,
-      level: 0,
-      title: `${jobTitle} Systems & Engineering`,
-      summary: `Macro domain covering top-level architecture and engineering leadership for ${jobTitle}.`,
-      entityIds: nodes.filter((n) => n.level === 0).map((n) => n.id),
-      prerequisiteFor: ['Executive Engineering Delivery'],
-      name: `${jobTitle} Systems Architecture`,
-      entityCount: nodes.filter((n) => n.level === 0).length || 1,
-      coveragePercentage: 88,
-    },
-    {
-      communityId: communityLevel1Id,
-      level: 1,
-      title: 'Core Technical Architecture & Infrastructure',
-      summary: 'Sub-domain pillar managing scalable data persistence, API frameworks, and state synchronization.',
-      entityIds: nodes.filter((n) => n.level === 1).map((n) => n.id),
-      prerequisiteFor: [`${jobTitle} Systems Architecture`],
-      name: 'Core Technical Architecture',
-      entityCount: nodes.filter((n) => n.level === 1).length || 2,
-      coveragePercentage: 80,
-    },
-    {
-      communityId: 'comm_l2_leaf',
-      level: 2,
-      title: 'Leaf Tools & Library Utilities',
-      summary: 'Fine-grained tooling, strict typing, schema validators, and memory caching utilities.',
-      entityIds: nodes.filter((n) => n.level === 2).map((n) => n.id),
-      prerequisiteFor: ['Core Technical Architecture'],
-      name: 'Leaf Tools & Implementation',
-      entityCount: nodes.filter((n) => n.level === 2).length || 3,
-      coveragePercentage: 75,
-    },
-  ];
+  // Build communities per level per connected component
+  const uniqueComponents = [...new Set(componentMap.values())];
+  const communities: CommunitySummary[] = [];
+
+  for (const comp of uniqueComponents) {
+    const compNodes = nodes.filter(n => componentMap.get(n.name) === comp);
+    const l0Nodes = compNodes.filter(n => n.level === 0);
+    const l1Nodes = compNodes.filter(n => n.level === 1);
+    const l2Nodes = compNodes.filter(n => n.level === 2);
+    const verifiedCount = compNodes.filter(n => n.status === 'VERIFIED').length;
+    const coverage = compNodes.length > 0 ? Math.round((verifiedCount / compNodes.length) * 100) : 0;
+
+    if (l0Nodes.length > 0 || l1Nodes.length === 0) {
+      communities.push({
+        communityId: `comm_comp${comp}_l0`,
+        level: 0,
+        title: `${jobTitle} Systems & Engineering`,
+        summary: `Macro domain covering top-level architecture and engineering leadership for ${jobTitle}.`,
+        entityIds: l0Nodes.map(n => n.id),
+        prerequisiteFor: ['Executive Engineering Delivery'],
+        name: `${jobTitle} Systems Architecture`,
+        entityCount: l0Nodes.length || 1,
+        coveragePercentage: coverage,
+      });
+    }
+    if (l1Nodes.length > 0) {
+      communities.push({
+        communityId: `comm_comp${comp}_l1`,
+        level: 1,
+        title: 'Core Technical Architecture & Infrastructure',
+        summary: 'Sub-domain pillar managing scalable data persistence, API frameworks, and state synchronization.',
+        entityIds: l1Nodes.map(n => n.id),
+        prerequisiteFor: [`${jobTitle} Systems Architecture`],
+        name: 'Core Technical Architecture',
+        entityCount: l1Nodes.length,
+        coveragePercentage: coverage,
+      });
+    }
+    if (l2Nodes.length > 0) {
+      communities.push({
+        communityId: `comm_comp${comp}_l2`,
+        level: 2,
+        title: 'Leaf Tools & Library Utilities',
+        summary: 'Fine-grained tooling, strict typing, schema validators, and memory caching utilities.',
+        entityIds: l2Nodes.map(n => n.id),
+        prerequisiteFor: ['Core Technical Architecture'],
+        name: 'Leaf Tools & Implementation',
+        entityCount: l2Nodes.length,
+        coveragePercentage: coverage,
+      });
+    }
+  }
+
+  // Ensure at least 3 communities (L0, L1, L2) exist for UI rendering
+  if (!communities.find(c => c.level === 0)) {
+    communities.unshift({ communityId: 'comm_l0_default', level: 0, title: `${jobTitle} Macro Domain`, summary: `Top-level ${jobTitle} architecture domain.`, entityIds: [], name: `${jobTitle} Architecture`, entityCount: 0, coveragePercentage: 0 });
+  }
+  if (!communities.find(c => c.level === 1)) {
+    communities.push({ communityId: 'comm_l1_default', level: 1, title: 'Core Technical Pillars', summary: 'Core engineering pillars.', entityIds: [], name: 'Core Technical Architecture', entityCount: 0, coveragePercentage: 0 });
+  }
+  if (!communities.find(c => c.level === 2)) {
+    communities.push({ communityId: 'comm_l2_default', level: 2, title: 'Leaf Utilities', summary: 'Leaf-level tools and utilities.', entityIds: [], name: 'Leaf Tools & Implementation', entityCount: 0, coveragePercentage: 0 });
+  }
 
   return { nodes, graphRelationships, communities };
 }
@@ -143,43 +229,58 @@ export function synthesizePrerequisiteGapChains(
   nodes: GraphEntity[],
   jobTitle: string
 ): PrerequisiteGapChain[] {
-  const missingNodes = nodes.filter((n) => n.status === 'MISSING' || n.status === 'PARTIAL');
+  const missingNodes = nodes.filter(n => n.status === 'MISSING' || n.status === 'PARTIAL');
 
   if (missingNodes.length === 0) {
-    return [
-      {
-        id: 'gap_default_1',
-        missingSkill: 'Distributed Mutex Protocols',
-        missingFoundation: 'Distributed Locks & Mutex protocols',
-        blockedCapability: 'Concurrent Cache Mutation Safety',
-        macroDomainImpact: 'High-Concurrency Microservice Reliability',
-        downstreamImpact: 'High-Scale Distributed Consistency',
-        severity: 'CRITICAL',
-        remediationPath: [
-          'Study Redis Redlock algorithm and lock TTL auto-renewal.',
-          'Implement idempotency keys for mutative server endpoint handlers.',
-          'Design split-brain network failure handling tests.',
-        ],
-      },
-    ];
+    return []; // No gaps — return empty array (UI will show empty state)
   }
+
+  // Build a name->node lookup for graph traversal
+  const nodeByName = new Map<string, GraphEntity>();
+  nodes.forEach(n => nodeByName.set(n.name, n));
 
   return missingNodes.slice(0, 3).map((node, idx) => {
     const severity: 'CRITICAL' | 'MODERATE' | 'MINOR' =
       idx === 0 ? 'CRITICAL' : idx === 1 ? 'MODERATE' : 'MINOR';
 
+    // Walk graph edges upward: leaf -> pillar -> macro domain
+    // prerequisites array contains incoming dependency names
+    const prerequisiteChain: string[] = [node.name];
+    let currentPrereqs = node.prerequisites ?? [];
+    let depth = 0;
+    while (currentPrereqs.length > 0 && depth < 3) {
+      const parentName = currentPrereqs[0];
+      const parentNode = nodeByName.get(parentName);
+      if (!parentNode || prerequisiteChain.includes(parentName)) break;
+      prerequisiteChain.push(parentName);
+      currentPrereqs = parentNode.prerequisites ?? [];
+      depth++;
+    }
+
+    // Determine blocked capability: the node's downstream impact (if any)
+    const blockedCapability =
+      (node.downstreamImpacts && node.downstreamImpacts.length > 0)
+        ? node.downstreamImpacts[0]
+        : `Advanced ${node.name} Integration`;
+
+    // Find the macro domain (L0) ancestor for the impact statement
+    const macroAncestorName = prerequisiteChain.find(name => {
+      const n = nodeByName.get(name);
+      return n && n.level === 0;
+    }) ?? `${jobTitle} Architecture`;
+
     return {
-      id: `gap_${idx + 1}`,
+      id: `gap_${idx + 1}_${node.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
       missingSkill: node.name,
-      missingFoundation: node.name,
-      blockedCapability: node.downstreamImpacts?.[0] ?? `Advanced ${node.name} Integration`,
-      macroDomainImpact: `${jobTitle} Production Scaling`,
+      missingFoundation: prerequisiteChain.length > 1 ? prerequisiteChain.slice(1).join(' → ') : node.name,
+      blockedCapability,
+      macroDomainImpact: macroAncestorName,
       downstreamImpact: `${jobTitle} Architecture Resilience`,
       severity,
       remediationPath: [
         `Master foundational principles of ${node.name}.`,
-        `Implement integration pattern matching ${jobTitle} standards.`,
-        `Build automated verification tests covering ${node.name} boundary states.`,
+        `Practice ${blockedCapability} integration patterns aligned with ${jobTitle} requirements.`,
+        `Build automated verification tests covering ${node.name} boundary conditions.`,
       ],
     };
   });

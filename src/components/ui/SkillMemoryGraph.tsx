@@ -26,78 +26,27 @@ export default function SkillMemoryGraph({
 }: SkillMemoryGraphProps) {
   const [selectedNode, setSelectedNode] = useState<SkillMemoryNode | null>(null);
 
-  const defaultMemoryStore: CandidateSkillMemoryStore = {
-    userId: 'default_user',
-    globalReflectionSummary:
-      'Candidate has logged 3 skill memory node(s). 1 skill mastered, 1 proficient, 1 developing. 1 high-severity deficiency trace requiring targeted practice.',
-    nodes: {
-      react_architecture: {
-        skillId: 'react_architecture',
-        skillName: 'React 19 & State Architecture',
-        proficiencyLevel: 'MASTERED',
-        attemptsCount: 6,
-        reflections: [
-          {
-            id: 'sr_101',
-            sessionId: 'sess_1',
-            skillTag: 'React 19 & State Architecture',
-            timestamp: new Date().toISOString(),
-            mistakeSummary: 'Minor memoization delay in high-frequency list rendering.',
-            rootCauseAnalysis: 'Candidate relied on manual useMemo instead of leveraging React 19 Compiler automatic optimization.',
-            actionableRemediation: 'Adopt React 19 compiler primitives and transition actions.',
-            severity: 'LOW',
-          },
-        ],
-        persistentDeficiencies: [],
-        remediationProgress: 95,
-        lastUpdated: new Date().toISOString(),
-      },
-      distributed_locking: {
-        skillId: 'distributed_locking',
-        skillName: 'Distributed Locks & Redlock',
-        proficiencyLevel: 'DEVELOPING',
-        attemptsCount: 3,
-        reflections: [
-          {
-            id: 'sr_102',
-            sessionId: 'sess_2',
-            skillTag: 'Distributed Locks & Redlock',
-            timestamp: new Date().toISOString(),
-            mistakeSummary: 'Did not specify TTL auto-renewal for Redis mutex locks.',
-            rootCauseAnalysis: 'Root cause: Missing familiarity with split-brain network failure modes under high write lock contention.',
-            actionableRemediation: 'Implement lock lease extension heartbeat loop.',
-            severity: 'HIGH',
-          },
-        ],
-        persistentDeficiencies: ['Did not specify TTL auto-renewal for Redis mutex locks.'],
-        remediationProgress: 45,
-        lastUpdated: new Date().toISOString(),
-      },
-      system_design: {
-        skillId: 'system_design',
-        skillName: 'System Scalability & Caching',
-        proficiencyLevel: 'PROFICIENT',
-        attemptsCount: 4,
-        reflections: [
-          {
-            id: 'sr_103',
-            sessionId: 'sess_3',
-            skillTag: 'System Scalability & Caching',
-            timestamp: new Date().toISOString(),
-            mistakeSummary: 'Omitted double-delete pattern in cache invalidation.',
-            rootCauseAnalysis: 'Root cause: Focused on read latency without verifying write propagation consistency.',
-            actionableRemediation: 'Incorporate pub-sub cache invalidation handlers.',
-            severity: 'MEDIUM',
-          },
-        ],
-        persistentDeficiencies: ['Omitted double-delete pattern in cache invalidation.'],
-        remediationProgress: 75,
-        lastUpdated: new Date().toISOString(),
-      },
-    },
-  };
+  // Empty state: no memory store yet
+  if (!memoryStore || Object.keys(memoryStore.nodes).length === 0) {
+    return (
+      <div className={`space-y-6 text-left ${className}`}>
+        <div className="glass-card rounded-2xl p-8 border border-white/5 flex flex-col items-center justify-center gap-4 text-center">
+          <FaBrain className="text-4xl text-white/20" />
+          <h3 className="text-sm font-heading font-bold text-white">Skill Memory Graph</h3>
+          <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
+            Your personalized skill memory graph will populate after completing your first interview session.
+            Reflexion traces are generated automatically post-evaluation.
+          </p>
+          <div className="flex items-center gap-2 text-[10px] font-mono text-gray-600 bg-white/3 px-3 py-1.5 rounded-lg border border-white/5">
+            <FaGraduationCap />
+            <span>0 Skill Memory Nodes Tracked</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const store = memoryStore || defaultMemoryStore;
+  const store = memoryStore;
   const nodesList = Object.values(store.nodes);
 
   const getProficiencyBadge = (level: SkillMemoryNode['proficiencyLevel']) => {

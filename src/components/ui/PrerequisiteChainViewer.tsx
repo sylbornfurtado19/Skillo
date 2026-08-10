@@ -25,33 +25,18 @@ export default function PrerequisiteChainViewer({
 }: PrerequisiteChainViewerProps) {
   const [expandedChains, setExpandedChains] = useState<Record<string, boolean>>({});
 
-  const defaultChains: PrerequisiteGapChain[] = [
-    {
-      id: 'gap_1',
-      missingFoundation: 'Distributed Locks & Mutex protocols',
-      blockedCapability: 'Concurrent Cache Mutation Safety',
-      downstreamImpact: 'High-Concurrency Distributed Data Consistency',
-      severity: 'CRITICAL',
-      remediationPath: [
-        'Study Redis Redlock algorithm and lock TTL auto-renewal.',
-        'Implement idempotency keys for mutative server endpoint handlers.',
-        'Design split-brain network failure handling tests.',
-      ],
-    },
-    {
-      id: 'gap_2',
-      missingFoundation: 'B-Tree & LSM-Tree Storage Engine Mechanics',
-      blockedCapability: 'High-Throughput Write Indexing Optimization',
-      downstreamImpact: 'Sub-Millisecond Query Latency at Scale',
-      severity: 'MODERATE',
-      remediationPath: [
-        'Analyze WAL (Write-Ahead Logging) vs MemTable flushing pipelines.',
-        'Optimize composite index cardinality for multi-column lookup filters.',
-      ],
-    },
-  ];
+  const chainsList = chains ?? [];
 
-  const list = chains && chains.length > 0 ? chains : defaultChains;
+  if (chainsList.length === 0) {
+    return (
+      <div className="p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 text-center">
+        <p className="text-sm text-emerald-400 font-semibold">✓ No skill gaps detected</p>
+        <p className="text-xs text-gray-400 mt-1">Your profile demonstrates complete prerequisite coverage for this role.</p>
+      </div>
+    );
+  }
+
+  const list = chainsList;
 
   const toggleExpand = (id: string) => {
     setExpandedChains((prev) => ({ ...prev, [id]: !prev[id] }));

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { supabase } from '@/lib/supabase';
 import type {
   VerbalReflection,
   SkillMemoryNode,
@@ -236,4 +237,52 @@ export function getRelevantReflexionContext(
 
   const recentReflection = node.reflections[0];
   return `[Reflexion Memory Context for ${skillTag}]: Proficiency Level: ${node.proficiencyLevel} (Progress: ${node.remediationProgress}%). Prior Mistake: "${recentReflection.mistakeSummary}". Actionable Remediation: "${recentReflection.actionableRemediation}". Verify if candidate has resolved this deficiency.`;
+}
+
+/**
+ * 4. Persist CandidateSkillMemoryStore to Supabase profiles table.
+ * Stores the memory store as JSONB in the skill_memory_store column.
+ * Run: ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS skill_memory_store JSONB DEFAULT '{}';
+ * in Supabase SQL editor to enable persistence.
+ */
+export async function persistSkillMemoryStore(
+  userId: string,
+  memoryStore: CandidateSkillMemoryStore
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        skill_memory_store: memoryStore as unknown as Record<string, unknown>,
+        updated_at: new Date().toISOString(),
+      });
+    if (error) {
+      console.warn('[Reflexion Memory] Persistence error (column may not exist yet):', error.message);
+    }
+  } catch (err) {
+    console.warn('[Reflexion Memory] persistSkillMemoryStore failed silently:', err);
+  }
+}
+
+/**
+ * 5. Retrieve CandidateSkillMemoryStore from Supabase profiles table.
+ */
+export async function retrieveSkillMemoryStore(
+  userId: string
+): Promise<CandidateSkillMemoryStore | undefined> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('skill_memory_store')
+      .eq('id', userId)
+      .single();
+    if (error || !data) return undefined;
+    const raw = (data as Record<string, unknown>).skill_memory_store;
+    if (!raw || typeof raw !== 'object') return undefined;
+    return raw as CandidateSkillMemoryStore;
+  } catch (err) {
+    console.warn('[Reflexion Memory] retrieveSkillMemoryStore failed:', err);
+    return undefined;
+  }
 }

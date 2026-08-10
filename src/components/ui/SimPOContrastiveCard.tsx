@@ -23,48 +23,24 @@ export default function SimPOContrastiveCard({
   contrastiveResult,
   className = '',
 }: SimPOContrastiveCardProps) {
-  const defaultResult: ContrastiveEvaluationResult = {
-    evaluationId: 'simpo_demo_101',
-    summaryDeltaText:
-      'SimPO contrastive evaluation verified preference margin Δr = +0.82 (Target Margin Satisfied). Identified 3 structural delta(s).',
-    contrastivePair: {
-      questionContext: 'How do you design a high-throughput rate limiter for distributed microservices?',
-      dispreferredAnswer: {
-        text: 'I would use a simple counter variable stored in a memory cache. When a request comes in, we increment the count and check if it is above 100. If it is, we return an HTTP 429 status code.',
-        tokenLength: 42,
-        implicitReward: -1.30,
-      },
-      preferredAnswer: {
-        text: 'Implement a distributed Sliding Window Counter using Redis Lua scripts for atomic execution. Store timestamps in a Sorted Set (ZSET), removing entries outside the window (ZREMRANGEBYSCORE) before querying cardinality (ZCARD). For cross-region failover, combine local token bucket memory limiters with Redlock mutex sync.',
-        tokenLength: 54,
-        implicitReward: -0.48,
-      },
-      rewardMargin: 0.82,
-      marginSatisfied: true,
-      structuralDeltas: [
-        {
-          dimension: 'COMPLEXITY',
-          candidateDeficiency: 'Omitted explicit Big-O algorithmic time and space complexity bounds.',
-          preferredBenchmark: 'Optimal response specifies O(1) memory lookup with O(N) worst-case index rebalancing.',
-          impactScore: 8.5,
-        },
-        {
-          dimension: 'SYSTEM_ARCHITECTURE',
-          candidateDeficiency: 'Described single-node execution without handling distributed split-brain network failures.',
-          preferredBenchmark: 'FAANG benchmark incorporates Redlock distributed locks and circuit breaker auto-failover.',
-          impactScore: 9.0,
-        },
-        {
-          dimension: 'TERMINOLOGY',
-          candidateDeficiency: 'Used informal phrasing ("save to cache") instead of precise technical nomenclature.',
-          preferredBenchmark: 'Leverages industry-standard terms ("cache-aside invalidation pattern", "write-through mutator").',
-          impactScore: 7.0,
-        },
-      ],
-    },
-  };
+  // Empty state
+  if (!contrastiveResult) {
+    return (
+      <div className={`space-y-6 text-left ${className}`}>
+        <Card variant="glow-secondary" className="p-6">
+          <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+            <FaExchangeAlt className="text-4xl text-white/20" />
+            <h3 className="text-sm font-heading font-bold text-white">SimPO Benchmark Analysis</h3>
+            <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
+              Side-by-side contrastive evaluation (Candidate vs FAANG Target) will appear here after evaluation.
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
-  const data = contrastiveResult || defaultResult;
+  const data = contrastiveResult;
   const { contrastivePair, summaryDeltaText } = data;
   const { dispreferredAnswer, preferredAnswer, rewardMargin, marginSatisfied, structuralDeltas } =
     contrastivePair;
@@ -93,7 +69,7 @@ export default function SimPOContrastiveCard({
             <FaBolt className="text-accent shrink-0 animate-pulse" />
             <span className="text-gray-300 font-semibold">Preference Reward Margin:</span>
             <span className="text-emerald-400 font-extrabold">
-              &Delta;r = +{rewardMargin.toFixed(2)}
+              &Delta;r = {rewardMargin >= 0 ? '+' : ''}{rewardMargin.toFixed(2)}
             </span>
             <Badge variant={marginSatisfied ? 'success' : 'warning'} size="sm">
               {marginSatisfied ? 'Target Satisfied' : 'Pending Margin'}

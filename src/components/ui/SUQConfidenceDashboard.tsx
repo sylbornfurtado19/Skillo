@@ -30,44 +30,22 @@ export default function SUQConfidenceDashboard({
   const [expandedCoT, setExpandedCoT] = useState<Record<string, boolean>>({});
   const [showPassDrawer, setShowPassDrawer] = useState(false);
 
-  // Fallback default structure if suqEvaluation is undefined (for legacy or mock runs)
-  const defaultSUQ: SUQEvaluationResult = {
-    finalScore: 4.2,
-    confidenceLevel: 'HIGH',
-    semanticEntropy: 0.24,
-    clusters: [
-      {
-        clusterId: 1,
-        representativeScore: 4.2,
-        passIndices: [0, 1, 2, 3, 4],
-        probability: 1.0,
-      },
-    ],
-    passes: [
-      {
-        cotReasoning:
-          'Pass 1 CoT: Candidate demonstrated strong precision in domain terminology, clean architectural layout, and clear STAR delivery.',
-        scores: {
-          technicalAccuracy: 4.5,
-          systemDesignLogic: 4.2,
-          edgeCaseHandling: 3.8,
-          communicationClarity: 4.4,
-        },
-        overallScore: 4.25,
-        feedback: 'Strong structural response alignment.',
-      },
-    ],
-    aggregatedRubricFeedback: {
-      technicalAccuracy: 'High accuracy with precise domain terminology.',
-      systemDesignLogic: 'Solid architectural layout and trade-off considerations.',
-      edgeCaseHandling: 'Addressed boundary states and concurrency considerations.',
-      communicationClarity: 'Clear and structured delivery matching executive standards.',
-    },
-    requiresValidationPass: false,
-    latencyMs: 340,
-  };
+  // Empty state: no evaluation data yet
+  if (!suqEvaluation) {
+    return (
+      <div className={`space-y-6 text-left ${className}`}>
+        <div className="bg-[#0B0F17]/80 p-5 rounded-2xl border border-white/10 flex flex-col items-center justify-center gap-3 text-center py-10">
+          <FaBrain className="text-4xl text-white/20" />
+          <h3 className="text-sm font-heading font-bold text-white">Prometheus-2 Evaluation</h3>
+          <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
+            N=5 multi-pass Chain-of-Thought results will appear here after your interview evaluation is complete.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  const suq = suqEvaluation || defaultSUQ;
+  const suq = suqEvaluation;
 
   const toggleCoT = (key: string) => {
     setExpandedCoT((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -90,29 +68,29 @@ export default function SUQConfidenceDashboard({
       key: 'technicalAccuracy',
       title: 'Technical Accuracy',
       weight: '35%',
-      score: suq.passes[0]?.scores.technicalAccuracy ?? 4.5,
-      feedback: suq.aggregatedRubricFeedback?.technicalAccuracy ?? 'Precise technical terminology and concepts.',
+      score: suq.passes[0]?.scores.technicalAccuracy ?? 0,
+      feedback: suq.aggregatedRubricFeedback?.technicalAccuracy ?? 'No feedback available.',
     },
     {
       key: 'systemDesignLogic',
       title: 'System Architecture & Logic',
       weight: '30%',
-      score: suq.passes[0]?.scores.systemDesignLogic ?? 4.2,
-      feedback: suq.aggregatedRubricFeedback?.systemDesignLogic ?? 'Logical decomposition and trade-off analysis.',
+      score: suq.passes[0]?.scores.systemDesignLogic ?? 0,
+      feedback: suq.aggregatedRubricFeedback?.systemDesignLogic ?? 'No feedback available.',
     },
     {
       key: 'edgeCaseHandling',
       title: 'Edge-Case Awareness',
       weight: '20%',
-      score: suq.passes[0]?.scores.edgeCaseHandling ?? 3.8,
-      feedback: suq.aggregatedRubricFeedback?.edgeCaseHandling ?? 'Proactive identification of failure modes.',
+      score: suq.passes[0]?.scores.edgeCaseHandling ?? 0,
+      feedback: suq.aggregatedRubricFeedback?.edgeCaseHandling ?? 'No feedback available.',
     },
     {
       key: 'communicationClarity',
       title: 'Communication & Tone',
       weight: '15%',
-      score: suq.passes[0]?.scores.communicationClarity ?? 4.4,
-      feedback: suq.aggregatedRubricFeedback?.communicationClarity ?? 'Articulate STAR structure and concise delivery.',
+      score: suq.passes[0]?.scores.communicationClarity ?? 0,
+      feedback: suq.aggregatedRubricFeedback?.communicationClarity ?? 'No feedback available.',
     },
   ];
 

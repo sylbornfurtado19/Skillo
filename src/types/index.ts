@@ -256,6 +256,13 @@ export interface LATSTreeState {
   currentGaps: string[];
 }
 
+export interface ProcessRewardResult {
+  nodeId: string;
+  score: number; // V in [0,1]
+  reasoning: string;
+  detectedGaps: string[];
+}
+
 export interface EvaluationReport {
   overallScore: number;
   categories: EvaluationCategories;

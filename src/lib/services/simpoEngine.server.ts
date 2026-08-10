@@ -22,23 +22,22 @@ export interface GenerateSimPOInput {
 }
 
 /**
- * Length-Normalized Implicit Reward Function (Meng et al., ICML 2024)
- * r(x, y) = (beta / |y|) * log P(y | x)
- * Eliminates artificial length bias by dividing sequence log-likelihood by token length |y|.
- * Parameters: beta = 2.0, target margin gamma = 0.5.
+ * Length-Normalized Implicit Reward (SimPO surrogate)
+ * r(x,y) = (beta * qualityScore) / max(1, |y|)
+ * True SimPO uses log π_θ(y|x)/|y|. Since LLM log-probs are unavailable via API,
+ * we substitute an LLM-judged quality score ∈ [0,1] as the surrogate for log-probability.
+ * beta = 2.0 controls the reward scale.
  */
 export function calculateLengthNormalizedReward(
   text: string,
-  baseLogProbPerToken: number = -0.4,
+  qualityScore: number = 0.5, // surrogate for log P(y|x), range [0,1]
   beta: number = 2.0
 ): { tokenLength: number; implicitReward: number } {
   const words = text.trim().split(/\s+/).filter(Boolean);
-  const tokenLength = Math.max(1, Math.round(words.length * 1.3)); // Approx 1.3 tokens per word
+  const tokenLength = Math.max(1, Math.round(words.length * 1.3)); // ~1.3 tokens per word
 
-  // Calculate length-normalized implicit reward r_SimPO(x, y)
-  // r(x, y) = beta * avg_log_prob
-  const avgLogProb = baseLogProbPerToken + Math.min(0.2, (100 / Math.max(50, tokenLength)) * 0.05);
-  const implicitReward = Math.round(beta * avgLogProb * 100) / 100;
+  // r = (beta * qualityScore) / |y|
+  const implicitReward = Math.round((beta * qualityScore) / tokenLength * 1000) / 1000;
 
   return { tokenLength, implicitReward };
 }
@@ -56,7 +55,8 @@ export async function generateSimPOContrastiveEvaluation(
   const beta = 2.0;
   const gamma = 0.5; // Target reward margin constant
 
-  const dispreferredTokenInfo = calculateLengthNormalizedReward(candidateAnswer, -0.65, beta);
+  const dispQualityInit = Math.max(0.05, Math.min(0.95, score / 100));
+  const dispreferredTokenInfo = calculateLengthNormalizedReward(candidateAnswer, dispQualityInit, beta);
   let dispreferredReward = dispreferredTokenInfo.implicitReward;
 
   if (anthropicApiKey) {
@@ -107,10 +107,18 @@ REQUIRED JSON OUTPUT FORMAT:
           const parsed = JSON.parse(jsonMatch[0]);
           const preferredText = parsed.preferredText ?? '';
           const dispreferredText = parsed.dispreferredText ?? candidateAnswer;
-          const deltas = parsed.structuralDeltas ?? [];
+          const rawDeltas = parsed.structuralDeltas ?? [];
+          const validatedDeltas: StructuralDelta[] = [];
+          for (const d of rawDeltas) {
+            const result = structuralDeltaSchema.safeParse(d);
+            if (result.success) validatedDeltas.push(result.data);
+          }
+          const deltas = validatedDeltas;
 
-          const prefTokenInfo = calculateLengthNormalizedReward(preferredText, -0.22, beta);
-          const dispTokenInfo = calculateLengthNormalizedReward(dispreferredText, -0.65, beta);
+          const prefQuality = 0.85; // FAANG target benchmark quality
+          const dispQuality = Math.max(0.05, Math.min(0.95, score / 100)); // from evaluation score
+          const prefTokenInfo = calculateLengthNormalizedReward(preferredText, prefQuality, beta);
+          const dispTokenInfo = calculateLengthNormalizedReward(dispreferredText, dispQuality, beta);
 
           const preferredReward = prefTokenInfo.implicitReward;
           const dispreferredRewardFinal = dispTokenInfo.implicitReward;
@@ -148,8 +156,10 @@ REQUIRED JSON OUTPUT FORMAT:
   const preferredText = `Optimal FAANG Target for ${role}: Construct a resilient execution architecture incorporating explicit Big-O bounds, atomic cache-aside mutation locks (e.g. Redlock with auto-lease extension), and comprehensive fallback circuits for network split-brain recovery.`;
   const dispreferredText = candidateAnswer.trim().length > 10 ? candidateAnswer : 'Candidate provided a high-level explanation without concrete Big-O bounds or failure circuit specifications.';
 
-  const prefTokenInfo = calculateLengthNormalizedReward(preferredText, -0.20, beta);
-  const dispTokenInfo = calculateLengthNormalizedReward(dispreferredText, -0.62, beta);
+  const prefQuality = 0.85;
+  const dispQuality = Math.max(0.05, Math.min(0.95, score / 100));
+  const prefTokenInfo = calculateLengthNormalizedReward(preferredText, prefQuality, beta);
+  const dispTokenInfo = calculateLengthNormalizedReward(dispreferredText, dispQuality, beta);
 
   const preferredReward = prefTokenInfo.implicitReward;
   const dispreferredRewardFinal = dispTokenInfo.implicitReward;
