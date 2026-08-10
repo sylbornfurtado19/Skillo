@@ -17,8 +17,10 @@ export interface UserProfile {
   location?: string;
   experience?: string;
   profileSettings?: ProfileSettings;
+  profile_settings?: ProfileSettings;
   skillMemoryStore?: CandidateSkillMemoryStore;
 }
+
 
 
 export interface JobRecord {

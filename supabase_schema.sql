@@ -12,9 +12,20 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     email TEXT NOT NULL,
     name TEXT,
     avatar_url TEXT,
+    title TEXT,
+    location TEXT,
+    experience TEXT,
+    profile_settings JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration-safe column additions for existing profiles tables
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS experience TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS profile_settings JSONB DEFAULT '{}'::jsonb;
+
 
 -- 2. RESUMES TABLE
 CREATE TABLE IF NOT EXISTS public.resumes (
