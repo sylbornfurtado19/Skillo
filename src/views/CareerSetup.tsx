@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fa';
 import { CAREER_DOMAINS, getQuestionsForSetup } from '../services/constants';
 import { useAuth } from '../hooks/useAuth';
+import { useInterview } from '../context/InterviewContext';
 import { getProfile } from '../services/profile';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
