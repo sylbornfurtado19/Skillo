@@ -109,7 +109,7 @@ export default function Landing() {
       </section>
 
       {/* 2. Capability Features & Performance Flows */}
-      <section id="features" className="space-y-28 px-4 max-w-6xl mx-auto scroll-mt-24">
+      <section className="space-y-28 px-4 max-w-6xl mx-auto">
         {/* PART 1 — "How It Works" Flow */}
         <motion.div
           id="how-it-works"
@@ -117,7 +117,7 @@ export default function Landing() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="space-y-12 scroll-mt-28"
+          className="space-y-12 scroll-mt-32"
         >
           <SectionHeader
             title="How It Works"
@@ -158,12 +158,14 @@ export default function Landing() {
 
         {/* PART 2 — Feature Highlights Grid */}
         <motion.div
+          id="features"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="space-y-12"
+          className="space-y-12 scroll-mt-32"
         >
+
           <SectionHeader
             title="Features"
             description="Tools designed to help you communicate more effectively."
@@ -308,7 +310,8 @@ export default function Landing() {
       </section>
 
       {/* 4. Supported Domains */}
-      <section id="domains" className="space-y-12 px-4 max-w-6xl mx-auto scroll-mt-24">
+      <section id="domains" className="space-y-12 px-4 max-w-6xl mx-auto scroll-mt-32">
+
         <SectionHeader
           title="Supported Career Domains"
           description="Pick the field you're interviewing for. Questions and roles adjust automatically."

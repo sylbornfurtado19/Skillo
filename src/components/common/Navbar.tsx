@@ -25,12 +25,16 @@ export default function Navbar() {
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     if (pathname === '/') {
       e.preventDefault();
-      const element = document.getElementById(href.substring(1));
+      const targetId = href.substring(1);
+      const element = document.getElementById(targetId);
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
+        const yOffset = -100;
+        const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
       }
     }
   };
+
 
   const handleLogout = async () => {
     await signOut();
