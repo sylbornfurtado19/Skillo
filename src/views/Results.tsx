@@ -13,9 +13,9 @@ import {
   FaArrowRight,
   FaAward,
   FaListUl,
-  FaChartLine,
   FaExchangeAlt,
 } from 'react-icons/fa';
+
 
 import '../lib/chartSetup';
 
