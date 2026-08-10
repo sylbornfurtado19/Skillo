@@ -55,8 +55,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Perform server-side analysis
-    const resultData = performResumeAnalysis(parseResult.data, user.id);
+    // 4. Perform server-side GraphRAG analysis
+    const resultData = await performResumeAnalysis(parseResult.data, user.id);
 
     // 5. Return computed analysis result (no body echo)
     return NextResponse.json({

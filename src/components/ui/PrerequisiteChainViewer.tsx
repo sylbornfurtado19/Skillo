@@ -82,10 +82,11 @@ export default function PrerequisiteChainViewer({
 
       <div className="space-y-3">
         {list.map((chain, idx) => {
-          const isExpanded = !!expandedChains[chain.id];
+          const chainId = chain.id || `chain_${idx + 1}`;
+          const isExpanded = !!expandedChains[chainId];
 
           return (
-            <Card variant="glass" key={chain.id || idx} className="p-4 space-y-3">
+            <Card variant="glass" key={chainId} className="p-4 space-y-3">
               {/* Card Header & Severity */}
               <div className="flex justify-between items-center text-xs">
                 <span className="font-bold text-white font-mono">Chain #{idx + 1}</span>
@@ -100,7 +101,7 @@ export default function PrerequisiteChainViewer({
                     Missing Foundation
                   </span>
                   <p className="text-gray-200 font-medium text-[11px] leading-tight">
-                    {chain.missingFoundation}
+                    {chain.missingFoundation || chain.missingSkill || 'Foundational Skill'}
                   </p>
                 </div>
 
@@ -126,7 +127,7 @@ export default function PrerequisiteChainViewer({
                     Downstream Impact
                   </span>
                   <p className="text-gray-200 font-medium text-[11px] leading-tight">
-                    {chain.downstreamImpact}
+                    {chain.downstreamImpact || chain.macroDomainImpact || 'System Impact'}
                   </p>
                 </div>
               </div>
@@ -135,7 +136,7 @@ export default function PrerequisiteChainViewer({
               <div className="border-t border-white/5 pt-2">
                 <button
                   type="button"
-                  onClick={() => toggleExpand(chain.id)}
+                  onClick={() => toggleExpand(chainId)}
                   className="w-full flex items-center justify-between text-[10px] text-gray-400 hover:text-white font-mono cursor-pointer transition"
                 >
                   <span className="flex items-center gap-1.5 text-accent font-semibold">

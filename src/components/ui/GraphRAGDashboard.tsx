@@ -42,6 +42,7 @@ export default function GraphRAGDashboard({
     synthesizedSummary:
       'Candidate displays high alignment across Core Backend Systems and API Frameworks. Identified prerequisite gap in Distributed Cache Mutex Protocols.',
     candidateGraph: {
+      entities: [],
       nodes: [
         {
           id: 'n_0_backend',
@@ -111,9 +112,9 @@ export default function GraphRAGDashboard({
         },
       ],
       relationships: [
-        { sourceId: 'n_0_backend', targetId: 'n_1_databases', relationshipType: 'REQUIRES', strength: 0.9 },
-        { sourceId: 'n_1_databases', targetId: 'n_2_redis', relationshipType: 'REQUIRES', strength: 0.85 },
-        { sourceId: 'n_2_redis', targetId: 'n_2_redlock', relationshipType: 'BLOCKS', strength: 0.95 },
+        { sourceId: 'n_0_backend', targetId: 'n_1_databases', relationshipType: 'REQUIRES', strength: 0.9, weight: 0.9, description: 'Backend requires databases' },
+        { sourceId: 'n_1_databases', targetId: 'n_2_redis', relationshipType: 'REQUIRES', strength: 0.85, weight: 0.85, description: 'Databases require Redis' },
+        { sourceId: 'n_2_redis', targetId: 'n_2_redlock', relationshipType: 'BLOCKS', strength: 0.95, weight: 0.95, description: 'Redis blocks Redlock gap' },
       ],
       communities: [
         {
@@ -345,7 +346,7 @@ export default function GraphRAGDashboard({
                 <p className="text-gray-300 text-[11px] leading-relaxed">{selectedNode.description}</p>
                 <div className="pt-2">
                   <span className="text-[9px] text-primary block">Prerequisite Dependencies:</span>
-                  <span className="text-white text-[10px]">{selectedNode.prerequisites.join(', ') || 'None'}</span>
+                  <span className="text-white text-[10px]">{selectedNode.prerequisites?.join(', ') || 'None'}</span>
                 </div>
               </div>
 

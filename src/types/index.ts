@@ -20,50 +20,67 @@ export interface JobRecord {
 
 export type GraphRAGLevel = 0 | 1 | 2; // Level 0: Macro Domain, Level 1: Core Pillar, Level 2: Leaf Utility
 export type GraphNodeStatus = 'VERIFIED' | 'MISSING' | 'PARTIAL';
+export type EntityType = 'SKILL' | 'FRAMEWORK' | 'CONCEPT' | 'DOMAIN';
+export type RelationType = 'DEPENDS_ON' | 'APPLIED_IN' | 'EXPANDS_UPON' | 'REQUIRES' | 'BLOCKS' | 'ENHANCES';
 
-export interface GraphRAGNode {
+export interface GraphEntity {
   id: string;
   name: string;
+  type?: EntityType;
+  description: string;
+  communityIdLevel0?: string;
+  communityIdLevel1?: string;
   level: GraphRAGLevel;
   status: GraphNodeStatus;
-  communityId: string;
-  communityName: string;
-  description: string;
-  prerequisites: string[];
-  downstreamImpacts: string[];
+  communityId?: string;
+  communityName?: string;
+  prerequisites?: string[];
+  downstreamImpacts?: string[];
 }
 
-export interface GraphRAGRelationship {
+export type GraphRAGNode = GraphEntity;
+
+export interface GraphRelationship {
   sourceId: string;
   targetId: string;
-  relationshipType: 'REQUIRES' | 'BLOCKS' | 'ENHANCES';
-  strength: number;
+  relationshipType: RelationType;
+  weight: number;
+  strength?: number;
+  description: string;
 }
 
-export interface GraphRAGCommunitySummary {
+export interface CommunitySummary {
   communityId: string;
-  name: string;
   level: GraphRAGLevel;
+  title?: string;
   summary: string;
-  entityCount: number;
-  coveragePercentage: number;
+  entityIds?: string[];
+  prerequisiteFor?: string[];
+  name?: string;
+  entityCount?: number;
+  coveragePercentage?: number;
 }
+
+export type GraphRAGCommunitySummary = CommunitySummary;
 
 export interface PrerequisiteGapChain {
   id: string;
-  missingFoundation: string;
+  missingSkill?: string;
+  missingFoundation?: string;
   blockedCapability: string;
-  downstreamImpact: string;
+  macroDomainImpact?: string;
+  downstreamImpact?: string;
   severity: 'CRITICAL' | 'MODERATE' | 'MINOR';
   remediationPath: string[];
 }
 
 export interface GraphRAGAnalysisResult {
-  overallDomainCoverage: number; // 0..100%
+  overallDomainCoverage: number; // 0.0 to 100.0%
   candidateGraph: {
-    nodes: GraphRAGNode[];
-    relationships: GraphRAGRelationship[];
-    communities: GraphRAGCommunitySummary[];
+    entities: GraphEntity[];
+    nodes: GraphEntity[];
+    relationships: GraphRelationship[];
+    communities: CommunitySummary[];
   };
   missingPrerequisiteChains: PrerequisiteGapChain[];
   extractedEntityCount: number;
