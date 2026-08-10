@@ -50,7 +50,46 @@ export interface EvaluationCategories {
   communication?: number;
   depth?: number;
   timeManagement?: number;
+  systemDesignLogic?: number;
+  edgeCaseHandling?: number;
   [key: string]: number | undefined;
+}
+
+export interface RubricCriterion {
+  name: string;
+  weight: number;
+  description: string;
+  scoreDescriptors: Record<1 | 2 | 3 | 4 | 5, string>;
+}
+
+export interface SinglePassEvaluation {
+  cotReasoning: string;
+  scores: {
+    technicalAccuracy: number;
+    systemDesignLogic: number;
+    edgeCaseHandling: number;
+    communicationClarity: number;
+  };
+  overallScore: number;
+  feedback: string;
+}
+
+export interface SemanticCluster {
+  clusterId: number;
+  representativeScore: number;
+  passIndices: number[];
+  probability: number;
+}
+
+export interface SUQEvaluationResult {
+  finalScore: number;
+  confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+  semanticEntropy: number;
+  clusters: SemanticCluster[];
+  passes: SinglePassEvaluation[];
+  aggregatedRubricFeedback: Record<string, string>;
+  requiresValidationPass: boolean;
+  latencyMs: number;
 }
 
 export interface EvaluationReport {
@@ -65,6 +104,7 @@ export interface EvaluationReport {
   plan?: Array<{ topic: string; desc: string }>;
   evaluatedAt?: string;
   userId?: string;
+  suqEvaluation?: SUQEvaluationResult;
 }
 
 export interface MockInterview {

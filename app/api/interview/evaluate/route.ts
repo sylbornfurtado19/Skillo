@@ -79,8 +79,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Perform server-side evaluation
-    const evaluationResult = performInterviewEvaluation(parseResult.data, user.id);
+    // 4. Perform Prometheus-2 & SUQ server-side evaluation (N=5 CoT Sampling Passes)
+    const evaluationResult = await performInterviewEvaluation(parseResult.data, user.id);
 
     // 5. Return computed evaluation result (no body echo)
     return NextResponse.json({
