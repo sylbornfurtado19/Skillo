@@ -92,6 +92,35 @@ export interface SUQEvaluationResult {
   latencyMs: number;
 }
 
+// ── LATS Types (Language Agent Tree Search - Zhou et al., ICML 2024) ──────────
+
+export type LATSActionType = 'DEEP_DIVE' | 'PIVOT' | 'EDGE_CASE_CHALLENGE';
+
+export interface LATSTreeNode {
+  id: string;
+  parentId: string | null;
+  actionType: LATSActionType;
+  questionText: string;
+  rationale: string;
+  prmScore: number; // Process Reward Model score V in [0, 1]
+  visitCount: number; // N(s, a)
+  uctValue: number; // Upper Confidence Bound for Trees
+  gapsDetected: string[];
+  isVisited: boolean;
+  isSelectedTrajectory: boolean;
+  children: LATSTreeNode[];
+}
+
+export interface LATSTreeState {
+  currentNodeId: string;
+  trajectoryHistory: string[];
+  rootNode: LATSTreeNode;
+  simulatedBranches: LATSTreeNode[];
+  activeActionType: LATSActionType;
+  currentPRMScore: number; // 0..1 or 0..100%
+  currentGaps: string[];
+}
+
 export interface EvaluationReport {
   overallScore: number;
   categories: EvaluationCategories;
@@ -105,6 +134,7 @@ export interface EvaluationReport {
   evaluatedAt?: string;
   userId?: string;
   suqEvaluation?: SUQEvaluationResult;
+  latsTreeState?: LATSTreeState;
 }
 
 export interface MockInterview {

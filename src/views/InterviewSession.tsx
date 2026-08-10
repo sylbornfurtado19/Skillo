@@ -20,6 +20,7 @@ import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import AdaptiveHUDHeader from '../components/ui/AdaptiveHUDHeader';
 
 export default function InterviewSession() {
   const router = useRouter();
@@ -428,7 +429,10 @@ export default function InterviewSession() {
                 </div>
               </div>
 
-              <div className="bg-[#030712]/60 rounded-xl p-5 border border-white/5 mt-6 min-h-[120px] flex flex-col justify-center">
+              {/* LATS Adaptive Questioning HUD Indicator */}
+              <AdaptiveHUDHeader className="mt-4" />
+
+              <div className="bg-[#030712]/60 rounded-xl p-5 border border-white/5 mt-4 min-h-[120px] flex flex-col justify-center">
                 <AnimatePresence mode="wait">
                   {interviewerSpeaking ? (
                     <motion.div
