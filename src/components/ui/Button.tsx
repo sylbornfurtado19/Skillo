@@ -61,8 +61,11 @@ export default function Button({
       {!disabled && (
         <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
       )}
-      {Icon && <Icon className="text-sm shrink-0 relative z-10" />}
-      <span className="relative z-10">{children}</span>
+      <div className="flex flex-row items-center justify-center gap-2 relative z-10 w-full shrink-0">
+        <span>{children}</span>
+        {Icon && <Icon className="text-xs shrink-0" />}
+      </div>
+
     </motion.button>
   );
 }
