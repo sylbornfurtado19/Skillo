@@ -23,7 +23,10 @@ const Radar = dynamic(() => import('react-chartjs-2').then((m) => m.Radar), { ss
 const Line = dynamic(() => import('react-chartjs-2').then((m) => m.Line), { ssr: false });
 
 import { useAuth } from '../hooks/useAuth';
-import { useInterview, SessionHistoryItem } from '../context/InterviewContext';
+import { useInterview } from '../context/InterviewContext';
+import type { SessionHistoryItem } from '../context/InterviewContext';
+
+
 import type { EvaluationCategories } from '../types/index';
 import { INTERVIEWER_PERSONAS, getQuestionsForSetup } from '../services/constants';
 import Button from '../components/ui/Button';
