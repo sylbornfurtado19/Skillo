@@ -12,17 +12,18 @@ export interface SectionHeaderProps {
 
 export function SectionHeader({ title, description, badge = '', className = '' }: SectionHeaderProps) {
   return (
-    <div className={`space-y-2 text-center md:text-left ${className}`}>
+    <div className={`flex flex-col items-center text-center space-y-2 mx-auto ${className}`}>
       {badge && (
         <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs text-primary font-medium tracking-wide uppercase">
           {badge}
         </span>
       )}
-      <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-white tracking-tight">{title}</h2>
-      {description && <p className="text-sm text-gray-400 max-w-2xl leading-relaxed">{description}</p>}
+      <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-white tracking-tight text-center">{title}</h2>
+      {description && <p className="text-sm text-gray-400 max-w-2xl leading-relaxed text-center">{description}</p>}
     </div>
   );
 }
+
 
 // Modal Component
 export interface ModalProps {
