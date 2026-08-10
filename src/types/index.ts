@@ -16,6 +16,60 @@ export interface JobRecord {
   created_at?: string;
 }
 
+// ── GraphRAG Types (Edge et al., Microsoft Research 2024) ────────────────────
+
+export type GraphRAGLevel = 0 | 1 | 2; // Level 0: Macro Domain, Level 1: Core Pillar, Level 2: Leaf Utility
+export type GraphNodeStatus = 'VERIFIED' | 'MISSING' | 'PARTIAL';
+
+export interface GraphRAGNode {
+  id: string;
+  name: string;
+  level: GraphRAGLevel;
+  status: GraphNodeStatus;
+  communityId: string;
+  communityName: string;
+  description: string;
+  prerequisites: string[];
+  downstreamImpacts: string[];
+}
+
+export interface GraphRAGRelationship {
+  sourceId: string;
+  targetId: string;
+  relationshipType: 'REQUIRES' | 'BLOCKS' | 'ENHANCES';
+  strength: number;
+}
+
+export interface GraphRAGCommunitySummary {
+  communityId: string;
+  name: string;
+  level: GraphRAGLevel;
+  summary: string;
+  entityCount: number;
+  coveragePercentage: number;
+}
+
+export interface PrerequisiteGapChain {
+  id: string;
+  missingFoundation: string;
+  blockedCapability: string;
+  downstreamImpact: string;
+  severity: 'CRITICAL' | 'MODERATE' | 'MINOR';
+  remediationPath: string[];
+}
+
+export interface GraphRAGAnalysisResult {
+  overallDomainCoverage: number; // 0..100%
+  candidateGraph: {
+    nodes: GraphRAGNode[];
+    relationships: GraphRAGRelationship[];
+    communities: GraphRAGCommunitySummary[];
+  };
+  missingPrerequisiteChains: PrerequisiteGapChain[];
+  extractedEntityCount: number;
+  synthesizedSummary: string;
+}
+
 export interface ResumeAnalysis {
   id: string;
   user_id: string;
@@ -27,6 +81,7 @@ export interface ResumeAnalysis {
   score_breakdown: Record<string, number>;
   recommendations: string[];
   created_at?: string;
+  graphRAGResult?: GraphRAGAnalysisResult;
 }
 
 export type ResumeRecord = ResumeAnalysis;

@@ -21,6 +21,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import { Progress, Loader } from '../components/ui/Loader';
+import GraphRAGDashboard from '../components/ui/GraphRAGDashboard';
 
 export default function ResumeUpload() {
   const router = useRouter();
@@ -358,6 +359,9 @@ export default function ResumeUpload() {
                 </div>
               </div>
             </Card>
+
+            {/* GraphRAG Hierarchical Skill Gap Mapper Dashboard */}
+            <GraphRAGDashboard graphRAGData={resultObj.graphRAGResult} />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card variant="glass" className="space-y-4">
