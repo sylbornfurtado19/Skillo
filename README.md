@@ -1,16 +1,17 @@
 <div align="center">
 
   <h1>⚡ SKILLO AI</h1>
-  <p><strong>Next-Generation Enterprise AI Mock Interview & Resume Intelligence Platform</strong></p>
-  <p>Powered by 5 SOTA AI Research Engines: <strong>Prometheus-2</strong>, <strong>LATS (MCTS)</strong>, <strong>GraphRAG</strong>, <strong>Reflexion</strong>, and <strong>SimPO</strong>.</p>
+  <p><strong>Enterprise-Grade AI Mock Interview & Resume Intelligence Platform</strong></p>
+  <p>Empowering software engineers with real-time AI interview simulations, deep resume alignment matrix parsing, and dynamic SOTA evaluation analytics.</p>
 
   <br/>
 
-  [![Next.js 16](https://img.shields.io/badge/Next.js-16.2%20Turbopack-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+  [![Next.js 16](https://img.shields.io/badge/Next.js-16.2%20App%20Router-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.8%20Strict-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
   [![Jest Test Suite](https://img.shields.io/badge/Jest-25%2F25%20PASSING-brightgreen?style=for-the-badge&logo=jest)](https://jestjs.io/)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
   [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20JSONB-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
-  [![Zod](https://img.shields.io/badge/Zod-Strict%20Validation-3E67B1?style=for-the-badge&logo=zod)](https://zod.dev/)
+  [![Zod](https://img.shields.io/badge/Zod-Schema%20Validation-3E67B1?style=for-the-badge&logo=zod)](https://zod.dev/)
 
 </div>
 
@@ -18,73 +19,62 @@
 
 ---
 
-## 🚀 Welcome to the Future of Technical Hiring Intelligence
+## 🌟 Overview
 
-**Skillo AI** is an enterprise-grade AI technical interview simulation and resume intelligence platform built on the **Next.js 16 App Router**. 
+**Skillo AI** is a modern, full-stack AI career preparation platform built on **Next.js 16 App Router**. It bridges the gap between candidate resume credentials and high-stakes interview execution by pairing resume data with target job specifications to deliver tailored, realistic mock assessments.
 
-Unlike conventional interview prep apps that rely on single-pass LLM prompts or static questions, **Skillo AI implements five breakthrough AI research architectures directly from ICML, NeurIPS, and Microsoft Research** to deliver production-grade interview adaptivity, mathematical confidence metrics, persistent skill memory, and contrastive benchmark evaluation.
+Candidates practice across **Technical Coding**, **System Architecture Design**, and **STAR Behavioral** tracks with adaptive AI recruiter personas, real-time speech-to-text recognition, and dynamic competency scoring.
+
+Under the hood, Skillo AI integrates **5 SOTA AI Research Engine Architectures** (Prometheus-2, LATS MCTS, GraphRAG, Reflexion, and SimPO) to bring mathematical confidence scoring, Monte Carlo Tree Search interview adaptivity, persistent cross-session skill memory, and length-normalized FAANG contrastive benchmarks into every session.
 
 ---
 
-## 🔥 5 State-of-the-Art AI Research Engines
+## 🔥 Key Capabilities & Highlights
 
-```
-                                  ┌─────────────────────────────────────────┐
-                                  │           SKILLO AI CORE ENGINE         │
-                                  └────────────────────┬────────────────────┘
-                                                       │
-        ┌──────────────────────┬──────────────────────┼──────────────────────┬──────────────────────┐
-        │                      │                      │                      │                      │
-┌───────▼────────┐     ┌───────▼────────┐     ┌───────▼────────┐     ┌───────▼────────┐     ┌───────▼────────┐
-│ Prometheus-2   │     │  LATS (MCTS)   │     │    GraphRAG    │     │   Reflexion    │     │     SimPO      │
-│ SUQ Evaluator  │     │ Adaptive Tree  │     │ Skill Mapper   │     │ Memory Store   │     │ Contrastive    │
-└────────────────┘     └────────────────┘     └────────────────┘     └────────────────┘     └────────────────┘
- (Kim et al. 2024)      (Zhou et al. 2024)     (Edge et al. 2024)     (Shinn et al. 2023)    (Meng et al. 2024)
-```
+| Feature | Description | Technical Implementation |
+|---|---|---|
+| 📄 **GraphRAG Resume Intelligence** | Extracts entities and prerequisite dependency edges from candidate resumes against JDs to construct a 3-tier skill graph. | Hierarchical Leiden community detection (L0/L1/L2), BFS topology, and upward edge gap traversal. |
+| 🌲 **LATS Adaptive Interviewer** | Dynamically branches interview follow-ups using Monte Carlo Tree Search (MCTS) based on candidate response depth. | UCT formula ($c_{\text{puct}}=1.414$), Process Reward Model (PRM $V \in [0,1]$), and 3 action trajectories (`DEEP_DIVE`, `PIVOT`, `EDGE_CASE`). |
+| 🧠 **Prometheus-2 & SUQ Evaluator** | Runs multi-pass Chain-of-Thought evaluations across score-anchored rubrics and quantifies score uncertainty. | $N=5$ parallel CoT passes, score-variance clustering ($\le 0.5$), and Semantic Entropy $\text{SE} = -\sum P(c) \log_2 P(c)$. |
+| 🔄 **Reflexion Skill Memory** | Maintains persistent verbal self-reflections and tracks skill proficiency evolution over time across sessions. | Non-blocking async worker, Supabase `profiles` JSONB storage, and cross-session LLM prompt injection. |
+| ⚡ **SimPO Contrastive Benchmark** | Compares candidate responses side-by-side against FAANG-grade preferred benchmark answers. | Implicit length-normalized reward $r = \frac{\beta \cdot \text{quality}}{\max(1, \|y\|)}$, dynamic margin $\Delta r$, and Zod delta parsing. |
+| 🎭 **Adaptive AI Personas** | Practice with distinct recruiter personas (e.g. *Sarah Chen* - Staff Lead, *David Vance* - Engineering Manager, *TechBot v2.4* - Strict Assessor). | Persona-based pacing, voice synthesis parameters, and scoring criteria. |
+| 🎙️ **Dual Workspace Studio** | Toggle seamlessly between live Speech-to-Text voice recording and a code editor typing interface. | Web Speech API integration (`window.SpeechRecognition`) with SSR safety guards. |
+| 📊 **Competency Radar Analytics** | Visual evaluation matrix measuring Technical Knowledge, Communication, Depth & Logic, and Time Management. | `react-chartjs-2` & Chart.js with dynamic code-splitting (`ssr: false`). |
+| 📄 **PDF Report Generation** | Export complete assessment diagnostics and question logs as structured PDF files. | On-demand dynamic invocation of `html2canvas` and `jsPDF`. |
+| 🔐 **Zero-Trust API Hardening** | Authenticated, validated backend API endpoints (`/api/resume/analyze`, `/api/interview/evaluate`). | Supabase Bearer token verification + Zod schema validation & generic `500` error masks. |
+
+---
+
+## 🧬 5 State-of-the-Art AI Research Engines
 
 ### 1. 🧠 Prometheus-2 Fine-Grained Rubric & SUQ Engine
-* **Research Foundation**: *Prometheus 2: An Open Source Language Model Specialized in Evaluating Other Language Models* (Kim et al., 2024) + *Semantic Uncertainty Quantification* (Kuhn et al., ICLR 2023).
-* **How It Works**: Executes $N=5$ stochastic Chain-of-Thought (CoT) evaluation passes per submission across 4 score-anchored rubric dimensions (Technical Accuracy, System Design, Edge Cases, Communication). Scores are clustered by variance $\le 0.5$, and **Semantic Entropy** is computed mathematically as:
+* **Research Foundation**: *Prometheus 2* (Kim et al., 2024) + *Semantic Uncertainty Quantification* (Kuhn et al., ICLR 2023).
+* **Implementation**: Executes $N=5$ stochastic Chain-of-Thought (CoT) evaluation passes per submission across 4 score-anchored rubric criteria. Computes **Semantic Entropy**:
   $$\text{SE}(x) = -\sum_{c \in \mathcal{C}} P(c) \log_2 P(c)$$
-* **User Benefit**: Quantifies confidence (**HIGH**, **MEDIUM**, **LOW**) so candidates know when evaluation scores are mathematically locked vs. borderline.
-
----
+* **Output**: Renders real-time confidence levels (**HIGH**, **MEDIUM**, **LOW**) on the candidate results dashboard.
 
 ### 2. 🌲 Language Agent Tree Search (LATS) MCTS Adaptive Interviewer
-* **Research Foundation**: *Language Agent Tree Search Unifies Reasoning, Acting, and Planning in Language Models* (Zhou et al., ICML 2024).
-* **How It Works**: Replaces rigid static question scripts with an active Monte Carlo Tree Search (MCTS) engine running 4 distinct phases per turn:
-  1. **Selection**: Picks candidate trajectory maximizing Upper Confidence Bound:
-     $$\text{UCT}(s,a) = Q(s,a) + c_{\text{puct}} \cdot P(s,a) \cdot \frac{\sqrt{N(s)}}{1 + N(s,a)} \quad (c_{\text{puct}} = 1.414)$$
-  2. **Expansion**: Generates 3 genuinely distinct branch paths (`DEEP_DIVE`, `PIVOT`, `EDGE_CASE_CHALLENGE`).
-  3. **PRM Evaluation**: Process Reward Model scores each branch $V \in [0,1]$.
-  4. **Backpropagation**: Updates visit counts and $Q$-values along the parent trajectory path.
-* **User Benefit**: An interviewer that dynamically pivots, probes weak spots, and challenges assumptions just like a Staff Engineer at FAANG.
-
----
+* **Research Foundation**: *LATS* (Zhou et al., ICML 2024).
+* **Implementation**: Uses Monte Carlo Tree Search (MCTS) to select optimal question trajectories by maximizing Upper Confidence Bound for Trees:
+  $$\text{UCT}(s,a) = Q(s,a) + c_{\text{puct}} \cdot P(s,a) \cdot \frac{\sqrt{N(s)}}{1 + N(s,a)} \quad (c_{\text{puct}} = 1.414)$$
+* **Output**: Expands 3 distinct branch actions (`DEEP_DIVE`, `PIVOT`, `EDGE_CASE_CHALLENGE`) evaluated via Process Reward Model ($V \in [0,1]$).
 
 ### 3. 🕸️ GraphRAG Hierarchical Skill Gap Mapper
-* **Research Foundation**: *From Local to Global: A Graph RAG Approach to Query-Focused Summarization* (Edge et al., Microsoft Research 2024).
-* **How It Works**: Replaces naive keyword matching with a full knowledge graph engine. Extracts entities (`SKILL`, `FRAMEWORK`, `CONCEPT`, `DOMAIN`) and directional edges (`DEPENDS_ON`, `APPLIED_IN`), runs BFS connected-component clustering, and assigns 3 hierarchical levels:
-  * **Level 0 (L0)**: Macro Architecture Domain
-  * **Level 1 (L1)**: Core Technical Pillars
-  * **Level 2 (L2)**: Leaf Utilities & Tooling
-* **User Benefit**: Walks graph edges upward (leaf $\rightarrow$ pillar $\rightarrow$ macro domain) to build real prerequisite gap chains (e.g. *Missing `Double-Delete Pattern` blocks `Cache Invalidation` in `Distributed Storage Systems`*).
-
----
+* **Research Foundation**: *GraphRAG Approach to Query-Focused Summarization* (Edge et al., Microsoft Research 2024).
+* **Implementation**: Constructs an entity-relationship graph from resumes and JDs. Uses BFS connected-component topological sorting to partition entities into 3 levels: **L0 Macro Domain**, **L1 Core Pillars**, and **L2 Leaf Utilities**.
+* **Output**: Traverses `prerequisites[]` graph edges to map exact root cause skill gaps.
 
 ### 4. 🔄 Reflexion Agent & Dynamic Skill Memory
 * **Research Foundation**: *Reflexion: Verbal Reinforcement Learning* (Shinn et al., NeurIPS 2023).
-* **How It Works**: Generates non-blocking, post-evaluation verbal self-critiques ($SR_t$) detailing mistake summaries, root causes, and actionable remediations. Memory is consolidated into a persistent `CandidateSkillMemoryStore` stored as JSONB in Supabase. On subsequent sessions, historical context is automatically injected into system prompts.
-* **User Benefit**: Skillo remembers past mistakes across sessions and tracks your proficiency progression from **NOVICE** $\rightarrow$ **DEVELOPING** $\rightarrow$ **PROFICIENT** $\rightarrow$ **MASTERED**.
-
----
+* **Implementation**: Generates non-blocking post-evaluation verbal self-critiques ($SR_t$) detailing mistake summaries, root cause analysis, and actionable remediation. Consolidates into `CandidateSkillMemoryStore` persisted in Supabase JSONB.
+* **Output**: Automatically injects prior session context into subsequent interview prompts and tracks proficiency progression (**NOVICE** $\rightarrow$ **DEVELOPING** $\rightarrow$ **PROFICIENT** $\rightarrow$ **MASTERED**).
 
 ### 5. ⚡ SimPO Length-Normalized Contrastive Evaluator
-* **Research Foundation**: *SimPO: Simple Preference Optimization with an Implicit Reward Margin* (Meng et al., ICML 2024).
-* **How It Works**: Evaluates candidate answers side-by-side against FAANG-grade benchmark responses using an implicit length-normalized reward:
+* **Research Foundation**: *SimPO* (Meng et al., ICML 2024).
+* **Implementation**: Evaluates candidate answers side-by-side with FAANG-grade benchmark responses using implicit length-normalized reward:
   $$r(x,y) = \frac{\beta \cdot \text{qualityScore}}{\max(1, |y|)} \quad (\beta = 2.0)$$
-  Computes target reward margins $\Delta r = r_{\text{preferred}} - r_{\text{dispreferred}}$ and structural deltas (`COMPLEXITY`, `SYSTEM_ARCHITECTURE`, `EDGE_CASES`, `TERMINOLOGY`) protected by strict Zod schema validation.
-* **User Benefit**: Shows the exact structural gap between your response and a Senior Staff Engineer's answer.
+* **Output**: Calculates target reward margin $\Delta r = r_{\text{preferred}} - r_{\text{dispreferred}}$ and structural deltas (`COMPLEXITY`, `SYSTEM_ARCHITECTURE`, `EDGE_CASES`, `TERMINOLOGY`) protected by strict Zod schema validation.
 
 ---
 
@@ -92,8 +82,10 @@ Unlike conventional interview prep apps that rely on single-pass LLM prompts or 
 
 ```mermaid
 flowchart TD
-    subgraph Client ["Client UI Layer (Next.js 16 + React 19)"]
-        UI["Interview Studio & Resume Upload"]
+    subgraph Client ["Client Layer (Next.js 16 App Router)"]
+        UI["Candidate Studio (React 19)"]
+        Voice["Web Speech API Rec"]
+        Chart["Chart.js Radar & Metrics"]
         SUQDash["SUQ Confidence Dashboard"]
         LATSHud["LATS Decision Tree Visualizer"]
         GraphDash["GraphRAG Hierarchy Viewer"]
@@ -101,47 +93,47 @@ flowchart TD
         SimPOCard["SimPO Contrastive Card"]
     end
 
-    subgraph API ["Hardened Server API Routes"]
-        EvalRoute["POST /api/interview/evaluate"]
-        ResumeRoute["POST /api/resume/analyze"]
+    subgraph Middleware ["Auth & Middleware Layer"]
+        Bearer["Bearer Auth Token Check"]
+        AuthContext["AuthContext (Single Source of Truth)"]
     end
 
-    subgraph Engines ["5 AI Research Engines"]
-        Prometheus["Prometheus-2 & SUQ Engine (N=5 Passes)"]
-        LATS["LATS MCTS Engine (c_puct = 1.414)"]
-        GraphRAG["GraphRAG Engine (Leiden BFS & Edge Traversal)"]
-        Reflexion["Reflexion Async Worker (Non-Blocking)"]
-        SimPO["SimPO Contrastive Engine (beta = 2.0)"]
+    subgraph Server ["Server API Endpoints & AI Engines"]
+        ResumeAPI["/api/resume/analyze"]
+        EvalAPI["/api/interview/evaluate"]
+        ZodVal["Zod Schema Guard"]
+        PrometheusEngine["Prometheus-2 & SUQ (N=5 CoT Passes)"]
+        LATSEngine["LATS MCTS Engine (c_puct = 1.414)"]
+        GraphRAGEngine["GraphRAG Engine (BFS & Edge Traversal)"]
+        ReflexionEngine["Reflexion Async Worker (Non-Blocking)"]
+        SimPOEngine["SimPO Contrastive Engine (beta = 2.0)"]
     end
 
-    subgraph Data ["Persistence & External LLM"]
-        Supabase[("Supabase DB & JSONB Profiles")]
+    subgraph Cloud ["Cloud Platform & Storage"]
+        Supabase["Supabase DB & JSONB Profiles"]
         Anthropic["Anthropic Claude Models"]
     end
 
-    UI -->|Session Submissions| EvalRoute
-    UI -->|Resume + JD| ResumeRoute
-    
-    EvalRoute --> Prometheus
-    EvalRoute --> LATS
-    EvalRoute --> SimPO
-    EvalRoute -.->|Async Non-Blocking| Reflexion
-    
-    ResumeRoute --> GraphRAG
+    UI --> AuthContext
+    AuthContext --> Bearer
+    UI -->|JSON Payload + Bearer Token| ResumeAPI
+    UI -->|JSON Payload + Bearer Token| EvalAPI
 
-    Prometheus --> SUQDash
-    LATS --> LATSHud
-    GraphRAG --> GraphDash
-    Reflexion --> MemGraph
-    SimPO --> SimPOCard
+    ResumeAPI --> ZodVal --> GraphRAGEngine --> GraphDash
+    EvalAPI --> ZodVal --> PrometheusEngine --> SUQDash
+    EvalAPI --> LATSEngine --> LATSHud
+    EvalAPI --> SimPOEngine --> SimPOCard
+    EvalAPI -.->|Async Non-Blocking| ReflexionEngine --> MemGraph
 
-    Reflexion <--> Supabase
-    Engines <--> Anthropic
+    ReflexionEngine <--> Supabase
+    PrometheusEngine <--> Anthropic
+    LATSEngine <--> Anthropic
+    SimPOEngine <--> Anthropic
 ```
 
 ---
 
-## ⚡ Quick Start Guide
+## 🚀 Quick Start Guide
 
 ### 1. Prerequisites
 - **Node.js**: `v18.17.0` or higher (v20+ recommended)
@@ -149,7 +141,7 @@ flowchart TD
 
 ### 2. Installation
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/sylbornfurtado19/Skillo.git
 
 # Navigate into directory
@@ -160,13 +152,18 @@ npm install
 ```
 
 ### 3. Environment Setup
-Create a `.env.local` file in the root directory:
+Copy the example environment file to `.env.local`:
+```bash
+cp .env.example .env.local
+```
+
+Update `.env.local` with your configuration:
 ```env
 # Public Supabase Settings
 NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
-# Server-Side Private Key (Optional - Graceful Fallbacks Included)
+# Server-Side Keys (Private)
 ANTHROPIC_API_KEY=sk-ant-your-api-key
 ```
 
@@ -177,7 +174,8 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS skill_memory_store JSONB DEFAULT '{}';
 ```
 
-### 5. Launch Development Server
+### 5. Development Server
+Start the Next.js Turbopack dev server:
 ```bash
 npm run dev
 ```
@@ -185,78 +183,111 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 
 ---
 
-## 🧪 Comprehensive Verification & Test Commands
+## 📡 API Endpoint Reference
 
-Skillo AI includes a 25-test unit suite validating all five AI engines, along with strict TypeScript and production build verification:
+### `POST /api/resume/analyze`
+Parses candidate resume payload and executes GraphRAG entity-relationship extraction and prerequisite gap mapping.
+
+- **Headers**: `Authorization: Bearer <supabase_access_token>`
+- **Request Body**:
+  ```json
+  {
+    "fileName": "Resume.pdf",
+    "jobTitle": "Senior Frontend Architect",
+    "jobDescription": "We are seeking a React 19 & TypeScript specialist..."
+  }
+  ```
+- **Responses**: `200 OK` (Success), `401 Unauthorized`, `400 Bad Request`, `422 Unprocessable Entity`, `500 Internal Server Error`.
+
+### `POST /api/interview/evaluate`
+Evaluates submitted interview responses through Prometheus-2 multi-pass SUQ, generates LATS follow-up trajectories, computes SimPO contrastive benchmarks, and triggers async Reflexion memory updates.
+
+- **Headers**: `Authorization: Bearer <supabase_access_token>`
+- **Request Body**:
+  ```json
+  {
+    "setupData": {
+      "domain": "Computer Science",
+      "role": "Software Engineer",
+      "experienceLevel": "Senior",
+      "type": "Technical",
+      "persona": "sarah"
+    },
+    "questionsList": [
+      { "id": "q_1", "question": "Explain React's virtual DOM reconciliation algorithm." }
+    ],
+    "answersList": [
+      { "questionId": "q_1", "answerText": "Reconciliation compares virtual DOM trees..." }
+    ]
+  }
+  ```
+- **Responses**: `200 OK` (Success), `401 Unauthorized`, `400 Bad Request`, `422 Unprocessable Entity`, `500 Internal Server Error`.
+
+---
+
+## 🛠️ Verification & Build Commands
 
 ```bash
-# 1. Run strict TypeScript compilation check (0 errors)
+# Type-check TypeScript codebase strictly (0 errors)
 npx tsc --noEmit
 
-# 2. Execute Jest AI engine unit test suite (25/25 PASS)
+# Run Jest AI Engine unit test suite (25/25 PASSING)
 npm test
 
-# 3. Perform Next.js production build check
+# Run Next.js production build check
 npm run build
 
-# 4. Start local production server
+# Run local production server
 npm run start
 ```
 
 ---
 
-## 📂 Codebase Architecture
+## 📂 Project Structure
 
 ```text
 Skillo/
-├── app/                        # Next.js 16 App Router Pages & API Routes
-│   ├── (app)/                  # Authenticated Application Views
-│   │   ├── dashboard/          # Analytics & Competency Metrics
-│   │   ├── setup/              # Interview Setup & Persona Selection
-│   │   ├── interview/          # Live Studio with Speech-to-Text & Code Editor
-│   │   ├── results/            # Prometheus-2 & SimPO Diagnostics
-│   │   ├── resume/             # GraphRAG Resume Gap Analysis
-│   │   ├── profile/            # Reflexion Skill Memory Graph View
-│   │   └── settings/           # User & Assessor Preferences
-│   └── api/                    # API Route Handlers
-│       ├── resume/analyze/     # GraphRAG Endpoint Handler
-│       └── interview/evaluate/ # Prometheus-2 / LATS / SimPO Endpoint
-├── src/                        # Main Application Codebase
-│   ├── components/ui/          # Client Visualizers & Research Dashboards
-│   │   ├── SUQConfidenceDashboard.tsx   # Prometheus-2 & SUQ Visualizer
-│   │   ├── LATSTreeVisualizer.tsx       # MCTS Tree Drawer
-│   │   ├── AdaptiveHUDHeader.tsx        # Dynamic Interview HUD
-│   │   ├── GraphRAGDashboard.tsx        # 3-Tier Skill Hierarchy Graph
-│   │   ├── PrerequisiteChainViewer.tsx  # Graph Edge Gap Traversal
-│   │   ├── SkillMemoryGraph.tsx         # Reflexion Memory Graph
-│   │   └── SimPOContrastiveCard.tsx     # Side-by-Side Benchmark Card
-│   ├── lib/services/           # 5 Server-Side AI Research Engines
-│   │   ├── interviewEvaluation.server.ts # Master Evaluator Orchestrator
-│   │   ├── latsEngine.server.ts          # MCTS & UCT Formula Engine
-│   │   ├── graphRAG.server.ts            # Leiden BFS & Prerequisite Graph
-│   │   ├── reflexionEngine.server.ts     # Verbal Self-Critique & Memory
-│   │   ├── simpoEngine.server.ts         # Length-Normalized Reward Engine
-│   │   └── resumeAnalysis.server.ts      # GraphRAG Resume Parser
-│   ├── services/               # Client Services & Profile Helpers
-│   ├── types/                  # Unified Strict TypeScript Interfaces (`index.ts`)
-│   └── views/                  # Modular View Page Wrappers
+├── app/                        # Next.js 16 App Router Routes
+│   ├── (app)/                  # Main Application Route Group
+│   │   ├── dashboard/          # Analytics & Metrics View
+│   │   ├── setup/              # Interview Setup View
+│   │   ├── interview/          # Live Interview Workspace
+│   │   ├── results/            # Performance Diagnostics & Prometheus-2 View
+│   │   ├── resume/             # GraphRAG Resume Upload & Job Matcher
+│   │   ├── profile/            # Reflexion Candidate Profile & Skill Memory
+│   │   └── settings/           # Assessor & UI Preferences
+│   ├── api/                    # Hardened Server API Endpoints
+│   │   ├── resume/analyze/     # GraphRAG Resume Analysis Route
+│   │   └── interview/evaluate/ # Prometheus-2 / LATS / SimPO Evaluation Route
+│   ├── layout.tsx              # Root HTML & Font Provider
+│   └── providers.tsx           # Global Auth & State Providers
+├── src/                        # Source Code & Components
+│   ├── components/             # Reusable UI Components
+│   │   └── ui/                 # Research Dashboards & Visualizer Cards
+│   ├── context/                # AuthContext & InterviewContext
+│   ├── hooks/                  # Custom React Hooks (useAuth)
+│   ├── lib/                    # Supabase Client & Server Services
+│   │   └── services/           # 5 AI Research Engine Services
+│   │       ├── interviewEvaluation.server.ts # Master Orchestrator
+│   │       ├── latsEngine.server.ts          # LATS MCTS Engine
+│   │       ├── graphRAG.server.ts            # GraphRAG Engine
+│   │       ├── reflexionEngine.server.ts     # Reflexion Memory Engine
+│   │       ├── simpoEngine.server.ts         # SimPO Contrastive Engine
+│   │       └── resumeAnalysis.server.ts      # Resume Analysis Delegate
+│   ├── services/               # Client Service Modules & Constants
+│   ├── types/                  # Strict TypeScript Interfaces (`index.ts`)
+│   └── views/                  # Modular View Page Components
 ├── tests/                      # Jest AI Engine Unit Test Suite
 │   └── aiEngine.test.ts        # 25 Tests (SUQ, UCT, SimPO, GraphRAG, Reflexion)
 ├── audit.md                    # Master Post-Remediation Verification Report
-├── jest.config.cjs             # ESM-compatible Jest Configuration
-└── tsconfig.json               # Strict TypeScript Configuration
+├── jest.config.cjs             # ESM-compatible Jest Config
+├── .env.example                # Environment Variable Template
+├── next.config.js              # Next.js Configuration
+├── tailwind.config.js          # Tailwind CSS Theme System
+└── tsconfig.json               # Strict TypeScript Compiler Options
 ```
 
 ---
 
-## 📜 License & Citation
-
-This project is open-source under the **MIT License**.
-
-If you use Skillo AI's engine implementations in your research or application, please cite the underlying foundational papers:
-- *Prometheus 2: An Open Source Language Model Specialized in Evaluating Other Language Models* (Kim et al., 2024)
-- *Semantic Uncertainty Quantification* (Kuhn et al., ICLR 2023)
-- *LATS: Language Agent Tree Search Unifies Reasoning, Acting, and Planning* (Zhou et al., ICML 2024)
-- *From Local to Global: A Graph RAG Approach to Query-Focused Summarization* (Edge et al., Microsoft Research 2024)
-- *Reflexion: Verbal Reinforcement Learning* (Shinn et al., NeurIPS 2023)
-- *SimPO: Simple Preference Optimization with an Implicit Reward Margin* (Meng et al., ICML 2024)
+## 📜 License
+This project is licensed under the **MIT License**.
