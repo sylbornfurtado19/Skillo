@@ -147,7 +147,7 @@ export default function Results() {
     : null;
 
   // Datasets for Radar chart
-  const radarDatasets: Array<Record<string, any>> = [
+  const radarDatasets = [
     {
       label: 'Current Session',
       data: [scores.techKnowledge, scores.communication, scores.confidence, scores.problemSolving],
@@ -167,17 +167,17 @@ export default function Results() {
       backgroundColor: 'rgba(148, 163, 184, 0.08)',
       borderColor: '#94A3B8',
       borderWidth: 1.5,
-      borderDash: [4, 4],
       pointBackgroundColor: '#94A3B8',
       pointBorderColor: '#fff',
       pointHoverRadius: 5,
     });
   }
 
-  const radarData = {
+  const radarData: any = {
     labels: ['Technical Knowledge', 'Communication', 'Confidence', 'Problem Solving'],
     datasets: radarDatasets,
   };
+
 
   const radarOptions = {
     scales: {
