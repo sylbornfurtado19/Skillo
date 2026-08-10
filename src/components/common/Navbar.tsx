@@ -78,11 +78,11 @@ export default function Navbar() {
             onClick={() => router.push('/dashboard')}
             variant="primary"
             size="sm"
-            className="group h-9"
-            icon={FaArrowRight}
+            className="h-9"
           >
             Start Preparing
           </Button>
+
 
 
           {isAuthenticated ? (
