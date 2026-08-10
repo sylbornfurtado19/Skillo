@@ -12,8 +12,8 @@ export default function Settings() {
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
 
   const candidateName =
     (user?.user_metadata?.full_name as string | undefined) ??

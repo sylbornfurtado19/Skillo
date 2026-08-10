@@ -24,7 +24,8 @@ import { Progress } from '../components/ui/Loader';
 export default function CareerSetup() {
   const router = useRouter();
   const { user } = useAuth();
-  const { resumeData, setupData, setSetupData, setQuestions, setCurrentQuestionIndex, setAnswers } = useInterview();
+  const { setupData, setSetupData, setQuestions, setCurrentQuestionIndex, setAnswers } = useInterview();
+
 
   useEffect(() => {
     if (!user?.id) return;

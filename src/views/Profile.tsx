@@ -21,12 +21,12 @@ export default function Profile() {
   const { isAuthenticated, user } = useAuth();
   const {
     sessionHistory,
-    setResumeData,
     setQuestions,
     setAnswers,
     setResults,
     setSetupData,
   } = useInterview();
+
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
