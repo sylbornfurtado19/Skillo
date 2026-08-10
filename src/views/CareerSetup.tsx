@@ -10,6 +10,7 @@ import {
   FaChevronRight,
   FaCheckCircle,
   FaExclamationTriangle,
+  FaKeyboard,
 } from 'react-icons/fa';
 import { CAREER_DOMAINS, getQuestionsForSetup } from '../services/constants';
 import { useAuth } from '../hooks/useAuth';
@@ -21,13 +22,48 @@ import Badge from '../components/ui/Badge';
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import { Progress } from '../components/ui/Loader';
 
+const SETUP_STORAGE_KEY = 'skillo_career_setup_state';
+
 export default function CareerSetup() {
   const router = useRouter();
   const { user } = useAuth();
   const { resumeData, setupData, setSetupData, setQuestions, setCurrentQuestionIndex, setAnswers } = useInterview();
 
+  // Wizard Step State & Persistence
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 6;
 
+  // Restore step and setupData from sessionStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem(SETUP_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.currentStep) setCurrentStep(parsed.currentStep);
+          if (parsed.setupData) setSetupData(parsed.setupData);
+        }
+      } catch (err) {
+        console.warn('Failed to load setup state from sessionStorage:', err);
+      }
+    }
+  }, []);
 
+  // Persist currentStep and setupData changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(
+          SETUP_STORAGE_KEY,
+          JSON.stringify({ currentStep, setupData })
+        );
+      } catch (err) {
+        console.warn('Failed to save setup state to sessionStorage:', err);
+      }
+    }
+  }, [currentStep, setupData]);
+
+  // Load user profile defaults if not already restored from session
   useEffect(() => {
     if (!user?.id) return;
     getProfile(user.id).then(({ data }) => {
@@ -43,11 +79,6 @@ export default function CareerSetup() {
     });
   }, [user?.id]);
 
-
-  // Wizard Step State
-  const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 6;
-
   // Media Diagnostics State
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -55,7 +86,12 @@ export default function CareerSetup() {
   const [deviceChecked, setDeviceChecked] = useState(false);
   const [cameraPermission, setCameraPermission] = useState<'none' | 'granted' | 'denied'>('none');
   const [micPermission, setMicPermission] = useState<'none' | 'granted' | 'denied'>('none');
-  const [audioLevel, setAudioLevel] = useState(10);
+  const [audioLevel, setAudioLevel] = useState(0);
+
+  // Web Audio API refs for REAL mic volume detection
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number | null>(null);
 
   const startDeviceCheck = async () => {
     setDeviceChecking(true);
@@ -83,6 +119,58 @@ export default function CareerSetup() {
     }
   }, [stream]);
 
+  // Real Web Audio API microphone amplitude detection
+  useEffect(() => {
+    if (stream && micPermission === 'granted') {
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const audioCtx = new AudioCtx();
+          const analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 256;
+
+          const source = audioCtx.createMediaStreamSource(stream);
+          source.connect(analyser);
+
+          audioContextRef.current = audioCtx;
+          analyserRef.current = analyser;
+
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+          const updateVolume = () => {
+            if (!analyserRef.current) return;
+            analyserRef.current.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+              sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+            // Scale average (0-255) into a 0-100 range
+            const scaledLevel = Math.min(100, Math.round((average / 128) * 100));
+            setAudioLevel(scaledLevel);
+
+            animFrameRef.current = requestAnimationFrame(updateVolume);
+          };
+
+          updateVolume();
+        }
+      } catch (err) {
+        console.warn('Web Audio API initialization failed:', err);
+      }
+    }
+
+    return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
+      analyserRef.current = null;
+    };
+  }, [stream, micPermission]);
+
   useEffect(() => {
     return () => {
       if (stream) {
@@ -91,17 +179,16 @@ export default function CareerSetup() {
     };
   }, [stream]);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (deviceChecked) {
-      interval = setInterval(() => {
-        setAudioLevel(Math.floor(Math.random() * 50) + 10);
-      }, 250);
-    }
-    return () => clearInterval(interval);
-  }, [deviceChecked]);
-
   const handleStartInterview = () => {
+    // Clear persisted wizard progress upon starting session
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem(SETUP_STORAGE_KEY);
+      } catch (err) {
+        console.warn('Failed to clear setup state:', err);
+      }
+    }
+
     const questList = getQuestionsForSetup(setupData);
     const limitedQuestions = questList.slice(0, setupData.questionCount);
     setQuestions(limitedQuestions.map((q) => q.question));
@@ -161,13 +248,13 @@ export default function CareerSetup() {
   }
 
   const domains = Object.keys(CAREER_DOMAINS);
-  const roles = CAREER_DOMAINS[setupData.domain as keyof typeof CAREER_DOMAINS] || CAREER_DOMAINS['Computer Science'];
-  const experienceLevels = ['Junior', 'Mid-Level', 'Senior', 'Lead'];
-  const interviewTypes = ['Technical', 'Behavioral', 'System Design', 'Mixed'];
-  const difficulties = ['Easy', 'Medium', 'Hard'];
-  const questionCounts = [3, 5, 10];
+  const roles = CAREER_DOMAINS[setupData.domain as keyof typeof CAREER_DOMAINS] || [];
+  const experienceLevels = ['Junior', 'Mid-Level', 'Senior', 'Tech Lead'];
+  const interviewTypes = ['Technical', 'Behavioral', 'System Design', 'Mixed Track'];
+  const difficulties = ['Adaptive AI', 'Easy', 'Medium', 'Hard', 'Expert'];
+  const questionCounts = [3, 5, 7, 10];
 
-  const selectOption = (field: string, value: string | number) => {
+  const selectOption = (field: string, value: unknown) => {
     const updatedSetup = { ...setupData, [field]: value };
 
     if (field === 'domain' && typeof value === 'string') {
@@ -271,7 +358,7 @@ export default function CareerSetup() {
                     className="space-y-4"
                   >
                     <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
-                      Select Targeted Role
+                      Select Target Role
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
                       {roles.map((role) => (
@@ -279,7 +366,7 @@ export default function CareerSetup() {
                           key={role}
                           onClick={() => selectOption('role', role)}
                           variant={setupData.role === role ? 'glow-primary' : 'glass'}
-                          className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
+                          className={`hover:scale-[1.01] transition-all py-3.5 px-4 border flex items-center justify-between cursor-pointer ${
                             setupData.role === role ? 'border-primary' : 'border-white/5'
                           }`}
                         >
@@ -300,28 +387,20 @@ export default function CareerSetup() {
                     className="space-y-4"
                   >
                     <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
-                      Choose Experience Level
+                      Select Seniority Level
                     </h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {experienceLevels.map((lvl) => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {experienceLevels.map((exp) => (
                         <Card
-                          key={lvl}
-                          onClick={() => selectOption('experienceLevel', lvl)}
-                          variant={setupData.experienceLevel === lvl ? 'glow-secondary' : 'glass'}
-                          className={`hover:scale-[1.01] transition-all py-6 text-center border flex flex-col items-center justify-center gap-2 cursor-pointer ${
-                            setupData.experienceLevel === lvl ? 'border-secondary' : 'border-white/5'
+                          key={exp}
+                          onClick={() => selectOption('experienceLevel', exp)}
+                          variant={setupData.experienceLevel === exp ? 'glow-primary' : 'glass'}
+                          className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
+                            setupData.experienceLevel === exp ? 'border-primary' : 'border-white/5'
                           }`}
                         >
-                          <span className="text-xs font-heading font-bold text-white">{lvl}</span>
-                          <span className="text-[10px] text-gray-400">
-                            {lvl === 'Junior'
-                              ? '0-2 years exp'
-                              : lvl === 'Mid-Level'
-                              ? '2-5 years exp'
-                              : lvl === 'Senior'
-                              ? '5-8 years exp'
-                              : '8+ years lead exp'}
-                          </span>
+                          <span className="text-xs font-semibold text-white">{exp}</span>
+                          {setupData.experienceLevel === exp && <FaCheckCircle className="text-primary text-sm" />}
                         </Card>
                       ))}
                     </div>
@@ -337,28 +416,20 @@ export default function CareerSetup() {
                     className="space-y-4"
                   >
                     <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
-                      Select Interview Core Focus
+                      Select Interview Track
                     </h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {interviewTypes.map((type) => (
                         <Card
                           key={type}
                           onClick={() => selectOption('type', type)}
-                          variant={setupData.type === type ? 'glow-accent' : 'glass'}
-                          className={`hover:scale-[1.01] transition-all py-6 text-center border flex flex-col items-center justify-center gap-2 cursor-pointer ${
-                            setupData.type === type ? 'border-accent' : 'border-white/5'
+                          variant={setupData.type === type ? 'glow-primary' : 'glass'}
+                          className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
+                            setupData.type === type ? 'border-primary' : 'border-white/5'
                           }`}
                         >
-                          <span className="text-xs font-heading font-bold text-white">{type}</span>
-                          <span className="text-[10px] text-gray-400">
-                            {type === 'Technical'
-                              ? 'Code & Mechanics'
-                              : type === 'Behavioral'
-                              ? 'STAR Narrative'
-                              : type === 'System Design'
-                              ? 'Scale & Caching'
-                              : 'Mixed Assessment'}
-                          </span>
+                          <span className="text-xs font-semibold text-white">{type}</span>
+                          {setupData.type === type && <FaCheckCircle className="text-primary text-sm" />}
                         </Card>
                       ))}
                     </div>
@@ -374,22 +445,20 @@ export default function CareerSetup() {
                     className="space-y-4"
                   >
                     <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
-                      Target Session Difficulty
+                      Select Difficulty Mode
                     </h3>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {difficulties.map((diff) => (
                         <Card
                           key={diff}
                           onClick={() => selectOption('difficulty', diff)}
                           variant={setupData.difficulty === diff ? 'glow-primary' : 'glass'}
-                          className={`hover:scale-[1.01] transition-all py-6 text-center border flex flex-col items-center justify-center gap-2 cursor-pointer ${
+                          className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
                             setupData.difficulty === diff ? 'border-primary' : 'border-white/5'
                           }`}
                         >
-                          <span className="text-xs font-heading font-bold text-white">{diff}</span>
-                          <span className="text-[10px] text-gray-400">
-                            {diff === 'Easy' ? 'Fundamentals' : diff === 'Medium' ? 'Core Practices' : 'Edge Cases'}
-                          </span>
+                          <span className="text-xs font-semibold text-white">{diff}</span>
+                          {setupData.difficulty === diff && <FaCheckCircle className="text-primary text-sm" />}
                         </Card>
                       ))}
                     </div>
@@ -405,20 +474,20 @@ export default function CareerSetup() {
                     className="space-y-4"
                   >
                     <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
-                      Choose Question Count
+                      Select Question Volume
                     </h3>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {questionCounts.map((count) => (
                         <Card
                           key={count}
                           onClick={() => selectOption('questionCount', count)}
-                          variant={setupData.questionCount === count ? 'glow-secondary' : 'glass'}
-                          className={`hover:scale-[1.01] transition-all py-6 text-center border flex flex-col items-center justify-center gap-2 cursor-pointer ${
-                            setupData.questionCount === count ? 'border-secondary' : 'border-white/5'
+                          variant={setupData.questionCount === count ? 'glow-primary' : 'glass'}
+                          className={`hover:scale-[1.01] transition-all py-6 px-4 border flex flex-col items-center justify-center gap-2 cursor-pointer text-center ${
+                            setupData.questionCount === count ? 'border-primary' : 'border-white/5'
                           }`}
                         >
-                          <span className="text-lg font-heading font-extrabold text-white">{count}</span>
-                          <span className="text-[10px] text-gray-400">Questions</span>
+                          <span className="text-2xl font-heading font-extrabold text-white">{count}</span>
+                          <span className="text-[10px] text-gray-400 font-mono uppercase">Questions</span>
                         </Card>
                       ))}
                     </div>
@@ -428,67 +497,57 @@ export default function CareerSetup() {
             </div>
           </div>
 
-          <div className="flex justify-between items-center border-t border-white/5 pt-4 mt-6">
-            <Button
-              onClick={handleBack}
-              disabled={currentStep === 1}
-              variant="ghost"
-              size="sm"
-              icon={FaChevronLeft}
-            >
-              Back
-            </Button>
-
-            <div className="flex gap-2">
-              <span className="text-xs text-gray-500 font-mono">
-                {setupData.domain} &bull; {setupData.role}
-              </span>
+          <div className="pt-6 border-t border-white/5 space-y-3">
+            <div className="flex justify-between items-center">
+              <Button
+                onClick={handleBack}
+                disabled={currentStep === 1}
+                variant="ghost"
+                size="sm"
+                icon={FaChevronLeft}
+              >
+                Previous Step
+              </Button>
+              <Button
+                onClick={handleNext}
+                disabled={currentStep === totalSteps}
+                variant="glass"
+                size="sm"
+              >
+                <span>Next Step</span>
+                <FaChevronRight size={10} className="ml-1" />
+              </Button>
             </div>
 
-            <Button
-              onClick={handleNext}
-              disabled={currentStep === totalSteps}
-              variant="glass"
-              size="sm"
-            >
-              <span>Next</span>
-              <FaChevronRight className="text-xs ml-1.5 shrink-0" />
-            </Button>
+            {/* Keyboard Shortcuts Hint */}
+            <div className="flex items-center justify-center gap-1.5 text-[10px] font-mono text-gray-500 pt-1">
+              <FaKeyboard className="text-gray-600 text-xs" />
+              <span>Keyboard Shortcuts: Press <kbd className="px-1 py-0.5 bg-white/10 rounded text-gray-300">Enter</kbd> for Next, <kbd className="px-1 py-0.5 bg-white/10 rounded text-gray-300">←</kbd> or <kbd className="px-1 py-0.5 bg-white/10 rounded text-gray-300">Backspace</kbd> for Previous</span>
+            </div>
           </div>
         </div>
 
         <div className="space-y-6">
-          <Card variant="glow-accent" className="flex flex-col justify-between min-h-[380px] h-full">
-            <div className="space-y-4">
-              <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block border-b border-white/5 pb-2">
-                System Diagnostics
-              </span>
+          <Card variant="glass" className="p-6 space-y-6">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider pb-3 border-b border-white/5">
+              Hardware Diagnostics
+            </h3>
 
-              <div className="relative aspect-video rounded-xl bg-[#030712] border border-white/5 flex items-center justify-center overflow-hidden">
-                {cameraPermission === 'granted' ? (
+            <div className="space-y-4">
+              <div className="relative aspect-video rounded-xl bg-[#030712] border border-white/5 overflow-hidden flex items-center justify-center">
+                {stream && cameraPermission === 'granted' ? (
                   <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                 ) : (
-                  <div className="text-center space-y-2 p-4">
-                    <div className="h-10 w-10 rounded-full bg-white/5 mx-auto flex items-center justify-center text-gray-500 text-lg border border-white/10">
-                      <FaVideoSlash />
-                    </div>
-                    <p className="text-[10px] text-gray-400">Webcam feedback inactive</p>
+                  <div className="flex flex-col items-center gap-2 text-gray-600">
+                    <FaVideoSlash className="text-2xl" />
+                    <span className="text-[10px] font-mono">Camera Offline</span>
                   </div>
                 )}
-
-                <div className="absolute bottom-2 left-2 flex gap-1.5">
-                  <Badge variant={cameraPermission === 'granted' ? 'success' : 'neutral'} size="sm">
-                    Cam
-                  </Badge>
-                  <Badge variant={micPermission === 'granted' ? 'success' : 'neutral'} size="sm">
-                    Mic
-                  </Badge>
-                </div>
               </div>
 
-              <div className="space-y-2.5 text-xs text-gray-400">
+              <div className="space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span>Webcam Connection:</span>
+                  <span>Camera Interface:</span>
                   <span
                     className={
                       cameraPermission === 'granted' ? 'text-emerald-400 font-semibold' : 'text-gray-500 font-medium'
@@ -497,7 +556,6 @@ export default function CareerSetup() {
                     {cameraPermission === 'granted' ? 'Online' : 'Unchecked'}
                   </span>
                 </div>
-
                 <div className="flex items-center justify-between">
                   <span>Audio Level:</span>
                   <span
@@ -512,12 +570,12 @@ export default function CareerSetup() {
                 {micPermission === 'granted' && (
                   <div className="space-y-1.5 pt-1">
                     <div className="flex items-center justify-between text-[9px] font-mono">
-                      <span>INPUT DB</span>
-                      <span className="text-emerald-400 font-bold">{audioLevel}dB</span>
+                      <span>MIC AMPLITUDE (REAL-TIME)</span>
+                      <span className="text-emerald-400 font-bold">{audioLevel}%</span>
                     </div>
-                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-emerald-400 transition-all duration-150"
+                        className="h-full bg-emerald-400 transition-all duration-100 ease-out"
                         style={{ width: `${audioLevel}%` }}
                       />
                     </div>

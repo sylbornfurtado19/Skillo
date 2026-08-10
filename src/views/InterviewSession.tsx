@@ -22,6 +22,8 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import AdaptiveHUDHeader from '../components/ui/AdaptiveHUDHeader';
 
+const AUTOSAVE_STORAGE_KEY_PREFIX = 'skillo_draft_ans_';
+
 export default function InterviewSession() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -64,7 +66,48 @@ export default function InterviewSession() {
   const [confirmSkip, setConfirmSkip] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
 
-  // Web Speech API recognition ref (Task 8: guarded for SSR)
+  // Restore autosaved draft for the current question index on mount or question change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedDraft = sessionStorage.getItem(`${AUTOSAVE_STORAGE_KEY_PREFIX}${currentQuestionIndex}`);
+        if (savedDraft) {
+          const parsed = JSON.parse(savedDraft);
+          if (parsed.mode) setResponseMode(parsed.mode);
+          if (parsed.typedAnswer) setTypedAnswer(parsed.typedAnswer);
+          if (parsed.transcriptText) setTranscriptText(parsed.transcriptText);
+        }
+      } catch (err) {
+        console.warn('Failed to restore draft answer from sessionStorage:', err);
+      }
+    }
+  }, [currentQuestionIndex]);
+
+  // Debounced Autosave to sessionStorage on typedAnswer / transcriptText changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const timer = setTimeout(() => {
+      if (typedAnswer || transcriptText) {
+        try {
+          sessionStorage.setItem(
+            `${AUTOSAVE_STORAGE_KEY_PREFIX}${currentQuestionIndex}`,
+            JSON.stringify({
+              mode: responseMode,
+              typedAnswer,
+              transcriptText,
+            })
+          );
+        } catch (err) {
+          console.warn('Failed to autosave draft answer to sessionStorage:', err);
+        }
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [typedAnswer, transcriptText, responseMode, currentQuestionIndex]);
+
+  // Web Speech API recognition ref
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
@@ -111,8 +154,17 @@ export default function InterviewSession() {
     };
   }, [showToast]);
 
-  // Task 9: Declare handleNextQuestion useCallback BEFORE the timer useEffect
+  // Declare handleNextQuestion useCallback BEFORE the timer useEffect
   const handleNextQuestion = useCallback(() => {
+    // Clear draft for this question upon submission
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem(`${AUTOSAVE_STORAGE_KEY_PREFIX}${currentQuestionIndex}`);
+      } catch (err) {
+        console.warn('Failed to clear draft answer from sessionStorage:', err);
+      }
+    }
+
     setConfirmSkip(false);
     if (recording && recognitionRef.current) {
       try {
@@ -173,7 +225,7 @@ export default function InterviewSession() {
     router,
   ]);
 
-  // Task 9: Timer useEffect declared AFTER handleNextQuestion
+  // Timer useEffect declared AFTER handleNextQuestion
   useEffect(() => {
     if (interviewerSpeaking) {
       const speechTimer = setTimeout(() => {
@@ -197,7 +249,31 @@ export default function InterviewSession() {
     return () => clearInterval(timer);
   }, [currentQuestionIndex, interviewerSpeaking, currentQuestion.duration, handleNextQuestion]);
 
+  // Unsaved Content Navigation Guard (Tab close / refresh)
+  const activeAnswerContent = responseMode === 'type' ? typedAnswer : transcriptText;
+  const hasUnsavedContent = activeAnswerContent.trim().length > 0 && !grading;
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedContent) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedContent]);
+
   const handleConfirmSkip = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem(`${AUTOSAVE_STORAGE_KEY_PREFIX}${currentQuestionIndex}`);
+      } catch (err) {
+        console.warn('Failed to clear draft answer:', err);
+      }
+    }
+
     setConfirmSkip(false);
 
     if (recording && recognitionRef.current) {
@@ -562,6 +638,15 @@ export default function InterviewSession() {
               </div>
             </div>
 
+            {/* 30-Second Early Warning Banner */}
+            {timeLeft <= 30 && timeLeft > 10 && !interviewerSpeaking && (
+              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs px-4 py-2 rounded-xl font-medium mb-3 flex items-center gap-2">
+                <span>⏱️</span>
+                <span>Pacing Warning: 30 seconds remaining. Wrap up your main points before automatic submission.</span>
+              </div>
+            )}
+
+            {/* 10-Second Critical Red Warning Banner */}
             {timeLeft <= 10 && !interviewerSpeaking && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs px-4 py-2.5 rounded-xl font-medium animate-pulse mb-3 text-left">
                 ⚠️ 10 seconds remaining — your answer will be submitted automatically.
@@ -704,13 +789,23 @@ export default function InterviewSession() {
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Timer</span>
-                <span className={`text-xs font-mono font-bold ${timeLeft < 30 ? 'text-red-400 animate-pulse' : 'text-white'}`}>
+                <span
+                  className={`text-xs font-mono font-bold ${
+                    timeLeft <= 10
+                      ? 'text-red-400 animate-pulse'
+                      : timeLeft <= 30
+                      ? 'text-amber-400'
+                      : 'text-white'
+                  }`}
+                >
                   {formatTime(timeLeft)}
                 </span>
               </div>
               <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden shrink-0">
                 <div
-                  className={`h-full transition-all duration-1000 ${timeLeft < 30 ? 'bg-red-400' : 'bg-primary'}`}
+                  className={`h-full transition-all duration-1000 ${
+                    timeLeft <= 10 ? 'bg-red-400' : timeLeft <= 30 ? 'bg-amber-400' : 'bg-primary'
+                  }`}
                   style={{ width: `${(timeLeft / currentQuestion.duration) * 100}%` }}
                 />
               </div>
