@@ -79,10 +79,11 @@ export default function Navbar() {
             variant="primary"
             size="sm"
             className="group h-9"
+            icon={FaArrowRight}
           >
-            <span>Start Preparing</span>
-            <FaArrowRight className="text-xs group-hover:translate-x-1 transition duration-200" />
+            Start Preparing
           </Button>
+
 
           {isAuthenticated ? (
             <>
