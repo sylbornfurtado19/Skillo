@@ -46,10 +46,12 @@ export default function Settings() {
           if (typeof ps.voicePitch === 'number') setVoicePitch(ps.voicePitch);
           if (typeof ps.subtitlesEnabled === 'boolean') setSubtitlesEnabled(ps.subtitlesEnabled);
         }
+
       }
-      setLoading(false);
     });
   }, [user?.id]);
+
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
