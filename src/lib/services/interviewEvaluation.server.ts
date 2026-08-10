@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { generateVerbalSelfReflection, consolidateReflexionMemory } from './reflexionEngine.server';
+import { generateSimPOContrastiveEvaluation } from './simpoEngine.server';
 import type {
   RubricCriterion,
   SinglePassEvaluation,
@@ -466,6 +467,15 @@ export async function performInterviewEvaluation(
 
   const skillMemoryStore = consolidateReflexionMemory(userId, [verbalReflection]);
 
+  // Trigger SimPO Length-Normalized Contrastive Evaluation Engine (Meng et al., ICML 2024)
+  const simpoContrastiveResult = await generateSimPOContrastiveEvaluation({
+    evaluationId: `simpo_${sessionId}`,
+    question: questionsList[0]?.question ?? 'Technical Assessment Question',
+    candidateAnswer: firstAns,
+    role: setupData.role,
+    score: overallScore100,
+  });
+
   return {
     overallScore: overallScore100,
     categories,
@@ -477,5 +487,6 @@ export async function performInterviewEvaluation(
     userId,
     suqEvaluation,
     skillMemoryStore,
+    simpoContrastiveResult,
   };
 }

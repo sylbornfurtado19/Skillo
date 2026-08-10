@@ -118,6 +118,38 @@ export interface CandidateSkillMemoryStore {
   globalReflectionSummary: string;
 }
 
+// ── SimPO Types (Simple Preference Optimization - Meng et al., ICML 2024) ───
+
+export interface StructuralDelta {
+  dimension: 'COMPLEXITY' | 'SYSTEM_ARCHITECTURE' | 'EDGE_CASES' | 'TERMINOLOGY';
+  candidateDeficiency: string;
+  preferredBenchmark: string;
+  impactScore: number; // 0.0 to 10.0
+}
+
+export interface SimPOContrastivePair {
+  questionContext: string;
+  dispreferredAnswer: {
+    text: string;
+    tokenLength: number;
+    implicitReward: number;
+  };
+  preferredAnswer: {
+    text: string;
+    tokenLength: number;
+    implicitReward: number;
+  };
+  rewardMargin: number;
+  marginSatisfied: boolean;
+  structuralDeltas: StructuralDelta[];
+}
+
+export interface ContrastiveEvaluationResult {
+  evaluationId: string;
+  contrastivePair: SimPOContrastivePair;
+  summaryDeltaText: string;
+}
+
 export interface ResumeAnalysis {
   id: string;
   user_id: string;
@@ -239,6 +271,7 @@ export interface EvaluationReport {
   suqEvaluation?: SUQEvaluationResult;
   latsTreeState?: LATSTreeState;
   skillMemoryStore?: CandidateSkillMemoryStore;
+  simpoContrastiveResult?: ContrastiveEvaluationResult;
 }
 
 export interface MockInterview {

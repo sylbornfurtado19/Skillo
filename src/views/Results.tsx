@@ -30,6 +30,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import SUQConfidenceDashboard from '../components/ui/SUQConfidenceDashboard';
+import SimPOContrastiveCard from '../components/ui/SimPOContrastiveCard';
 
 export default function Results() {
   const router = useRouter();
@@ -327,6 +328,9 @@ export default function Results() {
         suqEvaluation={results.suqEvaluation as SUQEvaluationResult | undefined}
         onTriggerValidationPass={handleTriggerValidationPass}
       />
+
+      {/* SimPO Length-Normalized Contrastive Benchmark Analysis */}
+      <SimPOContrastiveCard contrastiveResult={results.simpoContrastiveResult as any} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card variant="glass" className="space-y-4">
