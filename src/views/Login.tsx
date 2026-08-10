@@ -117,12 +117,13 @@ export default function Login() {
         className="glass-card rounded-2xl p-8 border border-white/5 w-full max-w-md glow-primary relative overflow-hidden"
       >
         <div className="flex flex-col items-center text-center space-y-2 mb-8">
-          <LogoIcon size={46} />
+          <span className="font-heading font-extrabold text-3xl text-white tracking-tight">Skillo</span>
           <h2 className="text-xl font-heading font-extrabold text-white mt-3">
             {activeTab === 'login' ? 'Welcome back' : 'Create your account'}
           </h2>
           <p className="text-xs text-gray-400">Practice, analyze, and improve your technical scope.</p>
         </div>
+
 
         <div className="bg-[#030712] p-1 rounded-xl border border-white/5 flex gap-1 mb-6">
           <button

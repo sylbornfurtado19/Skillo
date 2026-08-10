@@ -32,8 +32,12 @@ export default function Navbar() {
         const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
         window.scrollTo({ top: y, behavior: 'smooth' });
       }
+    } else {
+      e.preventDefault();
+      router.push(`/${href}`);
     }
   };
+
 
 
   const handleLogout = async () => {
