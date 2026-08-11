@@ -582,10 +582,11 @@ export default function ResumeUpload() {
                 variant="primary"
                 size="md"
                 className="w-full bg-gradient-to-r from-primary to-accent"
+                icon={FaArrowRight}
               >
-                <span>Analyze Alignment & Build Questions</span>
-                <FaArrowRight className="text-xs ml-1" />
+                Analyze Alignment & Build Questions
               </Button>
+
             </form>
           </motion.div>
         )}
