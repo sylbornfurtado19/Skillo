@@ -487,10 +487,11 @@ export default function ResumeUpload() {
                 variant="primary"
                 size="md"
                 className="bg-gradient-to-r from-primary to-accent"
+                icon={FaArrowRight}
               >
-                <span>Configure Career Setup</span>
-                <FaArrowRight className="text-xs ml-1" />
+                Configure Career Setup
               </Button>
+
             </div>
           </motion.div>
         )}
