@@ -18,6 +18,8 @@ import { INTERVIEWER_PERSONAS, submitInterviewAnswers } from '../services/consta
 import { useInterview } from '../context/InterviewContext';
 import { useAuth } from '../hooks/useAuth';
 import { getProfile } from '../services/profile';
+import { supabase } from '../lib/supabase';
+
 import { LogoIcon } from '../components/common/Logo';
 import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';
@@ -36,6 +38,7 @@ export default function InterviewSession() {
   const {
     resumeData,
     questions,
+    setQuestions,
     currentQuestionIndex,
     setCurrentQuestionIndex,
     answers,
@@ -47,6 +50,7 @@ export default function InterviewSession() {
     retryQuestionIndex,
     updateQuestionScore,
   } = useInterview();
+
 
 
   // Settings / Profile Voice Preferences
@@ -96,6 +100,11 @@ export default function InterviewSession() {
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const [spokenSentenceIndex, setSpokenSentenceIndex] = useState(0);
 
+  // Real-time AI Follow-Up States
+  const [checkingFollowUp, setCheckingFollowUp] = useState(false);
+  const [followUpTrackedIndices] = useState<Set<number>>(() => new Set());
+  const [followUpBadgeSet] = useState<Set<number>>(() => new Set());
+
   // System Design Diagram state
   const isSystemDesignQuestion =
     setupData.type === 'System Design' ||
@@ -104,6 +113,7 @@ export default function InterviewSession() {
   const [diagramState, setDiagramState] = useState<SystemDesignDiagramState>(() =>
     createInitialDiagramState()
   );
+
 
 
   // Web Speech Synthesis Utterance Ref
@@ -298,6 +308,34 @@ export default function InterviewSession() {
     setInterviewerSpeaking(true);
     setShowHint(false);
 
+    // Helper to perform normal question progression
+    const proceedToNext = (updatedQuestions: string[], updatedAnswers: any[]) => {
+      setCheckingFollowUp(false);
+      if (currentQuestionIndex + 1 < updatedQuestions.length) {
+        const nextIndex = currentQuestionIndex + 1;
+        const nextAnswerObj = updatedAnswers[nextIndex];
+        const nextAnswer = typeof nextAnswerObj === 'string' ? nextAnswerObj : nextAnswerObj?.answerText ?? '';
+        if (responseMode === 'type') {
+          setTypedAnswer(nextAnswer);
+        } else {
+          setTranscriptText(nextAnswer);
+        }
+        setCurrentQuestionIndex(nextIndex);
+      } else {
+        setGrading(true);
+        submitInterviewAnswers(setupData, updatedQuestions.map((q, idx) => ({ id: `q_${idx + 1}`, question: q })), updatedAnswers)
+          .then((finalReport) => {
+            setResults(finalReport);
+            setGrading(false);
+            router.push('/results');
+          })
+          .catch((err) => {
+            console.error(err);
+            setGrading(false);
+          });
+      }
+    };
+
     if (isRetry && retryQuestionIndex !== null) {
       setGrading(true);
       submitInterviewAnswers(setupData, [{ id: `q_1`, question: currentQuestionText }], [{ answerText: finalAnswer || 'No response provided.' }])
@@ -315,29 +353,70 @@ export default function InterviewSession() {
           setIsRetry(false);
           router.push('/results');
         });
-    } else if (currentQuestionIndex + 1 < questions.length) {
-      const nextIndex = currentQuestionIndex + 1;
-      const nextAnswerObj = newAnswers[nextIndex];
-      const nextAnswer = typeof nextAnswerObj === 'string' ? nextAnswerObj : nextAnswerObj?.answerText ?? '';
-      if (responseMode === 'type') {
-        setTypedAnswer(nextAnswer);
-      } else {
-        setTranscriptText(nextAnswer);
-      }
-      setCurrentQuestionIndex(nextIndex);
-    } else {
-      setGrading(true);
-      submitInterviewAnswers(setupData, questions.map((q, idx) => ({ id: `q_${idx + 1}`, question: q })), newAnswers)
-        .then((finalReport) => {
-          setResults(finalReport);
-          setGrading(false);
-          router.push('/results');
-        })
-        .catch((err) => {
-          console.error(err);
-          setGrading(false);
-        });
+      return;
     }
+
+    // Check if this question index has ALREADY been followed up (Cap at 1 follow-up per question)
+    if (!followUpTrackedIndices.has(currentQuestionIndex) && finalAnswer.trim().length > 0) {
+      followUpTrackedIndices.add(currentQuestionIndex);
+      setCheckingFollowUp(true);
+
+      // 4-second timeout promise protection to ensure smooth live session pacing
+      const timeoutPromise = new Promise<{ needsFollowUp: false }>((resolve) =>
+        setTimeout(() => resolve({ needsFollowUp: false }), 4000)
+      );
+
+      const fetchPromise = (async () => {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+          const res = await fetch('/api/interview/followup', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+              question: currentQuestionText,
+              answerText: finalAnswer,
+              role: setupData.role,
+              difficulty: setupData.experienceLevel,
+              type: setupData.type,
+            }),
+          });
+          if (res.ok) {
+            return await res.json();
+          }
+        } catch (e) {
+          console.warn('Follow-up check error:', e);
+        }
+        return { needsFollowUp: false };
+      })();
+
+      Promise.race([fetchPromise, timeoutPromise]).then((data) => {
+        if (data && data.needsFollowUp && data.followUpQuestion) {
+          const newQuestionsList = [...questions];
+          const insertIdx = currentQuestionIndex + 1;
+          newQuestionsList.splice(insertIdx, 0, data.followUpQuestion);
+          followUpBadgeSet.add(insertIdx);
+          followUpTrackedIndices.add(insertIdx); // Prevent nested follow-up on the follow-up question itself
+
+          setQuestions(newQuestionsList);
+          setCheckingFollowUp(false);
+          setTypedAnswer('');
+          setTranscriptText('');
+          setRecording(false);
+          setInterviewerSpeaking(true);
+          setShowHint(false);
+          setCurrentQuestionIndex(insertIdx);
+        } else {
+          proceedToNext(questions, newAnswers);
+        }
+      });
+    } else {
+      proceedToNext(questions, newAnswers);
+    }
+
 
   }, [
     recording,
@@ -552,7 +631,22 @@ export default function InterviewSession() {
     );
   }
 
+  if (checkingFollowUp) {
+    return (
+      <div className="glass-card rounded-2xl p-8 border border-amber-500/20 glow-accent flex flex-col items-center justify-center min-h-[320px] text-center max-w-lg mx-auto mt-16 space-y-4">
+        <div className="flex space-x-2">
+          <div className="h-3 w-3 bg-amber-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+          <div className="h-3 w-3 bg-amber-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+          <div className="h-3 w-3 bg-amber-400 rounded-full animate-bounce" />
+        </div>
+        <h3 className="text-base font-heading font-bold text-white">Reviewing your answer...</h3>
+        <p className="text-xs text-gray-400 font-mono">Real-time AI checking for depth and technical specificity...</p>
+      </div>
+    );
+  }
+
   if (grading) {
+
     return (
       <div className="glass-card rounded-2xl p-10 border border-white/5 glow-secondary flex flex-col items-center justify-center min-h-[420px] text-center max-w-xl mx-auto mt-16">
         <div className="relative mb-8">
@@ -630,11 +724,19 @@ export default function InterviewSession() {
                     <p className="text-[10px] text-gray-500 font-mono uppercase">
                       {persona.role} &bull; {persona.company}
                     </p>
-                    <Badge variant={interviewerSpeaking ? 'primary' : 'neutral'} size="sm" className="mt-2.5">
-                      {interviewerSpeaking ? 'Speaking Voice...' : 'Listening'}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
+                      <Badge variant={interviewerSpeaking ? 'primary' : 'neutral'} size="sm">
+                        {interviewerSpeaking ? 'Speaking Voice...' : 'Listening'}
+                      </Badge>
+                      {followUpBadgeSet.has(currentQuestionIndex) && (
+                        <Badge variant="accent" size="sm" className="bg-amber-500/15 border-amber-500/30 text-amber-300 font-mono font-bold">
+                          ⚡ AI Real-Time Follow-up
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
+
 
                 {/* Skip Narration / Mute Button */}
                 {interviewerSpeaking && (
