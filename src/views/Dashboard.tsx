@@ -34,6 +34,7 @@ import { INTERVIEWER_PERSONAS, getQuestionsForSetup } from '../services/constant
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import { OnboardingProgressWidget } from '../components/dashboard/OnboardingProgressWidget';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -288,7 +289,7 @@ export default function Dashboard() {
 
 
       {/* ── STREAK NUDGE CARD (Shown if practiced yesterday but not yet today) ── */}
-      {streakInfo.hasActiveStreakYesterday && (
+      {Boolean(streakInfo.hasActiveStreakYesterday) && (
         <Card variant="glass" className="p-4 border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-orange-950/20 to-amber-950/10 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
@@ -315,68 +316,16 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* ── FIRST-RUN ONBOARDING EMPTY STATE ── */}
-      {totalCompleted === 0 && !resumeData ? (
-        <Card variant="glass" className="p-8 border border-white/10 text-center space-y-8 glow-primary relative overflow-hidden">
-          <div className="max-w-xl mx-auto space-y-3">
-            <Badge variant="primary" size="md" className="mx-auto">
-              <span className="h-2 w-2 rounded-full bg-accent mr-2 inline-block animate-pulse" />
-              Welcome to Skillo Onboarding
-            </Badge>
-            <h3 className="text-2xl font-heading font-extrabold text-white">
-              Get Started with Your AI Interview Assistant
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
-              Complete these 3 simple steps to generate your first benchmark score and targeted preparation plan.
-            </p>
-          </div>
+      {/* ── INTERACTIVE ONBOARDING PROGRESS TRACKER ── */}
+      {totalCompleted === 0 && (
+        <OnboardingProgressWidget
+          hasResume={Boolean(resumeData)}
+          hasSetup={Boolean(setupData?.role)}
+          hasCompletedSession={totalCompleted > 0}
+        />
+      )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <div className="bg-[#030712]/60 rounded-xl p-5 border border-white/10 flex flex-col items-center text-center space-y-3">
-              <div className="h-10 w-10 rounded-xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold font-mono text-sm">
-                1
-              </div>
-              <h4 className="font-heading font-bold text-white text-sm">Upload Resume</h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Scan your experience to highlight talking points and role compatibility.
-              </p>
-            </div>
-
-            <div className="bg-[#030712]/60 rounded-xl p-5 border border-white/10 flex flex-col items-center text-center space-y-3">
-              <div className="h-10 w-10 rounded-xl bg-secondary/20 text-secondary border border-secondary/30 flex items-center justify-center font-bold font-mono text-sm">
-                2
-              </div>
-              <h4 className="font-heading font-bold text-white text-sm">Configure Setup</h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Choose your career domain, role target, and interviewer persona.
-              </p>
-            </div>
-
-            <div className="bg-[#030712]/60 rounded-xl p-5 border border-white/10 flex flex-col items-center text-center space-y-3">
-              <div className="h-10 w-10 rounded-xl bg-accent/20 text-accent border border-accent/30 flex items-center justify-center font-bold font-mono text-sm">
-                3
-              </div>
-              <h4 className="font-heading font-bold text-white text-sm">Practice Session</h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Answer live questions and receive instant scoring with feedback.
-              </p>
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <Button
-              onClick={() => router.push('/resume')}
-              variant="primary"
-              size="lg"
-              className="px-8 py-3.5 shadow-lg shadow-primary/30"
-              icon={FaRocket}
-            >
-              Start Step 1: Upload Resume
-            </Button>
-          </div>
-        </Card>
-      ) : totalCompleted === 0 && resumeData ? (
-        /* ── READY FOR FIRST SESSION PROMPT & PROACTIVE RESUME INSIGHTS ── */
+      {totalCompleted === 0 && Boolean(resumeData) && (
         <div className="space-y-4">
           <Card variant="glass" className="p-6 border border-white/10 flex flex-col md:flex-row items-center justify-between gap-6 glow-accent">
             <div className="space-y-1 text-center md:text-left">
@@ -464,9 +413,10 @@ export default function Dashboard() {
             </Card>
           )}
         </div>
-      ) : (
-        /* ── DASHBOARD STAT CARDS ── */
-        <div className="space-y-6">
+      )}
+
+      {/* ── DASHBOARD STAT CARDS ── */}
+      <div className="space-y-6">
           {/* ── PROACTIVE RESUME ANALYSIS INSIGHTS CARD (Rendered whenever resumeData exists) ── */}
           {Boolean(resumeData) && (
             <Card variant="glass" className="p-6 border border-primary/25 bg-gradient-to-r from-primary/10 via-indigo-950/20 to-purple-950/15 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
@@ -648,7 +598,6 @@ export default function Dashboard() {
             </Card>
           </div>
         </div>
-      )}
 
 
       {/* RECENT ASSESSMENTS TABLE WITH SORT CONTROLS */}
