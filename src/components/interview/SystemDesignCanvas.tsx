@@ -73,7 +73,35 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editLabelText, setEditLabelText] = useState<string>('');
 
+  // First-time usage hint tooltip state (persisted via localStorage)
+  const [showTooltip, setShowTooltip] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const seen = localStorage.getItem('skillo_seen_system_design_hint');
+        if (!seen) {
+          setShowTooltip(true);
+        }
+      } catch (e) {
+        console.warn('Failed to access localStorage:', e);
+      }
+    }
+  }, []);
+
+  const dismissTooltip = () => {
+    setShowTooltip(false);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('skillo_seen_system_design_hint', 'true');
+      } catch (e) {
+        console.warn('Failed to save tooltip state to localStorage:', e);
+      }
+    }
+  };
+
   const containerRef = useRef<HTMLDivElement>(null);
+
 
   // Helper: Commit new state with Undo push
   const updateState = useCallback(
@@ -623,6 +651,58 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
           </div>
         </div>
       )}
+
+      {/* ── FIRST-TIME USAGE SYSTEM DESIGN TOOLTIP OVERLAY ──────────────────── */}
+      {showTooltip && (
+        <div className="absolute top-12 left-4 right-4 z-40 bg-[#0B0F19]/95 backdrop-blur-md border border-primary/40 rounded-2xl p-4 shadow-2xl space-y-3">
+          <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="h-6 w-6 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">💡</span>
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                System Design Canvas Guide
+              </h4>
+            </div>
+            <button
+              onClick={dismissTooltip}
+              className="text-gray-400 hover:text-white transition-colors p-1"
+              title="Dismiss Guide"
+            >
+              <FaTimes size={12} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px] text-gray-300 font-mono">
+            <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 space-y-1">
+              <span className="text-primary font-bold block">1. Add & Drag Components</span>
+              <p className="text-[10px] text-gray-400 leading-tight">
+                Click preset nodes (Client, Load Balancer, DB, Cache) in the top toolbar to add them. Drag to position.
+              </p>
+            </div>
+            <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 space-y-1">
+              <span className="text-secondary font-bold block">2. Connect Data Flows</span>
+              <p className="text-[10px] text-gray-400 leading-tight">
+                Click the plug pin <FaPlug className="inline text-gray-300" size={8} /> on a node to select it, then click any target node to draw a connected edge.
+              </p>
+            </div>
+            <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 space-y-1">
+              <span className="text-accent font-bold block">3. Rename & Adjust</span>
+              <p className="text-[10px] text-gray-400 leading-tight">
+                Double-click nodes to edit labels. Select and click delete to remove components or edges.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <button
+              onClick={dismissTooltip}
+              className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-xs font-bold shadow-md hover:scale-[1.02] active:scale-[0.98] transition cursor-pointer"
+            >
+              Got it, start designing!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
