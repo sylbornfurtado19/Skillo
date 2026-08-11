@@ -81,8 +81,8 @@ export default function Navbar() {
       <nav
         className={`mx-auto max-w-7xl h-16 rounded-2xl transition-all duration-300 px-5 sm:px-6 flex items-center justify-between pointer-events-auto relative ${
           scrolled
-            ? 'bg-[#0b0f19]/90 backdrop-blur-xl border border-primary/30 shadow-[0_10px_30px_rgba(0,0,0,0.8),0_0_20px_rgba(99,102,241,0.2)]'
-            : 'bg-[#0b0f19]/75 backdrop-blur-lg border border-white/10 shadow-2xl shadow-black/80'
+            ? 'bg-card/90 backdrop-blur-xl border border-primary/30 shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
+            : 'bg-card/75 backdrop-blur-lg border border-white/10 shadow-2xl shadow-black/80'
         }`}
       >
         <div className="flex items-center gap-6 lg:gap-10">

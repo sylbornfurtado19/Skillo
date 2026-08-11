@@ -4,7 +4,7 @@ import { LogoFull } from './Logo';
 
 export default function Footer() {
   return (
-    <footer className="w-full bg-[#030712] relative mt-auto border-t border-transparent">
+    <footer className="w-full bg-background transition-colors duration-500 relative mt-auto border-t border-transparent">
       {/* Animated Top Border Gradient Glow Line */}
       <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
 

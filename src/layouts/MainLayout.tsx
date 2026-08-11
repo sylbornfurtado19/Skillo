@@ -24,7 +24,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   }, [pathname]);
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-[#030712] overflow-x-hidden">
+    <div className="relative min-h-screen flex flex-col bg-background text-gray-100 overflow-x-hidden transition-colors duration-500">
       {/* Page loading transition screen */}
       <AnimatePresence>
         {transitioning && <PageTransition />}

@@ -72,11 +72,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const userInitial = userName.charAt(0).toUpperCase();
 
   return (
-    <div className="flex h-screen bg-[#030712] text-[#F9FAFB] overflow-hidden font-body">
+    <div className="flex h-screen bg-background text-[#F9FAFB] overflow-hidden font-body transition-colors duration-500">
       <ToastContainer />
 
       {/* 1. DESKTOP SIDEBAR */}
-      <aside className="hidden md:flex flex-col w-64 bg-[#111827] border-r border-white/5 relative z-30">
+      <aside className="hidden md:flex flex-col w-64 bg-card border-r border-white/5 relative z-30 transition-colors duration-500">
         <div className="h-20 flex items-center px-6 border-b border-white/5">
           <Link href="/" className="hover:opacity-90 transition duration-200">
             <span className="font-heading font-extrabold text-xl text-white tracking-tight">Skillo</span>
