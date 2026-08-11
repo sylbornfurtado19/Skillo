@@ -309,12 +309,50 @@ export default function CareerSetup() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12 text-left">
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-4">
         <SectionHeader
           title="Configure Career Prep Simulator"
           description="Select target company style, role, track, difficulty, and duration parameters for your AI mock assessment."
           className="text-center max-w-2xl mx-auto"
         />
+
+        {/* Slim Step Progress Indicator Segment Dots */}
+        <div className="flex flex-col items-center gap-2 max-w-md mx-auto pt-2">
+          <div className="flex items-center justify-between w-full text-[10px] text-gray-400 font-mono font-bold">
+            <span className="text-primary uppercase tracking-wider">Step {currentStep} of {totalSteps}</span>
+            <span className="text-gray-500">
+              {currentStep === 1
+                ? 'Target Company'
+                : currentStep === 2
+                ? 'Target Role'
+                : currentStep === 3
+                ? 'Interview Track'
+                : currentStep === 4
+                ? 'Difficulty Level'
+                : currentStep === 5
+                ? 'Duration'
+                : 'Review & Confirm'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-6 gap-1.5 w-full">
+            {[1, 2, 3, 4, 5, 6].map((stepNum) => (
+              <button
+                key={stepNum}
+                type="button"
+                onClick={() => setCurrentStep(stepNum)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  stepNum === currentStep
+                    ? 'bg-gradient-to-r from-primary to-accent shadow-md shadow-primary/30 scale-105'
+                    : stepNum < currentStep
+                    ? 'bg-primary/50'
+                    : 'bg-white/10'
+                }`}
+                title={`Jump to Step ${stepNum}`}
+              />
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
@@ -341,6 +379,7 @@ export default function CareerSetup() {
             </div>
 
             <Progress value={currentStep} max={totalSteps} variant="primary" size="sm" className="mb-8" />
+
 
             <div className="min-h-[280px]">
               <AnimatePresence mode="wait">
@@ -370,6 +409,25 @@ export default function CareerSetup() {
                         </Card>
                       ))}
                     </div>
+
+                    {setupData.company === 'Custom' && (
+                      <div className="pt-3 border-t border-white/5 space-y-2">
+                        <label className="text-xs text-gray-400 font-mono block">Specify Custom Target Company Name:</label>
+                        <input
+                          type="text"
+                          value={(setupData.customCompany as string) || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSetupData({
+                              ...setupData,
+                              customCompany: val,
+                            });
+                          }}
+                          placeholder="e.g. Netflix, Uber, OpenAI"
+                          className="w-full rounded-xl bg-[#030712]/60 border border-white/10 px-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-primary/50 transition font-mono"
+                        />
+                      </div>
+                    )}
                   </motion.div>
                 )}
 
@@ -399,8 +457,28 @@ export default function CareerSetup() {
                         </Card>
                       ))}
                     </div>
+
+                    {setupData.role === 'Custom' && (
+                      <div className="pt-3 border-t border-white/5 space-y-2">
+                        <label className="text-xs text-gray-400 font-mono block">Specify Custom Target Role Name:</label>
+                        <input
+                          type="text"
+                          value={(setupData.customRole as string) || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSetupData({
+                              ...setupData,
+                              customRole: val,
+                            });
+                          }}
+                          placeholder="e.g. Distributed Systems Engineer"
+                          className="w-full rounded-xl bg-[#030712]/60 border border-white/10 px-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-primary/50 transition font-mono"
+                        />
+                      </div>
+                    )}
                   </motion.div>
                 )}
+
 
                 {currentStep === 3 && (
                   <motion.div
