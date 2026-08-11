@@ -114,9 +114,9 @@ npm run build
   - **Mathematical Formulation**:
     $$SE(x) = -\sum_{c \in \mathcal{C}} P(c) \log_2 P(c)$$
   - **Thresholds & Decision Rules**:
-    - $SE < 0.5 \longrightarrow \text{\texttt{HIGH}}$ Confidence (Strong score agreement)
-    - $0.5 \le SE \le 1.2 \longrightarrow \text{\texttt{MEDIUM}}$ Confidence
-    - $SE > 1.2 \longrightarrow \text{\texttt{LOW}}$ Confidence (Triggers validation pass)
+    - $SE < 0.5 \longrightarrow$ **`HIGH`** Confidence (Strong score agreement)
+    - $0.5 \le SE \le 1.2 \longrightarrow$ **`MEDIUM`** Confidence
+    - $SE > 1.2 \longrightarrow$ **`LOW`** Confidence (Triggers validation pass)
 
 ---
 
@@ -219,7 +219,7 @@ npm run build
     $$\hat{\theta} = \sum_{i=1}^{N} p_i \cdot \text{bin}_i$$
   - **Thresholds & Decision Rules**:
     - Screen Contact Bounds: Pitch $|\hat{\theta}_p| \le 12^\circ$, Yaw $|\hat{\theta}_y| \le 15^\circ$.
-    - Distraction Threshold: Sustained deviation $>1500\text{ms}$ ($>1.5\text{s}$).
+    - Distraction Threshold: Sustained deviation $>1500\text{ ms}$ ($>1.5\text{ s}$).
 
 ---
 
@@ -234,8 +234,8 @@ npm run build
   - **Angular Velocity Dynamics**:
     $$\omega(t) = \sqrt{\dot{\theta}_y^2 + \dot{\theta}_p^2 + \dot{\theta}_r^2}$$
   - **Thresholds & Decision Rules**:
-    - Nodding: Cyclic pitch oscillations $\Delta\theta_p \ge 6^\circ$ within $0.25-0.8\text{s}$ window.
-    - Head Shaking: Cyclic yaw oscillations $\Delta\theta_y \ge 8^\circ$ within $0.25-0.8\text{s}$ window.
+    - Nodding: Cyclic pitch oscillations $\Delta\theta_p \ge 6^\circ$ within $0.25-0.8\text{ s}$ window.
+    - Head Shaking: Cyclic yaw oscillations $\Delta\theta_y \ge 8^\circ$ within $0.25-0.8\text{ s}$ window.
     - Posture Instability: $\text{Score} = \min\left(100, \frac{100}{M}\sum \omega(t)\right)$.
 
 ---
@@ -267,9 +267,9 @@ npm run build
   - **Cross-Modal Metric**:
     $$D(v, a) = \|\mathbf{f}_v(v) - \mathbf{f}_a(a)\|_2, \quad \Delta t^* = \arg\min_{\tau} D(v(t+\tau), a(t))$$
   - **Thresholds & Decision Rules**:
-    - $D \le 1.15 \land |\Delta t^*| \le 80\text{ms} \longrightarrow \text{\texttt{VERIFIED\_GENUINE}}$
-    - $80\text{ms} < |\Delta t^*| \le 250\text{ms} \longrightarrow \text{\texttt{LATENCY\_LAG\_WARNING}}$
-    - $D > 1.60 \lor |\Delta t^*| > 250\text{ms} \text{ for } >2.0\text{s} \longrightarrow \text{\texttt{SPOOFING\_ALERT\_TRIGGERED}}$
+    - $D \le 1.15 \land |\Delta t^*| \le 80\text{ ms} \longrightarrow$ **`VERIFIED_GENUINE`**
+    - $80\text{ ms} < |\Delta t^*| \le 250\text{ ms} \longrightarrow$ **`LATENCY_LAG_WARNING`**
+    - $D > 1.60 \lor |\Delta t^*| > 250\text{ ms} \text{ for } > 2.0\text{ s} \longrightarrow$ **`SPOOFING_ALERT_TRIGGERED`**
 
 ---
 
