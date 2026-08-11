@@ -147,8 +147,24 @@ export default function ResumeUpload() {
       }
     }, 800);
 
+    // Read resume text if text-based file
+    let extractedText = '';
     try {
-      const apiResult = await simulateResumeAnalysis(file.name, jobTitle, jobDescription, showToast);
+      if (file.type.startsWith('text/') || file.name.endsWith('.txt')) {
+        extractedText = await file.text();
+      }
+    } catch (readErr) {
+      console.warn('File text extraction warning:', readErr);
+    }
+
+    try {
+      const apiResult = await simulateResumeAnalysis(
+        file.name,
+        jobTitle,
+        jobDescription,
+        showToast,
+        extractedText || undefined
+      );
       clearInterval(interval);
       setAnalysisStep(analysisSteps.length - 1);
 
@@ -181,6 +197,7 @@ export default function ResumeUpload() {
       setCurrentState('failed');
     }
   };
+
 
   const resultObj = analysisResult as any;
 

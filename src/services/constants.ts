@@ -338,7 +338,8 @@ export const simulateResumeAnalysis = async (
   fileName: string,
   jobTitle: string,
   jobDescription: string,
-  showToast?: (message: string, variant?: 'info' | 'success' | 'error') => void
+  showToast?: (message: string, variant?: 'info' | 'success' | 'error') => void,
+  resumeText?: string
 ) => {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData?.session?.access_token;
@@ -353,8 +354,10 @@ export const simulateResumeAnalysis = async (
       fileName,
       jobTitle,
       jobDescription,
+      resumeText,
     }),
   });
+
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
