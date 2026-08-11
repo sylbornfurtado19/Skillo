@@ -46,7 +46,49 @@
     --font-heading: "Sora", sans-serif;
     --font-body: "Inter", sans-serif;
   }
+
+  [data-theme="light"] {
+    --color-background: #F8FAFC;
+    --color-card: #FFFFFF;
+    --color-card-border: rgba(0, 0, 0, 0.08);
+    --color-primary: #4F46E5;
+    --color-primary-dark: #4338CA;
+    --color-secondary: #7C3AED;
+    --color-accent: #0891B2;
+    --color-glow-1: rgba(79, 70, 229, 0.15);
+    --color-glow-2: rgba(124, 58, 237, 0.15);
+    --font-heading: "Sora", sans-serif;
+    --font-body: "Inter", sans-serif;
+  }
+
+  [data-theme="emerald-light"] {
+    --color-background: #F0FDF4;
+    --color-card: #FFFFFF;
+    --color-card-border: rgba(5, 150, 105, 0.15);
+    --color-primary: #059669;
+    --color-primary-dark: #047857;
+    --color-secondary: #2563EB;
+    --color-accent: #D97706;
+    --color-glow-1: rgba(5, 150, 105, 0.15);
+    --color-glow-2: rgba(37, 99, 235, 0.15);
+    --font-heading: "Sora", sans-serif;
+    --font-body: "Inter", sans-serif;
+  }
 }
+
+[data-theme="light"] body,
+[data-theme="emerald-light"] body {
+  background-color: var(--color-background);
+  color: #0F172A;
+}
+
+[data-theme="light"] .glass-card,
+[data-theme="emerald-light"] .glass-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+}
+
 
 /* Dynamic theme custom property classes */
 .bg-primary { background-color: var(--color-primary); }

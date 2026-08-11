@@ -24,7 +24,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ className = '' }) 
         </h3>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {(Object.keys(THEME_PRESETS) as ThemeId[]).map((themeId) => {
           const preset = THEME_PRESETS[themeId];
           const isActive = activeThemeId === themeId;
@@ -40,7 +40,14 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ className = '' }) 
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white font-heading">{preset.name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-white font-heading">{preset.name}</span>
+                    {preset.isLight && (
+                      <span className="px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 text-[9px] font-mono font-bold">
+                        Light
+                      </span>
+                    )}
+                  </div>
                   {isActive && <FaCheckCircle className="text-primary text-sm shrink-0" />}
                 </div>
                 <p className="text-[10px] text-gray-400 font-mono leading-tight">{preset.subtitle}</p>
@@ -74,6 +81,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ className = '' }) 
           );
         })}
       </div>
+
     </div>
   );
 };
