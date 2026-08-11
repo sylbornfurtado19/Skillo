@@ -5,16 +5,17 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaGithub, FaBars, FaTimes, FaUser, FaSignOutAlt, FaRocket } from 'react-icons/fa';
+import { FaGithub, FaBars, FaTimes, FaUser, FaSignOutAlt, FaRocket, FaPalette } from 'react-icons/fa';
 import { LogoFull } from './Logo';
 import { useAuth } from '../../hooks/useAuth';
 import { useInterview } from '../../context/InterviewContext';
+import { THEME_PRESETS, ThemeId } from '../../types/themes';
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, user, signOut } = useAuth();
-  const { resetSession } = useInterview();
+  const { resetSession, theme, setTheme } = useInterview();
 
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -108,6 +109,23 @@ export default function Navbar() {
 
         {/* Desktop CTA / Auth actions */}
         <div className="hidden md:flex items-center gap-3 ml-auto">
+          {/* Theme Quick Cycle Button */}
+          <button
+            onClick={() => {
+              const currentTheme: ThemeId = (theme in THEME_PRESETS ? theme : 'onyx') as ThemeId;
+              const themeKeys: ThemeId[] = ['onyx', 'cyberpunk', 'slate'];
+              const nextIndex = (themeKeys.indexOf(currentTheme) + 1) % themeKeys.length;
+              setTheme(themeKeys[nextIndex]);
+            }}
+            className="h-9 px-3 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 text-xs font-semibold text-gray-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+            title={`Current Theme: ${THEME_PRESETS[(theme in THEME_PRESETS ? theme : 'onyx') as ThemeId]?.name || 'Onyx Glass'}. Click to cycle.`}
+          >
+            <FaPalette className="text-primary text-xs" />
+            <span className="capitalize text-[11px] font-mono">
+              {(theme in THEME_PRESETS ? theme : 'onyx')}
+            </span>
+          </button>
+
           <button
             onClick={() => router.push('/dashboard')}
             className="h-9 px-4 rounded-xl bg-gradient-to-r from-primary via-indigo-500 to-accent text-xs font-semibold text-white shadow-lg shadow-primary/25 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer flex items-center gap-2 relative overflow-hidden group"

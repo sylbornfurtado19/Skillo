@@ -3,13 +3,34 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root,
+  [data-theme="onyx"],
+  [data-theme="dark"] {
     --color-background: #030712;
     --color-card: #111827;
     --color-primary: #6366F1;
     --color-secondary: #8B5CF6;
     --color-accent: #06B6D4;
-    
+    --font-heading: "Sora", sans-serif;
+    --font-body: "Inter", sans-serif;
+  }
+
+  [data-theme="cyberpunk"] {
+    --color-background: #090414;
+    --color-card: #140A23;
+    --color-primary: #EC4899;
+    --color-secondary: #8B5CF6;
+    --color-accent: #06B6D4;
+    --font-heading: "Sora", sans-serif;
+    --font-body: "Inter", sans-serif;
+  }
+
+  [data-theme="slate"] {
+    --color-background: #0F172A;
+    --color-card: #1E293B;
+    --color-primary: #38BDF8;
+    --color-secondary: #6366F1;
+    --color-accent: #10B981;
     --font-heading: "Sora", sans-serif;
     --font-body: "Inter", sans-serif;
   }

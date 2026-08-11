@@ -7,6 +7,7 @@ import { FaUserAlt, FaVolumeUp, FaSave, FaCheckCircle } from 'react-icons/fa';
 import { useAuth } from '../hooks/useAuth';
 import { getProfile, updateProfile } from '../services/profile';
 import { useToast } from '../components/ui/Toast';
+import { ThemeSwitcher } from '../components/common/ThemeSwitcher';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -202,6 +203,11 @@ export default function Settings() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Custom Visual Studio Theme Switcher Section */}
+        <div className="bg-[#111827]/40 border border-white/5 rounded-2xl p-6 relative">
+          <ThemeSwitcher />
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-white/5 items-center">

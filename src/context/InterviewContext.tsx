@@ -95,6 +95,7 @@ export interface InterviewContextValue {
   updateQuestionScore: (questionIndex: number, newAnswerText: string, newScore: number, feedback: string) => void;
   resetSession: () => void;
   // Theme
+  theme: string;
   setTheme: (theme: string) => void;
 }
 
@@ -397,7 +398,8 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
     setRetryQuestionIndex,
     updateQuestionScore,
     resetSession,
-    setTheme: () => {},
+    theme,
+    setTheme,
   };
 
   return (
