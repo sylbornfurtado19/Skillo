@@ -7,7 +7,18 @@ export interface ProfileSettings {
   subtitlesEnabled?: boolean;
 }
 
+export interface CategoryScores {
+  techKnowledge?: number;
+  communication?: number;
+  confidence?: number;
+  problemSolving?: number;
+  technicalAccuracy?: number;
+  depth?: number;
+  timeManagement?: number;
+}
+
 export interface UserProfile {
+
   id: string;
   email: string;
   name?: string;

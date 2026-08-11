@@ -52,9 +52,19 @@ export interface SessionHistoryItem {
   duration?: number;
   date: string;
   score: number;
+  categories?: {
+    techKnowledge?: number;
+    communication?: number;
+    confidence?: number;
+    problemSolving?: number;
+    technicalAccuracy?: number;
+    depth?: number;
+    timeManagement?: number;
+  };
   persona: string;
   interviewModeId?: string;
 }
+
 
 export interface InterviewContextValue {
   // Session state
@@ -215,6 +225,7 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
   const setResults = (newResults: InterviewResults | null) => {
     _setResults(newResults);
     if (newResults) {
+      const cats = (newResults.categories || {}) as Record<string, number>;
       const historyItem: SessionHistoryItem = {
         id: `session_${Date.now()}`,
         role: newResults.setupData?.role ?? 'Software Engineer',
@@ -222,6 +233,15 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
         difficulty: newResults.setupData?.experienceLevel ?? 'Mid-Level',
         date: new Date().toISOString().split('T')[0],
         score: newResults.overallScore,
+        categories: {
+          techKnowledge: cats.technicalAccuracy ?? 80,
+          communication: cats.communication ?? 85,
+          confidence: cats.depth ?? 75,
+          problemSolving: cats.timeManagement ?? 90,
+          technicalAccuracy: cats.technicalAccuracy,
+          depth: cats.depth,
+          timeManagement: cats.timeManagement,
+        },
         persona: newResults.personaId ?? 'sarah',
       };
       setSessionHistory((prev) => {
@@ -231,6 +251,7 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
       });
     }
   };
+
 
   const resetSession = () => {
     setResumeData(null);

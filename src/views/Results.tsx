@@ -140,14 +140,17 @@ export default function Results() {
       ? sessionHistory.find((s) => s.role === results.setupData?.role) || sessionHistory[0]
       : null;
 
-  const prevScores = previousSession
-    ? {
-        techKnowledge: Math.max(50, previousSession.score - 5),
-        communication: Math.max(50, previousSession.score + 2),
-        confidence: Math.max(50, previousSession.score - 8),
-        problemSolving: Math.max(50, previousSession.score - 2),
-      }
-    : null;
+  // Extract real stored category scores from previousSession if available
+  const prevScores =
+    previousSession && previousSession.categories
+      ? {
+          techKnowledge: previousSession.categories.techKnowledge ?? previousSession.categories.technicalAccuracy ?? previousSession.score,
+          communication: previousSession.categories.communication ?? previousSession.score,
+          confidence: previousSession.categories.confidence ?? previousSession.categories.depth ?? previousSession.score,
+          problemSolving: previousSession.categories.problemSolving ?? previousSession.categories.timeManagement ?? previousSession.score,
+        }
+      : null;
+
 
   // Datasets for Radar chart
   const radarDatasets = [
@@ -319,8 +322,8 @@ export default function Results() {
 
       {/* SECTION 1: OVERVIEW & COMPARISON */}
       <div id="sec-overview" className="scroll-mt-32 space-y-6">
-        {/* 2. Compare to Previous Session Panel (rendered if prior session exists) */}
-        {previousSession && (
+        {/* 2. Compare to Previous Session Panel (rendered if prior session and category data exist) */}
+        {previousSession && prevScores && (
           <Card variant="glass" className="p-5 border border-primary/30 bg-primary/5 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-base shrink-0">
@@ -344,6 +347,7 @@ export default function Results() {
             </div>
           </Card>
         )}
+
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
           <Card variant="glow-secondary" className="lg:col-span-4 flex flex-col justify-between items-center text-center py-8 min-h-[340px]">
