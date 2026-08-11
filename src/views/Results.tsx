@@ -14,7 +14,9 @@ import {
   FaAward,
   FaListUl,
   FaExchangeAlt,
+  FaShareAlt,
 } from 'react-icons/fa';
+
 
 // Task 6: Import Chart.js registration module
 import '../lib/chartSetup';
@@ -58,8 +60,42 @@ export default function Results() {
     }
   };
 
+  const shareCardRef = useRef<HTMLDivElement | null>(null);
+  const [sharing, setSharing] = useState(false);
+
+  // Dynamic import of html2canvas at call time for PNG card export
+  const handleShareImage = async () => {
+    if (!shareCardRef.current) return;
+    setSharing(true);
+
+    try {
+      const { default: html2canvas } = await import('html2canvas');
+
+      const canvas = await html2canvas(shareCardRef.current, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#050B14',
+        logging: false,
+      });
+
+      const image = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `Skillo_Assessment_Summary_${Date.now()}.png`;
+      link.click();
+
+      showToast('Summary card downloaded! Ready to share on LinkedIn.', 'success');
+    } catch (err: unknown) {
+      console.error('Image share export failed:', err);
+      showToast('Failed to generate share image. Please try again.', 'error');
+    } finally {
+      setSharing(false);
+    }
+  };
+
   // Task 4: Dynamic import of html2canvas and jsPDF at call time inside handleDownloadPDF
   const handleDownloadPDF = async () => {
+
     if (!reportRef.current) return;
     setDownloading(true);
 
@@ -634,6 +670,10 @@ export default function Results() {
           <Button onClick={handleDownloadPDF} disabled={downloading} variant="ghost" size="sm" icon={FaFilePdf} className="text-gray-400 hover:text-white">
             {downloading ? 'Exporting...' : 'Export Report'}
           </Button>
+
+          <Button onClick={handleShareImage} disabled={sharing} variant="ghost" size="sm" icon={FaShareAlt} className="text-primary hover:text-accent border border-primary/20 bg-primary/5">
+            {sharing ? 'Generating Card...' : 'Share Results'}
+          </Button>
         </div>
 
         <div className="w-full sm:w-auto">
@@ -650,6 +690,69 @@ export default function Results() {
           </Button>
         </div>
       </div>
+
+      {/* ── HIDDEN COMPACT SHAREABLE SUMMARY CARD (Rendered off-screen for html2canvas export) ── */}
+      <div className="fixed top-[-9999px] left-[-9999px] pointer-events-none z-[-100]">
+        <div
+          ref={shareCardRef}
+          className="w-[600px] h-[315px] bg-gradient-to-br from-[#050B14] via-[#0B0F19] to-[#0A1224] p-8 border border-white/10 rounded-3xl font-sans text-white flex flex-col justify-between shadow-2xl relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-48 h-48 bg-primary/20 rounded-full blur-[70px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-accent/20 rounded-full blur-[70px] pointer-events-none" />
+
+          {/* Top Header */}
+          <div className="flex items-center justify-between z-10 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-r from-primary to-accent flex items-center justify-center font-extrabold font-heading text-white text-sm shadow-md">
+                Sk
+              </div>
+              <div>
+                <h3 className="font-heading font-extrabold text-white text-base tracking-wide leading-none">Skillo AI</h3>
+                <p className="text-[10px] text-gray-400 font-mono mt-0.5">Career Prep Assessment Report</p>
+              </div>
+            </div>
+            <div className="bg-white/5 border border-white/10 px-3 py-1 rounded-full text-xs font-mono text-gray-300">
+              Verified Benchmark
+            </div>
+          </div>
+
+          {/* Body content grid */}
+          <div className="grid grid-cols-12 gap-6 items-center z-10 py-2">
+            {/* Score Pill */}
+            <div className="col-span-4 bg-gradient-to-br from-primary/20 to-indigo-950/40 border border-primary/30 rounded-2xl p-4 text-center flex flex-col justify-center items-center shadow-lg">
+              <span className="text-[9px] font-mono text-primary uppercase font-bold tracking-wider">Overall Score</span>
+              <span className="text-4xl font-heading font-extrabold text-white mt-1">
+                {results.overallScore}<span className="text-sm font-normal text-gray-400">/100</span>
+              </span>
+              <span className="text-[10px] text-emerald-400 font-bold mt-1 font-mono">Top Candidate Tier</span>
+            </div>
+
+            {/* Assessment Details */}
+            <div className="col-span-8 space-y-3">
+              <div>
+                <span className="text-[10px] text-gray-500 uppercase font-mono font-bold tracking-wider block">Target Role & Preset</span>
+                <h4 className="text-base font-heading font-bold text-white leading-snug">
+                  {results.setupData?.role || 'Software Engineer'} &bull; <span className="text-accent">{results.setupData?.company || 'Generic'} Style</span>
+                </h4>
+              </div>
+
+              <div>
+                <span className="text-[10px] text-gray-500 uppercase font-mono font-bold tracking-wider block">Key Demonstrated Strength</span>
+                <p className="text-xs text-gray-200 leading-relaxed font-medium bg-white/5 p-2.5 rounded-xl border border-white/5 truncate">
+                  {strengths[0]}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer watermark */}
+          <div className="flex items-center justify-between z-10 border-t border-white/10 pt-3 text-[10px] text-gray-400 font-mono">
+            <span>Evaluated by AI Persona {persona.name} ({persona.role})</span>
+            <span className="text-primary font-bold">skillo.dev</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
+
 }
