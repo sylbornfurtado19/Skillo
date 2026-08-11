@@ -7,14 +7,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#030712',
-        card: '#111827',
+        background: 'var(--color-background)',
+        card: 'var(--color-card)',
         primary: {
-          DEFAULT: '#6366F1',
-          dark: '#4F46E5',
+          DEFAULT: 'var(--color-primary)',
+          dark: 'var(--color-primary-dark)',
         },
-        secondary: '#8B5CF6',
-        accent: '#06B6D4',
+        secondary: 'var(--color-secondary)',
+        accent: 'var(--color-accent)',
       },
       fontFamily: {
         heading: ['Sora', 'sans-serif'],

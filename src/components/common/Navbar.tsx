@@ -117,12 +117,19 @@ export default function Navbar() {
               const nextIndex = (themeKeys.indexOf(currentTheme) + 1) % themeKeys.length;
               setTheme(themeKeys[nextIndex]);
             }}
-            className="h-9 px-3 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 text-xs font-semibold text-gray-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
-            title={`Current Theme: ${THEME_PRESETS[(theme in THEME_PRESETS ? theme : 'onyx') as ThemeId]?.name || 'Onyx Glass'}. Click to cycle.`}
+            className="h-9 px-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-primary/30 hover:border-primary/60 text-xs font-semibold text-white transition-all flex items-center gap-2 cursor-pointer shadow-md hover:scale-105 active:scale-95"
+            title={`Current Theme: ${THEME_PRESETS[(theme in THEME_PRESETS ? theme : 'onyx') as ThemeId]?.name || 'Onyx Glass'}. Click to toggle.`}
           >
+            <span
+              className="w-2.5 h-2.5 rounded-full animate-pulse shadow-sm"
+              style={{
+                backgroundColor:
+                  THEME_PRESETS[(theme in THEME_PRESETS ? theme : 'onyx') as ThemeId]?.primaryHex || '#6366F1',
+              }}
+            />
             <FaPalette className="text-primary text-xs" />
-            <span className="capitalize text-[11px] font-mono">
-              {(theme in THEME_PRESETS ? theme : 'onyx')}
+            <span className="capitalize text-[11px] font-mono font-bold text-gray-200">
+              {THEME_PRESETS[(theme in THEME_PRESETS ? theme : 'onyx') as ThemeId]?.name || 'Onyx Glass'}
             </span>
           </button>
 
