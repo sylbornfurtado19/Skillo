@@ -11,6 +11,7 @@ export interface ThemePreset {
   secondaryHex: string;
   accentHex: string;
   badgeClass: string;
+  isLight?: boolean;
 }
 
 export const THEME_PRESETS: Record<ThemeId, ThemePreset> = {
