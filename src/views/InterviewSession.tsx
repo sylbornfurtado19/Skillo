@@ -1108,10 +1108,11 @@ export default function InterviewSession() {
               disabled={interviewerSpeaking || !activeAnswer?.trim()}
               variant="primary"
               size="sm"
+              icon={FaArrowRight}
             >
-              <span>{currentQuestionIndex + 1 === questions.length ? 'Finish' : 'Next'}</span>
-              <FaArrowRight size={10} className="ml-1 shrink-0" />
+              {currentQuestionIndex + 1 === questions.length ? 'Finish' : 'Next'}
             </Button>
+
           </div>
         </div>
       </div>

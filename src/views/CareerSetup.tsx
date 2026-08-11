@@ -601,10 +601,11 @@ export default function CareerSetup() {
                 disabled={currentStep === totalSteps}
                 variant="glass"
                 size="sm"
+                icon={FaChevronRight}
               >
-                <span>Next Step</span>
-                <FaChevronRight size={10} className="ml-1" />
+                Next Step
               </Button>
+
             </div>
 
             {/* Keyboard Shortcuts Hint */}
