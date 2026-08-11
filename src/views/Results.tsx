@@ -329,11 +329,11 @@ export default function Results() {
       </div>
 
       {/* 1. Sticky In-Page Navigation Bar */}
-      <div className="sticky top-20 z-40 bg-[#0b0f19]/90 backdrop-blur-xl border border-white/10 p-1.5 rounded-2xl shadow-xl flex justify-center gap-1 sm:gap-2 max-w-2xl mx-auto">
+      <div className="sticky top-20 z-40 bg-[#0b0f19]/90 backdrop-blur-xl border border-white/10 p-1.5 rounded-2xl shadow-xl flex items-center justify-center gap-1 sm:gap-2 max-w-full sm:max-w-2xl mx-auto overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => scrollToSection('sec-overview', 'overview')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+          className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
             activeTab === 'overview'
               ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
               : 'text-gray-400 hover:text-white'
@@ -344,7 +344,7 @@ export default function Results() {
         <button
           type="button"
           onClick={() => scrollToSection('sec-confidence', 'confidence')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+          className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
             activeTab === 'confidence'
               ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
               : 'text-gray-400 hover:text-white'
@@ -355,7 +355,7 @@ export default function Results() {
         <button
           type="button"
           onClick={() => scrollToSection('sec-contrastive', 'contrastive')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+          className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
             activeTab === 'contrastive'
               ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
               : 'text-gray-400 hover:text-white'
@@ -366,7 +366,7 @@ export default function Results() {
         <button
           type="button"
           onClick={() => scrollToSection('sec-responses', 'responses')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+          className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
             activeTab === 'responses'
               ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
               : 'text-gray-400 hover:text-white'
@@ -375,6 +375,7 @@ export default function Results() {
           Detailed Responses
         </button>
       </div>
+
 
       {/* SECTION 1: OVERVIEW & COMPARISON */}
       <div id="sec-overview" className="scroll-mt-32 space-y-6">
