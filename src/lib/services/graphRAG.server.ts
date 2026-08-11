@@ -147,7 +147,8 @@ export function executeLeidenHierarchicalClustering(
     return {
       sourceId: srcNode?.id ?? `src_${idx}`,
       targetId: tgtNode?.id ?? `tgt_${idx}`,
-      relationshipType: (rel.relationshipType as any) || 'DEPENDS_ON',
+      relationshipType: rel.relationshipType as 'DEPENDS_ON' | 'APPLIED_IN' | 'EXPANDS_UPON',
+
       weight: rel.weight,
       description: rel.description,
     };
@@ -354,8 +355,9 @@ REQUIRED JSON OUTPUT FORMAT:
           const parsed = JSON.parse(jsonMatch[0]);
           const parseResult = graphRAGOutputSchema.safeParse(parsed);
           if (parseResult.success) {
-            rawEntities = parseResult.data.entities as any;
-            rawRelationships = parseResult.data.relationships as any;
+            rawEntities = parseResult.data.entities;
+            rawRelationships = parseResult.data.relationships;
+
           }
         }
       }

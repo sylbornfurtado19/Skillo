@@ -34,6 +34,29 @@ import Badge from '../components/ui/Badge';
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import SUQConfidenceDashboard from '../components/ui/SUQConfidenceDashboard';
 import SimPOContrastiveCard from '../components/ui/SimPOContrastiveCard';
+import GazeAnalyticsCard from '../components/ui/GazeAnalyticsCard';
+import PostureComposureCard from '../components/ui/PostureComposureCard';
+import FacialComposureCard from '../components/ui/FacialComposureCard';
+import LipSyncVerificationCard from '../components/ui/LipSyncVerificationCard';
+import type { EyeContactSessionMetrics, HeadPoseSessionMetrics, AffectiveSessionMetrics, LipSyncSessionMetrics } from '../types/index';
+
+function isEyeContactMetrics(obj: any): obj is EyeContactSessionMetrics {
+  return Boolean(obj && typeof obj === 'object' && 'totalVideoDurationSeconds' in obj);
+}
+function isHeadPoseMetrics(obj: any): obj is HeadPoseSessionMetrics {
+  return Boolean(obj && typeof obj === 'object' && 'totalFramesAnalyzed' in obj);
+}
+function isAffectiveMetrics(obj: any): obj is AffectiveSessionMetrics {
+  return Boolean(obj && typeof obj === 'object' && 'totalKeyframesAnalyzed' in obj);
+}
+function isLipSyncMetrics(obj: any): obj is LipSyncSessionMetrics {
+  return Boolean(obj && typeof obj === 'object' && 'totalWindowsAnalyzed' in obj);
+}
+
+
+
+
+
 
 export default function Results() {
   const router = useRouter();
@@ -64,7 +87,11 @@ export default function Results() {
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'confidence' | 'contrastive' | 'responses'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'confidence' | 'contrastive' | 'gaze' | 'pose' | 'affect' | 'sync' | 'responses'>('overview');
+
+
+
+
 
   useEffect(() => {
     if (!results) {
@@ -72,7 +99,11 @@ export default function Results() {
     }
   }, [results, router]);
 
-  const scrollToSection = (id: string, tab: 'overview' | 'confidence' | 'contrastive' | 'responses') => {
+  const scrollToSection = (id: string, tab: 'overview' | 'confidence' | 'contrastive' | 'gaze' | 'pose' | 'affect' | 'sync' | 'responses') => {
+
+
+
+
     setActiveTab(tab);
     const el = document.getElementById(id);
     if (el) {
@@ -363,6 +394,69 @@ export default function Results() {
         >
           Contrastive Analysis
         </button>
+        {/* Gaze tab — only shown when metrics are available */}
+        {isEyeContactMetrics(results.eyeContactMetrics) && (
+          <button
+            type="button"
+            onClick={() => scrollToSection('sec-gaze', 'gaze')}
+            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+              activeTab === 'gaze'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Gaze Analytics
+          </button>
+        )}
+        {/* Head Pose & Gestures tab — only shown when metrics are available */}
+        {isHeadPoseMetrics(results.headPoseMetrics) && (
+          <button
+            type="button"
+            onClick={() => scrollToSection('sec-pose', 'pose')}
+            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+              activeTab === 'pose'
+                ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Posture & Gestures
+          </button>
+        )}
+        {/* Affect & Composure tab — only shown when metrics are available */}
+        {isAffectiveMetrics(results.affectiveMetrics) && (
+          <button
+            type="button"
+            onClick={() => scrollToSection('sec-affect', 'affect')}
+            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+              activeTab === 'affect'
+                ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Facial Composure
+          </button>
+        )}
+        {/* Lip-Sync & Anti-Spoofing tab — only shown when metrics are available */}
+        {isLipSyncMetrics(results.lipSyncMetrics) && (
+          <button
+            type="button"
+            onClick={() => scrollToSection('sec-sync', 'sync')}
+            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+              activeTab === 'sync'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Sync & Security
+          </button>
+        )}
+
+
+
+
+
+
+
         <button
           type="button"
           onClick={() => scrollToSection('sec-responses', 'responses')}
@@ -530,6 +624,7 @@ export default function Results() {
         <SimPOContrastiveCard contrastiveResult={results.simpoContrastiveResult as ContrastiveEvaluationResult | undefined} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
           <Card variant="glass" className="space-y-4">
             <h4 className="text-sm font-heading font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">
               Skill Analytics Breakdown
@@ -583,7 +678,43 @@ export default function Results() {
         </div>
       </div>
 
+      {/* SECTION 3b: GAZE ANALYTICS */}
+      {isEyeContactMetrics(results.eyeContactMetrics) ? (
+        <div id="sec-gaze" className="scroll-mt-32">
+          <GazeAnalyticsCard metrics={results.eyeContactMetrics} />
+        </div>
+      ) : null}
+
+      {/* SECTION 3c: POSTURE & GESTURE ANALYTICS */}
+      {isHeadPoseMetrics(results.headPoseMetrics) ? (
+        <div id="sec-pose" className="scroll-mt-32">
+          <PostureComposureCard metrics={results.headPoseMetrics} />
+        </div>
+      ) : null}
+
+      {/* SECTION 3d: FACIAL COMPOSURE ANALYTICS */}
+      {isAffectiveMetrics(results.affectiveMetrics) ? (
+        <div id="sec-affect" className="scroll-mt-32">
+          <FacialComposureCard metrics={results.affectiveMetrics} />
+        </div>
+      ) : null}
+
+      {/* SECTION 3e: LIP-SYNC & ANTI-SPOOFING ANALYTICS */}
+      {isLipSyncMetrics(results.lipSyncMetrics) ? (
+        <div id="sec-sync" className="scroll-mt-32">
+          <LipSyncVerificationCard metrics={results.lipSyncMetrics} />
+        </div>
+      ) : null}
+
+
+
+
+
+
+
+
       {/* SECTION 4: DETAILED RESPONSES LOG */}
+
       <div id="sec-responses" className="scroll-mt-32 space-y-4">
         <h3 className="text-sm font-bold uppercase tracking-wider text-white text-left pl-1">
           Detailed Responses Log

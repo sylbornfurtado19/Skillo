@@ -22,6 +22,10 @@ import Badge from '../components/ui/Badge';
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import { Progress, Loader } from '../components/ui/Loader';
 import GraphRAGDashboard from '../components/ui/GraphRAGDashboard';
+import VisualDocumentCanvas from '../components/ui/VisualDocumentCanvas';
+import LayoutPenaltyViewer from '../components/ui/LayoutPenaltyViewer';
+import type { VisualLayoutAnalysisResult, BoundingBox2D } from '@/types/index';
+
 
 export default function ResumeUpload() {
   const router = useRouter();
@@ -45,6 +49,13 @@ export default function ResumeUpload() {
     resumeData && analysisResult ? 'complete' : 'idle'
   );
   const [analysisStep, setAnalysisStep] = useState(0);
+
+  // ── LayoutLMv3 visual canvas state ──────────────────────────────────────
+  const [activePageNumber, setActivePageNumber] = useState(1);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [highlightedPenaltyIndex, setHighlightedPenaltyIndex] = useState<number | null>(null);
+  const [visualLayoutTab, setVisualLayoutTab] = useState<'canvas' | 'penalties'>('canvas');
+
 
   if (!isAuthenticated) {
     return (
@@ -379,6 +390,90 @@ export default function ResumeUpload() {
 
             {/* GraphRAG Hierarchical Skill Gap Mapper Dashboard */}
             <GraphRAGDashboard graphRAGData={resultObj.graphRAGResult} />
+
+            {/* ── LayoutLMv3 Visual Document Layout Analysis ───────────── */}
+            {resultObj.visualLayoutAnalysis && (() => {
+              const vla = resultObj.visualLayoutAnalysis as VisualLayoutAnalysisResult;
+
+              // Compute highlighted bbox from selected penalty
+              const highlightedBBox: BoundingBox2D | null =
+                highlightedPenaltyIndex !== null && vla.penalties[highlightedPenaltyIndex]
+                  ? vla.penalties[highlightedPenaltyIndex].affectedBoundingBox
+                  : null;
+
+              const handlePenaltyClick = (idx: number) => {
+                setHighlightedPenaltyIndex(prev => (prev === idx ? null : idx));
+                // Switch to canvas tab on mobile
+                setVisualLayoutTab('canvas');
+              };
+
+              const handleElementClick = (id: string) => {
+                setSelectedElementId(prev => (prev === id ? null : id));
+              };
+
+              return (
+                <div className="space-y-4">
+                  {/* Section header */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-heading font-bold text-white">
+                        Visual Layout &amp; Document Structure Canvas
+                      </h3>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        LayoutLMv3 · 2D spatial bounding box analysis · {vla.elements.length} elements mapped
+                      </p>
+                    </div>
+                    {/* Page indicator */}
+                    <div className="flex items-center gap-1 text-[10px] text-gray-500 font-mono">
+                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/8">
+                        pg {activePageNumber} / {vla.pageCount}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mobile tab switcher */}
+                  <div className="flex lg:hidden gap-1 bg-[#060b14] border border-white/8 rounded-xl p-1">
+                    {(['canvas', 'penalties'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        onClick={() => setVisualLayoutTab(tab)}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
+                          visualLayoutTab === tab
+                            ? 'bg-primary/20 text-primary border border-primary/30'
+                            : 'text-gray-500 hover:text-gray-300'
+                        }`}
+                      >
+                        {tab === 'canvas' ? '🗺 Canvas' : '⚠ Penalties'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Desktop: side-by-side | Mobile: tabbed */}
+                  <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
+                    {/* Canvas — always visible on desktop, tab-controlled on mobile */}
+                    <div className={`${visualLayoutTab === 'canvas' ? 'block' : 'hidden'} lg:block`}>
+                      <VisualDocumentCanvas
+                        elements={vla.elements}
+                        penalties={vla.penalties}
+                        highlightedPenaltyBBox={highlightedBBox}
+                        selectedElementId={selectedElementId}
+                        onElementClick={handleElementClick}
+                      />
+                    </div>
+
+                    {/* Penalty viewer — always visible on desktop, tab-controlled on mobile */}
+                    <div className={`${visualLayoutTab === 'penalties' ? 'block' : 'hidden'} lg:block`}>
+                      <LayoutPenaltyViewer
+                        result={vla}
+                        highlightedPenaltyIndex={highlightedPenaltyIndex}
+                        onPenaltyClick={handlePenaltyClick}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card variant="glass" className="space-y-4">

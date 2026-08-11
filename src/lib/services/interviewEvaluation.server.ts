@@ -8,6 +8,10 @@ import {
 } from './reflexionEngine.server';
 import { generateSimPOContrastiveEvaluation } from './simpoEngine.server';
 import { runLATSMCTS } from './latsEngine.server';
+import { processGazeFrames } from './ivpGazeEngine';
+import { analyzeHeadPoseAndGestures } from './ivpPoseEngine';
+import { processAffectFrames } from './ivpAffectEngine';
+import { processLipSyncWindows } from './ivpSyncEngine';
 import { resolveInterviewMode } from '@/types/interviewModes';
 import { summarizeDiagramTopology, SystemDesignDiagramState } from '@/types/systemDesign';
 import type {
@@ -17,7 +21,15 @@ import type {
   SUQEvaluationResult,
   EvaluationReport,
   LATSTreeState,
+  GazeFrameInput,
+  HeadPoseFrameInput,
+  AffectFrameInput,
+  SyncWindowInput,
 } from '@/types/index';
+
+
+
+
 
 export interface QuestionItemInput {
   id?: string;
@@ -52,7 +64,19 @@ export interface EvaluateInterviewInput {
   setupData: SetupDataInput;
   questionsList: QuestionItemInput[];
   answersList: Array<string | AnswerItemInput>;
+  /** Optional: per-frame gaze data captured during the interview session */
+  gazeFrames?: GazeFrameInput[];
+  /** Optional: per-frame 3D head pose data captured during the interview session */
+  headPoseFrames?: HeadPoseFrameInput[];
+  /** Optional: per-frame AffectNet facial expression data captured during the interview session */
+  affectFrames?: AffectFrameInput[];
+  /** Optional: per-window SyncNet audio-visual lip sync data captured during the interview session */
+  syncWindows?: SyncWindowInput[];
 }
+
+
+
+
 
 // 1. Prometheus-2 Rubric Construction with Explicit Score Anchors (1-5)
 export const PROMETHEUS2_RUBRICS: Record<string, RubricCriterion> = {
@@ -530,6 +554,19 @@ export async function performInterviewEvaluation(
     score: overallScore100,
   });
 
+  // L2CS-Net: Process gaze frame data into eye contact session metrics
+  // Runs synchronously — pure math, no I/O, negligible latency impact
+  const eyeContactMetrics = processGazeFrames(input.gazeFrames ?? []);
+
+  // HopeNet: Process head pose frames into gestural composure metrics
+  const headPoseMetrics = analyzeHeadPoseAndGestures(input.headPoseFrames ?? []);
+
+  // AffectNet: Process facial expression keyframes into Valence-Arousal & Composure metrics
+  const affectiveMetrics = processAffectFrames(input.affectFrames ?? []);
+
+  // SyncNet: Process lip-audio cross-modal windows into anti-spoofing & sync metrics
+  const lipSyncMetrics = processLipSyncWindows(input.syncWindows ?? []);
+
   return {
     overallScore: overallScore100,
     categories,
@@ -543,5 +580,9 @@ export async function performInterviewEvaluation(
     latsTreeState,
     skillMemoryStore,
     simpoContrastiveResult,
+    eyeContactMetrics,
+    headPoseMetrics,
+    affectiveMetrics,
+    lipSyncMetrics,
   };
 }

@@ -303,7 +303,33 @@ export const submitInterviewAnswers = async (
   setupData: Record<string, any>,
   questionsList: Array<{ id: string; question: string; hint?: string }>,
   answersList: Array<string | { answerText?: string }>,
-  showToast?: (message: string, variant?: 'info' | 'success' | 'error') => void
+  showToast?: (message: string, variant?: 'info' | 'success' | 'error') => void,
+  gazeFrames?: Array<{
+    timestampMs: number;
+    pitchDegrees?: number;
+    yawDegrees?: number;
+    confidence?: number;
+  }>,
+  headPoseFrames?: Array<{
+    timestampMs: number;
+    yawDegrees?: number;
+    pitchDegrees?: number;
+    rollDegrees?: number;
+    confidence?: number;
+  }>,
+  affectFrames?: Array<{
+    timestampMs: number;
+    valence?: number;
+    arousal?: number;
+    confidence?: number;
+  }>,
+  syncWindows?: Array<{
+    timestampMs: number;
+    visualDistance?: number;
+    offsetMs?: number;
+    audioEnergy?: number;
+    confidence?: number;
+  }>
 ) => {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData?.session?.access_token;
@@ -318,8 +344,15 @@ export const submitInterviewAnswers = async (
       setupData,
       questionsList,
       answersList,
+      ...(gazeFrames && gazeFrames.length > 0 ? { gazeFrames } : {}),
+      ...(headPoseFrames && headPoseFrames.length > 0 ? { headPoseFrames } : {}),
+      ...(affectFrames && affectFrames.length > 0 ? { affectFrames } : {}),
+      ...(syncWindows && syncWindows.length > 0 ? { syncWindows } : {}),
     }),
   });
+
+
+
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
@@ -333,6 +366,7 @@ export const submitInterviewAnswers = async (
   const result = await response.json();
   return result.data;
 };
+
 
 export const simulateResumeAnalysis = async (
   fileName: string,

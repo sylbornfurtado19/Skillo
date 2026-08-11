@@ -1,5 +1,7 @@
 import { executeGraphRAGAnalysis } from './graphRAG.server';
-import type { GraphRAGAnalysisResult } from '@/types/index';
+import { analyzeVisualDocumentLayout } from './documentVision.server';
+import type { GraphRAGAnalysisResult, VisualLayoutAnalysisResult } from '@/types/index';
+
 
 export interface ResumeAnalysisInput {
   fileName: string;
@@ -24,6 +26,7 @@ export interface ResumeAnalysisResult {
   analyzedAt: string;
   userId: string;
   graphRAGResult?: GraphRAGAnalysisResult;
+  visualLayoutAnalysis?: VisualLayoutAnalysisResult;
 }
 
 export async function performResumeAnalysis(
@@ -38,6 +41,12 @@ export async function performResumeAnalysis(
     fileName: input.fileName,
     resumeText: input.resumeText,
   });
+
+  // Run LayoutLMv3 visual document layout analysis in parallel
+  const visualLayoutAnalysis = analyzeVisualDocumentLayout(
+    input.resumeText ?? '',
+    input.fileName
+  );
 
   // Derive skillsMatched from VERIFIED nodes
   const skillsMatched = graphRAGResult.candidateGraph.nodes
@@ -74,5 +83,6 @@ export async function performResumeAnalysis(
     analyzedAt: new Date().toISOString(),
     userId,
     graphRAGResult,
+    visualLayoutAnalysis,
   };
 }

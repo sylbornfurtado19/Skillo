@@ -1,3 +1,12 @@
+import type { VisualLayoutAnalysisResult } from './layoutLMv3';
+import type { EyeContactSessionMetrics } from './gazeEngine';
+import type { HeadPoseSessionMetrics } from './poseEngine';
+import type { AffectiveSessionMetrics } from './affectEngine';
+import type { LipSyncSessionMetrics } from './syncEngine';
+
+
+
+
 export interface ProfileSettings {
   defaultInterviewer?: string;
   defaultDifficulty?: string;
@@ -35,6 +44,16 @@ export interface UserProfile {
 export * from './interviewModes';
 export * from './systemDesign';
 export * from './themes';
+export * from './layoutLMv3';
+export * from './gazeEngine';
+export * from './poseEngine';
+export * from './affectEngine';
+export * from './syncEngine';
+
+
+
+
+
 
 
 
@@ -194,6 +213,7 @@ export interface ResumeAnalysis {
   recommendations: string[];
   created_at?: string;
   graphRAGResult?: GraphRAGAnalysisResult;
+  visualLayoutAnalysis?: VisualLayoutAnalysisResult;
 }
 
 export type ResumeRecord = ResumeAnalysis;
@@ -311,6 +331,10 @@ export interface EvaluationReport {
   latsTreeState?: LATSTreeState;
   skillMemoryStore?: CandidateSkillMemoryStore;
   simpoContrastiveResult?: ContrastiveEvaluationResult;
+  eyeContactMetrics?: EyeContactSessionMetrics;
+  headPoseMetrics?: HeadPoseSessionMetrics;
+  affectiveMetrics?: AffectiveSessionMetrics;
+  lipSyncMetrics?: LipSyncSessionMetrics;
 }
 
 export interface MockInterview {
