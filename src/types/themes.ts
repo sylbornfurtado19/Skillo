@@ -1,4 +1,4 @@
-export type ThemeId = 'onyx' | 'cyberpunk' | 'slate' | 'light' | 'emerald-light';
+export type ThemeId = 'onyx' | 'cyberpunk' | 'slate';
 
 export interface ThemePreset {
   id: ThemeId;
@@ -11,7 +11,6 @@ export interface ThemePreset {
   secondaryHex: string;
   accentHex: string;
   badgeClass: string;
-  isLight?: boolean;
 }
 
 export const THEME_PRESETS: Record<ThemeId, ThemePreset> = {
@@ -51,34 +50,7 @@ export const THEME_PRESETS: Record<ThemeId, ThemePreset> = {
     accentHex: '#10B981',
     badgeClass: 'from-sky-500/20 to-emerald-500/20 text-sky-400 border-sky-500/30',
   },
-  light: {
-    id: 'light',
-    name: 'Snow Light',
-    subtitle: 'Clean Crisp White Canvas',
-    description: 'Bright, crisp light theme with slate cards, indigo accents, and high contrast readability.',
-    bgHex: '#F8FAFC',
-    cardHex: '#FFFFFF',
-    primaryHex: '#4F46E5',
-    secondaryHex: '#7C3AED',
-    accentHex: '#0891B2',
-    badgeClass: 'from-indigo-50 to-purple-50 text-indigo-700 border-indigo-200',
-    isLight: true,
-  },
-  'emerald-light': {
-    id: 'emerald-light',
-    name: 'Mint Light',
-    subtitle: 'Soft Mint & Emerald Bright',
-    description: 'Refreshing light mint theme with soft teal surfaces, emerald primary accents, and executive clarity.',
-    bgHex: '#F0FDF4',
-    cardHex: '#FFFFFF',
-    primaryHex: '#059669',
-    secondaryHex: '#2563EB',
-    accentHex: '#D97706',
-    badgeClass: 'from-emerald-50 to-teal-50 text-emerald-700 border-emerald-200',
-    isLight: true,
-  },
 };
-
 
 export function getThemePreset(id: string): ThemePreset {
   if (id in THEME_PRESETS) {
