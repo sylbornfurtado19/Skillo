@@ -334,33 +334,161 @@ export default function Dashboard() {
           </div>
         </Card>
       ) : totalCompleted === 0 && resumeData ? (
-        /* ── READY FOR FIRST SESSION PROMPT ── */
-        <Card variant="glass" className="p-6 border border-white/10 flex flex-col md:flex-row items-center justify-between gap-6 glow-accent">
-          <div className="space-y-1 text-center md:text-left">
-            <Badge variant="accent" size="sm" className="mb-1">
-              Resume Uploaded ✓
-            </Badge>
-            <h3 className="text-lg font-heading font-bold text-white">
-              Ready for your first mock interview session
-            </h3>
-            <p className="text-xs text-gray-400 max-w-xl">
-              Your resume has been parsed. Configure your session parameters to start answering questions.
-            </p>
-          </div>
-          <Button
-            onClick={() => router.push('/setup')}
-            variant="primary"
-            size="md"
-            className="shrink-0"
-            icon={FaPlay}
-          >
-            Configure & Start Session
-          </Button>
-        </Card>
+        /* ── READY FOR FIRST SESSION PROMPT & PROACTIVE RESUME INSIGHTS ── */
+        <div className="space-y-4">
+          <Card variant="glass" className="p-6 border border-white/10 flex flex-col md:flex-row items-center justify-between gap-6 glow-accent">
+            <div className="space-y-1 text-center md:text-left">
+              <Badge variant="accent" size="sm" className="mb-1">
+                Resume Uploaded ✓
+              </Badge>
+              <h3 className="text-lg font-heading font-bold text-white">
+                Ready for your first mock interview session
+              </h3>
+              <p className="text-xs text-gray-400 max-w-xl">
+                Your resume has been parsed. Configure your session parameters to start answering questions.
+              </p>
+            </div>
+            <Button
+              onClick={() => router.push('/setup')}
+              variant="primary"
+              size="md"
+              className="shrink-0 bg-gradient-to-r from-primary to-accent"
+              icon={FaPlay}
+            >
+              Configure Setup
+            </Button>
+          </Card>
+          
+          {/* ── PROACTIVE RESUME ANALYSIS INSIGHTS CARD (Rendered whenever resumeData exists) ── */}
+          {Boolean(resumeData) && (
+            <Card variant="glass" className="p-6 border border-primary/25 bg-gradient-to-r from-primary/10 via-indigo-950/20 to-purple-950/15 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+
+              <div className="space-y-2 text-center md:text-left flex-1">
+                <div className="flex items-center justify-center md:justify-start gap-2">
+                  <Badge variant="primary" size="sm">Resume Insights</Badge>
+                  {typeof (analysisResult as any)?.matchPercentage === 'number' && (
+                    <span className="text-xs font-mono font-bold text-emerald-400">
+                      {(analysisResult as any).matchPercentage}% Match Rating
+                    </span>
+                  )}
+                </div>
+                <h4 className="text-base font-heading font-bold text-white">
+                  Recommended Target Practice Role: <span className="text-accent">{(analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer'}</span>
+                </h4>
+                <p className="text-xs text-gray-300 max-w-2xl leading-relaxed">
+                  Based on your parsed resume skills ({(analysisResult as any)?.skillsMatched?.slice(0, 3).join(', ') || 'React, TypeScript, Architecture'}), we recommend practicing the <strong>{(analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer'}</strong> track on <strong>Technical</strong> mode.
+                </p>
+              </div>
+
+              <Button
+                onClick={() => {
+                  setSetupData({
+                    ...setupData,
+                    role: (analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer',
+                    type: 'Technical',
+                    company: 'Generic',
+                    difficulty: 'Senior',
+                    duration: 30,
+                    questionCount: 5,
+                  });
+                  // Save step 6 in session storage so CareerSetup opens directly on step 6
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem(
+                      'skillo_career_setup_state',
+                      JSON.stringify({
+                        currentStep: 6,
+                        setupData: {
+                          ...setupData,
+                          role: (analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer',
+                          type: 'Technical',
+                          company: 'Generic',
+                          difficulty: 'Senior',
+                          duration: 30,
+                          questionCount: 5,
+                        },
+                      })
+                    );
+                  }
+                  router.push('/setup');
+                }}
+                variant="primary"
+                size="md"
+                className="shrink-0 bg-gradient-to-r from-primary via-indigo-600 to-accent text-white shadow-lg shadow-primary/20 px-6"
+                icon={FaRocket}
+              >
+                <span>Practice this role</span>
+                <FaArrowRight size={10} className="ml-1" />
+              </Button>
+            </Card>
+          )}
+        </div>
       ) : (
         /* ── DASHBOARD STAT CARDS ── */
-        <>
+        <div className="space-y-6">
+          {/* ── PROACTIVE RESUME ANALYSIS INSIGHTS CARD (Rendered whenever resumeData exists) ── */}
+          {Boolean(resumeData) && (
+            <Card variant="glass" className="p-6 border border-primary/25 bg-gradient-to-r from-primary/10 via-indigo-950/20 to-purple-950/15 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+
+              <div className="space-y-2 text-center md:text-left flex-1">
+                <div className="flex items-center justify-center md:justify-start gap-2">
+                  <Badge variant="primary" size="sm">Resume Insights</Badge>
+                  {typeof (analysisResult as any)?.matchPercentage === 'number' && (
+                    <span className="text-xs font-mono font-bold text-emerald-400">
+                      {(analysisResult as any).matchPercentage}% Match Rating
+                    </span>
+                  )}
+                </div>
+                <h4 className="text-base font-heading font-bold text-white">
+                  Recommended Target Practice Role: <span className="text-accent">{(analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer'}</span>
+                </h4>
+                <p className="text-xs text-gray-300 max-w-2xl leading-relaxed">
+                  Based on your parsed resume skills ({(analysisResult as any)?.skillsMatched?.slice(0, 3).join(', ') || 'React, TypeScript, Architecture'}), we recommend practicing the <strong>{(analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer'}</strong> track on <strong>Technical</strong> mode.
+                </p>
+              </div>
+
+              <Button
+                onClick={() => {
+                  setSetupData({
+                    ...setupData,
+                    role: (analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer',
+                    type: 'Technical',
+                    company: 'Generic',
+                    difficulty: 'Senior',
+                    duration: 30,
+                    questionCount: 5,
+                  });
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem(
+                      'skillo_career_setup_state',
+                      JSON.stringify({
+                        currentStep: 6,
+                        setupData: {
+                          ...setupData,
+                          role: (analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer',
+                          type: 'Technical',
+                          company: 'Generic',
+                          difficulty: 'Senior',
+                          duration: 30,
+                          questionCount: 5,
+                        },
+                      })
+                    );
+                  }
+                  router.push('/setup');
+                }}
+                variant="primary"
+                size="md"
+                className="shrink-0 bg-gradient-to-r from-primary via-indigo-600 to-accent text-white shadow-lg shadow-primary/20 px-6"
+                icon={FaRocket}
+              >
+                <span>Practice this role</span>
+                <FaArrowRight size={10} className="ml-1" />
+              </Button>
+            </Card>
+          )}
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+
             <Card variant="glass" className="p-5 flex items-center gap-4">
               <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-lg sm:text-xl shrink-0">
                 <FaCalendarCheck />
@@ -477,8 +605,9 @@ export default function Dashboard() {
               </div>
             </Card>
           </div>
-        </>
+        </div>
       )}
+
 
       {/* RECENT ASSESSMENTS TABLE WITH SORT CONTROLS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
