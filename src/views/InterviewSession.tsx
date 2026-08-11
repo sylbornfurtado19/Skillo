@@ -42,7 +42,12 @@ export default function InterviewSession() {
     setAnswers,
     setupData,
     setResults,
+    isRetry,
+    setIsRetry,
+    retryQuestionIndex,
+    updateQuestionScore,
   } = useInterview();
+
 
   // Settings / Profile Voice Preferences
   const [voiceRate, setVoiceRate] = useState(1.0);
@@ -293,7 +298,24 @@ export default function InterviewSession() {
     setInterviewerSpeaking(true);
     setShowHint(false);
 
-    if (currentQuestionIndex + 1 < questions.length) {
+    if (isRetry && retryQuestionIndex !== null) {
+      setGrading(true);
+      submitInterviewAnswers(setupData, [{ id: `q_1`, question: currentQuestionText }], [{ answerText: finalAnswer || 'No response provided.' }])
+        .then((finalReport) => {
+          const newScore = finalReport.overallScore;
+          const feedback = finalReport.breakdown?.[0]?.feedback || 'Demonstrated improved response clarity.';
+          updateQuestionScore(retryQuestionIndex, finalAnswer || 'No response provided.', newScore, feedback);
+          setIsRetry(false);
+          setGrading(false);
+          router.push('/results');
+        })
+        .catch((err) => {
+          console.error(err);
+          setGrading(false);
+          setIsRetry(false);
+          router.push('/results');
+        });
+    } else if (currentQuestionIndex + 1 < questions.length) {
       const nextIndex = currentQuestionIndex + 1;
       const nextAnswerObj = newAnswers[nextIndex];
       const nextAnswer = typeof nextAnswerObj === 'string' ? nextAnswerObj : nextAnswerObj?.answerText ?? '';
@@ -316,6 +338,7 @@ export default function InterviewSession() {
           setGrading(false);
         });
     }
+
   }, [
     recording,
     responseMode,
@@ -748,11 +771,19 @@ export default function InterviewSession() {
           <div>
             <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
               <div className="space-y-0.5">
-                <span className="text-xs text-white font-bold uppercase tracking-wider block">Candidate Studio Workspace</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-white font-bold uppercase tracking-wider block">Candidate Studio Workspace</span>
+                  {isRetry && (
+                    <Badge variant="accent" size="sm" className="bg-amber-500/10 border-amber-500/20 text-amber-400 font-mono font-bold">
+                      Focused Question Retry
+                    </Badge>
+                  )}
+                </div>
                 <span className="text-[10px] text-gray-500 font-mono">
-                  Question {currentQuestionIndex + 1} of {questions.length}
+                  {isRetry ? 'Single Question Target Practice' : `Question ${currentQuestionIndex + 1} of ${questions.length}`}
                 </span>
               </div>
+
 
               <div className="bg-[#030712] p-1 rounded-xl border border-white/5 flex gap-1">
                 <button

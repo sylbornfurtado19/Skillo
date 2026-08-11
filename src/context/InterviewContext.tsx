@@ -88,10 +88,17 @@ export interface InterviewContextValue {
   setResults: (results: InterviewResults | null) => void;
   sessionHistory: SessionHistoryItem[];
   setSessionHistory: React.Dispatch<React.SetStateAction<SessionHistoryItem[]>>;
+  isRetry: boolean;
+  setIsRetry: (isRetry: boolean) => void;
+  retryQuestionIndex: number | null;
+  setRetryQuestionIndex: (index: number | null) => void;
+  updateQuestionScore: (questionIndex: number, newAnswerText: string, newScore: number, feedback: string) => void;
   resetSession: () => void;
   // Theme
   setTheme: (theme: string) => void;
 }
+
+
 
 // ── Context ────────────────────────────────────────────────────────────────────
 
@@ -333,6 +340,36 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
     }
   };
 
+  // Single question retry mode state
+  const [isRetry, setIsRetry] = useState(false);
+  const [retryQuestionIndex, setRetryQuestionIndex] = useState<number | null>(null);
+
+  const updateQuestionScore = (questionIndex: number, newAnswerText: string, newScore: number, feedback: string) => {
+    if (!results || !results.breakdown) return;
+
+    const newBreakdown = [...results.breakdown];
+    if (newBreakdown[questionIndex]) {
+      newBreakdown[questionIndex] = {
+        ...newBreakdown[questionIndex],
+        score: newScore,
+        feedback,
+      };
+    }
+
+    const updatedOverallScore = Math.round(
+      newBreakdown.reduce((sum, item) => sum + item.score, 0) / newBreakdown.length
+    );
+
+    const updatedResults: InterviewResults = {
+      ...results,
+      overallScore: updatedOverallScore,
+      breakdown: newBreakdown,
+    };
+
+    _setResults(updatedResults);
+    safeSessionSet('iq_results', updatedResults);
+  };
+
   const value: InterviewContextValue = {
     resumeData,
     setResumeData,
@@ -354,8 +391,13 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
     setResults,
     sessionHistory,
     setSessionHistory,
+    isRetry,
+    setIsRetry,
+    retryQuestionIndex,
+    setRetryQuestionIndex,
+    updateQuestionScore,
     resetSession,
-    setTheme,
+    setTheme: () => {},
   };
 
   return (

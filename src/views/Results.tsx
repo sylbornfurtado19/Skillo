@@ -38,8 +38,28 @@ import SimPOContrastiveCard from '../components/ui/SimPOContrastiveCard';
 export default function Results() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { resumeData, results, setResults, setQuestions, setCurrentQuestionIndex, setAnswers, resetSession, sessionHistory } =
-    useInterview();
+  const {
+    resumeData,
+    results,
+    setResults,
+    setQuestions,
+    setCurrentQuestionIndex,
+    setAnswers,
+    resetSession,
+    sessionHistory,
+    setIsRetry,
+    setRetryQuestionIndex,
+  } = useInterview();
+
+  const handleRetryQuestion = (questionIndex: number, questionText: string) => {
+    setIsRetry(true);
+    setRetryQuestionIndex(questionIndex);
+    setQuestions([questionText]);
+    setCurrentQuestionIndex(0);
+    setAnswers([]);
+    router.push('/interview');
+  };
+
 
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
@@ -603,9 +623,23 @@ export default function Results() {
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRetryQuestion(idx, item.question);
+                        }}
+                        className="px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:text-white hover:bg-amber-500/20 text-xs font-mono font-bold flex items-center gap-1.5 transition cursor-pointer"
+                        title="Focus on this single question in a mini-session"
+                      >
+                        <FaUndo size={9} />
+                        <span>Retry this question</span>
+                      </button>
+
                       <Badge variant="success">Score: {item.score}</Badge>
                       {isExpanded ? <FaChevronUp className="text-gray-500 text-xs" /> : <FaChevronDown className="text-gray-500 text-xs" />}
                     </div>
+
                   </button>
 
                   {isExpanded && (
