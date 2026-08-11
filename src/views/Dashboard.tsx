@@ -14,6 +14,7 @@ import {
   FaLightbulb,
   FaRocket,
   FaSortAmountDown,
+  FaFire,
 } from 'react-icons/fa';
 
 
@@ -23,8 +24,9 @@ const Radar = dynamic(() => import('react-chartjs-2').then((m) => m.Radar), { ss
 const Line = dynamic(() => import('react-chartjs-2').then((m) => m.Line), { ssr: false });
 
 import { useAuth } from '../hooks/useAuth';
-import { useInterview } from '../context/InterviewContext';
+import { useInterview, calculateStreak } from '../context/InterviewContext';
 import type { SessionHistoryItem } from '../context/InterviewContext';
+
 
 
 import type { EvaluationCategories } from '../types/index';
@@ -61,6 +63,7 @@ export default function Dashboard() {
 
   const finalHistory = sessionHistory || [];
   const totalCompleted = finalHistory.length;
+  const streakInfo = calculateStreak(finalHistory);
 
   // Sorting recent assessments
   const sortedHistory = [...finalHistory].sort((a, b) => {
@@ -73,6 +76,7 @@ export default function Dashboard() {
     // newest (default)
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
+
 
   const averageScore =
     totalCompleted > 0 ? Math.round(finalHistory.reduce((sum, h) => sum + h.score, 0) / totalCompleted) : 0;
@@ -255,13 +259,22 @@ export default function Dashboard() {
         <div className="absolute top-0 right-0 w-40 h-40 bg-primary/15 rounded-full blur-[90px] pointer-events-none" />
 
         <div>
-          <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-white">
-            Welcome back, {candidateName}!
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-white">
+              Welcome back, {candidateName}!
+            </h2>
+            {streakInfo.currentStreak > 0 && (
+              <Badge variant="accent" size="sm" className="bg-amber-500/10 border-amber-500/20 text-amber-400 font-mono font-bold flex items-center gap-1">
+                <FaFire className="text-amber-500 animate-pulse" />
+                <span>{streakInfo.currentStreak} day streak</span>
+              </Badge>
+            )}
+          </div>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">
             Track metrics and prepare for assessments in your workspace.
           </p>
         </div>
+
 
         <div className="flex gap-3 shrink-0">
           <Button onClick={() => router.push('/setup')} variant="primary" size="sm" icon={FaPlay}>
@@ -272,6 +285,35 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
+
+
+      {/* ── STREAK NUDGE CARD (Shown if practiced yesterday but not yet today) ── */}
+      {streakInfo.hasActiveStreakYesterday && (
+        <Card variant="glass" className="p-4 border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-orange-950/20 to-amber-950/10 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <FaFire className="animate-pulse" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider font-heading">
+                Keep your {streakInfo.currentStreak}-day streak going!
+              </h4>
+              <p className="text-[11px] text-gray-300">
+                Complete 1 quick mock session today to maintain your momentum.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => router.push('/setup')}
+            variant="primary"
+            size="sm"
+            className="shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold border-none"
+            icon={FaPlay}
+          >
+            Practice Now
+          </Button>
+        </Card>
+      )}
 
       {/* ── FIRST-RUN ONBOARDING EMPTY STATE ── */}
       {totalCompleted === 0 && !resumeData ? (

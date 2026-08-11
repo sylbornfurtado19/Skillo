@@ -123,7 +123,66 @@ const DEFAULT_SETUP: SetupData = {
 
 const SESSION_HISTORY_MAX = 20;
 
+export interface StreakInfo {
+  currentStreak: number;
+  practicedToday: boolean;
+  hasActiveStreakYesterday: boolean;
+}
+
+export function calculateStreak(history: SessionHistoryItem[]): StreakInfo {
+  if (!history || history.length === 0) {
+    return { currentStreak: 0, practicedToday: false, hasActiveStreakYesterday: false };
+  }
+
+  // Extract unique sorted dates (YYYY-MM-DD) descending
+  const uniqueDates = Array.from(
+    new Set(
+      history
+        .map((item) => item.date ? item.date.split('T')[0] : '')
+        .filter(Boolean)
+    )
+  ).sort((a, b) => b.localeCompare(a));
+
+  if (uniqueDates.length === 0) {
+    return { currentStreak: 0, practicedToday: false, hasActiveStreakYesterday: false };
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+  const practicedToday = uniqueDates.includes(todayStr);
+
+  let currentStreak = 0;
+  let checkDate = new Date();
+
+  // If candidate hasn't practiced today, start checking from yesterday
+  if (!practicedToday) {
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
+  while (true) {
+    const dateStr = checkDate.toISOString().split('T')[0];
+    if (uniqueDates.includes(dateStr)) {
+      currentStreak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  const hasActiveStreakYesterday = !practicedToday && currentStreak > 0;
+
+  return {
+    currentStreak,
+    practicedToday,
+    hasActiveStreakYesterday,
+  };
+}
+
 function safeLocalGet<T>(key: string, fallback: T): T {
+
   if (typeof window === 'undefined') return fallback;
   try {
     const raw = localStorage.getItem(key);
