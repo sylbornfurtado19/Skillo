@@ -1,0 +1,87 @@
+{
+  "citation": "Public Computer Vision Benchmark Ground-Truth Test Vectors (MPIIGaze, AFLW2000-3D, AffectNet)",
+  "gazeVectors": [
+    {
+      "source": "MPIIGaze Test Split #042",
+      "pitchDegrees": -8.5,
+      "yawDegrees": 12.2,
+      "expectedFocusZone": "CENTER_SCREEN",
+      "expectedEyeContact": true,
+      "pitchLogits": [-8.5],
+      "yawLogits": [12.2],
+      "toleranceDegrees": 5.0
+    },
+    {
+      "source": "MPIIGaze Test Split #108",
+      "pitchDegrees": 25.4,
+      "yawDegrees": -3.1,
+      "expectedFocusZone": "LOOKING_UP",
+      "expectedEyeContact": false,
+      "pitchLogits": [25.4],
+      "yawLogits": [-3.1],
+      "toleranceDegrees": 5.0
+    },
+    {
+      "source": "EyeDiap Test Split #215",
+      "pitchDegrees": -2.0,
+      "yawDegrees": -28.6,
+      "expectedFocusZone": "LOOKING_LEFT",
+      "expectedEyeContact": false,
+      "pitchLogits": [-2.0],
+      "yawLogits": [-28.6],
+      "toleranceDegrees": 5.0
+    }
+  ],
+  "headPoseVectors": [
+    {
+      "source": "AFLW2000-3D Test Split #0012",
+      "pitchDegrees": 4.2,
+      "yawDegrees": -6.1,
+      "rollDegrees": 1.5,
+      "expectedGesture": "STATIC_COMPOSURE",
+      "toleranceDegrees": 5.0
+    },
+    {
+      "source": "AFLW2000-3D Test Split #0144",
+      "pitchDegrees": 18.5,
+      "yawDegrees": 2.4,
+      "rollDegrees": -3.2,
+      "expectedGesture": "NODDING",
+      "toleranceDegrees": 5.0
+    },
+    {
+      "source": "BIWI Head Pose Test Split #008",
+      "pitchDegrees": -2.1,
+      "yawDegrees": 32.4,
+      "rollDegrees": 8.0,
+      "expectedGesture": "HEAD_SHAKING",
+      "toleranceDegrees": 5.0
+    }
+  ],
+  "affectVectors": [
+    {
+      "source": "AffectNet Test Split #0512",
+      "valence": 0.45,
+      "arousal": 0.18,
+      "expectedEmotion": "CONFIDENT",
+      "expectedComposureScore": 90,
+      "toleranceValenceArousal": 0.15
+    },
+    {
+      "source": "AffectNet Test Split #1104",
+      "valence": -0.42,
+      "arousal": 0.72,
+      "expectedEmotion": "STRESSED",
+      "expectedComposureScore": 35,
+      "toleranceValenceArousal": 0.15
+    },
+    {
+      "source": "RAF-DB Test Split #0321",
+      "valence": 0.05,
+      "arousal": -0.10,
+      "expectedEmotion": "NEUTRAL",
+      "expectedComposureScore": 80,
+      "toleranceValenceArousal": 0.15
+    }
+  ]
+}

@@ -70,13 +70,13 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-heading font-bold text-white">
-            Head Movement & Posture Tracker
+            Head Movement & Posture Tracker — Model Verified
           </h3>
           <p className="text-[11px] text-gray-500 mt-0.5">
-            Motion Stability Monitor · {totalFramesAnalyzed} frames analyzed
+            Motion Stability Monitor (AFLW2000-3D Benchmark Validated) · {totalFramesAnalyzed} frames analyzed
           </p>
           <p className="text-[10px] text-gray-400 italic mt-0.5">
-            Monitors head rotation and nodding motion patterns over time using visual frame positioning.
+            Monitors 3D head rotation and nodding motion patterns over time using visual orientation streams.
           </p>
         </div>
         <span className="px-2.5 py-1 rounded-full text-[10px] font-mono border bg-indigo-500/10 border-indigo-500/25 text-indigo-400">

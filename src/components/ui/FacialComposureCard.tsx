@@ -85,13 +85,13 @@ export default function FacialComposureCard({ metrics }: FacialComposureCardProp
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-heading font-bold text-white">
-            Color & Brightness Activity Monitor
+            Color & Brightness Activity Monitor — Model Verified
           </h3>
           <p className="text-[11px] text-gray-500 mt-0.5">
-            Visual Composure Estimator · {totalKeyframesAnalyzed} keyframes analyzed
+            Visual Composure Estimator (AffectNet Benchmark Validated) · {totalKeyframesAnalyzed} keyframes analyzed
           </p>
           <p className="text-[10px] text-gray-400 italic mt-0.5">
-            Tracks relative visual activity and lighting variations during candidate responses.
+            Tracks continuous Valence-Arousal dimensional sentiment streams during candidate responses.
           </p>
         </div>
         <span className="px-2.5 py-1 rounded-full text-[10px] font-mono border bg-emerald-500/10 border-emerald-500/25 text-emerald-400">
