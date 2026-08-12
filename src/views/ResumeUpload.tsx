@@ -417,10 +417,10 @@ export default function ResumeUpload() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-heading font-bold text-white">
-                        Visual Layout &amp; Document Structure Canvas
+                        Document Layout &amp; Formatting Inspector
                       </h3>
                       <p className="text-[11px] text-gray-500 mt-0.5">
-                        LayoutLMv3 · 2D spatial bounding box analysis · {vla.elements.length} elements mapped
+                        Analyzes document structure, column boundaries, and typography hierarchy using deterministic spatial geometry rules.
                       </p>
                     </div>
                     {/* Page indicator */}

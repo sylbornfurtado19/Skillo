@@ -103,10 +103,13 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-heading font-bold text-white">
-            Gaze Stability & Eye Contact Metrics
+            Webcam Focus & Gaze Estimator
           </h3>
           <p className="text-[11px] text-gray-500 mt-0.5">
-            L2CS-Net · {gazeFrames.length} frames · {totalVideoDurationSeconds.toFixed(1)}s session
+            Screen Alignment Tracker · {gazeFrames.length} frames · {totalVideoDurationSeconds.toFixed(1)}s session
+          </p>
+          <p className="text-[10px] text-gray-400 italic mt-0.5">
+            Estimates screen focus direction using real-time canvas position heuristics.
           </p>
         </div>
         <div className="flex items-center gap-2">

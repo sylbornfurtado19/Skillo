@@ -1,10 +1,10 @@
 /**
- * LayoutLMv3 Visual Document Layout & Multi-Column Parser Engine
- * Research Foundation: LayoutLMv3: Pre-training for Document AI with
- * Unstructured and Structured Documents (Huang et al., 2022)
+ * ARCHITECTURAL DECISION:
+ * Resume layout analysis operates permanently on deterministic geometric rules
+ * and text formatting heuristics rather than deep neural network models.
  *
  * Implements structure-aware spatial coordinate extraction from resume text,
- * normalized to a [0, 1000] integer grid. No binary PDF rendering dependencies.
+ * normalized to a [0, 1000] integer grid without external machine learning runtimes.
  */
 
 import type {

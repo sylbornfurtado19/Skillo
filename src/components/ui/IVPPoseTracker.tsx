@@ -352,7 +352,7 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
       <div className={`relative rounded-xl overflow-hidden bg-[#060b14] border border-white/8 ${className}`}>
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5">
           <span className="text-[9px] text-gray-500 font-mono uppercase tracking-widest">
-            HopeNet · 3D Head Pose
+            Head Movement & Posture Tracker
           </span>
           <div className="flex items-center gap-1.5">
             <div className={`h-1.5 w-1.5 rounded-full ${isStarted ? 'bg-indigo-500 animate-pulse' : 'bg-gray-600'}`} />

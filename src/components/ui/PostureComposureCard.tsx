@@ -70,10 +70,13 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-heading font-bold text-white">
-            Physical Composure & Gestural Motion Analytics
+            Head Movement & Posture Tracker
           </h3>
           <p className="text-[11px] text-gray-500 mt-0.5">
-            HopeNet 3D Euler Engine · {totalFramesAnalyzed} frames analyzed
+            Motion Stability Monitor · {totalFramesAnalyzed} frames analyzed
+          </p>
+          <p className="text-[10px] text-gray-400 italic mt-0.5">
+            Monitors head rotation and nodding motion patterns over time using visual frame positioning.
           </p>
         </div>
         <span className="px-2.5 py-1 rounded-full text-[10px] font-mono border bg-indigo-500/10 border-indigo-500/25 text-indigo-400">

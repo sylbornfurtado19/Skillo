@@ -401,7 +401,7 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5">
           <span className="text-[9px] text-gray-500 font-mono uppercase tracking-widest">
-            L2CS-Net · Gaze Tracker
+            Webcam Focus & Gaze Estimator
           </span>
           <div className="flex items-center gap-1.5">
             <div

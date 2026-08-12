@@ -153,9 +153,9 @@ describe('Engine 9 — AffectNet: Facial Expression & Composure', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Engine 10 — SyncNet Lip-Speech Sync & Anti-Spoofing
+// Audio Presence & Latency Sync Engine
 // ═══════════════════════════════════════════════════════════════════════════════
-describe('Engine 10 — SyncNet: Lip-Speech Sync & Anti-Spoofing', () => {
+describe('Audio Presence & Latency Sync Engine', () => {
   it('calculates cross-modal L2 distance D(v,a)', () => {
     const vecA = [1.0, 2.0, 3.0];
     const vecB = [1.0, 2.0, 3.0];
@@ -165,18 +165,18 @@ describe('Engine 10 — SyncNet: Lip-Speech Sync & Anti-Spoofing', () => {
   it('evaluates sync verification status thresholds', () => {
     expect(evaluateSyncStatus(0.9, 20)).toBe('VERIFIED_GENUINE');
     expect(evaluateSyncStatus(1.0, 120)).toBe('LATENCY_LAG_WARNING');
-    expect(evaluateSyncStatus(1.8, 20)).toBe('SPOOFING_ALERT_TRIGGERED');
+    expect(evaluateSyncStatus(1.8, 20)).toBe('LATENCY_LAG_WARNING');
     expect(evaluateSyncStatus(0.9, 20, 0.01)).toBe('NO_AUDIO_DETECTED');
   });
 
-  it('detects spoofing alert events when desynchronized', () => {
+  it('caps warning status at LATENCY_LAG_WARNING without emitting spoofing alerts', () => {
     const inputs = [
       { timestampMs: 0, visualDistance: 1.8, offsetMs: 300, audioEnergy: 0.5 },
       { timestampMs: 1000, visualDistance: 1.8, offsetMs: 300, audioEnergy: 0.5 },
       { timestampMs: 2000, visualDistance: 1.8, offsetMs: 300, audioEnergy: 0.5 },
     ];
     const res = processLipSyncWindows(inputs);
-    expect(res.spoofingAlerts.length).toBe(1);
-    expect(res.verificationStatus).toBe('SPOOFING_ALERT_TRIGGERED');
+    expect(res.spoofingAlerts.length).toBe(0);
+    expect(res.verificationStatus).toBe('LATENCY_LAG_WARNING');
   });
 });

@@ -116,20 +116,25 @@ export default function VisualDocumentCanvas({
       {/* Document Frame */}
       <div className="relative w-full rounded-xl overflow-hidden border border-white/10 bg-[#0a0f1a] shadow-2xl">
         {/* Header Bar */}
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 bg-[#060b14]">
-          <div className="flex gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
-            <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
-            <div className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
+        <div className="flex flex-col gap-1 px-4 py-3 border-b border-white/5 bg-[#060b14]">
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1.5">
+              <div className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
+              <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
+              <div className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
+            </div>
+            <span className="text-xs font-heading font-bold text-white ml-2">
+              Document Layout & Formatting Inspector
+            </span>
+            <div className="ml-auto flex items-center gap-3">
+              <span className="text-[9px] text-indigo-400 font-mono">● HEADER</span>
+              <span className="text-[9px] text-sky-400 font-mono">● COLUMN</span>
+              <span className="text-[9px] text-red-400 font-mono">● PENALTY</span>
+            </div>
           </div>
-          <span className="text-[10px] text-gray-500 font-mono ml-2 tracking-wider">
-            visual layout canvas — [0, 1000] grid
-          </span>
-          <div className="ml-auto flex items-center gap-3">
-            <span className="text-[9px] text-indigo-400 font-mono">● HEADER</span>
-            <span className="text-[9px] text-sky-400 font-mono">● COLUMN</span>
-            <span className="text-[9px] text-red-400 font-mono">● PENALTY</span>
-          </div>
+          <p className="text-[10px] text-gray-400">
+            Analyzes document structure, column boundaries, and typography hierarchy using deterministic spatial geometry rules.
+          </p>
         </div>
 
         {/* SVG Canvas — viewBox 0 0 1000 1000 matches the normalized grid directly */}

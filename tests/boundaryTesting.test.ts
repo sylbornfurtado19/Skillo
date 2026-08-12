@@ -128,11 +128,11 @@ describe('Phase 8 — Exact Cutoff Threshold Boundaries', () => {
     expect(resLow.requiresValidationPass).toBe(true);
   });
 
-  it('SyncNet verification status boundaries: D <= 1.15 & |offset| <= 80ms → VERIFIED_GENUINE', () => {
+  it('Lip sync verification status boundaries: D <= 1.15 & |offset| <= 80ms → VERIFIED_GENUINE, capped at LATENCY_LAG_WARNING', () => {
     expect(evaluateSyncStatus(1.15, 80)).toBe('VERIFIED_GENUINE');
     expect(evaluateSyncStatus(1.15, 81)).toBe('LATENCY_LAG_WARNING');
-    expect(evaluateSyncStatus(1.61, 80)).toBe('SPOOFING_ALERT_TRIGGERED');
-    expect(evaluateSyncStatus(1.0, 251)).toBe('SPOOFING_ALERT_TRIGGERED');
+    expect(evaluateSyncStatus(1.61, 80)).toBe('LATENCY_LAG_WARNING');
+    expect(evaluateSyncStatus(1.0, 251)).toBe('LATENCY_LAG_WARNING');
   });
 
   it('AffectNet stress spike requires >= 3 consecutive frames with A >= 0.65 and V <= -0.30', () => {

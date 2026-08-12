@@ -85,10 +85,13 @@ export default function FacialComposureCard({ metrics }: FacialComposureCardProp
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-heading font-bold text-white">
-            AffectNet Facial Expression & Composure Engine
+            Color & Brightness Activity Monitor
           </h3>
           <p className="text-[11px] text-gray-500 mt-0.5">
-            Continuous 2D Valence-Arousal Mapping · {totalKeyframesAnalyzed} keyframes analyzed
+            Visual Composure Estimator · {totalKeyframesAnalyzed} keyframes analyzed
+          </p>
+          <p className="text-[10px] text-gray-400 italic mt-0.5">
+            Tracks relative visual activity and lighting variations during candidate responses.
           </p>
         </div>
         <span className="px-2.5 py-1 rounded-full text-[10px] font-mono border bg-emerald-500/10 border-emerald-500/25 text-emerald-400">

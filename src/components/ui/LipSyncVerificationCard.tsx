@@ -90,10 +90,13 @@ export default function LipSyncVerificationCard({ metrics }: LipSyncVerification
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-heading font-bold text-white">
-            Audio-Visual Lip-Sync & Anti-Spoofing Audit
+            Audio Presence & Latency Monitor
           </h3>
           <p className="text-[11px] text-gray-500 mt-0.5">
-            SyncNet Cross-Modal Engine · {totalWindowsAnalyzed} windows analyzed
+            Speech Activity Indicator · {totalWindowsAnalyzed} windows analyzed
+          </p>
+          <p className="text-[10px] text-gray-400 italic mt-0.5">
+            Checks for audio signal presence and basic stream time alignment.
           </p>
         </div>
         <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono border font-bold ${

@@ -2,9 +2,9 @@
 
 /**
  * IVPSyncTracker
- * IVP Feature 5 — SyncNet Audio-Visual Lip-Speech Tracker
+ * IVP Feature 5 — Audio Presence & Latency Monitor
  *
- * Samples cross-modal lip motion + audio energy windows (~1 FPS),
+ * Samples lip motion + audio energy windows (~1 FPS),
  * calculates visual distance and estimated temporal offset, and emits SyncWindowInput.
  */
 
@@ -86,7 +86,7 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
               offsetMs = 0;
             } else {
               visualDist = Math.max(0.70, Math.min(1.40, 0.85 + (0.5 - audioEnergy) * 0.4));
-              offsetMs = Math.round((Math.random() - 0.5) * 40); // baseline minimal jitter
+              offsetMs = 15; // deterministic baseline offset
             }
           }
 
@@ -190,3 +190,4 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
 );
 
 export default IVPSyncTracker;
+

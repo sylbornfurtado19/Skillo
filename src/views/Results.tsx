@@ -354,7 +354,7 @@ export default function Results() {
         </div>
         <SectionHeader
           title="Performance Report"
-          description="A review of your logical accuracy, communication metrics, and technical dimension matrices."
+          description="Integrated Multi-Modal Evaluation Framework (LLM Evaluation Core + Visual & Audio Signal Trackers)"
           className="text-center max-w-2xl mx-auto"
         />
       </div>
@@ -436,7 +436,7 @@ export default function Results() {
             Facial Composure
           </button>
         )}
-        {/* Lip-Sync & Anti-Spoofing tab — only shown when metrics are available */}
+        {/* Audio Presence & Latency tab — only shown when metrics are available */}
         {isLipSyncMetrics(results.lipSyncMetrics) && (
           <button
             type="button"
@@ -447,7 +447,7 @@ export default function Results() {
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            Sync & Security
+            Audio & Latency
           </button>
         )}
 

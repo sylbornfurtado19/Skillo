@@ -103,9 +103,14 @@ export default function LayoutPenaltyViewer({
     <div className="space-y-4">
       {/* ── Layout Score Ring ─────────────────────────────────────────────── */}
       <div className="bg-[#060b14] border border-white/8 rounded-2xl p-5 space-y-4">
-        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-          Visual Layout & Design Quality
-        </h4>
+        <div>
+          <h4 className="text-xs font-bold text-gray-200 uppercase tracking-wider">
+            Resume Spacing & Margin Validator
+          </h4>
+          <p className="text-[10px] text-gray-500 mt-0.5">
+            Analyzes document structure, column boundaries, and typography hierarchy using deterministic spatial geometry rules.
+          </p>
+        </div>
 
         <div className="flex items-center gap-5">
           {/* Score Ring */}
