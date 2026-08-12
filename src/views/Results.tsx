@@ -357,6 +357,63 @@ export default function Results() {
           description="Integrated Multi-Modal Evaluation Framework (LLM Evaluation Core + Visual & Audio Signal Trackers)"
           className="text-center max-w-2xl mx-auto"
         />
+
+        {/* Execution Mode Audit Summary Breakdown */}
+        <div className="w-full max-w-4xl mx-auto bg-[#080d1a] border border-white/10 rounded-2xl p-4 text-left space-y-3 shadow-lg">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+            <h4 className="text-xs font-mono font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <span>🔍</span> Vision & Signal Execution Mode Audit Summary
+            </h4>
+            <span className="text-[10px] font-mono text-gray-500">System Telemetry Audit</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex flex-col justify-between">
+              <span className="text-[10px] font-mono text-gray-400">Gaze Estimation</span>
+              <div className="mt-1 flex items-center gap-1.5">
+                {(results.eyeContactMetrics as any)?.executionMode === 'VERIFIED_MODEL' ? (
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    [Verified Neural]
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                    [Estimated Fallback]
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex flex-col justify-between">
+              <span className="text-[10px] font-mono text-gray-400">3D Head Pose</span>
+              <div className="mt-1 flex items-center gap-1.5">
+                {(results.headPoseMetrics as any)?.executionMode === 'VERIFIED_MODEL' ? (
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    [Verified Neural]
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                    [Estimated Fallback]
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex flex-col justify-between">
+              <span className="text-[10px] font-mono text-gray-400">Facial Affect</span>
+              <div className="mt-1 flex items-center gap-1.5">
+                {(results.affectiveMetrics as any)?.executionMode === 'VERIFIED_MODEL' ? (
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    [Verified Neural]
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                    [Estimated Fallback]
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 1. Sticky In-Page Navigation Bar */}

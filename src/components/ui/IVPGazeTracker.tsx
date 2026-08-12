@@ -107,28 +107,31 @@ function estimateFaceCentroid(
   h: number
 ): { cx: number; cy: number } | null {
   try {
-    // Sample a 64×48 downscaled region of the upper half (face is usually top 60%)
-    const sampleW = 64;
-    const sampleH = 36;
-    const imageData = ctx.getImageData(
-      0, 0,
-      Math.min(w, w),
-      Math.min(h * 0.6, h * 0.6)
-    );
+    const imageData = ctx.getImageData(0, 0, w, Math.min(h, h * 0.6));
+    const data = imageData.data;
+    const len = data.length;
+
+    // 1. Calculate frame-level average luminance for adaptive contrast scaling
+    let totalLuma = 0;
+    let pixelCount = 0;
+    for (let i = 0; i < len; i += 16) {
+      totalLuma += data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      pixelCount++;
+    }
+    const avgLuma = pixelCount > 0 ? totalLuma / pixelCount : 128;
+    // Adaptive threshold scales down in low light, scales up in bright light
+    const adaptiveThreshold = Math.max(12, Math.min(45, avgLuma * 0.25));
 
     let weightX = 0, weightY = 0, totalWeight = 0;
     const pw = imageData.width;
     const ph = imageData.height;
-    const data = imageData.data;
 
-    // Weighted centroid by luminance: bright regions = face
     for (let y = 0; y < ph; y += 4) {
       for (let x = 0; x < pw; x += 4) {
         const idx = (y * pw + x) * 4;
         const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-        // Skin-tone heuristic: high R, moderate G, low B
         const skinScore = Math.max(0, r - Math.max(g, b) * 0.6);
-        if (skinScore > 30) {
+        if (skinScore > adaptiveThreshold) {
           weightX += x * skinScore;
           weightY += y * skinScore;
           totalWeight += skinScore;
@@ -136,7 +139,8 @@ function estimateFaceCentroid(
       }
     }
 
-    if (totalWeight < 1000) return null; // No confident face region detected
+    // Zero-frame / occlusion protection: return null safely if face is missing or occluded
+    if (totalWeight < 400) return null;
 
     return {
       cx: weightX / totalWeight,

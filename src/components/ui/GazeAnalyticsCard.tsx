@@ -100,23 +100,39 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
   return (
     <div className="space-y-5 w-full">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-heading font-bold text-white">
-            Webcam Focus & Gaze Estimator — Model Verified
-          </h3>
-          <p className="text-[11px] text-gray-500 mt-0.5">
-            Screen Alignment Tracker (MPIIGaze Benchmark Validated) · {gazeFrames.length} frames · {totalVideoDurationSeconds.toFixed(1)}s session
-          </p>
-          <p className="text-[10px] text-gray-400 italic mt-0.5">
-            Estimates screen focus direction using real-time spatial landmark vectors.
-          </p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-heading font-bold text-white">
+                Webcam Focus & Gaze Estimator
+              </h3>
+              {metrics.executionMode === 'VERIFIED_MODEL' ? (
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  [Verified Neural Inference]
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                  [Estimated Fallback Mode]
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Screen Alignment Tracker · {gazeFrames.length} frames · {totalVideoDurationSeconds.toFixed(1)}s session
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono border bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
+              {distractionEvents.length === 0 ? '✓ No Distractions' : `${distractionEvents.length} Events`}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono border bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
-            {distractionEvents.length === 0 ? '✓ No Distractions' : `${distractionEvents.length} Events`}
-          </span>
-        </div>
+
+        {metrics.executionMode === 'ESTIMATED_FALLBACK' && (
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5 text-[10px] text-amber-300 font-mono">
+            ⚠️ Metrics calculated using fallback canvas position heuristics because hardware neural acceleration was unavailable.
+          </div>
+        )}
       </div>
 
       {/* ── Row 1: Score gauges + Quadrant ──────────────────────────────── */}

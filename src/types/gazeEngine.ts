@@ -31,8 +31,11 @@ export interface DistractionEvent {
   severity: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
+export type ExecutionMode = 'VERIFIED_MODEL' | 'ESTIMATED_FALLBACK';
+
 /** Session-level aggregated eye contact metrics returned by the gaze engine */
 export interface EyeContactSessionMetrics {
+  executionMode?: ExecutionMode;
   totalVideoDurationSeconds: number;
   eyeContactPercentage: number;    // 0.0 to 100.0%
   averagePitch: number;

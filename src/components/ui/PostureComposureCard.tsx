@@ -67,21 +67,37 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
   return (
     <div className="space-y-5 w-full">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-heading font-bold text-white">
-            Head Movement & Posture Tracker — Model Verified
-          </h3>
-          <p className="text-[11px] text-gray-500 mt-0.5">
-            Motion Stability Monitor (AFLW2000-3D Benchmark Validated) · {totalFramesAnalyzed} frames analyzed
-          </p>
-          <p className="text-[10px] text-gray-400 italic mt-0.5">
-            Monitors 3D head rotation and nodding motion patterns over time using visual orientation streams.
-          </p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-heading font-bold text-white">
+                Head Movement & Posture Tracker
+              </h3>
+              {metrics.executionMode === 'VERIFIED_MODEL' ? (
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  [Verified Neural Inference]
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                  [Estimated Fallback Mode]
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Motion Stability Monitor · {totalFramesAnalyzed} frames analyzed
+            </p>
+          </div>
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-mono border bg-indigo-500/10 border-indigo-500/25 text-indigo-400">
+            {postureComposureScore >= 80 ? 'High Composure' : postureComposureScore >= 60 ? 'Moderate Stability' : 'High Motion'}
+          </span>
         </div>
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-mono border bg-indigo-500/10 border-indigo-500/25 text-indigo-400">
-          {postureComposureScore >= 80 ? 'High Composure' : postureComposureScore >= 60 ? 'Moderate Stability' : 'High Motion'}
-        </span>
+
+        {metrics.executionMode === 'ESTIMATED_FALLBACK' && (
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5 text-[10px] text-amber-300 font-mono">
+            ⚠️ Metrics calculated using fallback canvas position heuristics because hardware neural acceleration was unavailable.
+          </div>
+        )}
       </div>
 
       {/* Row 1: Score Ring + Stat Grid */}

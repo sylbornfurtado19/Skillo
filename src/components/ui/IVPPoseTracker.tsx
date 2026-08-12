@@ -87,6 +87,17 @@ function estimateHeadCentroid(
   try {
     const imageData = ctx.getImageData(0, 0, w, Math.min(h, h * 0.7));
     const data = imageData.data;
+    const len = data.length;
+
+    let totalLuma = 0;
+    let pixelCount = 0;
+    for (let i = 0; i < len; i += 16) {
+      totalLuma += data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      pixelCount++;
+    }
+    const avgLuma = pixelCount > 0 ? totalLuma / pixelCount : 128;
+    const adaptiveThreshold = Math.max(10, Math.min(40, avgLuma * 0.22));
+
     let weightX = 0, weightY = 0, totalWeight = 0;
     const pw = imageData.width;
     const ph = imageData.height;
@@ -96,7 +107,7 @@ function estimateHeadCentroid(
         const idx = (y * pw + x) * 4;
         const r = data[idx], g = data[idx + 1], b = data[idx + 2];
         const skinScore = Math.max(0, r - Math.max(g, b) * 0.6);
-        if (skinScore > 25) {
+        if (skinScore > adaptiveThreshold) {
           weightX += x * skinScore;
           weightY += y * skinScore;
           totalWeight += skinScore;
@@ -104,7 +115,7 @@ function estimateHeadCentroid(
       }
     }
 
-    if (totalWeight < 1000) return null;
+    if (totalWeight < 400) return null;
     return { cx: weightX / totalWeight, cy: weightY / totalWeight };
   } catch {
     return null;

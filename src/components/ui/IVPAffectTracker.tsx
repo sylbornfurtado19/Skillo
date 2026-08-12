@@ -53,18 +53,19 @@ function estimateValenceArousal(
       count++;
     }
 
-    if (count === 0) return { valence: 0.1, arousal: 0.0, confidence: 0.5 };
+    // Zero-frame / occlusion protection: return baseline with confidence = 0 if frame missing
+    if (count === 0) return { valence: 0.0, arousal: 0.0, confidence: 0.0 };
 
     const rAvg = rSum / count;
     const gAvg = gSum / count;
     const bAvg = bSum / count;
 
-    // Heuristic sentiment & activation mapping based on RGB warmth & contrast
-    const warmth = (rAvg - bAvg) / 255; // higher warmth -> positive valence
+    // Ambient color temperature compensation: normalize warmth against average green baseline
+    const normalizedWarmth = (rAvg - gAvg * 0.9 - bAvg * 0.1) / 255;
     const brightness = (rAvg + gAvg + bAvg) / 765;
 
-    const valence = Math.max(-0.8, Math.min(0.8, warmth * 1.5 + (brightness - 0.5) * 0.4));
-    const arousal = Math.max(-0.8, Math.min(0.8, (brightness - 0.45) * 1.2));
+    const valence = Math.max(-0.8, Math.min(0.8, normalizedWarmth * 1.2 + (brightness - 0.5) * 0.3));
+    const arousal = Math.max(-0.8, Math.min(0.8, (brightness - 0.45) * 1.0));
 
     return {
       valence: Math.round(valence * 100) / 100,
@@ -72,7 +73,7 @@ function estimateValenceArousal(
       confidence: 0.82,
     };
   } catch {
-    return { valence: 0.2, arousal: 0.1, confidence: 0.4 };
+    return { valence: 0.0, arousal: 0.0, confidence: 0.0 };
   }
 }
 

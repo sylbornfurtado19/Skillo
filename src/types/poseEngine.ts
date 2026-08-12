@@ -24,8 +24,11 @@ export interface GesturalEvent {
   intensity: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
+import type { ExecutionMode } from './gazeEngine';
+
 /** Session-level aggregated physical composure and head pose metrics */
 export interface HeadPoseSessionMetrics {
+  executionMode?: ExecutionMode;
   totalFramesAnalyzed: number;
   averageYaw: number;
   averagePitch: number;

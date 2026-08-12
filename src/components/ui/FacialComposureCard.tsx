@@ -82,21 +82,37 @@ export default function FacialComposureCard({ metrics }: FacialComposureCardProp
   return (
     <div className="space-y-5 w-full">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-heading font-bold text-white">
-            Color & Brightness Activity Monitor — Model Verified
-          </h3>
-          <p className="text-[11px] text-gray-500 mt-0.5">
-            Visual Composure Estimator (AffectNet Benchmark Validated) · {totalKeyframesAnalyzed} keyframes analyzed
-          </p>
-          <p className="text-[10px] text-gray-400 italic mt-0.5">
-            Tracks continuous Valence-Arousal dimensional sentiment streams during candidate responses.
-          </p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-heading font-bold text-white">
+                Color & Brightness Activity Monitor
+              </h3>
+              {metrics.executionMode === 'VERIFIED_MODEL' ? (
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  [Verified Neural Inference]
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                  [Estimated Fallback Mode]
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Visual Composure Estimator · {totalKeyframesAnalyzed} keyframes analyzed
+            </p>
+          </div>
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-mono border bg-emerald-500/10 border-emerald-500/25 text-emerald-400">
+            {overallComposureScore >= 80 ? 'High Composure' : overallComposureScore >= 60 ? 'Moderate Composure' : 'Elevated Stress'}
+          </span>
         </div>
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-mono border bg-emerald-500/10 border-emerald-500/25 text-emerald-400">
-          {overallComposureScore >= 80 ? 'High Composure' : overallComposureScore >= 60 ? 'Moderate Composure' : 'Elevated Stress'}
-        </span>
+
+        {metrics.executionMode === 'ESTIMATED_FALLBACK' && (
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5 text-[10px] text-amber-300 font-mono">
+            ⚠️ Metrics calculated using fallback canvas position heuristics because hardware neural acceleration was unavailable.
+          </div>
+        )}
       </div>
 
       {/* Row 1: Score Gauge & 2D V-A Quadrant */}

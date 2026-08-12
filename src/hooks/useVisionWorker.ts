@@ -22,10 +22,13 @@ interface UseVisionWorkerOptions {
   onError?: (error: string) => void;
 }
 
+import type { ExecutionMode } from '@/types/gazeEngine';
+
 interface UseVisionWorkerReturn {
   workerState: WorkerLifecycleState;
   isReady: boolean;
   isFallbackMode: boolean;
+  executionMode: ExecutionMode;
   activeBackend: VisionModelBackend;
   lastResults: ProcessedVisionResults | null;
   processingLatencyMs: number;
@@ -46,6 +49,8 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   const [activeBackend, setActiveBackend] = useState<VisionModelBackend>(backend);
   const [lastResults, setLastResults] = useState<ProcessedVisionResults | null>(null);
   const [processingLatencyMs, setProcessingLatencyMs] = useState(0);
+
+  const executionMode: ExecutionMode = workerState === 'READY' && !isFallbackMode ? 'VERIFIED_MODEL' : 'ESTIMATED_FALLBACK';
 
   const workerRef = useRef<Worker | null>(null);
   const isBusyRef = useRef(false);
@@ -180,6 +185,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
     workerState,
     isReady: workerState === 'READY',
     isFallbackMode,
+    executionMode,
     activeBackend,
     lastResults,
     processingLatencyMs,

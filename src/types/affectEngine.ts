@@ -24,7 +24,10 @@ export interface StressSpikeEvent {
   triggerContext?: string;
 }
 
+import type { ExecutionMode } from './gazeEngine';
+
 export interface AffectiveSessionMetrics {
+  executionMode?: ExecutionMode;
   totalKeyframesAnalyzed: number;
   averageValence: number;
   averageArousal: number;
