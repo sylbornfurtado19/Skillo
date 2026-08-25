@@ -17,7 +17,6 @@ import {
   FaBell,
   FaChevronRight,
   FaUserTie,
-  FaGithub,
 } from 'react-icons/fa';
 import { useAuth } from '../hooks/useAuth';
 import { useInterview } from '../context/InterviewContext';
@@ -193,18 +192,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   );
                 })}
               </nav>
-
-              <div className="mt-auto px-6 py-4 pb-20 border-t border-white/5">
-                <a
-                  href="https://github.com/sylbornfurtado19/Skillo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-white transition duration-200 flex items-center gap-1.5 text-[#94A3B8]"
-                >
-                  <FaGithub />
-                  <span>GitHub</span>
-                </a>
-              </div>
 
               <div className="p-4 border-t border-white/5 bg-[#0f1522]">
                 <div className="flex items-center gap-3 mb-3">

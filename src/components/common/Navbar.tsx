@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaGithub, FaBars, FaTimes, FaUser, FaSignOutAlt, FaRocket, FaPalette } from 'react-icons/fa';
+import { FaBars, FaTimes, FaUser, FaSignOutAlt, FaRocket, FaPalette } from 'react-icons/fa';
 import { LogoFull } from './Logo';
 import { useAuth } from '../../hooks/useAuth';
 import { useInterview } from '../../context/InterviewContext';
@@ -221,15 +221,6 @@ export default function Navbar() {
                 </a>
               ))}
 
-              <a
-                href="https://github.com/sylbornfurtado19/Skillo"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-semibold text-gray-400 hover:text-white py-1.5 px-3 rounded-lg hover:bg-white/5 transition duration-150 flex items-center gap-2"
-              >
-                <FaGithub size={16} />
-                <span>GitHub Repository</span>
-              </a>
             </div>
 
             <div className="flex flex-col gap-2.5 pt-1">

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaEnvelope, FaLock, FaArrowRight, FaSpinner, FaEye, FaEyeSlash, FaGithub } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaArrowRight, FaSpinner, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuth } from '../hooks/useAuth';
 import { LogoFull } from '../components/common/Logo';
 
@@ -444,15 +444,6 @@ export default function Login() {
               <span>Google</span>
             </button>
 
-            <a
-              href="https://github.com/sylbornfurtado19/Skillo"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-medium text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-            >
-              <FaGithub size={16} className="text-gray-300 shrink-0" />
-              <span>GitHub</span>
-            </a>
           </div>
         </div>
       </motion.div>

@@ -1,5 +1,4 @@
 import React from 'react';
-import { FaGithub, FaHeart } from 'react-icons/fa';
 import { LogoFull } from './Logo';
 
 export default function Footer() {
@@ -17,18 +16,6 @@ export default function Footer() {
           &copy; {new Date().getFullYear()} Skillo. Intelligent Resume Screening & AI Interview Assistant.
         </p>
 
-        <div className="flex items-center gap-4 text-gray-400">
-          <a
-            href="https://github.com/sylbornfurtado19/Skillo"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 text-xs text-gray-300 hover:text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md group"
-            aria-label="GitHub Repository"
-          >
-            <FaGithub size={16} className="group-hover:rotate-12 transition duration-200 text-primary" />
-            <span className="font-mono text-[11px]">GitHub Repo</span>
-          </a>
-        </div>
       </div>
     </footer>
   );
