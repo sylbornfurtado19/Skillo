@@ -120,7 +120,7 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-[620px] flex items-center justify-center py-10 px-4 overflow-hidden">
+    <div className="relative min-h-[calc(100vh-9rem)] flex items-center justify-center px-4 py-8 overflow-hidden">
       {/* Animated Floating Orbs Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
         <motion.div
