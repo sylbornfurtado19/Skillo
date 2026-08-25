@@ -77,24 +77,6 @@ export default function Landing() {
       {/* 1. Hero Section */}
       <section className="relative flex flex-col items-center text-center max-w-4xl mx-auto pt-10 px-4">
 
-        {/* Clickable Open Source Glow Tag */}
-        <a
-          href="https://github.com/sylbornfurtado19/Skillo"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block group cursor-pointer mb-6"
-        >
-          <Badge
-            variant="primary"
-            size="md"
-            className="group-hover:scale-105 group-hover:border-primary/50 group-hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all duration-300"
-          >
-            <span className="h-2 w-2 rounded-full bg-accent mr-2 inline-block animate-pulse" />
-            Open Source &middot; Free to Use
-            <span className="ml-1 text-xs opacity-75 group-hover:translate-x-0.5 transition-transform duration-200 inline-block">&rarr;</span>
-          </Badge>
-        </a>
-
         {/* Headline */}
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
