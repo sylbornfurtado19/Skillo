@@ -371,45 +371,27 @@ export default function Results() {
             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex flex-col justify-between">
               <span className="text-[10px] font-mono text-gray-400">Gaze Estimation</span>
               <div className="mt-1 flex items-center gap-1.5">
-                {(results.eyeContactMetrics as any)?.executionMode === 'VERIFIED_MODEL' ? (
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                    [Verified Neural]
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                    [Estimated Fallback]
-                  </span>
-                )}
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                  [Canvas Heuristic]
+                </span>
               </div>
             </div>
 
             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex flex-col justify-between">
               <span className="text-[10px] font-mono text-gray-400">3D Head Pose</span>
               <div className="mt-1 flex items-center gap-1.5">
-                {(results.headPoseMetrics as any)?.executionMode === 'VERIFIED_MODEL' ? (
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                    [Verified Neural]
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                    [Estimated Fallback]
-                  </span>
-                )}
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                  [Canvas Heuristic]
+                </span>
               </div>
             </div>
 
             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex flex-col justify-between">
               <span className="text-[10px] font-mono text-gray-400">Facial Affect</span>
               <div className="mt-1 flex items-center gap-1.5">
-                {(results.affectiveMetrics as any)?.executionMode === 'VERIFIED_MODEL' ? (
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                    [Verified Neural]
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                    [Estimated Fallback]
-                  </span>
-                )}
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                  [Canvas Heuristic]
+                </span>
               </div>
             </div>
           </div>

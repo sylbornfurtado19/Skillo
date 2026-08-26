@@ -41,6 +41,9 @@ function softmax(logits: number[]): number[] {
   const maxLogit = Math.max(...logits);
   const exps = logits.map(z => Math.exp(z - maxLogit));
   const sumExp = exps.reduce((a, b) => a + b, 0);
+  if (sumExp === 0 || !Number.isFinite(sumExp)) {
+    return new Array(logits.length).fill(1 / logits.length);
+  }
   return exps.map(e => e / sumExp);
 }
 
@@ -127,13 +130,15 @@ export function detectStressSpikes(frames: AffectFrameResult[]): StressSpikeEven
     } else {
       if (spikeStartIdx !== null) {
         const streakLength = i - spikeStartIdx;
-        if (streakLength >= 3) {
-          const streak = frames.slice(spikeStartIdx, i);
-          const startMs = streak[0].frameTimestampMs;
-          const endMs = streak[streak.length - 1].frameTimestampMs;
+        const streak = frames.slice(spikeStartIdx, i);
+        const startMs = streak[0].frameTimestampMs;
+        const endMs = streak[streak.length - 1]?.frameTimestampMs ?? startMs;
+        const elapsedSeconds = (endMs - startMs) / 1000;
+        // Require BOTH >= 3 frames AND >= 1.0 second of sustained elevation
+        if (streakLength >= 3 && elapsedSeconds >= 1.0) {
           const peakArousal = Math.max(...streak.map(s => s.vaCoordinates.arousal));
           const nadirValence = Math.min(...streak.map(s => s.vaCoordinates.valence));
-          const durationSeconds = (endMs - startMs) / 1000;
+          const durationSeconds = elapsedSeconds;
 
           events.push({
             startTimeMs: startMs,
@@ -141,7 +146,7 @@ export function detectStressSpikes(frames: AffectFrameResult[]): StressSpikeEven
             peakArousal: Math.round(peakArousal * 100) / 100,
             nadirValence: Math.round(nadirValence * 100) / 100,
             durationSeconds: Math.round(durationSeconds * 100) / 100,
-            triggerContext: 'Elevated physiological arousal combined with negative sentiment drift',
+            triggerContext: 'Elevated visual activity combined with negative valence drift',
           });
         }
         spikeStartIdx = null;
@@ -152,13 +157,15 @@ export function detectStressSpikes(frames: AffectFrameResult[]): StressSpikeEven
   // Trailing spike check
   if (spikeStartIdx !== null) {
     const streakLength = frames.length - spikeStartIdx;
-    if (streakLength >= 3) {
-      const streak = frames.slice(spikeStartIdx);
-      const startMs = streak[0].frameTimestampMs;
-      const endMs = streak[streak.length - 1].frameTimestampMs;
+    const streak = frames.slice(spikeStartIdx);
+    const startMs = streak[0].frameTimestampMs;
+    const endMs = streak[streak.length - 1]?.frameTimestampMs ?? startMs;
+    const elapsedSeconds = (endMs - startMs) / 1000;
+    // Require BOTH >= 3 frames AND >= 1.0 second of sustained elevation
+    if (streakLength >= 3 && elapsedSeconds >= 1.0) {
       const peakArousal = Math.max(...streak.map(s => s.vaCoordinates.arousal));
       const nadirValence = Math.min(...streak.map(s => s.vaCoordinates.valence));
-      const durationSeconds = (endMs - startMs) / 1000;
+      const durationSeconds = elapsedSeconds;
 
       events.push({
         startTimeMs: startMs,
@@ -166,7 +173,7 @@ export function detectStressSpikes(frames: AffectFrameResult[]): StressSpikeEven
         peakArousal: Math.round(peakArousal * 100) / 100,
         nadirValence: Math.round(nadirValence * 100) / 100,
         durationSeconds: Math.round(durationSeconds * 100) / 100,
-        triggerContext: 'Elevated physiological arousal combined with negative sentiment drift',
+        triggerContext: 'Elevated visual activity combined with negative valence drift',
       });
     }
   }

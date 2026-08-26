@@ -90,6 +90,7 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
     const isRunningRef = useRef(false);
 
     const [isStarted, setIsStarted] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
     const runSamplingLoop = useCallback(() => {
       if (!isRunningRef.current) return;
@@ -151,7 +152,12 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
             isRunningRef.current = true;
             setIsStarted(true);
             runSamplingLoop();
-          } catch {
+          } catch (err: unknown) {
+            const msg =
+              err instanceof Error && err.name === 'NotAllowedError'
+                ? 'Camera access denied. Grant permission in browser settings.'
+                : 'Camera unavailable. Visual composure tracking disabled.';
+            setCameraError(msg);
             setIsStarted(false);
           }
         },
@@ -188,7 +194,11 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
     if (!visible) return null;
 
     return (
-      <div className={`hidden ${className}`}>
+      <div
+        className={`hidden ${className}`}
+        data-camera-error={cameraError ?? undefined}
+        aria-hidden="true"
+      >
         <video ref={videoRef} muted playsInline />
       </div>
     );

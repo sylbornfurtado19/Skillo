@@ -74,15 +74,9 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
               <h3 className="text-sm font-heading font-bold text-white">
                 Head Movement & Posture Tracker
               </h3>
-              {metrics.executionMode === 'VERIFIED_MODEL' ? (
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  [Verified Neural Inference]
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                  [Estimated Fallback Mode]
-                </span>
-              )}
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                [Canvas Heuristic]
+              </span>
             </div>
             <p className="text-[11px] text-gray-500 mt-0.5">
               Motion Stability Monitor · {totalFramesAnalyzed} frames analyzed
@@ -92,12 +86,6 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
             {postureComposureScore >= 80 ? 'High Composure' : postureComposureScore >= 60 ? 'Moderate Stability' : 'High Motion'}
           </span>
         </div>
-
-        {metrics.executionMode === 'ESTIMATED_FALLBACK' && (
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5 text-[10px] text-amber-300 font-mono">
-            ⚠️ Metrics calculated using fallback canvas position heuristics because hardware neural acceleration was unavailable.
-          </div>
-        )}
       </div>
 
       {/* Row 1: Score Ring + Stat Grid */}

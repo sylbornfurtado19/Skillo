@@ -203,7 +203,7 @@ export default function LipSyncVerificationCard({ metrics }: LipSyncVerification
       <div className="rounded-2xl bg-[#060b14] border border-white/8 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
           <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
-            Anti-Spoofing Security Audit Log
+            Sync Window Analysis Log
           </span>
           <span className="text-[9px] text-gray-600 font-mono">
             {spoofingAlerts.length} anomaly event{spoofingAlerts.length !== 1 ? 's' : ''}

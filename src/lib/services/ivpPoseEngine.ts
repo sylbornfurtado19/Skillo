@@ -37,6 +37,9 @@ function softmax(logits: number[]): number[] {
   const maxLogit = Math.max(...logits);
   const exps = logits.map(z => Math.exp(z - maxLogit));
   const sumExp = exps.reduce((a, b) => a + b, 0);
+  if (sumExp === 0 || !Number.isFinite(sumExp)) {
+    return new Array(logits.length).fill(1 / logits.length);
+  }
   return exps.map(e => e / sumExp);
 }
 
@@ -79,12 +82,17 @@ export function processPoseFrame(
 
   let angularVelocity = 0;
   if (prevFrame) {
-    const dtSeconds = Math.max(0.01, (input.timestampMs - prevFrame.frameTimestampMs) / 1000);
-    const dYaw = (angles.yawDegrees - prevFrame.angles.yawDegrees) / dtSeconds;
-    const dPitch = (angles.pitchDegrees - prevFrame.angles.pitchDegrees) / dtSeconds;
-    const dRoll = (angles.rollDegrees - prevFrame.angles.rollDegrees) / dtSeconds;
+    const rawDt = (input.timestampMs - prevFrame.frameTimestampMs) / 1000;
+    if (rawDt > 0) {
+      const dtSeconds = Math.max(0.001, rawDt);
+      const dYaw = (angles.yawDegrees - prevFrame.angles.yawDegrees) / dtSeconds;
+      const dPitch = (angles.pitchDegrees - prevFrame.angles.pitchDegrees) / dtSeconds;
+      const dRoll = (angles.rollDegrees - prevFrame.angles.rollDegrees) / dtSeconds;
 
-    angularVelocity = Math.round(Math.sqrt(dYaw * dYaw + dPitch * dPitch + dRoll * dRoll) * 100) / 100;
+      angularVelocity = Math.round(Math.sqrt(dYaw * dYaw + dPitch * dPitch + dRoll * dRoll) * 100) / 100;
+    } else {
+      angularVelocity = prevFrame.angularVelocity;
+    }
   }
 
   let detectedGesture: HeadPoseFrameResult['detectedGesture'] = 'STATIC_COMPOSURE';

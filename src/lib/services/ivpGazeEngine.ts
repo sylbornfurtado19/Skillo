@@ -69,6 +69,9 @@ function softmax(logits: number[]): number[] {
   const maxLogit = Math.max(...logits);
   const exps = logits.map(z => Math.exp(z - maxLogit));
   const sumExp = exps.reduce((a, b) => a + b, 0);
+  if (sumExp === 0 || !Number.isFinite(sumExp)) {
+    return new Array(logits.length).fill(1 / logits.length);
+  }
   return exps.map(e => e / sumExp);
 }
 

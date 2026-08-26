@@ -142,8 +142,10 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
             windowsRef.current = [];
             isRunningRef.current = true;
             runSamplingLoop();
-          } catch {
-            // Audio/video permission issue fallback
+          } catch (err: unknown) {
+            // Mic/camera permission denied — audio tracking unavailable for this session.
+            // Log for debugging; the session continues without sync metrics.
+            console.warn('[IVPSyncTracker] start() failed:', err instanceof Error ? err.message : err);
           }
         },
         stop() {
