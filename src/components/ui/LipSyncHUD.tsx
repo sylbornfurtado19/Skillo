@@ -2,12 +2,12 @@
 
 /**
  * LipSyncHUD
- * IVP Feature 5 — SyncNet Anti-Spoofing & Lip-Sync Live HUD
+ * IVP Feature 5 — Audio Presence & Latency Live HUD
  *
- * Displays live security trust badge:
+ * Displays live audio-sync status:
  * - 🟢 Audio-Visual Sync: Verified Genuine
  * - 🟡 Sync Warning: Audio Lag (+120ms)
- * - 🔴 Integrity Alert: Lip-Audio Mismatch Detected
+ * - ⚪ Sync Tracker: Audio Muted
  */
 
 import React from 'react';
@@ -32,12 +32,6 @@ const BADGE_CONFIG: Record<
     icon: '🟡',
     bg: 'bg-amber-500/10 border-amber-500/20',
     text: 'text-amber-400',
-  },
-  SPOOFING_ALERT_TRIGGERED: {
-    label: 'Integrity Alert: Lip-Audio Mismatch',
-    icon: '🔴',
-    bg: 'bg-red-500/10 border-red-500/20',
-    text: 'text-red-400',
   },
   NO_AUDIO_DETECTED: {
     label: 'Sync Tracker: Audio Muted',

@@ -3,7 +3,6 @@
 export type SyncVerificationStatus =
   | 'VERIFIED_GENUINE'
   | 'LATENCY_LAG_WARNING'
-  | 'SPOOFING_ALERT_TRIGGERED'
   | 'NO_AUDIO_DETECTED';
 
 export interface SyncWindowResult {
