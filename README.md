@@ -54,7 +54,7 @@ npm run dev
 # Type Safety Check (Zero errors)
 npx tsc --noEmit
 
-# Execute Automated Test Suite (76/76 Pass Rate)
+# Execute Automated Test Suite (79/79 Pass Rate across 7 Suites)
 npm test
 
 # Production Build Check
@@ -252,24 +252,24 @@ npm run build
     $$\text{Composure} = \max\left(0, 100 \times \left(1.0 - \frac{\sqrt{(V - 0.40)^2 + (A - 0.20)^2}}{\sqrt{8}}\right)\right)$$
   - **Thresholds & Decision Rules**:
     - Target Neutral Vector: $(V=0.40, A=0.20)$.
-    - Stress Spike Flag: Triggered when $A \ge 0.65 \land V \le -0.30$ for $\ge 3$ consecutive keyframes.
+    - Stress Spike Flag: Triggered when $A \ge 0.65 \land V \le -0.30$ for $\ge 3$ consecutive keyframes AND sustained elapsed real time $\ge 1.0\text{ s}$.
 
 ---
 
-#### 10. SyncNet — *"The Lie Detector for Video"*
+#### 10. SyncNet-Inspired Audio Presence & Latency Monitor — *"The Signal & Alignment Tracker"*
 * **Executive Summary**:
-  - **Problem it Solves**: Automated interviews lack in-person verification to catch audio dubbing, synthetic voiceover, or pre-recorded video playback.
-  - **How it Works**: Projects visual lip movements ($v$) and audio mel-spectrograms ($a$) into a shared cross-modal embedding space, computing Euclidean distance $D(v, a) = \|\mathbf{f}_v(v) - \mathbf{f}_a(a)\|_2$. Searches for the optimal temporal time-shift $\Delta t^* \in [-500\text{ms}, +500\text{ms}]$. Large cross-modal distances or time offsets sustained for $>2.0\text{s}$ trigger anti-spoofing flags.
+  - **Problem it Solves**: Real-time video interviews suffer from audio buffering delays, muted microphones, and speech-video desynchronization that distort candidate communication scoring.
+  - **How it Works**: Samples speech frequency energy using the browser Web Audio API `AnalyserNode` and cross-correlates audio energy against visual motion. Evaluates stream distance metric $D(v, a)$ and tracks temporal time-shift offset $\Delta t^* \in [-500\text{ms}, +500\text{ms}]$, flagging latency warnings when buffering delay or stream offset exceeds $80\text{ms}$.
   - **Inspiration**: Out of Time: Automated Lip Sync in the Wild (Chung & Zisserman, ACCV 2016).
-  - **In One Line**: *"Check whether the mouth and the voice actually belong to the same moment — not just the same person."*
+  - **In One Line**: *"Verify that the spoken audio stream and visual frames are aligned in real time — measuring presence and latency without sending raw audio to external servers."*
 * **Technical Engineering Spec**:
   - **Service File**: [`src/lib/services/ivpSyncEngine.ts`](file:///c:/Users/Ritunjay%20Deo/OneDrive/Desktop/Skillo-main/src/lib/services/ivpSyncEngine.ts)
   - **Cross-Modal Metric**:
     $$D(v, a) = \|\mathbf{f}_v(v) - \mathbf{f}_a(a)\|_2, \quad \Delta t^* = \arg\min_{\tau} D(v(t+\tau), a(t))$$
   - **Thresholds & Decision Rules**:
-    - $D \le 1.15 \land |\Delta t^*| \le 80\text{ ms} \longrightarrow$ **`VERIFIED_GENUINE`**
-    - $80\text{ ms} < |\Delta t^*| \le 250\text{ ms} \longrightarrow$ **`LATENCY_LAG_WARNING`**
-    - $D > 1.60 \lor |\Delta t^*| > 250\text{ ms} \text{ for } > 2.0\text{ s} \longrightarrow$ **`SPOOFING_ALERT_TRIGGERED`**
+    - $D \le 1.15 \land |\Delta t^*| \le 80\text{ ms} \longrightarrow$ **`VERIFIED_GENUINE`** (Speech activity verified & time-aligned)
+    - $|\Delta t^*| > 80\text{ ms} \lor D > 1.15 \longrightarrow$ **`LATENCY_LAG_WARNING`** (Audio-visual lag or buffering offset)
+    - $\text{Audio Energy} < 0.05 \longrightarrow$ **`NO_AUDIO_DETECTED`** (Microphone muted or quiet)
 
 ---
 
@@ -439,7 +439,7 @@ Skillo-main/
 │   │       ├── GazeAnalyticsCard.tsx        # Gaze Session Results Card
 │   │       ├── PostureComposureCard.tsx     # Head Pose Session Results Card
 │   │       ├── FacialComposureCard.tsx      # Affective Session Results Card
-│   │       └── LipSyncVerificationCard.tsx  # Anti-Spoofing Audit Card
+│   │       └── LipSyncVerificationCard.tsx  # Audio Presence & Latency Card
 │   ├── lib/
 │   │   └── services/           # 10 Server/Edge Research Engines
 │   │       ├── documentVision.server.ts     # Engine 6: LayoutLMv3
@@ -461,7 +461,7 @@ Skillo-main/
 │   │   ├── syncEngine.ts
 │   │   └── index.ts            # Master Type Barrels
 │   └── views/                  # Main Page Layout Components
-├── tests/                      # Jest Test Suites (76 Tests)
+├── tests/                      # Jest Test Suites (79 Tests across 7 Suites)
 │   ├── aiEngine.test.ts
 │   ├── boundaryTesting.test.ts  # Phase 8 Boundary & Adversarial Suite
 │   ├── interviewModes.test.ts
