@@ -38,3 +38,9 @@ Thumbs.db
 .vite/
 coverage/
 .vercel
+
+# python venv and bytecode
+.venv/
+venv/
+__pycache__/
+*.pyc
