@@ -722,9 +722,9 @@ export default function Results() {
       <div id="sec-timeline" className="scroll-mt-32">
         <IVPTelemetryTimeline
           durationSeconds={240}
-          overallEyeContactPct={isEyeContactMetrics(results.eyeContactMetrics) ? results.eyeContactMetrics.averageFocusRatioPct : 84}
+          overallEyeContactPct={isEyeContactMetrics(results.eyeContactMetrics) ? results.eyeContactMetrics.eyeContactPercentage : 84}
           overallComposureScore={isAffectiveMetrics(results.affectiveMetrics) ? results.affectiveMetrics.overallComposureScore : 88}
-          overallStabilityScore={isHeadPoseMetrics(results.headPoseMetrics) ? results.headPoseMetrics.stabilityScore : 90}
+          overallStabilityScore={isHeadPoseMetrics(results.headPoseMetrics) ? results.headPoseMetrics.postureComposureScore : 90}
         />
       </div>
 

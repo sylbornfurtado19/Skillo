@@ -1,9 +1,6 @@
-import IVPLab from '@/src/views/IVPLab';
+'use client';
 
-export const metadata = {
-  title: 'IVP Diagnostic Lab — Skillo AI',
-  description: 'Interactive Computer Vision and Image/Video Processing Diagnostic Workbench',
-};
+import IVPLab from '../../../src/views/IVPLab';
 
 export default function IVPLabPage() {
   return <IVPLab />;

@@ -109,7 +109,7 @@ export default function IVPTelemetryTimeline({
           <Badge variant="success" className="text-xs">
             Composure: {overallComposureScore}/100
           </Badge>
-          <Badge variant="info" className="text-xs">
+          <Badge variant="accent" className="text-xs">
             Stability: {overallStabilityScore}%
           </Badge>
         </div>

@@ -347,7 +347,7 @@ export default function IVPLab() {
         const bin = new Uint8Array(width * height);
         for (let i = 0; i < width * height; i++) bin[i] = gray[i] > 120 ? 1 : 0;
 
-        const dilate = (input: Uint8Array): Uint8Array => {
+        const dilate = (input: Uint8Array<any>): Uint8Array<any> => {
           const res = new Uint8Array(width * height);
           const r = Math.floor(morphKernelSize / 2);
           for (let y = r; y < height - r; y++) {
@@ -367,7 +367,7 @@ export default function IVPLab() {
           return res;
         };
 
-        const erode = (input: Uint8Array): Uint8Array => {
+        const erode = (input: Uint8Array<any>): Uint8Array<any> => {
           const res = new Uint8Array(width * height);
           const r = Math.floor(morphKernelSize / 2);
           for (let y = r; y < height - r; y++) {
@@ -387,7 +387,7 @@ export default function IVPLab() {
           return res;
         };
 
-        let processed = bin;
+        let processed: Uint8Array<any> = bin;
         if (selectedFilter === 'dilation') processed = dilate(bin);
         else if (selectedFilter === 'erosion') processed = erode(bin);
         else if (selectedFilter === 'opening') processed = dilate(erode(bin));
