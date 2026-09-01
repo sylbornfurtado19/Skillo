@@ -1,0 +1,9 @@
+sample_id,image_filename,mask_filename,skin_pixel_ratio,width_px,height_px
+SKIN_0019,skin_019.jpg,skin_019_mask.png,0.9949,40,49
+SKIN_0049,skin_049.jpg,skin_049_mask.png,0.7648,214,307
+SKIN_0021,skin_021.jpg,skin_021_mask.png,0.7057,54,65
+SKIN_0008,skin_008.jpg,skin_008_mask.png,0.8632,46,58
+SKIN_0043,skin_043.jpg,skin_043_mask.png,0.5931,71,90
+SKIN_0015,skin_015.jpg,skin_015_mask.png,0.8645,61,75
+SKIN_0029,skin_029.jpg,skin_029_mask.png,0.9287,38,48
+SKIN_0039,skin_039.jpg,skin_039_mask.png,0.7723,44,56

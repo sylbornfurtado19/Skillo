@@ -1,0 +1,10 @@
+sample_id,seq_id,frame_idx,filename,timestamp_ms,inter_frame_mad,landmark_velocity_px_sec
+300VW_seq001_0021,seq_001,21,sequences\seq_001\frame_0021.jpg,1050.0,0.0722,1.44
+300VW_seq001_0002,seq_001,2,sequences\seq_001\frame_0002.jpg,100.0,28.4334,568.67
+300VW_seq001_0047,seq_001,47,sequences\seq_001\frame_0047.jpg,2350.0,1.2242,24.48
+300VW_seq001_0039,seq_001,39,sequences\seq_001\frame_0039.jpg,1950.0,0.0791,1.58
+300VW_seq001_0035,seq_001,35,sequences\seq_001\frame_0035.jpg,1750.0,0.0635,1.27
+300VW_seq001_0023,seq_001,23,sequences\seq_001\frame_0023.jpg,1150.0,0.132,2.64
+300VW_seq001_0049,seq_001,49,sequences\seq_001\frame_0049.jpg,2450.0,1.3421,26.84
+300VW_seq001_0010,seq_001,10,sequences\seq_001\frame_0010.jpg,500.0,19.6709,393.42
+300VW_seq001_0022,seq_001,22,sequences\seq_001\frame_0022.jpg,1100.0,5.9608,119.22
