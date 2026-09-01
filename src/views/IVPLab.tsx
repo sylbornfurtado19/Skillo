@@ -18,17 +18,33 @@ import {
   FaCheckCircle,
   FaDownload,
   FaSyncAlt,
+  FaBrain,
+  FaMagic,
+  FaMicrochip,
 } from 'react-icons/fa';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
+import {
+  runGazeONNX,
+  runPoseONNX,
+  runAffectONNX,
+  type ONNXModelType,
+  type GazeInferenceResult,
+  type PoseInferenceResult,
+  type AffectInferenceResult,
+} from '../lib/services/onnxInferenceService';
+import {
+  renderSegmentedBackground,
+  type VirtualBackdropType,
+} from '../lib/services/backgroundSegmentation';
 
-type FilterCategory = 'enhancement' | 'edges' | 'morphology' | 'color' | 'telemetry';
+type FilterCategory = 'enhancement' | 'edges' | 'morphology' | 'color' | 'telemetry' | 'onnx' | 'virtualbg';
 
 export default function IVPLab() {
   const [activeCategory, setActiveCategory] = useState<FilterCategory>('enhancement');
   const [selectedFilter, setSelectedFilter] = useState<string>('gaussian');
-  
+
   // Media Input State
   const [inputSource, setInputSource] = useState<'sample' | 'webcam' | 'upload'>('sample');
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
@@ -41,23 +57,35 @@ export default function IVPLab() {
   const [sharpenStrength, setSharpenStrength] = useState<number>(1.0);
   const [contrastMin, setContrastMin] = useState<number>(20);
   const [contrastMax, setContrastMax] = useState<number>(235);
-  
+
   const [cannyLowThresh, setCannyLowThresh] = useState<number>(50);
   const [cannyHighThresh, setCannyHighThresh] = useState<number>(120);
   const [sobelDirection, setSobelDirection] = useState<'both' | 'horizontal' | 'vertical'>('both');
-  
+
   const [morphKernelSize, setMorphKernelSize] = useState<number>(3);
-  const [morphIterations, setMorphIterations] = useState<number>(1);
-  
   const [colorModel, setColorModel] = useState<'rgb' | 'gray' | 'hsv' | 'red' | 'green' | 'blue'>('rgb');
   const [otsuThreshold, setOtsuThreshold] = useState<number>(128);
 
-  // 3D Telemetry Mock / Real-time Controls
+  // 3D Telemetry Controls
   const [telemetryYaw, setTelemetryYaw] = useState<number>(8.5);
   const [telemetryPitch, setTelemetryPitch] = useState<number>(-4.2);
   const [telemetryRoll, setTelemetryRoll] = useState<number>(2.1);
   const [telemetryGazeX, setTelemetryGazeX] = useState<number>(0.12);
   const [telemetryGazeY, setTelemetryGazeY] = useState<number>(-0.08);
+
+  // Option 1: In-Browser ONNX Neural Inference State
+  const [selectedONNXModel, setSelectedONNXModel] = useState<ONNXModelType>('affect');
+  const [onnxInferring, setOnnxInferring] = useState<boolean>(false);
+  const [gazeResult, setGazeResult] = useState<GazeInferenceResult | null>(null);
+  const [poseResult, setPoseResult] = useState<PoseInferenceResult | null>(null);
+  const [affectResult, setAffectResult] = useState<AffectInferenceResult | null>(null);
+  const [onnxLatency, setOnnxLatency] = useState<number>(0);
+  const [onnxError, setOnnxError] = useState<string | null>(null);
+
+  // Option 4: Virtual Background & Bokeh Blur State
+  const [virtualBackdrop, setVirtualBackdrop] = useState<VirtualBackdropType>('blur');
+  const [bgBlurRadius, setBgBlurRadius] = useState<number>(12);
+  const [skinStrictness, setSkinStrictness] = useState<number>(1.0);
 
   // DOM & Media Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -73,7 +101,6 @@ export default function IVPLab() {
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    // Clean high-contrast face/geometric pattern for CV filtering
     img.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=480';
     img.onload = () => {
       sampleImageRef.current = img;
@@ -132,6 +159,42 @@ export default function IVPLab() {
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
+  };
+
+  // -------------------------------------------------------------
+  // ONNX NEURAL INFERENCE FORWARD PASS EXECUTION
+  // -------------------------------------------------------------
+  const executeONNXInference = async () => {
+    const sCanvas = sourceCanvasRef.current;
+    if (!sCanvas) return;
+
+    setOnnxInferring(true);
+    setOnnxError(null);
+    try {
+      if (selectedONNXModel === 'affect') {
+        const res = await runAffectONNX(sCanvas);
+        setAffectResult(res);
+        setOnnxLatency(res.inferenceTimeMs);
+      } else if (selectedONNXModel === 'gaze') {
+        const res = await runGazeONNX(sCanvas);
+        setGazeResult(res);
+        setOnnxLatency(res.inferenceTimeMs);
+        setTelemetryPitch(res.pitchDegrees);
+        setTelemetryYaw(res.yawDegrees);
+      } else if (selectedONNXModel === 'pose') {
+        const res = await runPoseONNX(sCanvas);
+        setPoseResult(res);
+        setOnnxLatency(res.inferenceTimeMs);
+        setTelemetryYaw(res.yawDegrees);
+        setTelemetryPitch(res.pitchDegrees);
+        setTelemetryRoll(res.rollDegrees);
+      }
+    } catch (err: any) {
+      console.error('ONNX WebAssembly forward pass error:', err);
+      setOnnxError(err.message || 'Error executing ONNX forward pass in browser');
+    } finally {
+      setOnnxInferring(false);
+    }
   };
 
   // -------------------------------------------------------------
@@ -286,7 +349,6 @@ export default function IVPLab() {
             let edge = 0;
             if (m >= cannyHighThresh) edge = 255;
             else if (m >= cannyLowThresh) {
-              // Hysteresis weak check
               let hasStrongNeighbor = false;
               for (let dy = -1; dy <= 1; dy++) {
                 for (let dx = -1; dx <= 1; dx++) {
@@ -400,7 +462,6 @@ export default function IVPLab() {
           dst[i * 4 + 2] = mVal;
         }
       } else if (selectedFilter === 'color_channel') {
-        // Color Space Decomposition
         for (let i = 0; i < width * height; i++) {
           const r = src[i * 4];
           const g = src[i * 4 + 1];
@@ -418,7 +479,6 @@ export default function IVPLab() {
             dst[i * 4 + 1] = 0;
             dst[i * 4 + 2] = b;
           } else if (colorModel === 'hsv') {
-            // Pseudo HSV Hue Visualization
             const maxC = Math.max(r, g, b);
             const minC = Math.min(r, g, b);
             const delta = maxC - minC;
@@ -488,35 +548,28 @@ export default function IVPLab() {
     const cy = height / 2;
     const axisLen = 65;
 
-    // Convert degrees to radians
     const yawRad = (telemetryYaw * Math.PI) / 180;
     const pitchRad = (telemetryPitch * Math.PI) / 180;
     const rollRad = (telemetryRoll * Math.PI) / 180;
 
-    // Projected Euler vector endpoints
-    // X-Axis (Pitch / Red)
     const xEnd = {
       x: cx + axisLen * Math.cos(yawRad) * Math.cos(rollRad),
       y: cy + axisLen * Math.sin(pitchRad),
     };
-    // Y-Axis (Yaw / Green)
     const yEnd = {
       x: cx - axisLen * Math.sin(yawRad),
       y: cy - axisLen * Math.cos(pitchRad) * Math.cos(rollRad),
     };
-    // Z-Axis (Roll / Cyan)
     const zEnd = {
       x: cx + axisLen * Math.sin(rollRad) * Math.cos(yawRad),
       y: cy + axisLen * Math.cos(rollRad) * Math.sin(pitchRad),
     };
 
     ctx.save();
-    // Bounding Box Frame
     ctx.strokeStyle = 'rgba(99, 102, 241, 0.8)';
     ctx.lineWidth = 2;
     ctx.strokeRect(cx - 70, cy - 85, 140, 170);
 
-    // Draw Coordinate Axes
     const drawAxis = (end: { x: number; y: number }, color: string, label: string) => {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
@@ -534,7 +587,6 @@ export default function IVPLab() {
     drawAxis(yEnd, '#22c55e', 'Y (Yaw)');
     drawAxis(zEnd, '#06b6d4', 'Z (Roll)');
 
-    // 2D Gaze Ray Projection
     const gazeEndX = cx + telemetryGazeX * width * 1.2;
     const gazeEndY = cy + telemetryGazeY * height * 1.2;
     ctx.beginPath();
@@ -574,33 +626,55 @@ export default function IVPLab() {
       sCtx.drawImage(sampleImageRef.current, 0, 0, w, h);
     }
 
-    // 2. Extract pixel buffer & execute CV algorithm
     const t0 = performance.now();
-    const srcImageData = sCtx.getImageData(0, 0, w, h);
-    const dstImageData = oCtx.createImageData(w, h);
 
-    applyCVFilter(srcImageData, dstImageData, w, h);
-    oCtx.putImageData(dstImageData, 0, 0);
+    if (activeCategory === 'virtualbg') {
+      // Execute Virtual Background / Bokeh Segmentation
+      renderSegmentedBackground(sCtx, oCtx, w, h, {
+        backdropType: virtualBackdrop,
+        blurRadius: bgBlurRadius,
+        skinThresholdStrictness: skinStrictness,
+      });
+    } else {
+      // Standard CV Filter Execution
+      const srcImageData = sCtx.getImageData(0, 0, w, h);
+      const dstImageData = oCtx.createImageData(w, h);
 
-    // 3. Telemetry Overlay if enabled
-    if (activeCategory === 'telemetry') {
-      draw3DTelemetryOverlay(oCtx, w, h);
+      applyCVFilter(srcImageData, dstImageData, w, h);
+      oCtx.putImageData(dstImageData, 0, 0);
+
+      if (activeCategory === 'telemetry') {
+        draw3DTelemetryOverlay(oCtx, w, h);
+      }
     }
 
     const t1 = performance.now();
     setProcessTimeMs(Math.round((t1 - t0) * 10) / 10);
 
-    // 4. Update Real-time Histogram
-    renderHistogram(dstImageData.data);
+    // Update Real-time Histogram
+    const outData = oCtx.getImageData(0, 0, w, h);
+    renderHistogram(outData.data);
 
-    // 5. Compute real-time FPS
+    // Compute real-time FPS
     const now = performance.now();
     const delta = now - lastTimeRef.current;
     lastTimeRef.current = now;
     if (delta > 0) {
       setFps(Math.round(1000 / delta));
     }
-  }, [inputSource, activeCategory, applyCVFilter, telemetryYaw, telemetryPitch, telemetryRoll, telemetryGazeX, telemetryGazeY]);
+  }, [
+    inputSource,
+    activeCategory,
+    applyCVFilter,
+    virtualBackdrop,
+    bgBlurRadius,
+    skinStrictness,
+    telemetryYaw,
+    telemetryPitch,
+    telemetryRoll,
+    telemetryGazeX,
+    telemetryGazeY,
+  ]);
 
   // Animation Loop for live video / continuous rendering
   useEffect(() => {
@@ -627,10 +701,10 @@ export default function IVPLab() {
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent">
-                IVP Diagnostic Lab & Vision Workbench
+                IVP Diagnostic Lab & Neural Workbench
               </h1>
               <p className="text-xs sm:text-sm text-slate-400">
-                Interactive Computer Vision Engine mapped to Course Policy (702EX0E004) — Units 1 to 8
+                In-Browser ONNX Neural Inference & Real-Time Computer Vision Filters (Course Policy 702EX0E004)
               </p>
             </div>
           </div>
@@ -638,7 +712,7 @@ export default function IVPLab() {
 
         <div className="flex items-center gap-3">
           <Badge variant="success" className="px-3 py-1 text-xs">
-            <FaBolt className="mr-1 inline" /> Real-time Kernel: {fps} FPS ({processTimeMs} ms)
+            <FaBolt className="mr-1 inline" /> Pipeline: {fps} FPS ({processTimeMs} ms)
           </Badge>
           <Button
             variant="secondary"
@@ -693,17 +767,18 @@ export default function IVPLab() {
                 Upload File
               </label>
             </div>
-            {/* Hidden video element for live webcam stream */}
             <video ref={videoRef} className="hidden" playsInline muted autoPlay />
           </Card>
 
-          {/* Course Unit Category Tabs */}
+          {/* Module Category Tabs */}
           <Card className="p-4 bg-slate-900/80 border-slate-800">
             <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
-              <FaBook className="text-indigo-400" /> Syllabus Modules
+              <FaBook className="text-indigo-400" /> Syllabus & Neural Modules
             </h3>
             <div className="grid grid-cols-2 gap-2">
               {[
+                { id: 'onnx', label: '🧠 ONNX Neural Engine', icon: FaBrain },
+                { id: 'virtualbg', label: '🎭 Virtual Background', icon: FaMagic },
                 { id: 'enhancement', label: 'Unit 2: Spatial Filters', icon: FaSlidersH },
                 { id: 'edges', label: 'Unit 5: Edge Detection', icon: FaLayerGroup },
                 { id: 'morphology', label: 'Unit 4: Morphology', icon: FaCube },
@@ -719,6 +794,8 @@ export default function IVPLab() {
                     else if (cat.id === 'morphology') setSelectedFilter('dilation');
                     else if (cat.id === 'color') setSelectedFilter('otsu');
                     else if (cat.id === 'telemetry') setSelectedFilter('none');
+                    else if (cat.id === 'onnx') setSelectedFilter('none');
+                    else if (cat.id === 'virtualbg') setSelectedFilter('none');
                   }}
                   className={`p-2.5 rounded-lg text-xs font-medium text-left border flex items-center gap-2 transition-all ${
                     activeCategory === cat.id
@@ -736,13 +813,187 @@ export default function IVPLab() {
           {/* Dynamic Filter Parameter Controls */}
           <Card className="p-5 bg-slate-900/80 border-slate-800 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <h3 className="text-sm font-semibold text-slate-200">Filter Controls & Tuners</h3>
+              <h3 className="text-sm font-semibold text-slate-200">
+                {activeCategory === 'onnx'
+                  ? 'ONNX Model Inference'
+                  : activeCategory === 'virtualbg'
+                  ? 'Background Segmentation'
+                  : 'Filter Controls & Tuners'}
+              </h3>
               <Badge variant="primary" className="text-[10px]">
-                {selectedFilter.toUpperCase()}
+                {activeCategory.toUpperCase()}
               </Badge>
             </div>
 
-            {/* Category 1: Spatial Enhancement */}
+            {/* TAB 1: ONNX NEURAL INFERENCE */}
+            {activeCategory === 'onnx' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-2">
+                  {(['affect', 'gaze', 'pose'] as const).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setSelectedONNXModel(m)}
+                      className={`p-2 rounded text-xs border uppercase ${
+                        selectedONNXModel === m
+                          ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200'
+                          : 'bg-slate-800/50 border-slate-750 text-slate-400'
+                      }`}
+                    >
+                      {m} Model
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Target Model:</span>
+                    <span className="font-mono text-indigo-400">/models/{selectedONNXModel}_engine.onnx</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Inference Device:</span>
+                    <span className="text-emerald-400 font-semibold">WebAssembly / WebGL</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Input Tensor:</span>
+                    <span className="font-mono text-slate-300">[1, 3, 224, 224] Float32</span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={executeONNXInference}
+                  disabled={onnxInferring}
+                  variant="primary"
+                  className="w-full justify-center text-xs py-2.5"
+                >
+                  {onnxInferring ? <FaSyncAlt className="animate-spin mr-2" /> : <FaMicrochip className="mr-2" />}
+                  {onnxInferring ? 'Running ONNX Inference...' : 'Run Neural Forward Pass'}
+                </Button>
+
+                {onnxError && (
+                  <div className="p-2.5 bg-rose-950/40 border border-rose-500/30 rounded-lg text-rose-300 text-xs">
+                    {onnxError}
+                  </div>
+                )}
+
+                {/* ONNX Inference Results Card */}
+                {selectedONNXModel === 'affect' && affectResult && (
+                  <div className="p-3 bg-slate-800/50 rounded-xl border border-slate-700 text-xs space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Dominant Emotion:</span>
+                      <Badge variant="accent">{affectResult.dominantEmotion}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Composure Score:</span>
+                      <span className="text-emerald-400 font-bold">{affectResult.composureScore}/100</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Valence / Arousal:</span>
+                      <span className="font-mono text-slate-200">V={affectResult.valence}, A={affectResult.arousal}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-700">
+                      Inference Latency: <strong className="text-indigo-400">{onnxLatency} ms</strong>
+                    </div>
+                  </div>
+                )}
+
+                {selectedONNXModel === 'gaze' && gazeResult && (
+                  <div className="p-3 bg-slate-800/50 rounded-xl border border-slate-700 text-xs space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Focus Zone:</span>
+                      <Badge variant={gazeResult.isEyeContact ? 'success' : 'warning'}>
+                        {gazeResult.screenFocusZone}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Gaze Angles:</span>
+                      <span className="font-mono text-slate-200">
+                        Pitch: {gazeResult.pitchDegrees}°, Yaw: {gazeResult.yawDegrees}°
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-700">
+                      Inference Latency: <strong className="text-indigo-400">{onnxLatency} ms</strong>
+                    </div>
+                  </div>
+                )}
+
+                {selectedONNXModel === 'pose' && poseResult && (
+                  <div className="p-3 bg-slate-800/50 rounded-xl border border-slate-700 text-xs space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Detected Gesture:</span>
+                      <Badge variant="primary">{poseResult.detectedGesture}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Posture Score:</span>
+                      <span className="text-emerald-400 font-bold">{poseResult.postureComposureScore}/100</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Euler Angles:</span>
+                      <span className="font-mono text-slate-200">
+                        Y: {poseResult.yawDegrees}°, P: {poseResult.pitchDegrees}°, R: {poseResult.rollDegrees}°
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-700">
+                      Inference Latency: <strong className="text-indigo-400">{onnxLatency} ms</strong>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 2: VIRTUAL BACKGROUND & BOKEH BLUR */}
+            {activeCategory === 'virtualbg' && (
+              <div className="space-y-4">
+                <div className="text-xs text-slate-400">Select Backdrop Replacement:</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['blur', 'office', 'studio', 'gradient', 'mask', 'none'] as const).map((bg) => (
+                    <button
+                      key={bg}
+                      onClick={() => setVirtualBackdrop(bg)}
+                      className={`p-2 rounded text-xs border capitalize ${
+                        virtualBackdrop === bg
+                          ? 'bg-purple-600/30 border-purple-500 text-purple-200'
+                          : 'bg-slate-800/50 border-slate-750 text-slate-400'
+                      }`}
+                    >
+                      {bg}
+                    </button>
+                  ))}
+                </div>
+
+                {virtualBackdrop === 'blur' && (
+                  <div>
+                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                      <span>Bokeh Blur Strength: {bgBlurRadius} px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="2"
+                      max="30"
+                      value={bgBlurRadius}
+                      onChange={(e) => setBgBlurRadius(Number(e.target.value))}
+                      className="w-full accent-purple-500"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <div className="flex justify-between text-xs text-slate-400 mb-1">
+                    <span>Segmentation Strictness: {skinStrictness}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.7"
+                    max="1.3"
+                    step="0.05"
+                    value={skinStrictness}
+                    onChange={(e) => setSkinStrictness(Number(e.target.value))}
+                    className="w-full accent-indigo-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: SPATIAL ENHANCEMENT */}
             {activeCategory === 'enhancement' && (
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-2">
@@ -821,8 +1072,8 @@ export default function IVPLab() {
                 {selectedFilter === 'contrast' && (
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs text-slate-400">
-                      <span>Low Threshold (r1): {contrastMin}</span>
-                      <span>High Threshold (r2): {contrastMax}</span>
+                      <span>Low (r1): {contrastMin}</span>
+                      <span>High (r2): {contrastMax}</span>
                     </div>
                     <input
                       type="range"
@@ -845,7 +1096,7 @@ export default function IVPLab() {
               </div>
             )}
 
-            {/* Category 2: Edge Detection */}
+            {/* TAB 4: EDGE DETECTION */}
             {activeCategory === 'edges' && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2">
@@ -925,7 +1176,7 @@ export default function IVPLab() {
               </div>
             )}
 
-            {/* Category 3: Morphology */}
+            {/* TAB 5: MORPHOLOGY */}
             {activeCategory === 'morphology' && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2">
@@ -961,7 +1212,7 @@ export default function IVPLab() {
               </div>
             )}
 
-            {/* Category 4: Color & Otsu */}
+            {/* TAB 6: COLOR & OTSU */}
             {activeCategory === 'color' && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2">
@@ -991,9 +1242,6 @@ export default function IVPLab() {
                   <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-750 text-xs space-y-1">
                     <div className="text-slate-300 font-semibold">Otsu Maximized Variance:</div>
                     <div className="text-emerald-400 text-sm font-bold">Optimal Threshold: {otsuThreshold}</div>
-                    <p className="text-slate-400 text-[11px]">
-                      Calculated automatically by maximizing inter-class variance between background and foreground distributions.
-                    </p>
                   </div>
                 )}
 
@@ -1017,11 +1265,11 @@ export default function IVPLab() {
               </div>
             )}
 
-            {/* Category 5: 3D Telemetry */}
+            {/* TAB 7: 3D TELEMETRY */}
             {activeCategory === 'telemetry' && (
               <div className="space-y-3">
                 <p className="text-xs text-slate-400">
-                  Adjust synthetic Euler rotation vectors to preview 3D head pose and L2CS-Net gaze projection:
+                  Euler rotation vectors and L2CS-Net gaze projection ray overlay:
                 </p>
                 <div>
                   <div className="flex justify-between text-xs text-slate-400 mb-1">
@@ -1086,9 +1334,13 @@ export default function IVPLab() {
             {/* Filtered Output Viewport */}
             <Card className="p-3 bg-slate-900 border-slate-800 space-y-2">
               <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-semibold text-indigo-400">IVP TRANSFORMED OUTPUT</span>
+                <span className="text-xs font-semibold text-indigo-400">
+                  {activeCategory === 'virtualbg'
+                    ? `VIRTUAL BACKDROP (${virtualBackdrop.toUpperCase()})`
+                    : 'IVP TRANSFORMED OUTPUT'}
+                </span>
                 <Badge variant="primary" className="text-[10px]">
-                  {selectedFilter.toUpperCase()}
+                  {activeCategory === 'virtualbg' ? virtualBackdrop.toUpperCase() : selectedFilter.toUpperCase()}
                 </Badge>
               </div>
               <div className="relative aspect-[4/3] bg-black rounded-lg overflow-hidden border border-indigo-500/30 shadow-lg shadow-indigo-950/20">
