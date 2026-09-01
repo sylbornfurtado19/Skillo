@@ -17,6 +17,7 @@ import {
   FaBell,
   FaChevronRight,
   FaUserTie,
+  FaFlask,
 } from 'react-icons/fa';
 import { useAuth } from '../hooks/useAuth';
 import { useInterview } from '../context/InterviewContext';
@@ -41,6 +42,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { name: 'Resume', path: '/resume', icon: FaFileAlt },
     { name: 'Career Setup', path: '/setup', icon: FaSlidersH },
     { name: 'Interview', path: '/interview', icon: FaUserTie },
+    { name: 'IVP Lab', path: '/ivp-lab', icon: FaFlask },
     { name: 'Results', path: '/results', icon: FaChartLine },
     { name: 'Settings', path: '/settings', icon: FaCog },
   ];

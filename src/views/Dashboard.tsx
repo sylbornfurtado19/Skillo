@@ -15,6 +15,7 @@ import {
   FaRocket,
   FaSortAmountDown,
   FaFire,
+  FaFlask,
 } from 'react-icons/fa';
 
 
@@ -277,7 +278,10 @@ export default function Dashboard() {
         </div>
 
 
-        <div className="flex gap-3 shrink-0">
+        <div className="flex flex-wrap gap-3 shrink-0">
+          <Button onClick={() => router.push('/ivp-lab')} variant="secondary" size="sm" icon={FaFlask} className="border-indigo-500/30 bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/60">
+            IVP Lab
+          </Button>
           <Button onClick={() => router.push('/setup')} variant="primary" size="sm" icon={FaPlay}>
             Practice Session
           </Button>

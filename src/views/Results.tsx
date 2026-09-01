@@ -38,6 +38,7 @@ import GazeAnalyticsCard from '../components/ui/GazeAnalyticsCard';
 import PostureComposureCard from '../components/ui/PostureComposureCard';
 import FacialComposureCard from '../components/ui/FacialComposureCard';
 import LipSyncVerificationCard from '../components/ui/LipSyncVerificationCard';
+import IVPTelemetryTimeline from '../components/ui/IVPTelemetryTimeline';
 import type { EyeContactSessionMetrics, HeadPoseSessionMetrics, AffectiveSessionMetrics, LipSyncSessionMetrics } from '../types/index';
 
 function isEyeContactMetrics(obj: any): obj is EyeContactSessionMetrics {
@@ -715,6 +716,16 @@ export default function Results() {
             </div>
           </Card>
         </div>
+      </div>
+
+      {/* SECTION 3a: SYNCHRONIZED IVP MULTI-MODAL TIMELINE */}
+      <div id="sec-timeline" className="scroll-mt-32">
+        <IVPTelemetryTimeline
+          durationSeconds={240}
+          overallEyeContactPct={isEyeContactMetrics(results.eyeContactMetrics) ? results.eyeContactMetrics.averageFocusRatioPct : 84}
+          overallComposureScore={isAffectiveMetrics(results.affectiveMetrics) ? results.affectiveMetrics.overallComposureScore : 88}
+          overallStabilityScore={isHeadPoseMetrics(results.headPoseMetrics) ? results.headPoseMetrics.stabilityScore : 90}
+        />
       </div>
 
       {/* SECTION 3b: GAZE ANALYTICS */}
