@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
+import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Validate payload
+    // 2. Rate limiting check (10 requests per minute for follow-ups)
+    const rateLimit = await checkRateLimit({
+      userId: user.id,
+      action: 'interview_followup',
+      maxRequests: 10,
+      windowSeconds: 60,
+    });
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(rateLimit, 'interview follow-up questions');
+    }
+
+    // 3. Validate payload
     const body = await request.json();
     const parseResult = followupRequestSchema.safeParse(body);
     if (!parseResult.success) {

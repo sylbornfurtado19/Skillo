@@ -167,6 +167,25 @@ CREATE POLICY "Users can view their own interviews"
 CREATE POLICY "Users can insert their own interviews" 
     ON public.mock_interviews FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Request Logs Policies (Serverless Rate Limiting)
+CREATE TABLE IF NOT EXISTS public.request_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    action TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_request_logs_user_action_time 
+    ON public.request_logs(user_id, action, created_at DESC);
+
+ALTER TABLE public.request_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own request logs"
+    ON public.request_logs FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own request logs"
+    ON public.request_logs FOR INSERT WITH CHECK (auth.uid() = user_id);
+
 -- =========================================================
 -- STORAGE BUCKET CONFIGURATION NOTES
 -- =========================================================
@@ -175,3 +194,4 @@ CREATE POLICY "Users can insert their own interviews"
 -- 1. SELECT: (bucket_id = 'resumes' AND auth.uid()::text = (storage.foldername(name))[1])
 -- 2. INSERT: (bucket_id = 'resumes' AND auth.uid()::text = (storage.foldername(name))[1])
 -- 3. DELETE: (bucket_id = 'resumes' AND auth.uid()::text = (storage.foldername(name))[1])
+
