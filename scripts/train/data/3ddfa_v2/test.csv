@@ -1,8 +1,0 @@
-sample_id,filename,ground_truth_yaw,ground_truth_pitch,ground_truth_roll,is_large_pose
-3DDFA_0050,3ddfa_sample_045.jpg,32.64,-9.23,169.69,False
-3DDFA_0021,3ddfa_sample_016.jpg,14.09,8.9,-177.65,False
-3DDFA_0008,3ddfa_sample_003.jpg,29.55,-8.58,176.78,False
-3DDFA_0043,3ddfa_sample_038.jpg,-17.26,-29.63,-169.36,False
-3DDFA_0015,3ddfa_sample_010.jpg,9.94,1.81,178.96,False
-3DDFA_0029,3ddfa_sample_024.jpg,7.22,7.9,178.85,False
-3DDFA_0039,3ddfa_sample_034.jpg,-11.19,1.48,179.83,False

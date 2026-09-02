@@ -1,9 +1,0 @@
-sample_id,filename,ground_truth_pitch,ground_truth_yaw,eye_crop_available
-MPII_0003,mpii_sample_003.jpg,-2.0,-28.6,True
-MPII_0044,mpii_sample_044.jpg,-14.1,-11.2,True
-MPII_0036,mpii_sample_036.jpg,-11.7,16.4,True
-MPII_0024,mpii_sample_024.jpg,-13.8,11.0,True
-MPII_0041,mpii_sample_041.jpg,13.5,21.4,True
-MPII_0011,mpii_sample_011.jpg,7.8,22.0,True
-MPII_0023,mpii_sample_023.jpg,2.4,25.1,True
-MPII_0019,mpii_sample_019.jpg,8.9,-15.4,True
