@@ -56,7 +56,10 @@ export default function ReflectionTimelineDrawer({
   };
 
   return (
-    <div className={`fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity ${className}`}>
+    <div
+      className={`fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm transition-opacity ${className}`}
+      style={{ WebkitBackdropFilter: 'blur(4px)', backdropFilter: 'blur(4px)' }}
+    >
       {/* Backdrop overlay */}
       <div className="absolute inset-0" onClick={onClose} />
 

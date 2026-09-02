@@ -68,7 +68,7 @@ export default function EyeContactHUD({
       className={`flex flex-col gap-2 transition-all duration-300 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
     >
       {/* ── Main HUD pill ─────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[#060b14] border border-white/8 backdrop-blur-sm">
+      <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[#060b14]/90 border border-white/8 backdrop-blur-sm">
         {/* Focus Ring Gauge */}
         <div className="relative shrink-0">
           <svg width="56" height="56" viewBox="0 0 56 56">

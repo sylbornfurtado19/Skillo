@@ -7,7 +7,9 @@
   [data-theme="onyx"],
   [data-theme="dark"] {
     --color-background: #030712;
+    --color-background-rgb: 3 7 18;
     --color-card: #0B0F19;
+    --color-card-rgb: 11 15 25;
     --color-card-border: rgba(255, 255, 255, 0.08);
     --color-primary: #6366F1;
     --color-primary-dark: #4F46E5;
@@ -21,7 +23,9 @@
 
   [data-theme="cyberpunk"] {
     --color-background: #090414;
+    --color-background-rgb: 9 4 20;
     --color-card: #140A23;
+    --color-card-rgb: 20 10 35;
     --color-card-border: rgba(236, 72, 153, 0.3);
     --color-primary: #EC4899;
     --color-primary-dark: #DB2777;
@@ -35,7 +39,9 @@
 
   [data-theme="slate"] {
     --color-background: #0F172A;
+    --color-background-rgb: 15 23 42;
     --color-card: #1E293B;
+    --color-card-rgb: 30 41 59;
     --color-card-border: rgba(56, 189, 248, 0.2);
     --color-primary: #38BDF8;
     --color-primary-dark: #0284C7;
@@ -94,7 +100,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Dynamic Glassmorphism utilities */
 .glass {
-  background: var(--color-card);
+  background-color: rgba(var(--color-card-rgb), 0.65);
+  background-color: color-mix(in srgb, var(--color-card) 65%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--color-card-border);
@@ -102,7 +109,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .glass-card {
-  background: var(--color-card);
+  background-color: rgba(var(--color-card-rgb), 0.6);
+  background-color: color-mix(in srgb, var(--color-card) 60%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-card-border);
@@ -111,9 +119,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .glass-nav {
-  background: var(--color-background);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: rgba(var(--color-background-rgb), 0.75);
+  background-color: color-mix(in srgb, var(--color-background) 75%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--color-card-border);
   transition: background-color 0.4s ease, border-color 0.4s ease;
 }
