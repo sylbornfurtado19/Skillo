@@ -18,8 +18,8 @@ export default function GlobalError({
           </div>
           <div className="space-y-2">
             <h2 className="text-xl font-bold">Critical Application Error</h2>
-            <p className="text-xs text-gray-400">
-              A root-level system error occurred.
+            <p className="text-xs text-red-300/80 bg-red-950/40 p-3 rounded-lg border border-red-500/20 font-mono break-words">
+              {error?.message || 'A root-level system error occurred.'}
             </p>
           </div>
           <button

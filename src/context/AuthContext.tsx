@@ -39,29 +39,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch initial active session — with .catch() to handle network failures
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
+    try {
+      // Fetch initial active session — with .catch() to handle network failures
+      supabase.auth
+        .getSession()
+        .then(({ data: { session } }) => {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        })
+        .catch((err: unknown) => {
+          console.error('[AuthContext] Failed to get session:', err);
+          setLoading(false);
+        });
+
+      // Subscribe to auth state changes
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-      })
-      .catch((err: unknown) => {
-        console.error('[AuthContext] Failed to get session:', err);
-        setLoading(false);
       });
 
-    // Subscribe to auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      return () => subscription?.unsubscribe?.();
+    } catch (err: unknown) {
+      console.warn(
+        '[AuthContext] Supabase initialization failed. Environment variables may be missing on this deployment host:',
+        err instanceof Error ? err.message : err
+      );
       setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    }
   }, []);
 
   const value: AuthContextValue = {
