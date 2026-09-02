@@ -69,12 +69,14 @@ export function calculateComposureScore(v: number, a: number): number {
 }
 
 export function classifyDiscreteEmotion(v: number, a: number): DiscreteEmotion {
-  if (a >= 0.30 && v <= -0.20) return 'STRESSED';
-  if (a >= 0.70) return 'SURPRISED';
-  if (a <= -0.20 && v <= -0.20) return 'HESITANT';
-  if (v >= 0.20 && a >= 0.05) return 'CONFIDENT';
-  if (Math.abs(v) <= 0.10 && Math.abs(a) <= 0.15) return 'NEUTRAL';
-  if (Math.abs(v) <= 0.25 && a <= 0.10) return 'THINKING';
+  // Conservative emotion thresholds: heavily biased toward NEUTRAL to prevent false commitments
+  // to specific emotion labels (e.g., CONFIDENT/HAPPY) that contradict actual facial composure.
+  if (a >= 0.40 && v <= -0.30) return 'STRESSED';
+  if (a >= 0.75) return 'SURPRISED';
+  if (a <= -0.35 && v <= -0.30) return 'HESITANT';
+  if (v >= 0.35 && a >= 0.15) return 'CONFIDENT';
+  if (Math.abs(v) <= 0.15 && Math.abs(a) <= 0.18) return 'NEUTRAL';
+  if (Math.abs(v) <= 0.25 && a <= -0.01) return 'THINKING';
   return 'NEUTRAL';
 }
 

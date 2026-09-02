@@ -19,10 +19,10 @@ const ZONE_CONFIG: Record<
   { label: string; icon: string; color: string; ring: string; warning: boolean }
 > = {
   CENTER_SCREEN:  { label: 'Eye Contact: Direct',         icon: '🟢', color: 'text-emerald-400', ring: '#10b981', warning: false },
-  LOOKING_LEFT:   { label: 'Gaze: Looking Left',          icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
-  LOOKING_RIGHT:  { label: 'Gaze: Looking Right',         icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
-  LOOKING_UP:     { label: 'Gaze: Looking Up',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: false },
-  LOOKING_DOWN:   { label: 'Gaze: Looking Down',          icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
+  LOOKING_LEFT:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
+  LOOKING_RIGHT:  { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
+  LOOKING_UP:     { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: false },
+  LOOKING_DOWN:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
   OFF_SCREEN:     { label: 'Warning: Secondary Screen',   icon: '🔴', color: 'text-red-400',     ring: '#ef4444', warning: true  },
 };
 

@@ -881,7 +881,7 @@ export default function IVPLab() {
                 {selectedONNXModel === 'affect' && affectResult && (
                   <div className="p-3 bg-slate-800/50 rounded-xl border border-slate-700 text-xs space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Dominant Emotion:</span>
+                      <span className="text-slate-400">Composure Signal (Beta):</span>
                       <Badge variant="accent">{affectResult.dominantEmotion}</Badge>
                     </div>
                     <div className="flex justify-between items-center">

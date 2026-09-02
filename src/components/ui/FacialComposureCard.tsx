@@ -144,9 +144,9 @@ export default function FacialComposureCard({ metrics }: FacialComposureCardProp
             </div>
           </div>
 
-          {/* Emotion Distribution Bars */}
+          {/* Composure Signal (Beta) Distribution Bars */}
           <div className="w-full space-y-2 border-t border-white/5 pt-3">
-            <span className="text-[9px] text-gray-500 font-mono uppercase block">Dominant State Distribution</span>
+            <span className="text-[9px] text-gray-500 font-mono uppercase block">Composure Signal (Beta) Distribution</span>
             {(['CONFIDENT', 'THINKING', 'NEUTRAL', 'HESITANT', 'STRESSED'] as DiscreteEmotion[]).map(emo => {
               const pct = dominantEmotionDistribution[emo] ?? 0;
               const cfg = EMOTION_COLORS[emo];
