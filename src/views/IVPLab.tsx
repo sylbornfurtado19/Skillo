@@ -254,19 +254,21 @@ export default function IVPLab() {
           dst[i * 4 + 2] = val;
         }
       } else if (selectedFilter === 'gaussian') {
-        // Gaussian Spatial Smoothing Filter
+        // Gaussian Spatial Smoothing Filter with edge boundary clamping
         const radius = Math.floor(gaussianKernel / 2);
-        for (let y = radius; y < height - radius; y++) {
-          for (let x = radius; x < width - radius; x++) {
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
             let rAcc = 0,
               gAcc = 0,
               bAcc = 0,
               wAcc = 0;
             for (let ky = -radius; ky <= radius; ky++) {
+              const py = Math.min(height - 1, Math.max(0, y + ky));
               for (let kx = -radius; kx <= radius; kx++) {
+                const px = Math.min(width - 1, Math.max(0, x + kx));
                 const distSq = kx * kx + ky * ky;
                 const weight = Math.exp(-distSq / (2 * gaussianSigma * gaussianSigma));
-                const pIdx = ((y + ky) * width + (x + kx)) * 4;
+                const pIdx = (py * width + px) * 4;
                 rAcc += src[pIdx] * weight;
                 gAcc += src[pIdx + 1] * weight;
                 bAcc += src[pIdx + 2] * weight;
@@ -274,9 +276,9 @@ export default function IVPLab() {
               }
             }
             const outIdx = (y * width + x) * 4;
-            dst[outIdx] = rAcc / wAcc;
-            dst[outIdx + 1] = gAcc / wAcc;
-            dst[outIdx + 2] = bAcc / wAcc;
+            dst[outIdx] = Math.round(rAcc / wAcc);
+            dst[outIdx + 1] = Math.round(gAcc / wAcc);
+            dst[outIdx + 2] = Math.round(bAcc / wAcc);
           }
         }
       } else if (selectedFilter === 'sharpen') {
@@ -633,7 +635,7 @@ export default function IVPLab() {
       renderSegmentedBackground(sCtx, oCtx, w, h, {
         backdropType: virtualBackdrop,
         blurRadius: bgBlurRadius,
-        skinThresholdStrictness: skinStrictness,
+        sensitivity: skinStrictness,
       });
     } else {
       // Standard CV Filter Execution
@@ -978,7 +980,7 @@ export default function IVPLab() {
 
                 <div>
                   <div className="flex justify-between text-xs text-slate-400 mb-1">
-                    <span>Segmentation Strictness: {skinStrictness}x</span>
+                    <span>Person Saliency Sensitivity: {skinStrictness}x</span>
                   </div>
                   <input
                     type="range"
