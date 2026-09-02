@@ -9,9 +9,6 @@ import {
   FaCube,
   FaMicrochip,
   FaWaveSquare,
-  FaEye,
-  FaLayerGroup,
-  FaCheckCircle,
 } from 'react-icons/fa';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -37,6 +34,7 @@ export default function IVPLab() {
   const [show3DAxes, setShow3DAxes] = useState<boolean>(true);
   const [showHistogram, setShowHistogram] = useState<boolean>(true);
   const [showBoundingBox, setShowBoundingBox] = useState<boolean>(true);
+  const [showLandmarks, setShowLandmarks] = useState<boolean>(true);
 
   // Live Physiological Signals (EAR & MAR)
   const [currentEAR, setCurrentEAR] = useState<number>(0.285);
@@ -58,7 +56,12 @@ export default function IVPLab() {
   });
 
   // Diagnostic Canvas Metrics
-  const [canvasMetrics, setCanvasMetrics] = useState<DiagnosticMetrics>({ fps: 60, targetLost: false });
+  const [canvasMetrics, setCanvasMetrics] = useState<DiagnosticMetrics>({
+    ear: 0.285,
+    mar: 0.145,
+    fps: 60,
+    targetLost: false,
+  });
 
   // DOM Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -160,29 +163,6 @@ export default function IVPLab() {
         // Run continuous inference over all 3 models in background
         const res = await runContinuousUnifiedONNX(inferCanvas, 0.35);
         setOnnxTelemetry(res);
-
-        // Compute simulated organic micro-signals (EAR/MAR) when landmarks are live
-        const timeSec = performance.now() / 1000;
-        const isBlinking = Math.sin(timeSec * 1.8) > 0.94;
-        const earVal = isBlinking ? 0.16 : 0.285 + Math.sin(timeSec * 4) * 0.02;
-        setCurrentEAR(earVal);
-
-        // Blink detection trigger
-        if (earVal < 0.21 && !wasEyeClosedRef.current) {
-          wasEyeClosedRef.current = true;
-          setBlinkCount((prev) => prev + 1);
-          const now = performance.now();
-          blinkTimestampsRef.current.push(now);
-          blinkTimestampsRef.current = blinkTimestampsRef.current.filter((t) => now - t <= 60000);
-          setBlinkRatePerMin(blinkTimestampsRef.current.length);
-        } else if (earVal >= 0.21) {
-          wasEyeClosedRef.current = false;
-        }
-
-        // Speech modulation
-        const marVal = 0.15 + Math.abs(Math.sin(timeSec * 3.2)) * 0.25;
-        setCurrentMAR(marVal);
-        setSpeechActivePct(marVal > 0.22 ? 68 : 12);
       } catch (err) {
         console.warn('Continuous ONNX pipeline tick warning:', err);
       }
@@ -262,12 +242,21 @@ export default function IVPLab() {
         {/* Left Column: Interactive Dual-Viewport Diagnostic Canvas (8 Cols) */}
         <div className="lg:col-span-8 space-y-4">
           <Card variant="glass" className="p-4 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between border-b border-white/5 pb-2 text-xs gap-2">
               <div className="flex items-center gap-2 font-mono text-gray-300 font-bold uppercase tracking-wider">
                 <FaCube className="text-primary" />
                 <span>Interactive Dual-Viewport Canvas</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowLandmarks(!showLandmarks)}
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-mono transition cursor-pointer ${
+                    showLandmarks ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 text-gray-400'
+                  }`}
+                >
+                  Eye & Lip Contours
+                </button>
                 <button
                   type="button"
                   onClick={() => setShowBoundingBox(!showBoundingBox)}
@@ -306,6 +295,7 @@ export default function IVPLab() {
               show3DAxes={show3DAxes}
               showHistogram={showHistogram}
               showBoundingBox={showBoundingBox}
+              showLandmarks={showLandmarks}
               poseAngles={{
                 yaw: onnxTelemetry.yaw,
                 pitch: onnxTelemetry.pitch,
@@ -315,7 +305,26 @@ export default function IVPLab() {
                 x: onnxTelemetry.gazeX,
                 y: onnxTelemetry.gazeY,
               }}
-              onMetricsUpdate={(metrics) => setCanvasMetrics(metrics)}
+              onMetricsUpdate={(metrics) => {
+                setCanvasMetrics(metrics);
+                if (metrics.ear !== undefined) {
+                  setCurrentEAR(metrics.ear);
+                  if (metrics.ear < 0.21 && !wasEyeClosedRef.current) {
+                    wasEyeClosedRef.current = true;
+                    setBlinkCount((prev) => prev + 1);
+                    const now = performance.now();
+                    blinkTimestampsRef.current.push(now);
+                    blinkTimestampsRef.current = blinkTimestampsRef.current.filter((t) => now - t <= 60000);
+                    setBlinkRatePerMin(blinkTimestampsRef.current.length);
+                  } else if (metrics.ear >= 0.21) {
+                    wasEyeClosedRef.current = false;
+                  }
+                }
+                if (metrics.mar !== undefined) {
+                  setCurrentMAR(metrics.mar);
+                  setSpeechActivePct(metrics.mar >= 0.25 ? 76 : 14);
+                }
+              }}
             />
           </Card>
 

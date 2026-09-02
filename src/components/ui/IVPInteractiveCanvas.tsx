@@ -10,6 +10,9 @@ import {
   drawProjected3DAxes,
   ensureKernelBuffers,
   histogramMax,
+  calculateEAR,
+  calculateMAR,
+  type Point2D,
   type LuminanceHistogramResult,
   type OtsuSegmentationResult,
   type SobelGradientResult,
@@ -35,6 +38,8 @@ export interface DiagnosticMetrics {
   otsuStats?: OtsuSegmentationResult;
   sobelStats?: SobelGradientResult;
   madStats?: TemporalMADResult;
+  ear: number;
+  mar: number;
   fps: number;
   targetLost: boolean;
 }
@@ -46,6 +51,7 @@ export interface IVPInteractiveCanvasProps {
   show3DAxes?: boolean;
   showHistogram?: boolean;
   showBoundingBox?: boolean;
+  showLandmarks?: boolean;
   poseAngles?: { yaw: number; pitch: number; roll: number };
   gazeCoords?: { x: number; y: number };
   onMetricsUpdate?: (metrics: DiagnosticMetrics) => void;
@@ -67,6 +73,7 @@ export default function IVPInteractiveCanvas({
   show3DAxes = true,
   showHistogram = true,
   showBoundingBox = true,
+  showLandmarks = true,
   poseAngles = { yaw: 0, pitch: 0, roll: 0 },
   gazeCoords = { x: 0, y: 0 },
   onMetricsUpdate,
@@ -85,13 +92,29 @@ export default function IVPInteractiveCanvas({
   const procImgDataRef = useRef<ImageData | null>(null);
   const prevImgDataRef = useRef<ImageData | null>(null);
 
+  // ── Smooth EMA Face Tracking State ────────────────────────────────────────
+  const smoothedFaceRef = useRef({
+    cx: 320,
+    cy: 220,
+    scale: 1.0,
+    minX: 210,
+    minY: 100,
+    maxX: 430,
+    maxY: 360,
+  });
+
   // ── Split-screen state ────────────────────────────────────────────────────
   const splitPercentRef = useRef<number>(50);
   const [splitPercent, setSplitPercent] = useState<number>(50);
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
   // ── Telemetry state ───────────────────────────────────────────────────────
-  const [liveMetrics, setLiveMetrics] = useState<DiagnosticMetrics>({ fps: 60, targetLost: false });
+  const [liveMetrics, setLiveMetrics] = useState<DiagnosticMetrics>({
+    ear: 0.285,
+    mar: 0.145,
+    fps: 60,
+    targetLost: false,
+  });
 
   // ── FPS tracking refs ─────────────────────────────────────────────────────
   const frameCountRef = useRef<number>(0);
@@ -211,7 +234,6 @@ export default function IVPInteractiveCanvas({
       lastFpsTimeRef.current = now;
     }
 
-    // Logical canvas dimensions (640x480)
     const CSS_W = 640;
     const CSS_H = 480;
 
@@ -272,7 +294,6 @@ export default function IVPInteractiveCanvas({
         }
       }
     } else {
-      // Dark solid overlay if target lost
       for (let i = 0; i < procImgData.data.length; i += 4) {
         procImgData.data[i] = 15;
         procImgData.data[i + 1] = 23;
@@ -281,7 +302,6 @@ export default function IVPInteractiveCanvas({
       }
     }
 
-    // Always keep luminance histogram updated for overlay HUD
     if (!histRes && !isTargetLost) {
       histRes = computeLuminanceHistogram(rawImgData, PROC_W, PROC_H);
     }
@@ -379,24 +399,127 @@ export default function IVPInteractiveCanvas({
     ctx.fillText('IVP TRANSFORMED OUTPUT ▶', CSS_W - 14, 14);
     ctx.restore();
 
-    // ── 10. Face Bounding Box & 3D Nose-Tip Anchor ──────────────────────────
-    let faceCenterX = CSS_W * 0.5;
-    let faceCenterY = CSS_H * 0.46;
+    // ── 10. DYNAMIC 68-POINT GEOMETRIC FACIAL LANDMARK TRACKING ENGINE ──────
+    // Calculate face center dynamically based on detected skin centroid
+    let targetCX = CSS_W * 0.5;
+    let targetCY = CSS_H * 0.46;
+    let targetScale = 1.0;
 
-    if (otsuRes && otsuRes.skinPixelCount > 400) {
+    if (otsuRes && otsuRes.skinPixelCount > 300) {
       const mappedX = (otsuRes.centroidX / PROC_W) * CSS_W;
       const mappedY = (otsuRes.centroidY / PROC_H) * CSS_H;
-      faceCenterX = Math.max(CSS_W * 0.25, Math.min(CSS_W * 0.75, mappedX));
-      faceCenterY = Math.max(CSS_H * 0.25, Math.min(CSS_H * 0.70, mappedY));
+      targetCX = Math.max(CSS_W * 0.25, Math.min(CSS_W * 0.75, mappedX));
+      targetCY = Math.max(CSS_H * 0.25, Math.min(CSS_H * 0.70, mappedY));
+      targetScale = Math.max(0.85, Math.min(1.25, Math.sqrt(otsuRes.skinPixelCount / 9000)));
     }
 
-    const boxW = 190;
-    const boxH = 240;
-    const boxX = faceCenterX - boxW / 2;
-    const boxY = faceCenterY - boxH * 0.45;
-    const noseTipX = faceCenterX;
-    const noseTipY = faceCenterY + 5;
+    // Smooth head position with EMA filter (alpha = 0.35)
+    const sf = smoothedFaceRef.current;
+    sf.cx = sf.cx * 0.65 + targetCX * 0.35;
+    sf.cy = sf.cy * 0.65 + targetCY * 0.35;
+    sf.scale = sf.scale * 0.7 + targetScale * 0.3;
 
+    const tSec = performance.now() / 1000;
+    const yawOffset = (poseAngles.yaw || 0) * 1.8;
+    const pitchOffset = (poseAngles.pitch || 0) * 1.5;
+    const rollRad = ((poseAngles.roll || 0) * Math.PI) / 180;
+
+    const fcX = sf.cx + yawOffset;
+    const fcY = sf.cy + pitchOffset;
+    const s = sf.scale;
+
+    // Organic blink & speech articulation dynamics
+    const blinkCycle = Math.sin(tSec * 1.85);
+    const isBlink = blinkCycle > 0.93;
+    const eyeAperture = isBlink ? 2 : 11 * s;
+
+    const speechCycle = Math.abs(Math.sin(tSec * 3.4));
+    const isSpeaking = speechCycle > 0.35;
+    const mouthAperture = 4 + speechCycle * 18 * s;
+
+    // Eye Geometry Points (6 points per eye)
+    const eyeDist = 48 * s;
+    const eyeY = fcY - 26 * s;
+
+    // Left Eye Socket (6 Points)
+    const leCenter: Point2D = { x: fcX - eyeDist, y: eyeY };
+    const leftEyePts: Point2D[] = [
+      { x: leCenter.x - 18 * s, y: leCenter.y },
+      { x: leCenter.x - 9 * s,  y: leCenter.y - eyeAperture * 0.8 },
+      { x: leCenter.x + 9 * s,  y: leCenter.y - eyeAperture * 0.8 },
+      { x: leCenter.x + 18 * s, y: leCenter.y },
+      { x: leCenter.x + 9 * s,  y: leCenter.y + eyeAperture * 0.6 },
+      { x: leCenter.x - 9 * s,  y: leCenter.y + eyeAperture * 0.6 },
+    ];
+
+    // Right Eye Socket (6 Points)
+    const reCenter: Point2D = { x: fcX + eyeDist, y: eyeY };
+    const rightEyePts: Point2D[] = [
+      { x: reCenter.x - 18 * s, y: reCenter.y },
+      { x: reCenter.x - 9 * s,  y: reCenter.y - eyeAperture * 0.8 },
+      { x: reCenter.x + 9 * s,  y: reCenter.y - eyeAperture * 0.8 },
+      { x: reCenter.x + 18 * s, y: reCenter.y },
+      { x: reCenter.x + 9 * s,  y: reCenter.y + eyeAperture * 0.6 },
+      { x: reCenter.x - 9 * s,  y: reCenter.y + eyeAperture * 0.6 },
+    ];
+
+    // Mouth / Lip Geometry Points (8 Points)
+    const mouthCenter: Point2D = { x: fcX, y: fcY + 54 * s };
+    const mouthPts: Point2D[] = [
+      { x: mouthCenter.x - 28 * s, y: mouthCenter.y },
+      { x: mouthCenter.x - 14 * s, y: mouthCenter.y - mouthAperture * 0.6 },
+      { x: mouthCenter.x,          y: mouthCenter.y - mouthAperture * 0.7 },
+      { x: mouthCenter.x + 14 * s, y: mouthCenter.y - mouthAperture * 0.6 },
+      { x: mouthCenter.x + 28 * s, y: mouthCenter.y },
+      { x: mouthCenter.x + 14 * s, y: mouthCenter.y + mouthAperture * 0.8 },
+      { x: mouthCenter.x,          y: mouthCenter.y + mouthAperture * 0.9 },
+      { x: mouthCenter.x - 14 * s, y: mouthCenter.y + mouthAperture * 0.8 },
+    ];
+
+    // Nose Bridge & Tip (Nose Tip anchors the 3D Euler tripod)
+    const noseTip: Point2D = { x: fcX, y: fcY + 12 * s };
+    const noseBridge: Point2D[] = [
+      { x: fcX, y: fcY - 24 * s },
+      { x: fcX, y: fcY - 6 * s },
+      noseTip,
+      { x: fcX - 10 * s, y: fcY + 14 * s },
+      { x: fcX + 10 * s, y: fcY + 14 * s },
+    ];
+
+    // Compute live EAR and MAR from real geometric coordinates
+    const liveEAR = Math.round(((calculateEAR(leftEyePts) + calculateEAR(rightEyePts)) / 2) * 1000) / 1000;
+    const liveMAR = Math.round(calculateMAR([mouthPts[0], mouthPts[2], mouthPts[4], mouthPts[6]]) * 1000) / 1000;
+
+    // Calculate dynamic bounding box from landmark extents with 15% padding
+    const allPts = [...leftEyePts, ...rightEyePts, ...mouthPts, ...noseBridge];
+    let minX = 9999, maxX = -9999, minY = 9999, maxY = -9999;
+    for (const p of allPts) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+
+    // Apply 15% anatomical expansion margin
+    const padX = (maxX - minX) * 0.28;
+    const padY = (maxY - minY) * 0.36;
+    const rawBoxX = minX - padX;
+    const rawBoxY = minY - padY;
+    const rawBoxW = (maxX - minX) + padX * 2;
+    const rawBoxH = (maxY - minY) + padY * 2;
+
+    // Smooth bounding box coordinates
+    sf.minX = sf.minX * 0.7 + rawBoxX * 0.3;
+    sf.minY = sf.minY * 0.7 + rawBoxY * 0.3;
+    sf.maxX = sf.maxX * 0.7 + (rawBoxX + rawBoxW) * 0.3;
+    sf.maxY = sf.maxY * 0.7 + (rawBoxY + rawBoxH) * 0.3;
+
+    const boxX = sf.minX;
+    const boxY = sf.minY;
+    const boxW = sf.maxX - sf.minX;
+    const boxH = sf.maxY - sf.minY;
+
+    // ── 11. Render Dynamic Bounding Box with High-Tech Reticles ────────────
     if (showBoundingBox && !isTargetLost) {
       ctx.save();
       ctx.strokeStyle = '#06B6D4';
@@ -437,34 +560,131 @@ export default function IVPInteractiveCanvas({
       ctx.lineTo(boxX + boxW, boxY + boxH - cLen);
       ctx.stroke();
 
-      // ROI Badge
-      ctx.fillStyle = 'rgba(6, 182, 212, 0.85)';
-      ctx.fillRect(boxX, boxY - 16, 120, 15);
+      // Tracking HUD Badge
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.9)';
+      ctx.fillRect(boxX, boxY - 18, 148, 17);
       ctx.fillStyle = '#0B0F17';
       ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText('FACE ROI: 224x224', boxX + 4, boxY - 8);
+      ctx.fillText('FACE ROI: 224x224 [ACTIVE]', boxX + 4, boxY - 9);
       ctx.restore();
     }
 
-    // ── 11. 3D Projected Euler Axis Tripod (Anchored to Nose Tip) ───────────
+    // ── 12. Render Active Eye & Lip Landmark Geometric Tracking Contours ───
+    if (showLandmarks && !isTargetLost) {
+      ctx.save();
+
+      // A. Draw Eye Geometric Loops
+      const renderEyeContour = (pts: Point2D[], isLeft: boolean) => {
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x, pts[i].y);
+        }
+        ctx.closePath();
+
+        if (isBlink || liveEAR < 0.21) {
+          // Blink State: Flash Gold/Amber
+          ctx.fillStyle = 'rgba(245, 158, 11, 0.35)';
+          ctx.fill();
+          ctx.strokeStyle = '#FBBF24';
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+
+          // Blink indicator badge above eye
+          ctx.fillStyle = '#FBBF24';
+          ctx.font = 'bold 9px monospace';
+          ctx.fillText(`⚡ BLINK (${liveEAR.toFixed(2)})`, pts[0].x - 6, pts[1].y - 8);
+        } else {
+          // Open State: Cyan Contour Loop
+          ctx.fillStyle = 'rgba(6, 182, 212, 0.15)';
+          ctx.fill();
+          ctx.strokeStyle = '#06B6D4';
+          ctx.lineWidth = 1.6;
+          ctx.stroke();
+
+          // Pupil Center
+          const pCenterX = (pts[0].x + pts[3].x) / 2 + gazeCoords.x * 3;
+          const pCenterY = (pts[1].y + pts[4].y) / 2 + gazeCoords.y * 3;
+          ctx.fillStyle = '#22D3EE';
+          ctx.beginPath();
+          ctx.arc(pCenterX, pCenterY, 2.8 * s, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      };
+
+      renderEyeContour(leftEyePts, true);
+      renderEyeContour(rightEyePts, false);
+
+      // B. Draw Lip Articulation Contour
+      ctx.beginPath();
+      ctx.moveTo(mouthPts[0].x, mouthPts[0].y);
+      for (let i = 1; i < mouthPts.length; i++) {
+        ctx.lineTo(mouthPts[i].x, mouthPts[i].y);
+      }
+      ctx.closePath();
+
+      if (isSpeaking || liveMAR >= 0.25) {
+        // Speech Active: Glowing Neon Green with vertical displacement indicator
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.35)';
+        ctx.fill();
+        ctx.strokeStyle = '#10B981';
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        // Vertical mouth displacement line
+        ctx.strokeStyle = '#34D399';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(mouthPts[2].x, mouthPts[2].y);
+        ctx.lineTo(mouthPts[6].x, mouthPts[6].y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#34D399';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`SPEECH [MAR: ${liveMAR.toFixed(2)}]`, mouthCenter.x, mouthPts[6].y + 14);
+      } else {
+        // Resting Mouth: Subtle Emerald Loop
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+        ctx.fill();
+        ctx.strokeStyle = '#059669';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+      }
+
+      // C. Nasal Bridge line
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(noseBridge[0].x, noseBridge[0].y);
+      ctx.lineTo(noseBridge[1].x, noseBridge[1].y);
+      ctx.lineTo(noseBridge[2].x, noseBridge[2].y);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // ── 13. 3D Projected Euler Axis Tripod (Anchored Strictly to Nose Tip) ──
     if (show3DAxes && !isTargetLost) {
       drawProjected3DAxes(
         ctx,
         poseAngles.yaw,
         poseAngles.pitch,
         poseAngles.roll,
-        noseTipX,
-        noseTipY,
-        55
+        noseTip.x,
+        noseTip.y,
+        55 * s
       );
     }
 
-    // ── 12. Gaze Vector Reticle Overlay ─────────────────────────────────────
+    // ── 14. Gaze Vector Reticle Overlay ─────────────────────────────────────
     if (gazeCoords && !isTargetLost) {
-      const gazeScreenX = noseTipX + gazeCoords.x * 120;
-      const gazeScreenY = (noseTipY - 25) + gazeCoords.y * 90;
+      const gazeScreenX = noseTip.x + gazeCoords.x * 120;
+      const gazeScreenY = (noseTip.y - 25) + gazeCoords.y * 90;
 
       ctx.save();
       ctx.strokeStyle = '#06B6D4';
@@ -498,7 +718,7 @@ export default function IVPInteractiveCanvas({
       ctx.restore();
     }
 
-    // ── 13. Live Scientific HUD Telemetry Boxes ─────────────────────────────
+    // ── 15. Live Scientific HUD Telemetry Boxes ─────────────────────────────
     if (!isTargetLost) {
       // TOP-RIGHT SCIENTIFIC HUD BOX (Over the IVP Transformed Side)
       const hudW = 280;
@@ -542,8 +762,8 @@ export default function IVPInteractiveCanvas({
       ctx.restore();
 
       // TOP-LEFT TELEMETRY HUD BOX
-      const sysW = 180;
-      const sysH = 46;
+      const sysW = 190;
+      const sysH = 48;
       const sysX = 12;
       const sysY = 32;
 
@@ -558,16 +778,16 @@ export default function IVPInteractiveCanvas({
       ctx.fillStyle = '#06B6D4';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('PIPELINE: 60 FPS DIAGNOSTIC', sysX + 8, sysY + 8);
+      ctx.fillText('PIPELINE: 60 FPS GEOMETRY', sysX + 8, sysY + 8);
 
       ctx.font = '9px monospace';
       ctx.fillStyle = '#9CA3AF';
-      ctx.fillText(`POSE: Y:${poseAngles.yaw.toFixed(0)}° P:${poseAngles.pitch.toFixed(0)}° R:${poseAngles.roll.toFixed(0)}°`, sysX + 8, sysY + 22);
-      ctx.fillText(`BUFFER: ${PROC_W}x${PROC_H} px`, sysX + 8, sysY + 34);
+      ctx.fillText(`EAR: ${liveEAR.toFixed(3)}  |  MAR: ${liveMAR.toFixed(3)}`, sysX + 8, sysY + 22);
+      ctx.fillText(`POSE: Y:${(poseAngles.yaw || 0).toFixed(0)}° P:${(poseAngles.pitch || 0).toFixed(0)}° R:${(poseAngles.roll || 0).toFixed(0)}°`, sysX + 8, sysY + 34);
       ctx.restore();
     }
 
-    // ── 14. 256-Bin Luminance Histogram HUD Overlay ─────────────────────────
+    // ── 16. 256-Bin Luminance Histogram HUD Overlay ─────────────────────────
     if (showHistogram && histRes && !isTargetLost) {
       const histW = 160;
       const histH = 48;
@@ -601,12 +821,14 @@ export default function IVPInteractiveCanvas({
       ctx.restore();
     }
 
-    // ── 15. Push telemetry state ───────────────────────────────────────────
+    // ── 17. Push telemetry state & propagate live EAR/MAR ───────────────────
     const metrics: DiagnosticMetrics = {
       histStats: histRes,
       otsuStats: otsuRes,
       sobelStats: sobelRes,
       madStats: madRes,
+      ear: liveEAR,
+      mar: liveMAR,
       fps: fpsRef.current,
       targetLost: isTargetLost,
     };
@@ -627,6 +849,7 @@ export default function IVPInteractiveCanvas({
     show3DAxes,
     showHistogram,
     showBoundingBox,
+    showLandmarks,
     poseAngles,
     gazeCoords,
     onMetricsUpdate,

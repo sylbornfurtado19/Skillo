@@ -515,27 +515,34 @@ export function computeTemporalMAD(
 
     if (delta >= motionThreshold) {
       motionPixelCount++;
-      // Amplify motion intensity for high visual impact
-      const normDelta = Math.min(1.0, (delta - motionThreshold) / 35.0);
+      // High-sensitivity thermal scaling (amplified by 8.0x for micro-movements on eyes/lips)
+      const amplified = Math.min(255, delta * 8.0);
+      const normDelta = amplified / 255.0;
 
       let r = 0, g = 0, b = 0;
-      if (normDelta < 0.33) {
+      if (normDelta < 0.25) {
         // Blue to Cyan
-        const t = normDelta / 0.33;
+        const t = normDelta / 0.25;
         r = 0;
         g = Math.round(t * 240);
         b = 255;
-      } else if (normDelta < 0.66) {
-        // Cyan to Yellow
-        const t = (normDelta - 0.33) / 0.33;
-        r = Math.round(t * 255);
+      } else if (normDelta < 0.50) {
+        // Cyan to Bright Green
+        const t = (normDelta - 0.25) / 0.25;
+        r = Math.round(t * 120);
         g = 255;
         b = Math.round((1 - t) * 255);
+      } else if (normDelta < 0.75) {
+        // Green to Yellow/Orange
+        const t = (normDelta - 0.50) / 0.25;
+        r = Math.round(120 + t * 135);
+        g = Math.round(255 - t * 55);
+        b = 0;
       } else {
-        // Yellow to Vivid Neon Red
-        const t = (normDelta - 0.66) / 0.34;
+        // Orange to Intense Vivid Red
+        const t = (normDelta - 0.75) / 0.25;
         r = 255;
-        g = Math.round((1 - t) * 220);
+        g = Math.round(200 * (1 - t));
         b = 0;
       }
 
@@ -544,11 +551,11 @@ export function computeTemporalMAD(
       dst[idx + 2] = b;
       dst[idx + 3] = 255;
     } else {
-      // Solid deep navy background for low motion
-      const muted = Math.min(60, Math.round(currLuma * 0.2));
+      // Solid deep slate/navy background for static regions
+      const muted = Math.min(35, Math.round(currLuma * 0.12));
       dst[idx] = 10 + muted;
       dst[idx + 1] = 15 + muted;
-      dst[idx + 2] = 32 + muted;
+      dst[idx + 2] = 30 + muted;
       dst[idx + 3] = 255;
     }
   }
