@@ -293,3 +293,100 @@ export async function runAffectONNX(canvas: HTMLCanvasElement): Promise<AffectIn
     inferenceTimeMs,
   };
 }
+
+// -----------------------------------------------------------------------------
+// EXPONENTIAL MOVING AVERAGE (EMA) SMOOTHING STATE
+// -----------------------------------------------------------------------------
+export interface SmoothedTelemetry {
+  yaw: number;
+  pitch: number;
+  roll: number;
+  gazeX: number;
+  gazeY: number;
+  composure: number;
+  dominantEmotion: string;
+  totalInferenceTimeMs: number;
+}
+
+let smoothedState: SmoothedTelemetry = {
+  yaw: 0,
+  pitch: 0,
+  roll: 0,
+  gazeX: 0,
+  gazeY: 0,
+  composure: 85,
+  dominantEmotion: 'Neutral',
+  totalInferenceTimeMs: 0,
+};
+
+/**
+ * Atomic re-entrancy lock.
+ * If a WASM forward pass is already in-flight, return the last smoothed state
+ * immediately instead of stacking another Promise.all.  This prevents CPU
+ * saturation when inference takes longer than the setInterval tick period.
+ */
+let _onnxBusy = false;
+
+/**
+ * Runs all 3 ONNX models asynchronously and returns EMA-smoothed telemetry (alpha = 0.35).
+ * Re-entrant calls during an in-flight pass are dropped cleanly — the caller
+ * receives the last valid smoothed state without any WASM re-entry.
+ */
+export async function runContinuousUnifiedONNX(
+  canvas: HTMLCanvasElement,
+  alpha = 0.35
+): Promise<SmoothedTelemetry> {
+  // ── Re-entrancy guard ────────────────────────────────────────────────────
+  if (_onnxBusy) {
+    // Previous inference pass still running — return current EMA snapshot
+    return { ...smoothedState };
+  }
+  _onnxBusy = true;
+
+  const t0 = performance.now();
+
+  try {
+    const [pose, gaze, affect] = await Promise.all([
+      runPoseONNX(canvas).catch(() => null),
+      runGazeONNX(canvas).catch(() => null),
+      runAffectONNX(canvas).catch(() => null),
+    ]);
+
+    const beta = 1 - alpha;   // pre-compute complement once
+
+    if (pose) {
+      smoothedState.yaw   = smoothedState.yaw   * beta + pose.yawDegrees   * alpha;
+      smoothedState.pitch = smoothedState.pitch * beta + pose.pitchDegrees * alpha;
+      smoothedState.roll  = smoothedState.roll  * beta + pose.rollDegrees  * alpha;
+    }
+
+    if (gaze) {
+      smoothedState.gazeX = smoothedState.gazeX * beta + (gaze.yawDegrees   / 45.0) * alpha;
+      smoothedState.gazeY = smoothedState.gazeY * beta + (gaze.pitchDegrees / 45.0) * alpha;
+    }
+
+    if (affect) {
+      smoothedState.composure       = smoothedState.composure * beta + affect.composureScore * alpha;
+      smoothedState.dominantEmotion = affect.dominantEmotion;
+    }
+
+    smoothedState.totalInferenceTimeMs = Math.round(performance.now() - t0);
+  } catch (err) {
+    console.warn('[ONNX] Continuous forward pass warning:', err);
+  } finally {
+    // ── Always release the lock — even on exception ──────────────────────
+    _onnxBusy = false;
+  }
+
+  return {
+    yaw:                 Math.round(smoothedState.yaw   * 10) / 10,
+    pitch:               Math.round(smoothedState.pitch * 10) / 10,
+    roll:                Math.round(smoothedState.roll  * 10) / 10,
+    gazeX:               Math.round(smoothedState.gazeX  * 100) / 100,
+    gazeY:               Math.round(smoothedState.gazeY  * 100) / 100,
+    composure:           Math.round(smoothedState.composure),
+    dominantEmotion:     smoothedState.dominantEmotion,
+    totalInferenceTimeMs: smoothedState.totalInferenceTimeMs,
+  };
+}
+
