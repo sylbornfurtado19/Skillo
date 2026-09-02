@@ -4,14 +4,6 @@
  * High-performance pure TypeScript image and signal processing library
  * operating directly on ImageData / TypedArray pixel buffers.
  *
- * PERFORMANCE ARCHITECTURE (Zero-Allocation Hot Loops):
- * -------------------------------------------------------
- * All intermediate typed-array buffers (grayscale scratch, Cr buffer,
- * histogram accumulators, morphological mask buffers) are module-level
- * singletons pre-allocated at first use and REUSED on every subsequent
- * frame.  Calling code MUST NOT resize the canvas mid-session; if canvas
- * dimensions change, call `resetKernelBuffers()` to reallocate.
- *
  * Implements:
  * 1. Unit 1: Pinhole camera intrinsic projection matrix math (3D Euler axes)
  * 2. Unit 2: Radiometric normalization & 256-bin Histogram Equalization (PDF/CDF)
@@ -24,18 +16,14 @@
 // =============================================================================
 // MODULE-LEVEL PRE-ALLOCATED SCRATCH BUFFERS (Zero GC in hot loops)
 // =============================================================================
-// These are lazy-initialised the first time a kernel is called and then reused.
-// Keyed by pixel count so they auto-resize if the diagnostic buffer resolution changes.
-
 let _lastNumPixels = 0;
 
-// Shared grayscale & Cr / mask buffers
 let _grayBuf: Uint8Array = new Uint8Array(0);
 let _crBuf: Uint8Array = new Uint8Array(0);
+let _cbBuf: Uint8Array = new Uint8Array(0);
 let _rawMaskBuf: Uint8Array = new Uint8Array(0);
 let _cleanMaskBuf: Uint8Array = new Uint8Array(0);
 
-// Fixed-size accumulators (always 256 elements)
 let _histBuf: Uint32Array = new Uint32Array(256);
 let _crHistBuf: Uint32Array = new Uint32Array(256);
 let _pdfBuf: Float32Array = new Float32Array(256);
@@ -43,13 +31,13 @@ let _cdfBuf: Float32Array = new Float32Array(256);
 let _lutBuf: Uint8Array = new Uint8Array(256);
 
 /**
- * Ensures all pixel-count-dependent scratch buffers are allocated for the
- * given resolution.  Call this once whenever the canvas dimensions change.
+ * Ensures all pixel-count-dependent scratch buffers are allocated for the given resolution.
  */
 export function ensureKernelBuffers(numPixels: number): void {
   if (numPixels === _lastNumPixels) return;
   _grayBuf = new Uint8Array(numPixels);
   _crBuf = new Uint8Array(numPixels);
+  _cbBuf = new Uint8Array(numPixels);
   _rawMaskBuf = new Uint8Array(numPixels);
   _cleanMaskBuf = new Uint8Array(numPixels);
   _lastNumPixels = numPixels;
@@ -60,7 +48,7 @@ export function ensureKernelBuffers(numPixels: number): void {
 // =============================================================================
 
 export interface LuminanceHistogramResult {
-  hist: Uint32Array;   // same object reference every frame — do NOT mutate externally
+  hist: Uint32Array;
   pdf: Float32Array;
   cdf: Float32Array;
   minVal: number;
@@ -72,7 +60,7 @@ export interface OtsuSegmentationResult {
   otsuThreshold: number;
   skinPixelRatio: number;
   skinPixelCount: number;
-  centroidX: number;   // flat scalars — no allocation
+  centroidX: number;
   centroidY: number;
 }
 
@@ -88,7 +76,7 @@ export interface TemporalMADResult {
   maxPixelDiff: number;
 }
 
-// Stable result objects reused every frame to avoid per-frame object allocation
+// Stable result singletons
 const _histResult: LuminanceHistogramResult = {
   hist: _histBuf,
   pdf: _pdfBuf,
@@ -116,12 +104,11 @@ const _madResult: TemporalMADResult = {
 };
 
 // =============================================================================
-// UNIT 2: LUMINANCE & HISTOGRAM EQUALIZATION
+// 1. UNIT 2: LUMINANCE & HISTOGRAM EQUALIZATION
 // =============================================================================
 
 /**
  * Computes 256-bin histogram, empirical PDF, and CDF from an RGBA ImageData buffer.
- * Returns a SHARED result object — copy values before storing if async reads are needed.
  */
 export function computeLuminanceHistogram(
   srcData: ImageData,
@@ -132,7 +119,6 @@ export function computeLuminanceHistogram(
   const numPixels = width * height;
   ensureKernelBuffers(numPixels);
 
-  // Zero the histogram accumulator in-place (no allocation)
   _histBuf.fill(0);
 
   let sum = 0;
@@ -141,8 +127,7 @@ export function computeLuminanceHistogram(
 
   for (let i = 0; i < numPixels; i++) {
     const idx = i * 4;
-    // ITU-R BT.601 standard luma — integer approximation avoids fp multiply per pixel
-    // Y ≈ (77*R + 150*G + 29*B) >> 8  — same coefficients as 0.299/0.587/0.114
+    // BT.601 integer luminance: Y = (77*R + 150*G + 29*B) >> 8
     const y = (77 * src[idx] + 150 * src[idx + 1] + 29 * src[idx + 2]) >> 8;
     _histBuf[y]++;
     sum += y;
@@ -150,7 +135,6 @@ export function computeLuminanceHistogram(
     if (y > maxVal) maxVal = y;
   }
 
-  // Compute PDF / CDF in-place
   const invN = numPixels > 0 ? 1 / numPixels : 0;
   let cum = 0;
   for (let k = 0; k < 256; k++) {
@@ -171,8 +155,7 @@ export function computeLuminanceHistogram(
 
 /**
  * Applies CDF-based Histogram Equalization: s_k = round(255 × CDF(r_k)).
- * Writes output into dstData.  Returns the same shared result object as
- * computeLuminanceHistogram for downstream metric display.
+ * Produces clear, unmistakable high-contrast equalized grayscale output.
  */
 export function applyHistogramEqualization(
   srcData: ImageData,
@@ -186,37 +169,31 @@ export function applyHistogramEqualization(
   const numPixels = width * height;
   const cdf = stats.cdf;
 
-  // Build LUT (pre-allocated _lutBuf, no allocation)
+  // Build CDF lookup table
   for (let k = 0; k < 256; k++) {
-    _lutBuf[k] = Math.min(255, Math.round(cdf[k] * 255));
+    _lutBuf[k] = Math.min(255, Math.max(0, Math.round(cdf[k] * 255)));
   }
 
   for (let i = 0; i < numPixels; i++) {
     const idx = i * 4;
     const y = (77 * src[idx] + 150 * src[idx + 1] + 29 * src[idx + 2]) >> 8;
     const eq = _lutBuf[y];
-    dst[idx]     = eq;
+    dst[idx] = eq;
     dst[idx + 1] = eq;
     dst[idx + 2] = eq;
-    dst[idx + 3] = 255;
+    dst[idx + 3] = 255; // Explicit 100% opaque alpha
   }
 
   return stats;
 }
 
 // =============================================================================
-// UNIT 6 & 7: YCRCB CHROMINANCE & OTSU OPTIMAL BINARIZATION
+// 2. UNIT 6 & 7: YCRCB CHROMINANCE & OTSU OPTIMAL BINARIZATION
 // =============================================================================
 
 /**
- * Transforms RGB -> YCrCb, computes Otsu optimal variance thresholding on Cr,
- * applies a 3×3 morphological opening (erosion → dilation) to clean speckles.
- *
- * MATHEMATICAL INTEGRITY:
- * - σ²_B(t) = ω₀(t)·ω₁(t)·[μ₀(t) - μ₁(t)]²
- * - Guard: ω₀ = 0 → continue; ω₁ = 0 → break (both explicit)
- * - Guard: totalCr = 0 (all-black frame) → optThresh = 128 fallback
- * - Guard: varMax stays 0 after full sweep → skin fallback threshold 138
+ * Transforms RGB -> YCrCb, computes Otsu optimal variance thresholding on Cr channel,
+ * bounds chrominance against office lighting, and executes a morphological opening pass.
  */
 export function applyYCrCbOtsuSegmentation(
   srcData: ImageData,
@@ -229,10 +206,9 @@ export function applyYCrCbOtsuSegmentation(
   const numPixels = width * height;
   ensureKernelBuffers(numPixels);
 
-  // Zero the Cr histogram accumulator
   _crHistBuf.fill(0);
 
-  // 1. RGB → YCrCb — accumulate Cr histogram into pre-allocated buffer
+  // 1. RGB -> YCrCb transformation (BT.601)
   let totalCr = 0;
   for (let i = 0; i < numPixels; i++) {
     const idx = i * 4;
@@ -240,28 +216,27 @@ export function applyYCrCbOtsuSegmentation(
     const g = src[idx + 1];
     const b = src[idx + 2];
 
-    // Cr = 128 + 0.5R - 0.41869G - 0.08131B  (BT.601)
-    // Integer-friendly: (128*256 + 128*r - 107*g - 21*b) >> 8
     const cr = Math.min(255, Math.max(0, (32768 + 128 * r - 107 * g - 21 * b) >> 8));
+    const cb = Math.min(255, Math.max(0, (32768 - 43 * r - 85 * g + 128 * b) >> 8));
+
     _crBuf[i] = cr;
+    _cbBuf[i] = cb;
     _crHistBuf[cr]++;
     totalCr += cr;
   }
 
-  // 2. Otsu variance maximisation on Cr channel
-  //    σ²_B(t) = ω₀·ω₁·(μ₀ - μ₁)²
-  //    Guard: if totalCr === 0 the frame is fully black → use fallback threshold 128
+  // 2. Otsu between-class variance maximization
   let sumB = 0;
   let wB = 0;
   let varMax = 0;
-  let optThresh = 138; // anatomical fallback for human Cr range
+  let optThresh = 138;
 
   if (totalCr > 0) {
     for (let t = 0; t < 256; t++) {
       wB += _crHistBuf[t];
-      if (wB === 0) continue;          // ω₀ = 0 guard
+      if (wB === 0) continue;
       const wF = numPixels - wB;
-      if (wF === 0) break;             // ω₁ = 0 guard
+      if (wF === 0) break;
 
       sumB += t * _crHistBuf[t];
       const mB = sumB / wB;
@@ -274,14 +249,12 @@ export function applyYCrCbOtsuSegmentation(
         optThresh = t;
       }
     }
-    // Guard: if varMax === 0 (uniform Cr field, e.g. white wall or occluded lens)
-    // keep anatomical fallback — already set to 138
   }
 
-  // Clamp to physiologically realistic human skin Cr bounds [128, 165]
-  optThresh = Math.max(128, Math.min(165, optThresh));
+  // Clamp Otsu threshold to realistic human skin chrominance bounds
+  optThresh = Math.max(130, Math.min(160, optThresh));
 
-  // 3. Generate raw binary skin mask
+  // 3. Combined Chrominance Envelope + Otsu Binarization (Resistant to fluorescent lighting)
   _rawMaskBuf.fill(0);
   let skinCount = 0;
   let sumX = 0;
@@ -295,10 +268,18 @@ export function applyYCrCbOtsuSegmentation(
       const g = src[idx + 1];
       const b = src[idx + 2];
       const cr = _crBuf[i];
-      // Cb = 128 - 0.16874R - 0.33126G + 0.5B  (BT.601)
-      const cb = Math.round(128 - 0.16874 * r - 0.33126 * g + 0.5 * b);
+      const cb = _cbBuf[i];
 
-      const isSkin = cr >= optThresh && cb >= 77 && cb <= 127 && r > g && g > b;
+      // Robust skin classification condition
+      const isSkin =
+        cr >= optThresh &&
+        cr >= 125 &&
+        cr <= 175 &&
+        cb >= 75 &&
+        cb <= 130 &&
+        r > g &&
+        g > b;
+
       if (isSkin) {
         _rawMaskBuf[i] = 1;
         skinCount++;
@@ -308,11 +289,10 @@ export function applyYCrCbOtsuSegmentation(
     }
   }
 
-  // 4. 3×3 Morphological Opening — erosion pass into _cleanMaskBuf
+  // 4. 3x3 Morphological Opening (Erosion -> Dilation)
   _cleanMaskBuf.fill(0);
   for (let py = 1; py < height - 1; py++) {
     for (let px = 1; px < width - 1; px++) {
-      // Check all 9 neighbours (3×3 SE)
       const base = py * width + px;
       if (
         _rawMaskBuf[base - width - 1] & _rawMaskBuf[base - width] & _rawMaskBuf[base - width + 1] &
@@ -324,61 +304,61 @@ export function applyYCrCbOtsuSegmentation(
     }
   }
 
-  // 4b. Dilation pass — write directly to dst pixel buffer
+  // 4b. Dilation pass with high-contrast binary mask rendering
   let finalSkinCount = 0;
-  for (let py = 1; py < height - 1; py++) {
-    for (let px = 1; px < width - 1; px++) {
+  for (let py = 0; py < height; py++) {
+    for (let px = 0; px < width; px++) {
       const i = py * width + px;
+      const outIdx = i * 4;
+
+      if (py === 0 || py === height - 1 || px === 0 || px === width - 1) {
+        // Border pixels
+        dst[outIdx] = 15;
+        dst[outIdx + 1] = 23;
+        dst[outIdx + 2] = 42;
+        dst[outIdx + 3] = 255;
+        continue;
+      }
+
       const base = i;
       const anyOnes =
         _cleanMaskBuf[base - width - 1] | _cleanMaskBuf[base - width] | _cleanMaskBuf[base - width + 1] |
         _cleanMaskBuf[base - 1]         | _cleanMaskBuf[base]          | _cleanMaskBuf[base + 1]         |
         _cleanMaskBuf[base + width - 1] | _cleanMaskBuf[base + width] | _cleanMaskBuf[base + width + 1];
 
-      const outIdx = i * 4;
       if (anyOnes) {
-        // Skin: emerald/cyan highlight
-        dst[outIdx]     = 16;
-        dst[outIdx + 1] = 185;
-        dst[outIdx + 2] = 129;
+        // High-contrast neon emerald/white skin segmentation
+        dst[outIdx] = 16;
+        dst[outIdx + 1] = 230;
+        dst[outIdx + 2] = 140;
         dst[outIdx + 3] = 255;
         finalSkinCount++;
       } else {
-        // Non-skin: dark Cr-tinted background for academic contrast
-        const crVal = _crBuf[i];
-        dst[outIdx]     = (crVal * 102) >> 8;   // * 0.4 via bit shift
-        dst[outIdx + 1] = (crVal * 102) >> 8;
-        dst[outIdx + 2] = (crVal * 128) >> 8;   // * 0.5
+        // Solid deep midnight navy background (guarantees zero transparency)
+        dst[outIdx] = 15;
+        dst[outIdx + 1] = 23;
+        dst[outIdx + 2] = 42;
         dst[outIdx + 3] = 255;
       }
     }
   }
 
-  // Fill border rows/cols with black (avoids unwritten pixels)
-  for (let px = 0; px < width; px++) {
-    const top = px * 4;
-    const bot = ((height - 1) * width + px) * 4;
-    dst[top] = dst[top + 1] = dst[top + 2] = 0; dst[top + 3] = 255;
-    dst[bot] = dst[bot + 1] = dst[bot + 2] = 0; dst[bot + 3] = 255;
-  }
-
-  _otsuResult.otsuThreshold  = optThresh;
+  _otsuResult.otsuThreshold = optThresh;
   _otsuResult.skinPixelRatio = numPixels > 0 ? (finalSkinCount / numPixels) * 100 : 0;
   _otsuResult.skinPixelCount = finalSkinCount;
-  _otsuResult.centroidX      = skinCount > 0 ? Math.round(sumX / skinCount) : Math.round(width / 2);
-  _otsuResult.centroidY      = skinCount > 0 ? Math.round(sumY / skinCount) : Math.round(height / 2);
+  _otsuResult.centroidX = skinCount > 0 ? Math.round(sumX / skinCount) : Math.round(width / 2);
+  _otsuResult.centroidY = skinCount > 0 ? Math.round(sumY / skinCount) : Math.round(height / 2);
 
   return _otsuResult;
 }
 
 // =============================================================================
-// UNIT 4 & 5: SPATIAL SOBEL GRADIENT & ORIENTATION FIELD
+// 3. UNIT 4 & 5: SPATIAL SOBEL GRADIENT & ORIENTATION FIELD
 // =============================================================================
 
 /**
- * Computes 3×3 Sobel spatial convolutions Gx, Gy and renders gradient magnitude
- * with HSV orientation-encoded colour on interior pixels.
- * Boundary pixels (x=0, x=W-1, y=0, y=H-1) are explicitly zeroed.
+ * Computes 3x3 Sobel spatial convolutions Gx, Gy and renders glowing orientation-colored
+ * edge vector fields against a solid black background.
  */
 export function applySobelGradientField(
   srcData: ImageData,
@@ -392,31 +372,26 @@ export function applySobelGradientField(
   const numPixels = width * height;
   ensureKernelBuffers(numPixels);
 
-  // 1. RGB → Grayscale into pre-allocated buffer (integer BT.601)
+  // 1. Convert to grayscale
   for (let i = 0; i < numPixels; i++) {
     const idx = i * 4;
     _grayBuf[i] = (77 * src[idx] + 150 * src[idx + 1] + 29 * src[idx + 2]) >> 8;
   }
 
-  // 2. Clamp boundary pixels to black (boundary clamping guard)
-  for (let px = 0; px < width; px++) {
-    const top = px * 4;
-    const bot = ((height - 1) * width + px) * 4;
-    dst[top] = dst[top + 1] = dst[top + 2] = 0; dst[top + 3] = 255;
-    dst[bot] = dst[bot + 1] = dst[bot + 2] = 0; dst[bot + 3] = 255;
-  }
-  for (let py = 0; py < height; py++) {
-    const left = py * width * 4;
-    const right = (py * width + width - 1) * 4;
-    dst[left] = dst[left + 1] = dst[left + 2] = 0; dst[left + 3] = 255;
-    dst[right] = dst[right + 1] = dst[right + 2] = 0; dst[right + 3] = 255;
+  // 2. Initialize entire output buffer to solid black with 100% opaque alpha
+  for (let i = 0; i < numPixels; i++) {
+    const idx = i * 4;
+    dst[idx] = 0;
+    dst[idx + 1] = 0;
+    dst[idx + 2] = 0;
+    dst[idx + 3] = 255;
   }
 
   let sumMag = 0;
   let maxMag = 0;
   let edgeCount = 0;
 
-  // 3. 3×3 Sobel convolution — interior pixels only
+  // 3. 3x3 Spatial Convolution
   for (let py = 1; py < height - 1; py++) {
     const row = py * width;
     for (let px = 1; px < width - 1; px++) {
@@ -429,62 +404,72 @@ export function applySobelGradientField(
       const bc = _grayBuf[row + width + px];
       const br = _grayBuf[row + width + px + 1];
 
-      // Sobel kernels:  Gx = [-1 0 1; -2 0 2; -1 0 1]  Gy = [-1 -2 -1; 0 0 0; 1 2 1]
+      // Sobel Kernels
       const gx = (tr + 2 * mr + br) - (tl + 2 * ml + bl);
       const gy = (bl + 2 * bc + br) - (tl + 2 * tc + tr);
 
-      const mag = Math.sqrt(gx * gx + gy * gy);
-      sumMag += mag;
-      if (mag > maxMag) maxMag = mag;
-      if (mag > 40) edgeCount++;
+      const rawMag = Math.sqrt(gx * gx + gy * gy);
+      sumMag += rawMag;
+      if (rawMag > maxMag) maxMag = rawMag;
+      if (rawMag > 25) edgeCount++;
 
       const outIdx = (row + px) * 4;
-      const clampedMag = mag > 255 ? 255 : (mag | 0); // integer truncation, avoids Math.round
 
-      if (colorizeOrientation && clampedMag > 20) {
-        // HSV colour encode: Hue = gradient orientation θ ∈ [-π, π]
+      // Amplify gradient magnitude visually for striking contrast
+      const visualMag = Math.min(255, Math.round(rawMag * 2.2));
+
+      if (visualMag >= 18 && colorizeOrientation) {
+        // Calculate gradient orientation angle theta in [-PI, PI]
         const theta = Math.atan2(gy, gx);
-        const normAngle = (theta + Math.PI) * (1 / (2 * Math.PI)); // 0..1
+        const normAngle = (theta + Math.PI) / (2 * Math.PI); // [0..1]
         const h = normAngle * 6;
-        const v = clampedMag / 255;
-        const xC = v * (1 - Math.abs((h % 2) - 1));
-        const m = 0; // Saturation = 1.0, so m = v - c = v - v = 0
+        const v = visualMag / 255.0;
+        const s = 1.0;
+        const c = v * s;
+        const xC = c * (1 - Math.abs((h % 2) - 1));
 
-        let rr = 0, gg = 0, bb = 0;
-        if      (h < 1) { rr = v;  gg = xC; bb = 0;  }
-        else if (h < 2) { rr = xC; gg = v;  bb = 0;  }
-        else if (h < 3) { rr = 0;  gg = v;  bb = xC; }
-        else if (h < 4) { rr = 0;  gg = xC; bb = v;  }
-        else if (h < 5) { rr = xC; gg = 0;  bb = v;  }
-        else            { rr = v;  gg = 0;  bb = xC; }
+        let r = 0, g = 0, b = 0;
+        if (h < 1) { r = c; g = xC; b = 0; }
+        else if (h < 2) { r = xC; g = c; b = 0; }
+        else if (h < 3) { r = 0; g = c; b = xC; }
+        else if (h < 4) { r = 0; g = xC; b = c; }
+        else if (h < 5) { r = xC; g = 0; b = c; }
+        else { r = c; g = 0; b = xC; }
 
-        dst[outIdx]     = (rr * 255) | 0;
-        dst[outIdx + 1] = (gg * 255) | 0;
-        dst[outIdx + 2] = (bb * 255) | 0;
+        dst[outIdx] = Math.round(r * 255);
+        dst[outIdx + 1] = Math.round(g * 255);
+        dst[outIdx + 2] = Math.round(b * 255);
+        dst[outIdx + 3] = 255;
+      } else if (visualMag >= 18) {
+        dst[outIdx] = visualMag;
+        dst[outIdx + 1] = visualMag;
+        dst[outIdx + 2] = visualMag;
+        dst[outIdx + 3] = 255;
       } else {
-        dst[outIdx]     = clampedMag;
-        dst[outIdx + 1] = clampedMag;
-        dst[outIdx + 2] = clampedMag;
+        // Pure solid black background
+        dst[outIdx] = 0;
+        dst[outIdx + 1] = 0;
+        dst[outIdx + 2] = 0;
+        dst[outIdx + 3] = 255;
       }
-      dst[outIdx + 3] = 255;
     }
   }
 
   const invN = numPixels > 0 ? 1 / numPixels : 0;
-  _sobelResult.maxMagnitude  = maxMag | 0;
+  _sobelResult.maxMagnitude = Math.round(maxMag);
   _sobelResult.meanMagnitude = Math.round(sumMag * invN * 10) / 10;
-  _sobelResult.edgePixelRatio = Math.round(edgeCount * invN * 1000) / 10; // percent × 1 decimal
+  _sobelResult.edgePixelRatio = Math.round(edgeCount * invN * 1000) / 10;
 
   return _sobelResult;
 }
 
 // =============================================================================
-// UNIT 8: TEMPORAL MEAN ABSOLUTE DIFFERENCE (MAD) MOTION HEATMAP
+// 4. UNIT 8: TEMPORAL MEAN ABSOLUTE DIFFERENCE (MAD) MOTION HEATMAP
 // =============================================================================
 
 /**
- * Computes frame-difference MAD = (1/HW)·Σ|I_t − I_{t-1}| and renders a
- * Blue→Cyan→Yellow→Red thermal heatmap for motion pixels.
+ * Computes inter-frame pixel difference Δ(x,y) = |I_t - I_{t-1}| BEFORE buffer update,
+ * projecting motion through an intensified thermal Jet colormap.
  */
 export function computeTemporalMAD(
   currData: ImageData,
@@ -492,18 +477,24 @@ export function computeTemporalMAD(
   dstData: ImageData,
   width: number,
   height: number,
-  motionThreshold = 8
+  motionThreshold = 6
 ): TemporalMADResult {
   const curr = currData.data;
-  const dst  = dstData.data;
+  const dst = dstData.data;
   const numPixels = width * height;
 
   if (!prevData) {
-    // First frame: passthrough — no previous to diff against
-    for (let i = 0; i < curr.length; i++) dst[i] = curr[i];
-    _madResult.madScore        = 0;
+    // First frame initialization (solid navy with 100% alpha)
+    for (let i = 0; i < numPixels; i++) {
+      const idx = i * 4;
+      dst[idx] = 10;
+      dst[idx + 1] = 15;
+      dst[idx + 2] = 30;
+      dst[idx + 3] = 255;
+    }
+    _madResult.madScore = 0;
     _madResult.motionAreaRatio = 0;
-    _madResult.maxPixelDiff    = 0;
+    _madResult.maxPixelDiff = 0;
     return _madResult;
   }
 
@@ -515,52 +506,57 @@ export function computeTemporalMAD(
   for (let i = 0; i < numPixels; i++) {
     const idx = i * 4;
 
-    // Integer BT.601 luma — avoids 3 fp multiplies per pixel
     const currLuma = (77 * curr[idx] + 150 * curr[idx + 1] + 29 * curr[idx + 2]) >> 8;
     const prevLuma = (77 * prev[idx] + 150 * prev[idx + 1] + 29 * prev[idx + 2]) >> 8;
 
-    const delta = currLuma > prevLuma ? currLuma - prevLuma : prevLuma - currLuma;
+    const delta = Math.abs(currLuma - prevLuma);
     sumDiff += delta;
     if (delta > maxDiff) maxDiff = delta;
 
     if (delta >= motionThreshold) {
       motionPixelCount++;
-      // Thermal Jet colourmap: Blue→Cyan→Yellow→Red
-      const normDelta = (delta - motionThreshold) > 50 ? 1.0 : (delta - motionThreshold) / 50;
-      let r = 0, g = 0, b = 0;
+      // Amplify motion intensity for high visual impact
+      const normDelta = Math.min(1.0, (delta - motionThreshold) / 35.0);
 
-      if (normDelta < 0.333) {
-        const t = normDelta * 3;          // 0..1
-        g = (t * 255) | 0;
+      let r = 0, g = 0, b = 0;
+      if (normDelta < 0.33) {
+        // Blue to Cyan
+        const t = normDelta / 0.33;
+        r = 0;
+        g = Math.round(t * 240);
         b = 255;
-      } else if (normDelta < 0.667) {
-        const t = (normDelta - 0.333) * 3;
-        r = (t * 255) | 0;
+      } else if (normDelta < 0.66) {
+        // Cyan to Yellow
+        const t = (normDelta - 0.33) / 0.33;
+        r = Math.round(t * 255);
         g = 255;
-        b = ((1 - t) * 255) | 0;
+        b = Math.round((1 - t) * 255);
       } else {
-        const t = (normDelta - 0.667) * 3;
+        // Yellow to Vivid Neon Red
+        const t = (normDelta - 0.66) / 0.34;
         r = 255;
-        g = ((1 - t) * 255) | 0;
+        g = Math.round((1 - t) * 220);
+        b = 0;
       }
 
-      dst[idx]     = r;
+      dst[idx] = r;
       dst[idx + 1] = g;
       dst[idx + 2] = b;
+      dst[idx + 3] = 255;
     } else {
-      // Muted blue-tinted grayscale background
-      const muted = (currLuma * 90) >> 8;  // ≈ *0.35
-      dst[idx]     = muted;
-      dst[idx + 1] = muted;
-      dst[idx + 2] = muted + 20 > 255 ? 255 : muted + 20;
+      // Solid deep navy background for low motion
+      const muted = Math.min(60, Math.round(currLuma * 0.2));
+      dst[idx] = 10 + muted;
+      dst[idx + 1] = 15 + muted;
+      dst[idx + 2] = 32 + muted;
+      dst[idx + 3] = 255;
     }
-    dst[idx + 3] = 255;
   }
 
   const invN = numPixels > 0 ? 1 / numPixels : 0;
-  _madResult.madScore        = Math.round(sumDiff * invN * 100) / 100;
+  _madResult.madScore = Math.round(sumDiff * invN * 100) / 100;
   _madResult.motionAreaRatio = Math.round(motionPixelCount * invN * 1000) / 10;
-  _madResult.maxPixelDiff    = maxDiff;
+  _madResult.maxPixelDiff = maxDiff;
 
   return _madResult;
 }
@@ -616,18 +612,8 @@ export function calculateMAR(mouthPoints: Point2D[] | null | undefined): number 
 // =============================================================================
 
 /**
- * Projects three orthogonal 3D coordinate vectors onto the 2D canvas using the
- * standard OpenCV/pinhole camera convention (+X right, +Y down, +Z forward into scene).
- *
- * Rotation order: Rz(roll) × Ry(yaw) × Rx(pitch)  (Tait-Bryan ZYX / intrinsic)
- *
- * COORDINATE CONVENTION NOTE:
- * Canvas Y increases downward — identical to the OpenCV +Y-down convention.
- * Therefore we apply '+' (not '−') to the Y screen component: y_screen = originY + proj_Y.
- *
- * ANGLE UNITS:
- * Inputs yawDeg, pitchDeg, rollDeg are expected in DEGREES and are explicitly
- * converted to radians before any trigonometric call.
+ * Projects three orthogonal 3D coordinate vectors onto the 2D canvas using
+ * standard OpenCV/pinhole camera conventions (+X right, +Y down, +Z forward).
  */
 export function drawProjected3DAxes(
   ctx: CanvasRenderingContext2D,
@@ -638,41 +624,27 @@ export function drawProjected3DAxes(
   originY: number,
   axisLength = 60
 ): void {
-  // Degree → Radian conversion (explicit guard for NaN inputs)
   const DEG2RAD = Math.PI / 180;
-  const yaw   = (isFinite(yawDeg)   ? yawDeg   : 0) * DEG2RAD;
+  const yaw = (isFinite(yawDeg) ? yawDeg : 0) * DEG2RAD;
   const pitch = (isFinite(pitchDeg) ? pitchDeg : 0) * DEG2RAD;
-  const roll  = (isFinite(rollDeg)  ? rollDeg  : 0) * DEG2RAD;
+  const roll = (isFinite(rollDeg) ? rollDeg : 0) * DEG2RAD;
 
-  // Precompute sin/cos
-  const cy = Math.cos(yaw),  sy = Math.sin(yaw);
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
-  const cr = Math.cos(roll),  sr = Math.sin(roll);
+  const cr = Math.cos(roll), sr = Math.sin(roll);
 
-  // Combined rotation R = Rz(roll) × Ry(yaw) × Rx(pitch)
-  // Column-major layout for clarity:
-  // R = | cy·cr       cy·sr-sy·sp·cr    sy·cp   |
-  //     | -cr·sy·sp   cp·cr             sp       |
-  //     | -sy         -cy·sp            cy·cp    |   <-- this is the standard ZYX Tait-Bryan
-  //
-  // We project 3D unit vectors:  p_2D = origin + axisLength · R · e_i
-  // Screen convention: x_screen = originX + proj_x
-  //                    y_screen = originY + proj_y   (+Y is DOWN in both canvas and OpenCV)
-
-  // X-axis basis [1,0,0] → projected to screen
+  // Tait-Bryan Z-Y-X rotation
   const xProj_x = cy * cr;
-  const xProj_y = sp * sy * cr - cp * sr;   // row1 col0 of R
+  const xProj_y = sp * sy * cr - cp * sr;
 
-  // Y-axis basis [0,1,0] → projected to screen
   const yProj_x = cy * sr;
-  const yProj_y = sp * sy * sr + cp * cr;   // row1 col1 of R
+  const yProj_y = sp * sy * sr + cp * cr;
 
-  // Z-axis basis [0,0,1] → projected to screen  (forward into scene)
-  const zProj_x =  sy;
-  const zProj_y = -sp * cy;                 // row1 col2 of R
+  const zProj_x = sy;
+  const zProj_y = -sp * cy;
 
   const xEndX = originX + axisLength * xProj_x;
-  const xEndY = originY + axisLength * xProj_y;   // + for OpenCV Y-down convention
+  const xEndY = originY + axisLength * xProj_y;
 
   const yEndX = originX + axisLength * yProj_x;
   const yEndY = originY + axisLength * yProj_y;
@@ -684,28 +656,28 @@ export function drawProjected3DAxes(
   ctx.lineWidth = 3.5;
   ctx.lineCap = 'round';
 
-  // X-axis → Red (Pitch axis)
+  // X-axis -> Red (Pitch)
   ctx.strokeStyle = '#EF4444';
   ctx.beginPath();
   ctx.moveTo(originX, originY);
   ctx.lineTo(xEndX, xEndY);
   ctx.stroke();
 
-  // Y-axis → Green (Yaw axis)
+  // Y-axis -> Green (Yaw)
   ctx.strokeStyle = '#10B981';
   ctx.beginPath();
   ctx.moveTo(originX, originY);
   ctx.lineTo(yEndX, yEndY);
   ctx.stroke();
 
-  // Z-axis → Blue (Roll / depth forward)
+  // Z-axis -> Blue (Roll / Normal)
   ctx.strokeStyle = '#3B82F6';
   ctx.beginPath();
   ctx.moveTo(originX, originY);
   ctx.lineTo(zEndX, zEndY);
   ctx.stroke();
 
-  // Origin sphere
+  // Origin sphere (nose tip)
   ctx.fillStyle = '#FFFFFF';
   ctx.beginPath();
   ctx.arc(originX, originY, 4.5, 0, 2 * Math.PI);
@@ -725,7 +697,6 @@ export function drawProjected3DAxes(
   ctx.restore();
 }
 
-// Pre-computed constant for histogram max — avoids Math.max spread in hot render loop
 export function histogramMax(hist: Uint32Array): number {
   let m = 0;
   for (let i = 0; i < 256; i++) {

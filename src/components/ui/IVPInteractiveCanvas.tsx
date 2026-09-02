@@ -52,7 +52,7 @@ export interface IVPInteractiveCanvasProps {
   className?: string;
 }
 
-// Static academic syllabus headers
+// Static academic syllabus titles
 const MODE_TITLES: Record<DiagnosticMode, string> = {
   SOBEL_GRADIENTS:  'UNIT 4/5: SOBEL 3x3 GRADIENT VECTOR FIELD',
   YCRCB_SKIN_OTSU:   'UNIT 6/7: YCrCb CHROMINANCE & MORPHOLOGICAL OTSU MASK',
@@ -76,7 +76,7 @@ export default function IVPInteractiveCanvas({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // ── Offscreen pipeline canvases ───────────────────────────────────────────
+  // ── Offscreen pipeline canvases (320x240) ─────────────────────────────────
   const offscreenRawRef = useRef<HTMLCanvasElement | null>(null);
   const offscreenProcRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -145,7 +145,9 @@ export default function IVPInteractiveCanvas({
     canvas.style.height = `${cssH}px`;
 
     const ctx = canvas.getContext('2d');
-    if (ctx) ctx.scale(dpr, dpr);
+    if (ctx) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
   }, []);
 
   useEffect(() => {
@@ -213,7 +215,7 @@ export default function IVPInteractiveCanvas({
     const CSS_W = 640;
     const CSS_H = 480;
 
-    // ── 1. Draw source into raw offscreen buffer (PROC_W × PROC_H) ─────────
+    // ── 1. Draw source into raw offscreen buffer (320x240) ─────────────────
     let frameValid = false;
     try {
       if (sourceElement instanceof HTMLVideoElement) {
@@ -239,11 +241,11 @@ export default function IVPInteractiveCanvas({
     }
     const isTargetLost = lostFramesRef.current > 3;
 
-    // ── 2. Copy raw pixels into pre-allocated rawImgData ───────────────────
+    // ── 2. Read raw pixels into pre-allocated buffer ───────────────────────
     const freshRaw = rawCtx.getImageData(0, 0, PROC_W, PROC_H);
     rawImgData.data.set(freshRaw.data);
 
-    // ── 3. Execute Selected Academic Diagnostic Kernel (Unit 2, 4/5, 6/7, 8) ─
+    // ── 3. Execute Selected Academic Diagnostic Kernel ─────────────────────
     let histRes: LuminanceHistogramResult | undefined;
     let otsuRes: OtsuSegmentationResult | undefined;
     let sobelRes: SobelGradientResult | undefined;
@@ -270,53 +272,59 @@ export default function IVPInteractiveCanvas({
         }
       }
     } else {
-      // Dark fallback overlay
+      // Dark solid overlay if target lost
       for (let i = 0; i < procImgData.data.length; i += 4) {
         procImgData.data[i] = 15;
-        procImgData.data[i + 1] = 15;
-        procImgData.data[i + 2] = 20;
+        procImgData.data[i + 1] = 23;
+        procImgData.data[i + 2] = 42;
         procImgData.data[i + 3] = 255;
       }
     }
 
-    // Always compute current frame luminance histogram for overlay HUD
+    // Always keep luminance histogram updated for overlay HUD
     if (!histRes && !isTargetLost) {
       histRes = computeLuminanceHistogram(rawImgData, PROC_W, PROC_H);
     }
 
-    // ── 4. Save frame for temporal motion differencing ──────────────────────
+    // ── 4. Save current frame for Temporal MAD differencing ────────────────
     if (frameValid && prevImgDataRef.current) {
       prevImgDataRef.current.data.set(rawImgData.data);
     }
 
-    // ── 5. Blit processed pixels to offscreen proc canvas ───────────────────
+    // ── 5. Blit processed pixels to offscreen proc canvas (320x240) ────────
     procCtx.putImageData(procImgData, 0, 0);
 
-    // ── 6. Composite Dual-Viewport (Left: Raw, Right: Transformed IVP) ──────
-    const splitX = Math.round((splitPercentRef.current / 100) * CSS_W);
-
+    // ── 6. Robust 9-Parameter Blit to Viewport Canvas (640x480) ────────────
     ctx.clearRect(0, 0, CSS_W, CSS_H);
 
-    // Left Viewport: Raw Input Video
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, splitX, CSS_H);
-    ctx.clip();
-    ctx.drawImage(rawCanvas, 0, 0, CSS_W, CSS_H);
-    ctx.restore();
+    const splitPct = Math.max(0.02, Math.min(0.98, splitPercentRef.current / 100));
+    const splitX = Math.round(splitPct * CSS_W);
+    const splitSrcX = splitPct * PROC_W;
 
-    // Right Viewport: Transformed Computer Vision Output
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(splitX, 0, CSS_W - splitX, CSS_H);
-    ctx.clip();
-    ctx.drawImage(procCanvas, 0, 0, CSS_W, CSS_H);
-    ctx.restore();
+    // Draw Left Slice (Raw Input Video)
+    if (splitX > 0) {
+      ctx.drawImage(
+        rawCanvas,
+        0, 0, splitSrcX, PROC_H,
+        0, 0, splitX, CSS_H
+      );
+    }
+
+    // Draw Right Slice (Transformed Computer Vision Output)
+    const rightW = CSS_W - splitX;
+    const rightSrcW = PROC_W - splitSrcX;
+    if (rightW > 0 && rightSrcW > 0) {
+      ctx.drawImage(
+        procCanvas,
+        splitSrcX, 0, rightSrcW, PROC_H,
+        splitX, 0, rightW, CSS_H
+      );
+    }
 
     // ── 7. Target-Lost Banner (if occluded) ─────────────────────────────────
     if (isTargetLost) {
       ctx.save();
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
       ctx.fillRect(0, 0, CSS_W, CSS_H);
 
       ctx.font = 'bold 13px monospace';
@@ -326,7 +334,7 @@ export default function IVPInteractiveCanvas({
       ctx.fillText('⚠ STATUS: TARGET OCCLUDED / LOST', CSS_W / 2, CSS_H / 2 - 10);
 
       ctx.font = '10px monospace';
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.85)';
       ctx.fillText('Align face with camera or select a sample image', CSS_W / 2, CSS_H / 2 + 12);
       ctx.restore();
     }
@@ -371,71 +379,65 @@ export default function IVPInteractiveCanvas({
     ctx.fillText('IVP TRANSFORMED OUTPUT ▶', CSS_W - 14, 14);
     ctx.restore();
 
-    // ── 10. Anatomically Calibrated Face Bounding Box & Nose Tip Anchor ─────
-    // Calculate face center dynamically based on detected skin centroid or frame center
+    // ── 10. Face Bounding Box & 3D Nose-Tip Anchor ──────────────────────────
     let faceCenterX = CSS_W * 0.5;
     let faceCenterY = CSS_H * 0.46;
 
-    if (otsuRes && otsuRes.skinPixelCount > 500) {
-      // Smoothly map skin centroid from 320x240 to 640x480
+    if (otsuRes && otsuRes.skinPixelCount > 400) {
       const mappedX = (otsuRes.centroidX / PROC_W) * CSS_W;
       const mappedY = (otsuRes.centroidY / PROC_H) * CSS_H;
-      // Clamp within reasonable face bounding box region
       faceCenterX = Math.max(CSS_W * 0.25, Math.min(CSS_W * 0.75, mappedX));
       faceCenterY = Math.max(CSS_H * 0.25, Math.min(CSS_H * 0.70, mappedY));
     }
 
-    // Bounding Box Dimensions (15% margin around standard portrait ratio)
     const boxW = 190;
     const boxH = 240;
     const boxX = faceCenterX - boxW / 2;
     const boxY = faceCenterY - boxH * 0.45;
     const noseTipX = faceCenterX;
-    const noseTipY = faceCenterY + 5; // Nose tip positioned at ~52% of facial box height
+    const noseTipY = faceCenterY + 5;
 
     if (showBoundingBox && !isTargetLost) {
       ctx.save();
-      // Draw Tech Bounding Box with Corner Reticles
-      ctx.strokeStyle = '#06B6D4'; // Neon cyan
+      ctx.strokeStyle = '#06B6D4';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 4]);
       ctx.strokeRect(boxX, boxY, boxW, boxH);
       ctx.setLineDash([]);
 
-      // Corner Brackets
       const cLen = 16;
       ctx.strokeStyle = '#22D3EE';
       ctx.lineWidth = 2.5;
 
-      // Top-Left
+      // Top-Left Corner
       ctx.beginPath();
       ctx.moveTo(boxX, boxY + cLen);
       ctx.lineTo(boxX, boxY);
       ctx.lineTo(boxX + cLen, boxY);
       ctx.stroke();
 
-      // Top-Right
+      // Top-Right Corner
       ctx.beginPath();
       ctx.moveTo(boxX + boxW - cLen, boxY);
       ctx.lineTo(boxX + boxW, boxY);
       ctx.lineTo(boxX + boxW, boxY + cLen);
       ctx.stroke();
 
-      // Bottom-Left
+      // Bottom-Left Corner
       ctx.beginPath();
       ctx.moveTo(boxX, boxY + boxH - cLen);
       ctx.lineTo(boxX, boxY + boxH);
       ctx.lineTo(boxX + cLen, boxY + boxH);
       ctx.stroke();
 
-      // Bottom-Right
+      // Bottom-Right Corner
       ctx.beginPath();
       ctx.moveTo(boxX + boxW - cLen, boxY + boxH);
       ctx.lineTo(boxX + boxW, boxY + boxH);
       ctx.lineTo(boxX + boxW, boxY + boxH - cLen);
       ctx.stroke();
 
-      // Box Tag Badge
+      // ROI Badge
       ctx.fillStyle = 'rgba(6, 182, 212, 0.85)';
       ctx.fillRect(boxX, boxY - 16, 120, 15);
       ctx.fillStyle = '#0B0F17';
@@ -446,7 +448,7 @@ export default function IVPInteractiveCanvas({
       ctx.restore();
     }
 
-    // ── 11. 3D Projected Euler Axis Tripod (Anchored Strictly to Nose Tip) ──
+    // ── 11. 3D Projected Euler Axis Tripod (Anchored to Nose Tip) ───────────
     if (show3DAxes && !isTargetLost) {
       drawProjected3DAxes(
         ctx,
@@ -496,7 +498,7 @@ export default function IVPInteractiveCanvas({
       ctx.restore();
     }
 
-    // ── 13. Embedded Live Scientific HUD Overlays ───────────────────────────
+    // ── 13. Live Scientific HUD Telemetry Boxes ─────────────────────────────
     if (!isTargetLost) {
       // TOP-RIGHT SCIENTIFIC HUD BOX (Over the IVP Transformed Side)
       const hudW = 280;
@@ -599,7 +601,7 @@ export default function IVPInteractiveCanvas({
       ctx.restore();
     }
 
-    // ── 15. Push telemetry state (throttled to avoid React rerender spam) ───
+    // ── 15. Push telemetry state ───────────────────────────────────────────
     const metrics: DiagnosticMetrics = {
       histStats: histRes,
       otsuStats: otsuRes,
