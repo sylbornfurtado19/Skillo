@@ -399,115 +399,110 @@ export default function Results() {
         </div>
       </div>
 
-      {/* 1. Sticky In-Page Navigation Bar */}
-      <div className="sticky top-20 z-40 bg-[#0b0f19]/90 backdrop-blur-xl border border-white/10 p-1.5 rounded-2xl shadow-xl flex items-center justify-center gap-1 sm:gap-2 max-w-full sm:max-w-2xl mx-auto overflow-x-auto no-scrollbar">
-        <button
-          type="button"
-          onClick={() => scrollToSection('sec-overview', 'overview')}
-          className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
-            activeTab === 'overview'
-              ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          Overview
-        </button>
-        <button
-          type="button"
-          onClick={() => scrollToSection('sec-confidence', 'confidence')}
-          className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
-            activeTab === 'confidence'
-              ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          Confidence Analysis
-        </button>
-        <button
-          type="button"
-          onClick={() => scrollToSection('sec-contrastive', 'contrastive')}
-          className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
-            activeTab === 'contrastive'
-              ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          Contrastive Analysis
-        </button>
-        {/* Gaze tab — only shown when metrics are available */}
-        {isEyeContactMetrics(results.eyeContactMetrics) && (
+      {/* 1. Docked In-Page Navigation Bar */}
+      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-[#030712]/95 backdrop-blur-md border-b border-white/10 shadow-lg">
+        <div className="flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1">
           <button
             type="button"
-            onClick={() => scrollToSection('sec-gaze', 'gaze')}
-            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
-              activeTab === 'gaze'
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-white'
+            onClick={() => scrollToSection('sec-overview', 'overview')}
+            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+              activeTab === 'overview'
+                ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10'
             }`}
           >
-            Gaze Analytics
+            Overview
           </button>
-        )}
-        {/* Head Pose & Gestures tab — only shown when metrics are available */}
-        {isHeadPoseMetrics(results.headPoseMetrics) && (
           <button
             type="button"
-            onClick={() => scrollToSection('sec-pose', 'pose')}
-            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
-              activeTab === 'pose'
-                ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-white'
+            onClick={() => scrollToSection('sec-confidence', 'confidence')}
+            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+              activeTab === 'confidence'
+                ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10'
             }`}
           >
-            Posture & Gestures
+            Confidence Analysis
           </button>
-        )}
-        {/* Affect & Composure tab — only shown when metrics are available */}
-        {isAffectiveMetrics(results.affectiveMetrics) && (
           <button
             type="button"
-            onClick={() => scrollToSection('sec-affect', 'affect')}
-            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
-              activeTab === 'affect'
-                ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-white'
+            onClick={() => scrollToSection('sec-contrastive', 'contrastive')}
+            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+              activeTab === 'contrastive'
+                ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10'
             }`}
           >
-            Facial Composure
+            Contrastive Analysis
           </button>
-        )}
-        {/* Audio Presence & Latency tab — only shown when metrics are available */}
-        {isLipSyncMetrics(results.lipSyncMetrics) && (
+          {/* Gaze tab — only shown when metrics are available */}
+          {isEyeContactMetrics(results.eyeContactMetrics) && (
+            <button
+              type="button"
+              onClick={() => scrollToSection('sec-gaze', 'gaze')}
+              className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+                activeTab === 'gaze'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10'
+              }`}
+            >
+              Gaze Analytics
+            </button>
+          )}
+          {/* Head Pose & Gestures tab — only shown when metrics are available */}
+          {isHeadPoseMetrics(results.headPoseMetrics) && (
+            <button
+              type="button"
+              onClick={() => scrollToSection('sec-pose', 'pose')}
+              className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+                activeTab === 'pose'
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10'
+              }`}
+            >
+              Posture & Gestures
+            </button>
+          )}
+          {/* Affect & Composure tab — only shown when metrics are available */}
+          {isAffectiveMetrics(results.affectiveMetrics) && (
+            <button
+              type="button"
+              onClick={() => scrollToSection('sec-affect', 'affect')}
+              className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+                activeTab === 'affect'
+                  ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10'
+              }`}
+            >
+              Facial Composure
+            </button>
+          )}
+          {/* Audio Presence & Latency tab — only shown when metrics are available */}
+          {isLipSyncMetrics(results.lipSyncMetrics) && (
+            <button
+              type="button"
+              onClick={() => scrollToSection('sec-sync', 'sync')}
+              className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+                activeTab === 'sync'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10'
+              }`}
+            >
+              Audio & Latency
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => scrollToSection('sec-sync', 'sync')}
-            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
-              activeTab === 'sync'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-white'
+            onClick={() => scrollToSection('sec-responses', 'responses')}
+            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+              activeTab === 'responses'
+                ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10'
             }`}
           >
-            Audio & Latency
+            Detailed Responses
           </button>
-        )}
-
-
-
-
-
-
-
-        <button
-          type="button"
-          onClick={() => scrollToSection('sec-responses', 'responses')}
-          className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
-            activeTab === 'responses'
-              ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          Detailed Responses
-        </button>
+        </div>
       </div>
 
 
