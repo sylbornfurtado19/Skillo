@@ -34,13 +34,60 @@ os.makedirs(PLOTS_DIR, exist_ok=True)
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD  = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
-def preprocess_image(img_bgr: np.ndarray, target_size=(224, 224)) -> torch.Tensor:
-    """Standardizes image to 224x224 RGB float32 tensor with ImageNet normalization."""
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+def crop_centered_square(img_bgr: np.ndarray, pad_ratio: float = 0.15) -> np.ndarray:
+    """Preserves geometric aspect ratio by centered square crop with boundary padding."""
+    h, w = img_bgr.shape[:2]
+    side = int(max(h, w) * (1.0 + pad_ratio))
+    cx, cy = w // 2, h // 2
+    x0 = max(0, cx - side // 2)
+    y0 = max(0, cy - side // 2)
+    x1 = min(w, cx + side // 2)
+    y1 = min(h, cy + side // 2)
+    crop = img_bgr[y0:y1, x0:x1]
+    return crop if crop.size > 0 else img_bgr
+
+def augment_training_image(img_bgr: np.ndarray, task_name: str, target):
+    """Applies realistic data augmentations during training split."""
+    # 1. Color Jitter (Brightness & Contrast)
+    alpha = np.random.uniform(0.85, 1.15)
+    beta = np.random.uniform(-15.0, 15.0)
+    img_aug = np.clip(img_bgr.astype(np.float32) * alpha + beta, 0, 255).astype(np.uint8)
+
+    # 2. Random Horizontal Flip (50% probability)
+    if np.random.rand() > 0.5:
+        img_aug = cv2.flip(img_aug, 1)
+        if task_name == 'pose':
+            # Invert yaw and roll: [yaw, pitch, roll]
+            target = [-target[0], target[1], -target[2]]
+        elif task_name == 'gaze':
+            # Invert yaw: [pitch, yaw]
+            target = [target[0], -target[1]]
+        # Affect emotion class is invariant to horizontal face mirror
+
+    # 3. Random In-Plane Rotation (±8 deg)
+    if np.random.rand() > 0.5:
+        angle = float(np.random.uniform(-8.0, 8.0))
+        h, w = img_aug.shape[:2]
+        M = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
+        img_aug = cv2.warpAffine(img_aug, M, (w, h), borderMode=cv2.BORDER_REFLECT_101)
+        if task_name == 'pose':
+            # Add rotation delta to roll angle
+            target = [target[0], target[1], target[2] + angle]
+
+    return img_aug, target
+
+def preprocess_image(img_bgr: np.ndarray, target_size=(224, 224), is_train: bool = False, task_name: str = None, target = None):
+    """Standardizes image to 224x224 RGB float32 tensor with aspect-ratio preserving crop & ImageNet norm."""
+    crop = crop_centered_square(img_bgr)
+    if is_train and task_name is not None and target is not None:
+        crop, target = augment_training_image(crop, task_name, target)
+
+    img_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
     img_resized = cv2.resize(img_rgb, target_size, interpolation=cv2.INTER_LINEAR)
     img_norm = (img_resized / 255.0 - IMAGENET_MEAN) / IMAGENET_STD
-    # Convert HWC to CHW
     tensor = torch.from_numpy(img_norm.transpose(2, 0, 1)).float()
+    if is_train:
+        return tensor, target
     return tensor
 
 
@@ -112,6 +159,7 @@ class MobileNetV2VisionEngine(nn.Module):
 # ==============================================================================
 class PoseDataset(Dataset):
     def __init__(self, split='train'):
+        self.split = split
         records = []
         # 1. 3DDFA_V2
         df1 = pd.read_csv(os.path.join(DATA_ROOT, '3ddfa_v2', f'{split}.csv'))
@@ -119,7 +167,7 @@ class PoseDataset(Dataset):
         for _, r in df1.iterrows():
             img_p = os.path.join(img_dir1, r['filename'])
             if os.path.exists(img_p):
-                records.append((img_p, [r['ground_truth_yaw'], r['ground_truth_pitch'], r['ground_truth_roll']]))
+                records.append((img_p, [float(r['ground_truth_yaw']), float(r['ground_truth_pitch']), float(r['ground_truth_roll'])]))
 
         # 2. BIWI
         df2 = pd.read_csv(os.path.join(DATA_ROOT, 'biwi', f'{split}.csv'))
@@ -127,7 +175,7 @@ class PoseDataset(Dataset):
         for _, r in df2.iterrows():
             img_p = os.path.join(img_dir2, r['filename'])
             if os.path.exists(img_p):
-                records.append((img_p, [r['yaw_deg'], r['pitch_deg'], r['roll_deg']]))
+                records.append((img_p, [float(r['yaw_deg']), float(r['pitch_deg']), float(r['roll_deg'])]))
 
         self.records = records
 
@@ -137,13 +185,18 @@ class PoseDataset(Dataset):
     def __getitem__(self, idx):
         img_path, target = self.records[idx]
         img = cv2.imread(img_path)
-        tensor = preprocess_image(img)
+        is_train = (self.split == 'train')
+        if is_train:
+            tensor, target = preprocess_image(img, is_train=True, task_name='pose', target=target)
+        else:
+            tensor = preprocess_image(img, is_train=False)
         target_tensor = torch.tensor(target, dtype=torch.float32)
         return tensor, target_tensor
 
 
 class AffectDataset(Dataset):
     def __init__(self, split='train'):
+        self.split = split
         df = pd.read_csv(os.path.join(DATA_ROOT, 'fer2013', f'{split}.csv'))
         img_dir = os.path.join(DATA_ROOT, 'fer2013', 'images')
         records = []
@@ -159,19 +212,24 @@ class AffectDataset(Dataset):
     def __getitem__(self, idx):
         img_path, label = self.records[idx]
         img = cv2.imread(img_path)
-        tensor = preprocess_image(img)
+        is_train = (self.split == 'train')
+        if is_train:
+            tensor, _ = preprocess_image(img, is_train=True, task_name='affect', target=label)
+        else:
+            tensor = preprocess_image(img, is_train=False)
         return tensor, torch.tensor(label, dtype=torch.long)
 
 
 class GazeDataset(Dataset):
     def __init__(self, split='train'):
+        self.split = split
         df = pd.read_csv(os.path.join(DATA_ROOT, 'mpiigaze', f'{split}.csv'))
         img_dir = os.path.join(DATA_ROOT, 'mpiigaze', 'images')
         records = []
         for _, r in df.iterrows():
             img_p = os.path.join(img_dir, r['filename'])
             if os.path.exists(img_p):
-                records.append((img_p, [r['ground_truth_pitch'], r['ground_truth_yaw']]))
+                records.append((img_p, [float(r['ground_truth_pitch']), float(r['ground_truth_yaw'])]))
         self.records = records
 
     def __len__(self):
@@ -180,7 +238,11 @@ class GazeDataset(Dataset):
     def __getitem__(self, idx):
         img_path, target = self.records[idx]
         img = cv2.imread(img_path)
-        tensor = preprocess_image(img)
+        is_train = (self.split == 'train')
+        if is_train:
+            tensor, target = preprocess_image(img, is_train=True, task_name='gaze', target=target)
+        else:
+            tensor = preprocess_image(img, is_train=False)
         return tensor, torch.tensor(target, dtype=torch.float32)
 
 

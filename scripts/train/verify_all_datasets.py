@@ -23,6 +23,15 @@ Usage:
 
 import os
 import sys
+
+try:
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 import json
 import cv2
 import numpy as np
@@ -313,7 +322,7 @@ def main():
     print("2. ZERO PARTITION LEAKAGE:")
     print(status_line(
         assertion_leakage_ok,
-        "Strict disjointness verified: Train∩Val=∅, Train∩Test=∅, Val∩Test=∅.",
+        "Strict disjointness verified: Train ∩ Val = empty, Train ∩ Test = empty, Val ∩ Test = empty.",
         "Partition leakage detected — duplicate sample IDs across splits."
     ))
     print("3. DATA HYGIENE & NUMERICAL SANITY:")
