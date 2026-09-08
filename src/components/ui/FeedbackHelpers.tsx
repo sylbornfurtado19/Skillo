@@ -48,10 +48,11 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', className
         <>
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black z-[1000] backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 z-[1000] backdrop-blur-md"
+            style={{ WebkitBackdropFilter: 'blur(12px)', backdropFilter: 'blur(12px)' }}
           />
 
           <div className="fixed inset-0 flex items-center justify-center p-4 z-[1001] pointer-events-none">

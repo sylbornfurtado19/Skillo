@@ -84,6 +84,10 @@ export default function Navbar() {
             ? 'bg-card/90 backdrop-blur-xl border border-primary/30 shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
             : 'bg-card/75 backdrop-blur-lg border border-white/10 shadow-2xl shadow-black/80'
         }`}
+        style={{
+          WebkitBackdropFilter: scrolled ? 'blur(24px)' : 'blur(16px)',
+          backdropFilter: scrolled ? 'blur(24px)' : 'blur(16px)',
+        }}
       >
         <div className="flex items-center gap-6 lg:gap-10">
           <Link href="/" className="hover:scale-102 active:scale-98 transition duration-200 shrink-0">

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { performInterviewEvaluation } from '@/lib/services/interviewEvaluation.server';
+import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,7 +112,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Parse request body JSON
+    // 2. Rate limiting check (5 requests per minute for deep evaluation)
+    const rateLimit = await checkRateLimit({
+      userId: user.id,
+      action: 'interview_evaluate',
+      maxRequests: 5,
+      windowSeconds: 60,
+    });
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(rateLimit, 'interview evaluation');
+    }
+
+    // 3. Parse request body JSON
     let body: unknown;
     try {
       body = await request.json();

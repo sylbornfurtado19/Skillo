@@ -45,9 +45,9 @@ export default function PostureHUD({
       };
     } else if (latestGestureToast.type === 'POSTURE_SLUMP') {
       config = {
-        text: 'Posture Warning: Downward Head Slump',
+        text: 'Posture Notice: Off-Center Posture Shift',
         icon: '⚠️',
-        bg: 'bg-red-500/15 border-red-500/30 text-red-300',
+        bg: 'bg-amber-500/15 border-amber-500/30 text-amber-300',
       };
     }
 

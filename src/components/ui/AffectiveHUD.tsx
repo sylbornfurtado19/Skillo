@@ -20,12 +20,12 @@ const EMOTION_BADGES: Record<
   string,
   { label: string; icon: string; color: string; bg: string }
 > = {
-  CONFIDENT: { label: 'Composure: Calm & Confident', icon: '🟢', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-  STRESSED:  { label: 'Warning: Elevated Stress',    icon: '⚠️', color: 'text-red-400',     bg: 'bg-red-500/10 border-red-500/20'     },
-  HESITANT:  { label: 'Hesitation: Low Activation',  icon: '❓', color: 'text-amber-400',   bg: 'bg-amber-500/10 border-amber-500/20' },
-  THINKING:  { label: 'Active Reflection & Focus',   icon: '💡', color: 'text-blue-400',    bg: 'bg-blue-500/10 border-blue-500/20'   },
-  SURPRISED: { label: 'High Arousal Reaction',       icon: '😲', color: 'text-purple-400',  bg: 'bg-purple-500/10 border-purple-500/20'},
-  NEUTRAL:   { label: 'Composure: Neutral Baseline', icon: '😐', color: 'text-gray-300',    bg: 'bg-white/5 border-white/10'           },
+  CONFIDENT: { label: 'Composure Signal (Beta): Calm',            icon: '🟢', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+  STRESSED:  { label: 'Composure Signal (Beta): High Activation', icon: '⚠️', color: 'text-red-400',     bg: 'bg-red-500/10 border-red-500/20'     },
+  HESITANT:  { label: 'Composure Signal (Beta): Subtle Shift',    icon: '❓', color: 'text-amber-400',   bg: 'bg-amber-500/10 border-amber-500/20' },
+  THINKING:  { label: 'Composure Signal (Beta): Reflective',      icon: '💡', color: 'text-blue-400',    bg: 'bg-blue-500/10 border-blue-500/20'   },
+  SURPRISED: { label: 'Composure Signal (Beta): Dynamic Arousal', icon: '😲', color: 'text-purple-400',  bg: 'bg-purple-500/10 border-purple-500/20'},
+  NEUTRAL:   { label: 'Composure Signal (Beta): Baseline',        icon: '😐', color: 'text-gray-300',    bg: 'bg-white/5 border-white/10'           },
 };
 
 export default function AffectiveHUD({ currentFrame }: AffectiveHUDProps) {

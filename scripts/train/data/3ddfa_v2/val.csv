@@ -1,9 +1,0 @@
-sample_id,filename,ground_truth_yaw,ground_truth_pitch,ground_truth_roll,is_large_pose
-3DDFA_0003,aflw3d_003_trump_hillary.jpg,32.1,-15.8,8.4,False
-3DDFA_0044,3ddfa_sample_039.jpg,-24.02,11.0,174.83,False
-3DDFA_0036,3ddfa_sample_031.jpg,-13.49,-0.39,-176.72,False
-3DDFA_0024,3ddfa_sample_019.jpg,16.73,-2.04,174.66,False
-3DDFA_0041,3ddfa_sample_036.jpg,-25.23,-10.86,-177.57,False
-3DDFA_0011,3ddfa_sample_006.jpg,-1.35,-22.55,-179.87,False
-3DDFA_0023,3ddfa_sample_018.jpg,40.12,-11.88,178.1,False
-3DDFA_0019,3ddfa_sample_014.jpg,-85.06,-3.19,-179.39,True

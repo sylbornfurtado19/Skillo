@@ -27,11 +27,17 @@ export default function Card({
     'glow-accent': 'bg-[#111827]/50 border-white/5 shadow-2xl glow-accent backdrop-blur-md',
   };
 
+  const isGlassVariant = variant !== 'solid';
+  const glassStyle: React.CSSProperties = isGlassVariant
+    ? { WebkitBackdropFilter: 'blur(12px)', backdropFilter: 'blur(12px)', ...props.style }
+    : { ...props.style };
+
   if (hoverLift) {
     return (
       <motion.div
         onClick={onClick}
         className={`${baseStyle} ${variants[variant]} ${onClick ? 'cursor-pointer' : ''} ${className}`}
+        style={glassStyle}
         whileHover={{ y: -6, borderColor: 'rgba(255, 255, 255, 0.15)' }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
         {...(props as React.ComponentPropsWithoutRef<typeof motion.div>)}
@@ -45,6 +51,7 @@ export default function Card({
     <div
       onClick={onClick}
       className={`${baseStyle} ${variants[variant]} ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      style={glassStyle}
       {...props}
     >
       {children}

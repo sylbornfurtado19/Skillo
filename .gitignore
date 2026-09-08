@@ -44,3 +44,8 @@ coverage/
 venv/
 __pycache__/
 *.pyc
+
+# training and research artifacts
+scripts/train/data/
+scripts/train/checkpoints/
+scripts/review1/data/

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { performResumeAnalysis } from '@/lib/services/resumeAnalysis.server';
+import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Parse request body JSON
+    // 2. Rate limiting check (5 requests per minute for resume analysis)
+    const rateLimit = await checkRateLimit({
+      userId: user.id,
+      action: 'resume_analyze',
+      maxRequests: 5,
+      windowSeconds: 60,
+    });
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(rateLimit, 'resume analysis');
+    }
+
+    // 3. Parse request body JSON
     let body: unknown;
     try {
       body = await request.json();

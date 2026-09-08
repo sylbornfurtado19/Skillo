@@ -19,10 +19,10 @@ const ZONE_CONFIG: Record<
   { label: string; icon: string; color: string; ring: string; warning: boolean }
 > = {
   CENTER_SCREEN:  { label: 'Eye Contact: Direct',         icon: '🟢', color: 'text-emerald-400', ring: '#10b981', warning: false },
-  LOOKING_LEFT:   { label: 'Gaze: Looking Left',          icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
-  LOOKING_RIGHT:  { label: 'Gaze: Looking Right',         icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
-  LOOKING_UP:     { label: 'Gaze: Looking Up',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: false },
-  LOOKING_DOWN:   { label: 'Gaze: Looking Down',          icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
+  LOOKING_LEFT:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
+  LOOKING_RIGHT:  { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
+  LOOKING_UP:     { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: false },
+  LOOKING_DOWN:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
   OFF_SCREEN:     { label: 'Warning: Secondary Screen',   icon: '🔴', color: 'text-red-400',     ring: '#ef4444', warning: true  },
 };
 
@@ -68,7 +68,7 @@ export default function EyeContactHUD({
       className={`flex flex-col gap-2 transition-all duration-300 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
     >
       {/* ── Main HUD pill ─────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[#060b14] border border-white/8 backdrop-blur-sm">
+      <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[#060b14]/90 border border-white/8 backdrop-blur-sm">
         {/* Focus Ring Gauge */}
         <div className="relative shrink-0">
           <svg width="56" height="56" viewBox="0 0 56 56">

@@ -7,8 +7,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: 'var(--color-background)',
-        card: 'var(--color-card)',
+        background: 'rgb(var(--color-background-rgb, 3 7 18) / <alpha-value>)',
+        card: 'rgb(var(--color-card-rgb, 11 15 25) / <alpha-value>)',
         primary: {
           DEFAULT: 'var(--color-primary)',
           dark: 'var(--color-primary-dark)',
