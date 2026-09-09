@@ -102,6 +102,7 @@ export default function IVPInteractiveCanvas({
     minY: 100,
     maxX: 430,
     maxY: 360,
+    initialized: false,
   });
 
   // ── Persistent Landmark EMA State (Zero-Jitter Optical Clinging) ──────────
@@ -319,6 +320,10 @@ export default function IVPInteractiveCanvas({
           break;
         }
       }
+      // Always compute otsuRes on scratch buffer if not already active so skin segmentation is never undefined
+      if (!otsuRes && prevImgDataRef.current) {
+        otsuRes = applyYCrCbOtsuSegmentation(rawImgData, prevImgDataRef.current, PROC_W, PROC_H);
+      }
     } else {
       for (let i = 0; i < procImgData.data.length; i += 4) {
         procImgData.data[i] = 15;
@@ -441,7 +446,7 @@ export default function IVPInteractiveCanvas({
       targetCX = ((fb.x + fb.width * 0.5) / PROC_W) * CSS_W;
       targetCY = ((fb.y + fb.height * 0.5) / PROC_H) * CSS_H;
       targetScale = Math.max(0.75, Math.min(1.4, (fb.width / PROC_W) * 2.0));
-    } else if (otsuRes && otsuRes.skinPixelCount > 300) {
+    } else if (otsuRes && otsuRes.skinPixelCount > 300 && otsuRes.skinPixelRatio < 45) {
       const mappedX = (otsuRes.centroidX / PROC_W) * CSS_W;
       const mappedY = (otsuRes.centroidY / PROC_H) * CSS_H;
       targetCX = Math.max(CSS_W * 0.20, Math.min(CSS_W * 0.80, mappedX));
@@ -615,16 +620,27 @@ export default function IVPInteractiveCanvas({
       rawBoxH = (maxY - minY) + padY * 2;
     }
 
-    // Responsive bounding box smoothing (alpha = 0.50 for fluid head-following without lag)
-    sf.minX = sf.minX * 0.50 + rawBoxX * 0.50;
-    sf.minY = sf.minY * 0.50 + rawBoxY * 0.50;
-    sf.maxX = sf.maxX * 0.50 + (rawBoxX + rawBoxW) * 0.50;
-    sf.maxY = sf.maxY * 0.50 + (rawBoxY + rawBoxH) * 0.50;
+    // Responsive bounding box smoothing (alpha = 0.60 for instant, fluid head-following)
+    if (!sf.initialized) {
+      sf.minX = rawBoxX;
+      sf.minY = rawBoxY;
+      sf.maxX = rawBoxX + rawBoxW;
+      sf.maxY = rawBoxY + rawBoxH;
+      sf.cx = targetCX;
+      sf.cy = targetCY;
+      sf.scale = targetScale;
+      sf.initialized = true;
+    } else {
+      sf.minX = sf.minX * 0.40 + rawBoxX * 0.60;
+      sf.minY = sf.minY * 0.40 + rawBoxY * 0.60;
+      sf.maxX = sf.maxX * 0.40 + (rawBoxX + rawBoxW) * 0.60;
+      sf.maxY = sf.maxY * 0.40 + (rawBoxY + rawBoxH) * 0.60;
+    }
 
     const boxX = sf.minX;
     const boxY = sf.minY;
-    const boxW = sf.maxX - sf.minX;
-    const boxH = sf.maxY - sf.minY;
+    const boxW = Math.max(20, sf.maxX - sf.minX);
+    const boxH = Math.max(20, sf.maxY - sf.minY);
 
     // ── 11. Render Dynamic Bounding Box with High-Tech Reticles ────────────
     if (showBoundingBox && !isTargetLost) {
@@ -667,14 +683,16 @@ export default function IVPInteractiveCanvas({
       ctx.lineTo(boxX + boxW, boxY + boxH - cLen);
       ctx.stroke();
 
-      // Tracking HUD Badge
-      ctx.fillStyle = 'rgba(6, 182, 212, 0.9)';
-      ctx.fillRect(boxX, boxY - 18, 148, 17);
-      ctx.fillStyle = '#0B0F17';
+      // Tracking HUD Badge with authentic live dimensions
+      const roiText = `FACE ROI: ${Math.round(boxW)}x${Math.round(boxH)} [ACTIVE]`;
       ctx.font = 'bold 9px monospace';
+      const badgeW = Math.max(148, ctx.measureText(roiText).width + 12);
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.9)';
+      ctx.fillRect(boxX, boxY - 18, badgeW, 17);
+      ctx.fillStyle = '#0B0F17';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText('FACE ROI: 224x224 [ACTIVE]', boxX + 4, boxY - 9);
+      ctx.fillText(roiText, boxX + 4, boxY - 9);
       ctx.restore();
     }
 

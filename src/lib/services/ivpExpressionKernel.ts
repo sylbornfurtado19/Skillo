@@ -82,19 +82,24 @@ export function extractFacialExpressions(
       const g = data[idx + 1];
       const b = data[idx + 2];
 
-      // Integer BT.601 YCrCb transformation
+      // Integer BT.601 YCrCb transformation:
+      // Y  = (77*r + 150*g + 29*b) >> 8
+      // Cr = ((128*r - 107*g - 21*b) >> 8) + 128 (Red chroma)
+      // Cb = ((-43*r - 85*g + 128*b) >> 8) + 128 (Blue chroma)
       const luma = (77 * r + 150 * g + 29 * b) >> 8;
-      const cr   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
-      const cb   = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
+      const cr   = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
+      const cb   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
 
-      // Academic YCrCb human skin locus broadened for diverse skin complexions & webcam color profiles:
-      // Works across fluorescent office light, warm light, dark hair boundary, and shadow gradients
+      // Academic human skin locus across diverse skin tones and office/warm lighting:
+      // Human skin has prominent Cr > Cb ((Cr - Cb) >= 10) and R > B ((r - b) >= 12).
+      // This strictly rejects cool/greenish clothing (plaid shirts) and beige background walls.
       const isSkin =
-        luma > 20 &&
-        cr >= 122 && cr <= 185 &&
-        cb >= 70 && cb <= 138 &&
-        r >= g * 0.90 &&
-        r >= b * 0.85;
+        luma >= 25 && luma <= 245 &&
+        cr >= 133 && cr <= 178 &&
+        cb >= 77 && cb <= 135 &&
+        (cr - cb) >= 10 &&
+        r >= g * 0.92 &&
+        (r - b) >= 12;
 
       if (isSkin) {
         skinCount++;
@@ -108,24 +113,31 @@ export function extractFacialExpressions(
     }
   }
 
-  // Fallback: If skin count is low due to extreme lighting or webcam contrast,
-  // scan central/upper half with looser Cr boundary
+  // Fallback: If skin count is low due to webcam white-balance or contrast,
+  // scan central/upper half with slightly relaxed Cr-Cb envelope
   if (skinCount < 30 || maxX <= minX || maxY <= minY) {
     minX = width; maxX = 0; minY = height; maxY = 0;
     skinCount = 0; sumX = 0; sumY = 0;
 
-    for (let y = Math.round(height * 0.1); y < Math.round(height * 0.9); y += step) {
+    for (let y = Math.round(height * 0.08); y < Math.round(height * 0.85); y += step) {
       const row = y * width;
-      for (let x = Math.round(width * 0.1); x < Math.round(width * 0.9); x += step) {
+      for (let x = Math.round(width * 0.10); x < Math.round(width * 0.90); x += step) {
         const idx = (row + x) * 4;
         const r = data[idx];
         const g = data[idx + 1];
         const b = data[idx + 2];
         const luma = (77 * r + 150 * g + 29 * b) >> 8;
-        const cr   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
-        const cb   = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
+        const cr   = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
+        const cb   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
 
-        if (luma > 20 && cr >= 120 && cr <= 190 && cb >= 68 && cb <= 140) {
+        if (
+          luma >= 20 && luma <= 250 &&
+          cr >= 130 && cr <= 182 &&
+          cb >= 72 && cb <= 138 &&
+          (cr - cb) >= 6 &&
+          r >= g * 0.88 &&
+          r > b
+        ) {
           skinCount++;
           sumX += x;
           sumY += y;
@@ -162,10 +174,17 @@ export function extractFacialExpressions(
       const g = data[idx + 1];
       const b = data[idx + 2];
       const luma = (77 * r + 150 * g + 29 * b) >> 8;
-      const cr   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
-      const cb   = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
+      const cr   = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
+      const cb   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
 
-      if (luma > 20 && cr >= 122 && cr <= 185 && cb >= 70 && cb <= 138 && r >= g * 0.90) {
+      if (
+        luma >= 22 && luma <= 248 &&
+        cr >= 132 && cr <= 180 &&
+        cb >= 74 && cb <= 136 &&
+        (cr - cb) >= 8 &&
+        r >= g * 0.90 &&
+        r > b
+      ) {
         refinedCount++;
         refinedSumX += x;
         refinedSumY += y;
@@ -178,25 +197,27 @@ export function extractFacialExpressions(
   }
 
   const cx = refinedCount > 20 ? refinedSumX / refinedCount : rawCX;
-  const cy = refinedCount > 20 ? refinedSumY / refinedCount : rawCY;
   const boxMinX = refinedCount > 20 ? refinedMinX : minX;
   const boxMaxX = refinedCount > 20 ? refinedMaxX : maxX;
   const boxMinY = refinedCount > 20 ? refinedMinY : minY;
   const boxMaxY = refinedCount > 20 ? refinedMaxY : maxY;
 
   const rawFaceW = boxMaxX - boxMinX;
-  const rawFaceH = boxMaxY - boxMinY;
+  const faceW = Math.max(36, Math.min(width * 0.65, rawFaceW));
 
-  // Harmonize anatomical proportions (head aspect ratio ~ 1.30)
-  const faceW = Math.max(28, Math.min(width * 0.70, rawFaceW));
-  const faceH = Math.max(36, Math.min(height * 0.85, Math.max(rawFaceH, Math.round(faceW * 1.30))));
-  const faceTopY = Math.max(0, Math.min(boxMinY, Math.round(cy - faceH * 0.46)));
+  // ANATOMICALLY-ANCHORED VERTICAL FACE BOUNDS:
+  // In human anatomy, head height from forehead to chin is between 1.20 and 1.35 * faceW.
+  // We clamp faceH so it strictly frames the face down to the chin and NEVER expands to the torso.
+  const faceTopY = Math.max(0, Math.min(boxMinY, Math.round(rawCY - faceW * 0.60)));
+  const faceH = Math.min(Math.round(faceW * 1.30), Math.max(Math.round(faceW * 1.10), boxMaxY - faceTopY));
+  const cy = faceTopY + faceH * 0.50;
 
   // 2. PRECISE LOWER-FACE MOUTH & LIP CONTOUR LOCALIZATION
-  const mY1 = Math.max(0, Math.min(height - 1, Math.round(faceTopY + faceH * 0.60)));
-  const mY2 = Math.max(mY1 + 4, Math.min(height, Math.round(faceTopY + faceH * 0.90)));
-  const mX1 = Math.max(0, Math.min(width - 1, Math.round(cx - faceW * 0.28)));
-  const mX2 = Math.max(mX1 + 4, Math.min(width, Math.round(cx + faceW * 0.28)));
+  // Human lips reside in lower third of face: y between 0.68*faceH and 0.88*faceH from face top
+  const mY1 = Math.max(0, Math.min(height - 1, Math.round(faceTopY + faceH * 0.68)));
+  const mY2 = Math.max(mY1 + 4, Math.min(height, Math.round(faceTopY + faceH * 0.88)));
+  const mX1 = Math.max(0, Math.min(width - 1, Math.round(cx - faceW * 0.25)));
+  const mX2 = Math.max(mX1 + 4, Math.min(width, Math.round(cx + faceW * 0.25)));
 
   let mouthMinX = mX2, mouthMaxX = mX1, mouthMinY = mY2, mouthMaxY = mY1;
   let mouthLipPixels = 0;
@@ -208,7 +229,6 @@ export function extractFacialExpressions(
   let mouthLumaSum = 0, mouthSampleCount = 0;
 
   const mouthW_ROI = mX2 - mX1;
-  const mMidX = (mX1 + mX2) / 2;
 
   // First pass: compute average luma in mouth ROI to establish adaptive threshold
   for (let y = mY1; y < mY2; y += 2) {
@@ -221,7 +241,7 @@ export function extractFacialExpressions(
     }
   }
   const avgMouthLuma = mouthSampleCount > 0 ? mouthLumaSum / mouthSampleCount : 100;
-  const cavityThreshold = Math.max(30, Math.min(75, avgMouthLuma * 0.55));
+  const cavityThreshold = Math.max(30, Math.min(75, avgMouthLuma * 0.60));
 
   for (let y = mY1; y < mY2; y++) {
     const row = y * width;
@@ -231,10 +251,10 @@ export function extractFacialExpressions(
       const g = data[idx + 1];
       const b = data[idx + 2];
       const luma = (77 * r + 150 * g + 29 * b) >> 8;
-      const cr   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
+      const cr   = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
 
-      // Lip tissue: redness Cr relative to skin, or oral opening cavity
-      const isLipTissue = (cr >= 138 && r > g * 1.04) || (cr >= 145);
+      // Lip tissue: elevated redness Cr relative to skin, or oral opening cavity
+      const isLipTissue = (cr >= 140 && r > g * 1.05) || (cr >= 148);
       const isOralCavity = (luma < cavityThreshold && Math.abs(x - cx) < faceW * 0.16);
 
       if (isLipTissue || isOralCavity) {
@@ -260,10 +280,10 @@ export function extractFacialExpressions(
     }
   }
 
-  const detectedMouthCenterY = mouthLipPixels > 8 ? (mouthSumY / mouthLipPixels) : (faceTopY + faceH * 0.74);
+  const detectedMouthCenterY = mouthLipPixels > 8 ? (mouthSumY / mouthLipPixels) : (faceTopY + faceH * 0.77);
   const detectedMouthCenterX = mouthLipPixels > 8 ? (mouthSumX / mouthLipPixels) : cx;
-  const detectedMouthW = Math.max(20, mouthMaxX > mouthMinX ? (mouthMaxX - mouthMinX) : faceW * 0.36);
-  const detectedMouthH = Math.max(4, mouthMaxY > mouthMinY ? (mouthMaxY - mouthMinY) : faceH * 0.10);
+  const detectedMouthW = Math.max(22, mouthMaxX > mouthMinX ? (mouthMaxX - mouthMinX) : faceW * 0.38);
+  const detectedMouthH = Math.max(4, mouthMaxY > mouthMinY ? (mouthMaxY - mouthMinY) : faceH * 0.09);
 
   // Oral cavity separation: mouth is open if dark oral cavity or vertical height expands
   // Natural resting mouth: MAR ~ 0.10 - 0.16. Talking/open mouth: MAR > 0.22 - 0.45.
@@ -283,16 +303,17 @@ export function extractFacialExpressions(
   const smileScore = Math.max(0.0, Math.min(1.0, smileStretch * 0.50 + smileElevation * 0.50));
 
   // 3. UPPER-FACE EYE ROI & AUTHENTIC EYE/PUPIL LOCALIZATION
-  // Human eyes reside symmetrically in upper face: y between 0.22*faceH and 0.42*faceH from face top
-  const eyeY1 = Math.max(0, Math.min(height - 1, Math.round(faceTopY + faceH * 0.20)));
-  const eyeY2 = Math.max(eyeY1 + 6, Math.min(height, Math.round(faceTopY + faceH * 0.42)));
+  // Human eyes reside symmetrically in upper face: y between 0.34*faceH and 0.48*faceH from face top
+  // (strictly below the eyebrows which sit at 0.24-0.34*faceH)
+  const eyeY1 = Math.max(0, Math.min(height - 1, Math.round(faceTopY + faceH * 0.34)));
+  const eyeY2 = Math.max(eyeY1 + 6, Math.min(height, Math.round(faceTopY + faceH * 0.48)));
 
   // Left eye region (observer's left)
-  const leX1 = Math.max(0, Math.min(width - 1, Math.round(cx - faceW * 0.38)));
-  const leX2 = Math.max(leX1 + 6, Math.min(width, Math.round(cx - faceW * 0.05)));
+  const leX1 = Math.max(0, Math.min(width - 1, Math.round(cx - faceW * 0.36)));
+  const leX2 = Math.max(leX1 + 6, Math.min(width, Math.round(cx - faceW * 0.07)));
   // Right eye region (observer's right)
-  const reX1 = Math.max(0, Math.min(width - 1, Math.round(cx + faceW * 0.05)));
-  const reX2 = Math.max(reX1 + 6, Math.min(width, Math.round(cx + faceW * 0.38)));
+  const reX1 = Math.max(0, Math.min(width - 1, Math.round(cx + faceW * 0.07)));
+  const reX2 = Math.max(reX1 + 6, Math.min(width, Math.round(cx + faceW * 0.36)));
 
   // Find minimum luminance (darkest pupil/iris center) in each eye box
   let leftMinLuma = 255, leftPupilX = Math.round((leX1 + leX2) / 2), leftPupilY = Math.round((eyeY1 + eyeY2) / 2);
@@ -485,10 +506,10 @@ export function extractFacialExpressions(
     { x: detectedMouthCenterX - actualLipHalfW * 0.5, y: detectedMouthCenterY + actualLipAperture * 0.8 },
   ];
 
-  const noseTipY = Math.round(minY + faceH * 0.52);
+  const noseTipY = Math.round(faceTopY + faceH * 0.58);
   const noseBridge: LandmarkPoint[] = [
     { x: cx, y: Math.round((leftPupilY + rightPupilY) / 2) },
-    { x: cx, y: Math.round(minY + faceH * 0.42) },
+    { x: cx, y: Math.round(faceTopY + faceH * 0.48) },
     { x: cx, y: noseTipY },
     { x: cx - faceW * 0.08, y: noseTipY + 4 },
     { x: cx + faceW * 0.08, y: noseTipY + 4 },
@@ -497,10 +518,10 @@ export function extractFacialExpressions(
   return {
     faceDetected: true,
     faceBox: {
-      x: minX,
-      y: minY,
-      width: faceW,
-      height: faceH,
+      x: Math.round(cx - faceW * 0.5),
+      y: Math.round(faceTopY),
+      width: Math.round(faceW),
+      height: Math.round(faceH),
     },
     landmarks: {
       leftEyePts,
