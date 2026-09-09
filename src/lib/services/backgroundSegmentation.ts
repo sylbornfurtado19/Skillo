@@ -124,7 +124,62 @@ export function extractPersonForegroundMask(
     }
   }
 
-  // 3. Pass 3: Fast 2D Separable Box-Filter to feather and smooth alpha edges
+  // 3. Pass 2.5: Morphological Mask Cleanup (Opening: Erode -> Dilate; Closing: Dilate -> Erode)
+  // Eliminates isolated foreground noise speckles and fills pinholes before feathering
+  const morphBufA = new Float32Array(numPixels);
+  const cleanedMask = new Float32Array(numPixels);
+
+  // Fast 3x3 cross structuring element erosion
+  for (let y = 1; y < height - 1; y++) {
+    const row = y * width;
+    for (let x = 1; x < width - 1; x++) {
+      const c = rawMask[row + x];
+      const n = rawMask[row - width + x];
+      const s = rawMask[row + width + x];
+      const w_px = rawMask[row + x - 1];
+      const e_px = rawMask[row + x + 1];
+      morphBufA[row + x] = Math.min(c, n, s, w_px, e_px);
+    }
+  }
+
+  // Fast 3x3 cross structuring element dilation (completes Opening)
+  for (let y = 1; y < height - 1; y++) {
+    const row = y * width;
+    for (let x = 1; x < width - 1; x++) {
+      const c = morphBufA[row + x];
+      const n = morphBufA[row - width + x];
+      const s = morphBufA[row + width + x];
+      const w_px = morphBufA[row + x - 1];
+      const e_px = morphBufA[row + x + 1];
+      cleanedMask[row + x] = Math.max(c, n, s, w_px, e_px);
+    }
+  }
+
+  // Closing Pass: Dilation followed by Erosion
+  for (let y = 1; y < height - 1; y++) {
+    const row = y * width;
+    for (let x = 1; x < width - 1; x++) {
+      const c = cleanedMask[row + x];
+      const n = cleanedMask[row - width + x];
+      const s = cleanedMask[row + width + x];
+      const w_px = cleanedMask[row + x - 1];
+      const e_px = cleanedMask[row + x + 1];
+      morphBufA[row + x] = Math.max(c, n, s, w_px, e_px);
+    }
+  }
+  for (let y = 1; y < height - 1; y++) {
+    const row = y * width;
+    for (let x = 1; x < width - 1; x++) {
+      const c = morphBufA[row + x];
+      const n = morphBufA[row - width + x];
+      const s = morphBufA[row + width + x];
+      const w_px = morphBufA[row + x - 1];
+      const e_px = morphBufA[row + x + 1];
+      cleanedMask[row + x] = Math.min(c, n, s, w_px, e_px);
+    }
+  }
+
+  // 4. Pass 3: Fast 2D Separable Box-Filter to feather and smooth alpha edges on cleaned mask
   const featheredMask = new Float32Array(numPixels);
   const tempMask = new Float32Array(numPixels);
   const radius = Math.max(2, Math.round(5 * sensitivity));
@@ -135,14 +190,14 @@ export function extractPersonForegroundMask(
     let sum = 0;
     for (let k = -radius; k <= radius; k++) {
       const px = Math.min(width - 1, Math.max(0, k));
-      sum += rawMask[rowOffset + px];
+      sum += cleanedMask[rowOffset + px];
     }
     const winSize = 2 * radius + 1;
     for (let x = 0; x < width; x++) {
       tempMask[rowOffset + x] = sum / winSize;
       const prevX = Math.max(0, x - radius);
       const nextX = Math.min(width - 1, x + radius + 1);
-      sum += rawMask[rowOffset + nextX] - rawMask[rowOffset + prevX];
+      sum += cleanedMask[rowOffset + nextX] - cleanedMask[rowOffset + prevX];
     }
   }
 

@@ -83,14 +83,106 @@ export async function getONNXSession(modelType: ONNXModelType): Promise<any> {
   }
 }
 
+// -----------------------------------------------------------------------------
+// IN-BROWSER IMAGE PREPROCESSING PIPELINE (PROMPT 2 UPGRADES)
+// -----------------------------------------------------------------------------
+
+// Precalculated 256-entry Gamma LUT (gamma = 1.8) for zero-allocation illumination normalization
+const GAMMA_LUT_1_8 = new Uint8Array(256);
+for (let i = 0; i < 256; i++) {
+  GAMMA_LUT_1_8[i] = Math.round(255 * Math.pow(i / 255.0, 1.0 / 1.8));
+}
+
 /**
- * Preprocesses ImageData/Canvas to an ImageNet-normalized NCHW Float32Tensor [1, 3, 224, 224]
+ * Computes Variance of Laplacian on the luminance channel for real-time blur gating.
+ * Low variance (< 100.0) indicates a blurry / out-of-focus frame.
+ */
+export function calculateLaplacianVariance(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number
+): number {
+  if (width < 3 || height < 3) return 0;
+
+  // Discrete 3x3 Laplacian kernel on luminance Y = (77*R + 150*G + 29*B) >> 8
+  let sum = 0;
+  let sumSq = 0;
+  let count = 0;
+
+  for (let y = 1; y < height - 1; y++) {
+    const row = y * width;
+    for (let x = 1; x < width - 1; x++) {
+      const idx = (row + x) * 4;
+      const c = (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
+
+      const idxN = (row - width + x) * 4;
+      const n = (77 * data[idxN] + 150 * data[idxN + 1] + 29 * data[idxN + 2]) >> 8;
+
+      const idxS = (row + width + x) * 4;
+      const s = (77 * data[idxS] + 150 * data[idxS + 1] + 29 * data[idxS + 2]) >> 8;
+
+      const idxW = (row + x - 1) * 4;
+      const w = (77 * data[idxW] + 150 * data[idxW + 1] + 29 * data[idxW + 2]) >> 8;
+
+      const idxE = (row + x + 1) * 4;
+      const e = (77 * data[idxE] + 150 * data[idxE + 1] + 29 * data[idxE + 2]) >> 8;
+
+      // Discrete Laplacian: 4*center - (north + south + west + east)
+      const lap = 4 * c - (n + s + w + e);
+      sum += lap;
+      sumSq += lap * lap;
+      count++;
+    }
+  }
+
+  if (count === 0) return 0;
+  const mean = sum / count;
+  const variance = sumSq / count - mean * mean;
+  return Math.max(0, variance);
+}
+
+export interface PreprocessingResult {
+  tensor: any;
+  blurVariance: number;
+  isBlurry: boolean;
+  preprocTimeMs: number;
+}
+
+/**
+ * Preprocesses ImageData/Canvas with full IVP standard pipeline:
+ * 1. White balance (Gray-World color constancy)
+ * 2. Denoise (3x3 Gaussian smoothing)
+ * 3. Blur quality gate (Variance of Laplacian pre-check)
+ * 4. Illumination normalization (Gamma LUT fallback)
+ * 5. ImageNet radiometric standardization to Float32Tensor [1, 3, 224, 224]
  */
 export async function preprocessFrameToTensor(
   source: HTMLCanvasElement | ImageData,
   targetWidth = 224,
-  targetHeight = 224
+  targetHeight = 224,
+  options: {
+    enableWhiteBalance?: boolean;
+    enableDenoise?: boolean;
+    enableIllumination?: boolean;
+    blurThreshold?: number;
+  } = {}
 ): Promise<any> {
+  const { tensor } = await preprocessFrameDetailed(source, targetWidth, targetHeight, options);
+  return tensor;
+}
+
+export async function preprocessFrameDetailed(
+  source: HTMLCanvasElement | ImageData,
+  targetWidth = 224,
+  targetHeight = 224,
+  options: {
+    enableWhiteBalance?: boolean;
+    enableDenoise?: boolean;
+    enableIllumination?: boolean;
+    blurThreshold?: number;
+  } = {}
+): Promise<PreprocessingResult> {
+  const t0 = performance.now();
   const ort = await getOrt();
   let imgData: ImageData;
 
@@ -107,26 +199,107 @@ export async function preprocessFrameToTensor(
   }
 
   const { data, width, height } = imgData;
-  const floatData = new Float32Array(3 * width * height);
+  const numPixels = width * height;
 
-  // ImageNet normalization constants:
-  // RGB Means: [0.485, 0.456, 0.406], Stds: [0.229, 0.224, 0.225]
+  const enableWB = options.enableWhiteBalance ?? true;
+  const enableDenoise = options.enableDenoise ?? true;
+  const enableIllum = options.enableIllumination ?? true;
+  const blurThreshold = options.blurThreshold ?? 100.0;
+
+  // 1. Blur Quality Gate Check (Variance of Laplacian)
+  const blurVariance = calculateLaplacianVariance(data, width, height);
+  const isBlurry = blurVariance < blurThreshold;
+
+  // 2. White Balance Correction (Gray-World Algorithm)
+  let scaleR = 1.0, scaleG = 1.0, scaleB = 1.0;
+  if (enableWB) {
+    let sumR = 0, sumG = 0, sumB = 0;
+    for (let i = 0; i < numPixels; i++) {
+      const idx = i * 4;
+      sumR += data[idx];
+      sumG += data[idx + 1];
+      sumB += data[idx + 2];
+    }
+    const avgR = sumR / numPixels;
+    const avgG = sumG / numPixels;
+    const avgB = sumB / numPixels;
+    const avgGray = (avgR + avgG + avgB) / 3.0;
+
+    if (avgGray > 1e-4) {
+      scaleR = avgGray / Math.max(avgR, 1e-4);
+      scaleG = avgGray / Math.max(avgG, 1e-4);
+      scaleB = avgGray / Math.max(avgB, 1e-4);
+    }
+  }
+
+  // Intermediate working buffers for RGB
+  const workR = new Float32Array(numPixels);
+  const workG = new Float32Array(numPixels);
+  const workB = new Float32Array(numPixels);
+
+  // Apply Gray-World scaling & Gamma LUT
+  for (let i = 0; i < numPixels; i++) {
+    const idx = i * 4;
+    let r = Math.min(255, Math.max(0, Math.round(data[idx] * scaleR)));
+    let g = Math.min(255, Math.max(0, Math.round(data[idx + 1] * scaleG)));
+    let b = Math.min(255, Math.max(0, Math.round(data[idx + 2] * scaleB)));
+
+    if (enableIllum) {
+      r = GAMMA_LUT_1_8[r];
+      g = GAMMA_LUT_1_8[g];
+      b = GAMMA_LUT_1_8[b];
+    }
+
+    workR[i] = r;
+    workG[i] = g;
+    workB[i] = b;
+  }
+
+  // 3. Fast Denoise (Separable 3x3 Gaussian smoothing [1, 2, 1]/4)
+  const floatData = new Float32Array(3 * numPixels);
   const meanR = 0.485, meanG = 0.456, meanB = 0.406;
   const stdR = 0.229, stdG = 0.224, stdB = 0.225;
 
-  const channelSize = width * height;
-  for (let i = 0; i < channelSize; i++) {
-    const r = data[i * 4] / 255.0;
-    const g = data[i * 4 + 1] / 255.0;
-    const b = data[i * 4 + 2] / 255.0;
+  if (enableDenoise) {
+    for (let y = 0; y < height; y++) {
+      const row = y * width;
+      const yPrev = Math.max(0, y - 1) * width;
+      const yNext = Math.min(height - 1, y + 1) * width;
 
-    // NCHW Layout: Red channel first, Green second, Blue third
-    floatData[i] = (r - meanR) / stdR;
-    floatData[channelSize + i] = (g - meanG) / stdG;
-    floatData[2 * channelSize + i] = (b - meanB) / stdB;
+      for (let x = 0; x < width; x++) {
+        const xPrev = Math.max(0, x - 1);
+        const xNext = Math.min(width - 1, x + 1);
+
+        const i = row + x;
+
+        // 3x3 4-neighbor smoothing: (2*center + north + south + west + east) / 6
+        const smoothR = (2 * workR[i] + workR[yPrev + x] + workR[yNext + x] + workR[row + xPrev] + workR[row + xNext]) / 6.0;
+        const smoothG = (2 * workG[i] + workG[yPrev + x] + workG[yNext + x] + workG[row + xPrev] + workG[row + xNext]) / 6.0;
+        const smoothB = (2 * workB[i] + workB[yPrev + x] + workB[yNext + x] + workB[row + xPrev] + workB[row + xNext]) / 6.0;
+
+        // 4. ImageNet Normalization to NCHW Layout
+        floatData[i] = (smoothR / 255.0 - meanR) / stdR;
+        floatData[numPixels + i] = (smoothG / 255.0 - meanG) / stdG;
+        floatData[2 * numPixels + i] = (smoothB / 255.0 - meanB) / stdB;
+      }
+    }
+  } else {
+    for (let i = 0; i < numPixels; i++) {
+      floatData[i] = (workR[i] / 255.0 - meanR) / stdR;
+      floatData[numPixels + i] = (workG[i] / 255.0 - meanG) / stdG;
+      floatData[2 * numPixels + i] = (workB[i] / 255.0 - meanB) / stdB;
+    }
   }
 
-  return new ort.Tensor('float32', floatData, [1, 3, height, width]);
+  const tensor = new ort.Tensor('float32', floatData, [1, 3, height, width]);
+  const preprocTimeMs = Math.round((performance.now() - t0) * 10) / 10;
+
+  return {
+    tensor,
+    blurVariance: Math.round(blurVariance * 10) / 10,
+    isBlurry,
+    preprocTimeMs,
+  };
 }
 
 /**
@@ -159,10 +332,13 @@ function softArgmax(logits: Float32Array | number[]): number {
 /**
  * Executes continuous Gaze Estimation via L2CS-Net ONNX model.
  */
-export async function runGazeONNX(canvas: HTMLCanvasElement): Promise<GazeInferenceResult> {
+export async function runGazeONNX(
+  canvas: HTMLCanvasElement,
+  preprocessedTensor?: any
+): Promise<GazeInferenceResult> {
   const t0 = performance.now();
   const session = await getONNXSession('gaze');
-  const inputTensor = await preprocessFrameToTensor(canvas);
+  const inputTensor = preprocessedTensor || await preprocessFrameToTensor(canvas);
 
   const feeds: Record<string, any> = {};
   const inputName = session.inputNames[0] || 'input';
@@ -202,10 +378,13 @@ export async function runGazeONNX(canvas: HTMLCanvasElement): Promise<GazeInfere
 /**
  * Executes 3D Head Pose & Euler Angle Inference via HopeNet ONNX model.
  */
-export async function runPoseONNX(canvas: HTMLCanvasElement): Promise<PoseInferenceResult> {
+export async function runPoseONNX(
+  canvas: HTMLCanvasElement,
+  preprocessedTensor?: any
+): Promise<PoseInferenceResult> {
   const t0 = performance.now();
   const session = await getONNXSession('pose');
-  const inputTensor = await preprocessFrameToTensor(canvas);
+  const inputTensor = preprocessedTensor || await preprocessFrameToTensor(canvas);
 
   const feeds: Record<string, any> = {};
   const inputName = session.inputNames[0] || 'input';
@@ -241,10 +420,13 @@ export async function runPoseONNX(canvas: HTMLCanvasElement): Promise<PoseInfere
 /**
  * Executes Facial Affect & Valence-Arousal Inference via MobileFaceNet ONNX model.
  */
-export async function runAffectONNX(canvas: HTMLCanvasElement): Promise<AffectInferenceResult> {
+export async function runAffectONNX(
+  canvas: HTMLCanvasElement,
+  preprocessedTensor?: any
+): Promise<AffectInferenceResult> {
   const t0 = performance.now();
   const session = await getONNXSession('affect');
-  const inputTensor = await preprocessFrameToTensor(canvas);
+  const inputTensor = preprocessedTensor || await preprocessFrameToTensor(canvas);
 
   const feeds: Record<string, any> = {};
   const inputName = session.inputNames[0] || 'input';
@@ -306,6 +488,8 @@ export interface SmoothedTelemetry {
   composure: number;
   dominantEmotion: string;
   totalInferenceTimeMs: number;
+  isBlurry?: boolean;
+  blurVariance?: number;
 }
 
 let smoothedState: SmoothedTelemetry = {
@@ -317,20 +501,24 @@ let smoothedState: SmoothedTelemetry = {
   composure: 85,
   dominantEmotion: 'Neutral',
   totalInferenceTimeMs: 0,
+  isBlurry: false,
+  blurVariance: 500,
 };
 
 /**
  * Atomic re-entrancy lock.
  * If a WASM forward pass is already in-flight, return the last smoothed state
- * immediately instead of stacking another Promise.all.  This prevents CPU
+ * immediately instead of stacking another Promise.all. This prevents CPU
  * saturation when inference takes longer than the setInterval tick period.
  */
 let _onnxBusy = false;
 
 /**
  * Runs all 3 ONNX models asynchronously and returns EMA-smoothed telemetry (alpha = 0.35).
- * Re-entrant calls during an in-flight pass are dropped cleanly — the caller
- * receives the last valid smoothed state without any WASM re-entry.
+ * Uses a single-pass preprocessed tensor with Gray-World WB, 3x3 Gaussian denoise,
+ * Gamma LUT illumination, and Laplacian blur gating.
+ * If a frame is below the blur threshold (<100.0), inference is skipped and the
+ * previous valid pose/gaze/emotion state is preserved to stay within frame budget.
  */
 export async function runContinuousUnifiedONNX(
   canvas: HTMLCanvasElement,
@@ -338,7 +526,6 @@ export async function runContinuousUnifiedONNX(
 ): Promise<SmoothedTelemetry> {
   // ── Re-entrancy guard ────────────────────────────────────────────────────
   if (_onnxBusy) {
-    // Previous inference pass still running — return current EMA snapshot
     return { ...smoothedState };
   }
   _onnxBusy = true;
@@ -346,13 +533,42 @@ export async function runContinuousUnifiedONNX(
   const t0 = performance.now();
 
   try {
+    // 1. Unified frame preprocessing & quality gating (single pass for all 3 models)
+    const preproc = await preprocessFrameDetailed(canvas, 224, 224, {
+      enableWhiteBalance: true,
+      enableDenoise: true,
+      enableIllumination: true,
+      blurThreshold: 100.0,
+    });
+
+    smoothedState.blurVariance = preproc.blurVariance;
+    smoothedState.isBlurry = preproc.isBlurry;
+
+    // 2. Blur Quality Gate: if severely blurry, skip expensive model forward passes
+    if (preproc.isBlurry) {
+      smoothedState.totalInferenceTimeMs = Math.round(performance.now() - t0);
+      return {
+        yaw:                 Math.round(smoothedState.yaw   * 10) / 10,
+        pitch:               Math.round(smoothedState.pitch * 10) / 10,
+        roll:                Math.round(smoothedState.roll  * 10) / 10,
+        gazeX:               Math.round(smoothedState.gazeX  * 100) / 100,
+        gazeY:               Math.round(smoothedState.gazeY  * 100) / 100,
+        composure:           Math.round(smoothedState.composure),
+        dominantEmotion:     smoothedState.dominantEmotion,
+        totalInferenceTimeMs: smoothedState.totalInferenceTimeMs,
+        isBlurry:            true,
+        blurVariance:        preproc.blurVariance,
+      };
+    }
+
+    // 3. Sharp frame: execute all 3 models using the single preprocessed tensor
     const [pose, gaze, affect] = await Promise.all([
-      runPoseONNX(canvas).catch(() => null),
-      runGazeONNX(canvas).catch(() => null),
-      runAffectONNX(canvas).catch(() => null),
+      runPoseONNX(canvas, preproc.tensor).catch(() => null),
+      runGazeONNX(canvas, preproc.tensor).catch(() => null),
+      runAffectONNX(canvas, preproc.tensor).catch(() => null),
     ]);
 
-    const beta = 1 - alpha;   // pre-compute complement once
+    const beta = 1 - alpha;
 
     if (pose) {
       smoothedState.yaw   = smoothedState.yaw   * beta + pose.yawDegrees   * alpha;
@@ -374,7 +590,6 @@ export async function runContinuousUnifiedONNX(
   } catch (err) {
     console.warn('[ONNX] Continuous forward pass warning:', err);
   } finally {
-    // ── Always release the lock — even on exception ──────────────────────
     _onnxBusy = false;
   }
 
@@ -387,6 +602,8 @@ export async function runContinuousUnifiedONNX(
     composure:           Math.round(smoothedState.composure),
     dominantEmotion:     smoothedState.dominantEmotion,
     totalInferenceTimeMs: smoothedState.totalInferenceTimeMs,
+    isBlurry:            smoothedState.isBlurry,
+    blurVariance:        smoothedState.blurVariance,
   };
 }
 

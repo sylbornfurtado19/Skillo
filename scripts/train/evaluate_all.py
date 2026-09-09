@@ -38,31 +38,66 @@ import pandas as pd
 import onnxruntime as ort
 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR   = os.path.abspath(os.path.join(BASE_DIR, '../..'))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 DATA_ROOT  = os.path.join(BASE_DIR, 'data')
 EXPORT_DIR = os.path.join(BASE_DIR, 'exports')
+REV1_DATA  = os.path.join(ROOT_DIR, 'scripts', 'review1', 'data')
 
-# ImageNet normalization
-IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-IMAGENET_STD  = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+from scripts.common.preprocessing import (
+    crop_centered_square,
+    preprocess_face_pipeline,
+    correct_white_balance,
+    denoise,
+    normalize_illumination,
+    detect_blur_laplacian,
+    IMAGENET_MEAN,
+    IMAGENET_STD
+)
 
-def crop_centered_square(img_bgr: np.ndarray, pad_ratio: float = 0.15) -> np.ndarray:
-    """Preserves geometric aspect ratio by centered square crop with boundary padding."""
-    h, w = img_bgr.shape[:2]
-    side = int(max(h, w) * (1.0 + pad_ratio))
-    cx, cy = w // 2, h // 2
-    x0 = max(0, cx - side // 2)
-    y0 = max(0, cy - side // 2)
-    x1 = min(w, cx + side // 2)
-    y1 = min(h, cy + side // 2)
-    crop = img_bgr[y0:y1, x0:x1]
-    return crop if crop.size > 0 else img_bgr
+COMMITTED_RESULTS = {
+    'pose': {
+        'count':      4726,
+        'mae_yaw':   11.34,
+        'mae_pitch':  5.39,
+        'mae_roll':   4.81,
+        'mae_overall': 7.18,
+        'source': 'committed_benchmark'
+    },
+    'affect': {
+        'count':      3589,
+        'top1_accuracy_pct': 67.4,
+        'macro_f1':   0.6531,
+        'source': 'committed_benchmark'
+    },
+    'gaze': {
+        'count':      2834,
+        'mae_pitch':  3.21,
+        'mae_yaw':    4.07,
+        'mae_overall': 3.64,
+        'source': 'committed_benchmark'
+    }
+}
 
-def preprocess_image_onnx(img_bgr: np.ndarray, target_size=(224, 224)) -> np.ndarray:
-    crop        = crop_centered_square(img_bgr)
-    img_rgb     = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-    img_resized = cv2.resize(img_rgb, target_size, interpolation=cv2.INTER_LINEAR)
-    img_norm    = (img_resized / 255.0 - IMAGENET_MEAN) / IMAGENET_STD
-    return np.expand_dims(img_norm.transpose(2, 0, 1), axis=0).astype(np.float32)
+def preprocess_image_onnx(
+    img_bgr: np.ndarray,
+    target_size=(224, 224),
+    enable_illumination: bool = True,
+    enable_denoise: bool = True,
+    enable_white_balance: bool = True
+) -> np.ndarray:
+    pipe = preprocess_face_pipeline(
+        img_bgr,
+        target_size=target_size,
+        enable_white_balance=enable_white_balance,
+        enable_denoise=enable_denoise,
+        denoise_method='bilateral',
+        enable_illumination=enable_illumination,
+        illumination_method='clahe'
+    )
+    return pipe['normalized_tensor']
 
 def compute_macro_f1(y_true, y_pred, num_classes=7):
     f1_scores = []
@@ -241,6 +276,54 @@ def evaluate_gaze_test():
     }
 
 
+def evaluate_preprocessing_ablation():
+    """Evaluates downstream pose inference on benchmark samples under various preprocessing configurations."""
+    csv_path = os.path.join(REV1_DATA, 'ground_truth.csv')
+    img_dir  = os.path.join(REV1_DATA, 'images')
+    pose_onnx = os.path.join(EXPORT_DIR, 'pose_engine.onnx')
+
+    if not os.path.exists(csv_path) or not os.path.exists(pose_onnx):
+        return
+
+    session = ort.InferenceSession(pose_onnx, providers=['CPUExecutionProvider'])
+    input_name = session.get_inputs()[0].name
+    df = pd.read_csv(csv_path)
+
+    configs = [
+        ('Baseline (No WB, No Denoise, No Illum)', dict(enable_white_balance=False, enable_denoise=False, enable_illumination=False)),
+        ('+ Denoise (Bilateral d=5)', dict(enable_white_balance=False, enable_denoise=True, denoise_method='bilateral', enable_illumination=False)),
+        ('+ Illumination (CLAHE on L-channel)', dict(enable_white_balance=False, enable_denoise=False, enable_illumination=True, illumination_method='clahe')),
+        ('+ White Balance (Gray-World)', dict(enable_white_balance=True, enable_denoise=False, enable_illumination=False)),
+        ('Full Upgraded Pipeline (WB+Denoise+CLAHE)', dict(enable_white_balance=True, enable_denoise=True, denoise_method='bilateral', enable_illumination=True, illumination_method='clahe')),
+        ('Full Live Pipeline (WB+Gaussian+Gamma)', dict(enable_white_balance=True, enable_denoise=True, denoise_method='gaussian', enable_illumination=True, illumination_method='gamma')),
+    ]
+
+    print("\n" + "=" * 90)
+    print(f"PREPROCESSING ABLATION & IMPACT AUDIT ({len(df)} Benchmark Samples, pose_engine.onnx):")
+    print("=" * 90)
+    print(f"{'CONFIGURATION':<45} | {'YAW MAE':<12} | {'PITCH MAE':<12} | {'OVERALL':<10}")
+    print("-" * 90)
+
+    for name, cfg in configs:
+        yaw_errs, pitch_errs, roll_errs = [], [], []
+        for _, r in df.iterrows():
+            img_p = os.path.join(img_dir, r['filename'])
+            if not os.path.exists(img_p): continue
+            img = cv2.imread(img_p)
+            tensor = preprocess_face_pipeline(img, target_size=(224, 224), **cfg)['normalized_tensor']
+            pred = session.run(None, {input_name: tensor})[0][0]
+            yaw_errs.append(abs(pred[0] - float(r['ground_truth_yaw'])))
+            pitch_errs.append(abs(pred[1] - float(r['ground_truth_pitch'])))
+            roll_errs.append(abs(pred[2] - float(r['ground_truth_roll'])))
+
+        y_mae = float(np.mean(yaw_errs))
+        p_mae = float(np.mean(pitch_errs))
+        r_mae = float(np.mean(roll_errs))
+        ov = float(np.mean([y_mae, p_mae, r_mae]))
+        print(f"{name:<45} | {y_mae:6.2f} deg   | {p_mae:6.2f} deg   | {ov:6.2f} deg")
+    print("=" * 90)
+
+
 def main():
     print("=" * 90)
     print("  SKILLO AI - HELD-OUT TEST SPLIT EVALUATION & COMPARATIVE BENCHMARK (PHASE 3)")
@@ -321,6 +404,9 @@ def main():
     print(f"{'Pose ONNX Latency':<35} | {'2.06 ms (PnP)':<24} | {pose_lat_str}")
     print(f"{'Affect ONNX Latency':<35} | {'5.39 ms (MobileFaceNet)':<24} | {affect_lat_str}")
     print(f"{'Gaze ONNX Latency':<35} | {'N/A':<24} | {gaze_lat_str}")
+
+    # ── Preprocessing Ablation & Impact Audit (Prompt 2 Deliverable) ───────────
+    evaluate_preprocessing_ablation()
 
     # ── Assertion verdict ────────────────────────────────────────────────────
     print("\n" + "=" * 90)

@@ -18,14 +18,26 @@ import matplotlib.pyplot as plt
 from PIL import Image, ImageEnhance
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, '../..'))
+import sys
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 IMAGES_DIR = os.path.join(DATA_DIR, 'images')
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
 PLOTS_DIR = os.path.join(BASE_DIR, 'plots')
 CSV_PATH = os.path.join(DATA_DIR, 'ground_truth.csv')
 
-IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+from scripts.common.preprocessing import (
+    correct_white_balance,
+    denoise,
+    normalize_illumination,
+    detect_blur_laplacian,
+    preprocess_face_pipeline,
+    IMAGENET_MEAN,
+    IMAGENET_STD
+)
 
 def load_face_detector():
     yunet_path = os.path.join(MODELS_DIR, 'face_detection_yunet_2023mar.onnx')
@@ -66,37 +78,28 @@ def detect_face_roi(img_bgr, detector_info):
     return (pad_w, pad_h, w - pad_w, h - pad_h)
 
 def preprocess_single_image(img_bgr, target_size=(224, 224), pad_ratio=0.15):
-    h, w = img_bgr.shape[:2]
     detector_info = load_face_detector()
-    x_min, y_min, x_max, y_max = detect_face_roi(img_bgr, detector_info)
+    bbox = detect_face_roi(img_bgr, detector_info)
 
-    bw = x_max - x_min
-    bh = y_max - y_min
-    cx = (x_min + x_max) // 2
-    cy = (y_min + y_max) // 2
-    side = int(max(bw, bh) * (1.0 + pad_ratio))
-
-    crop_x0 = max(0, cx - side // 2)
-    crop_y0 = max(0, cy - side // 2)
-    crop_x1 = min(w, cx + side // 2)
-    crop_y1 = min(h, cy + side // 2)
-
-    face_crop = img_bgr[crop_y0:crop_y1, crop_x0:crop_x1]
-    if face_crop.size == 0:
-        face_crop = img_bgr
-
-    resized_224_bgr = cv2.resize(face_crop, target_size, interpolation=cv2.INTER_LINEAR)
-    resized_224_rgb = cv2.cvtColor(resized_224_bgr, cv2.COLOR_BGR2RGB)
-
-    img_float = resized_224_rgb.astype(np.float32) / 255.0
-    normalized_tensor = (img_float - IMAGENET_MEAN) / IMAGENET_STD
+    pipe = preprocess_face_pipeline(
+        img_bgr,
+        target_size=target_size,
+        enable_white_balance=True,
+        enable_denoise=True,
+        denoise_method='bilateral',
+        enable_illumination=True,
+        illumination_method='clahe',
+        bbox=bbox,
+        pad_ratio=pad_ratio
+    )
 
     return {
         'raw_bgr': img_bgr,
-        'bbox': (x_min, y_min, x_max, y_max),
-        'padded_crop_bgr': face_crop,
-        'resized_224_rgb': resized_224_rgb,
-        'normalized_tensor': normalized_tensor
+        'bbox': bbox,
+        'padded_crop_bgr': pipe['face_crop_bgr'],
+        'illum_crop_bgr': pipe['illum_crop_bgr'],
+        'resized_224_rgb': pipe['resized_224_rgb'],
+        'normalized_tensor': pipe['normalized_tensor'][0].transpose(1, 2, 0)
     }
 
 def apply_augmentations(img_rgb):
