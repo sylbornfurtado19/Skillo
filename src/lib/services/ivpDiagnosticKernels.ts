@@ -252,7 +252,7 @@ export function applyYCrCbOtsuSegmentation(
   }
 
   // Clamp Otsu threshold to realistic human skin chrominance bounds
-  optThresh = Math.max(135, Math.min(160, optThresh));
+  optThresh = Math.max(136, Math.min(165, optThresh));
 
   // 3. Combined Chrominance Envelope + Otsu Binarization (Resistant to fluorescent lighting & warm background walls)
   _rawMaskBuf.fill(0);
@@ -269,19 +269,21 @@ export function applyYCrCbOtsuSegmentation(
       const b = src[idx + 2];
       const cr = _crBuf[i];
       const cb = _cbBuf[i];
+      const luma = (77 * r + 150 * g + 29 * b) >> 8;
 
       // Robust human skin classification condition:
-      // Human skin has Cr in [133..178], Cb in [77..135], and prominent (Cr - Cb) >= 12
+      // Human skin has Cr in [136..180], Cb in [75..126], prominent (Cr - Cb) >= 16, (R - B) >= 18, and R > G * 1.04
       // This strictly rejects desaturated beige/yellowish walls and ceiling panels
       const isSkin =
-        cr >= Math.max(134, optThresh) &&
-        cr <= 178 &&
-        cb >= 77 &&
-        cb <= 135 &&
-        (cr - cb) >= 10 &&
-        r > g * 0.94 &&
-        r > b * 1.08 &&
-        (r - b) >= 12;
+        cr >= Math.max(136, optThresh) &&
+        cr <= 180 &&
+        cb >= 75 &&
+        cb <= 126 &&
+        (cr - cb) >= 16 &&
+        (r - b) >= 18 &&
+        r > g * 1.04 &&
+        luma >= 35 &&
+        luma <= 215;
 
       if (isSkin) {
         _rawMaskBuf[i] = 1;

@@ -466,8 +466,8 @@ export default function IVPInteractiveCanvas({
     const scaleX = CSS_W / PROC_W;
     const scaleY = CSS_H / PROC_H;
 
-    // Retrieve detected landmarks or fallback
-    const rawLandmarks = liveExpr?.landmarks;
+    // Retrieve detected landmarks only if face is genuinely detected
+    const rawLandmarks = (liveExpr && liveExpr.faceDetected) ? liveExpr.landmarks : undefined;
     const sm = smoothedLandmarksRef.current;
 
     // Helper: smooth landmark array using responsive EMA filter
@@ -643,7 +643,7 @@ export default function IVPInteractiveCanvas({
     const boxH = Math.max(20, sf.maxY - sf.minY);
 
     // ── 11. Render Dynamic Bounding Box with High-Tech Reticles ────────────
-    if (showBoundingBox && !isTargetLost) {
+    if (showBoundingBox && !isTargetLost && (liveExpr?.faceDetected || rawLandmarks !== undefined)) {
       ctx.save();
       ctx.strokeStyle = '#06B6D4';
       ctx.lineWidth = 1.5;
@@ -697,7 +697,7 @@ export default function IVPInteractiveCanvas({
     }
 
     // ── 12. Render Active Eye & Lip Landmark Geometric Tracking Contours ───
-    if (showLandmarks && !isTargetLost) {
+    if (showLandmarks && !isTargetLost && (liveExpr?.faceDetected || rawLandmarks !== undefined)) {
       ctx.save();
 
       // A. Draw Eye Geometric Loops
