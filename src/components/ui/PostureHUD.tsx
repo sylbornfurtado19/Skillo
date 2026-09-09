@@ -18,11 +18,13 @@ interface PostureHUDProps {
     type: 'NODDING' | 'HEAD_SHAKING' | 'POSTURE_SLUMP';
     timestampMs: number;
   } | null;
+  subjectDetected?: boolean;
 }
 
 export default function PostureHUD({
   currentFrame,
   latestGestureToast,
+  subjectDetected,
 }: PostureHUDProps) {
   const [toastMessage, setToastMessage] = useState<{ text: string; icon: string; bg: string } | null>(null);
 
@@ -56,6 +58,24 @@ export default function PostureHUD({
     return () => clearTimeout(timer);
   }, [latestGestureToast]);
 
+  const isSubjectAbsent = subjectDetected === false || (currentFrame && currentFrame.isSubjectPresent === false);
+
+  if (isSubjectAbsent) {
+    return (
+      <div className="flex flex-col gap-2 transition-all duration-300">
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-red-950/70 border border-red-500/40 backdrop-blur-sm font-mono text-[10px]">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-red-400 font-bold">
+              ⚠️ Alert: Subject Not Detected / Left Frame
+            </span>
+          </div>
+          <span className="text-red-400/80 text-[9px] uppercase tracking-wider">Zero Presence</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!currentFrame) {
     return null;
   }
@@ -81,6 +101,9 @@ export default function PostureHUD({
           </span>
         </div>
         <div className="flex items-center gap-2 text-gray-500 text-[9px]">
+          {currentFrame.motionEnergy !== undefined && (
+            <span className="text-gray-400">ME: {currentFrame.motionEnergy.toFixed(1)}</span>
+          )}
           <span>Y: {currentFrame.angles.yawDegrees.toFixed(0)}°</span>
           <span>P: {currentFrame.angles.pitchDegrees.toFixed(0)}°</span>
           <span>R: {currentFrame.angles.rollDegrees.toFixed(0)}°</span>

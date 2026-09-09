@@ -1,5 +1,7 @@
 'use client';
 
+import { DEFAULT_SMOOTHING_ALPHAS, CategoricalConsensusSmoother } from './temporalSmoothing';
+
 export type ONNXModelType = 'affect' | 'gaze' | 'pose';
 
 export interface GazeInferenceResult {
@@ -505,6 +507,8 @@ let smoothedState: SmoothedTelemetry = {
   blurVariance: 500,
 };
 
+const _emotionConsensus = new CategoricalConsensusSmoother<string>(5, 0.30);
+
 /**
  * Atomic re-entrancy lock.
  * If a WASM forward pass is already in-flight, return the last smoothed state
@@ -514,7 +518,7 @@ let smoothedState: SmoothedTelemetry = {
 let _onnxBusy = false;
 
 /**
- * Runs all 3 ONNX models asynchronously and returns EMA-smoothed telemetry (alpha = 0.35).
+ * Runs all 3 ONNX models asynchronously and returns EMA-smoothed telemetry with per-signal alphas.
  * Uses a single-pass preprocessed tensor with Gray-World WB, 3x3 Gaussian denoise,
  * Gamma LUT illumination, and Laplacian blur gating.
  * If a frame is below the blur threshold (<100.0), inference is skipped and the
@@ -522,7 +526,7 @@ let _onnxBusy = false;
  */
 export async function runContinuousUnifiedONNX(
   canvas: HTMLCanvasElement,
-  alpha = 0.35
+  customAlphas?: number | { pose?: number; gaze?: number; composure?: number }
 ): Promise<SmoothedTelemetry> {
   // ── Re-entrancy guard ────────────────────────────────────────────────────
   if (_onnxBusy) {
@@ -568,22 +572,25 @@ export async function runContinuousUnifiedONNX(
       runAffectONNX(canvas, preproc.tensor).catch(() => null),
     ]);
 
-    const beta = 1 - alpha;
+    const isNum = typeof customAlphas === 'number';
+    const alphaPose = isNum ? customAlphas : (customAlphas?.pose ?? DEFAULT_SMOOTHING_ALPHAS.pose);
+    const alphaGaze = isNum ? customAlphas : (customAlphas?.gaze ?? DEFAULT_SMOOTHING_ALPHAS.gaze);
+    const alphaComposure = isNum ? customAlphas : (customAlphas?.composure ?? DEFAULT_SMOOTHING_ALPHAS.composure);
 
     if (pose) {
-      smoothedState.yaw   = smoothedState.yaw   * beta + pose.yawDegrees   * alpha;
-      smoothedState.pitch = smoothedState.pitch * beta + pose.pitchDegrees * alpha;
-      smoothedState.roll  = smoothedState.roll  * beta + pose.rollDegrees  * alpha;
+      smoothedState.yaw   = smoothedState.yaw   * (1 - alphaPose) + pose.yawDegrees   * alphaPose;
+      smoothedState.pitch = smoothedState.pitch * (1 - alphaPose) + pose.pitchDegrees * alphaPose;
+      smoothedState.roll  = smoothedState.roll  * (1 - alphaPose) + pose.rollDegrees  * alphaPose;
     }
 
     if (gaze) {
-      smoothedState.gazeX = smoothedState.gazeX * beta + (gaze.yawDegrees   / 45.0) * alpha;
-      smoothedState.gazeY = smoothedState.gazeY * beta + (gaze.pitchDegrees / 45.0) * alpha;
+      smoothedState.gazeX = smoothedState.gazeX * (1 - alphaGaze) + (gaze.yawDegrees   / 45.0) * alphaGaze;
+      smoothedState.gazeY = smoothedState.gazeY * (1 - alphaGaze) + (gaze.pitchDegrees / 45.0) * alphaGaze;
     }
 
     if (affect) {
-      smoothedState.composure       = smoothedState.composure * beta + affect.composureScore * alpha;
-      smoothedState.dominantEmotion = affect.dominantEmotion;
+      smoothedState.composure       = smoothedState.composure * (1 - alphaComposure) + affect.composureScore * alphaComposure;
+      smoothedState.dominantEmotion = _emotionConsensus.update(affect.dominantEmotion, affect.emotionProbabilities);
     }
 
     smoothedState.totalInferenceTimeMs = Math.round(performance.now() - t0);

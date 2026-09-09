@@ -11,6 +11,7 @@ import type {
   ProcessedVisionResults,
   VisionModelBackend,
 } from '@/types/workerMessages';
+import { TemporalMotionDetector, type MotionEnergyResult } from '@/lib/services/temporalMotion';
 
 // ── Worker Context Scope ──────────────────────────────────────────────────────
 const ctx: Worker = self as any;
@@ -19,6 +20,9 @@ const ctx: Worker = self as any;
 let isInitialized = false;
 let isBusy = false;
 let activeBackend: VisionModelBackend = 'WEBGL';
+const motionDetector = new TemporalMotionDetector();
+let offscreenCanvas: any = null;
+let offscreenCtx: any = null;
 
 // ── Helper: Emit Typed Message ────────────────────────────────────────────────
 function postResponse(msg: VisionWorkerResponseMessage, transferables: Transferable[] = []) {
@@ -35,6 +39,32 @@ function processFrameHeuristic(
   const w = bitmap.width || 320;
   const h = bitmap.height || 240;
 
+  // Inter-frame temporal motion analysis
+  let motionResult: MotionEnergyResult = {
+    motionEnergy: 1.8,
+    motionAreaRatio: 0.04,
+    maxDiff: 12,
+    isSubjectPresent: true,
+    isExcessiveMotion: false,
+    absentFrameCount: 0,
+  };
+
+  try {
+    if (typeof OffscreenCanvas !== 'undefined') {
+      if (!offscreenCanvas || offscreenCanvas.width !== w || offscreenCanvas.height !== h) {
+        offscreenCanvas = new OffscreenCanvas(w, h);
+        offscreenCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+      }
+      if (offscreenCtx) {
+        offscreenCtx.drawImage(bitmap, 0, 0, w, h);
+        const imgData = offscreenCtx.getImageData(0, 0, w, h);
+        motionResult = motionDetector.processFrame(imgData.data, w, h);
+      }
+    }
+  } catch {
+    // Graceful fallback for environments lacking OffscreenCanvas
+  }
+
   // Simulate non-blocking spatial landmark calculation
   const pitchDegrees = Math.round((Math.sin(timestampMs / 1000) * 12) * 100) / 100;
   const yawDegrees = Math.round((Math.cos(timestampMs / 800) * 15) * 100) / 100;
@@ -49,31 +79,35 @@ function processFrameHeuristic(
   else if (pitchDegrees < -15) screenFocusZone = 'LOOKING_DOWN';
 
   const processingLatencyMs = Math.round((performance.now() - startTime) * 100) / 100;
+  const detectedGesture = motionResult.isExcessiveMotion ? 'EXCESSIVE_MOTION' : 'STATIC_COMPOSURE';
 
   return {
     frameId,
     timestampMs,
     processingLatencyMs,
-    faceDetected: true,
+    faceDetected: motionResult.isSubjectPresent,
+    motionEnergy: motionResult.motionEnergy,
+    isSubjectPresent: motionResult.isSubjectPresent,
+    isExcessiveMotion: motionResult.isExcessiveMotion,
     gazeResult: {
       frameTimestampMs: timestampMs,
       gazeAngles: { pitchDegrees, yawDegrees },
       isEyeContact,
       screenFocusZone,
-      confidenceScore: 0.92,
+      confidenceScore: motionResult.isSubjectPresent ? 0.92 : 0.0,
     },
     poseResult: {
       frameTimestampMs: timestampMs,
       angles: { pitchDegrees, yawDegrees, rollDegrees },
-      angularVelocity: 2.4,
-      detectedGesture: 'STATIC_COMPOSURE',
+      angularVelocity: motionResult.isExcessiveMotion ? 65.0 : 2.4,
+      detectedGesture,
     },
     affectResult: {
       frameTimestampMs: timestampMs,
       vaCoordinates: { valence: 0.35, arousal: 0.15 },
       dominantEmotion: 'CONFIDENT',
-      composureScore: 88,
-      confidenceScore: 0.90,
+      composureScore: motionResult.isExcessiveMotion ? 62 : 88,
+      confidenceScore: motionResult.isSubjectPresent ? 0.90 : 0.0,
     },
   };
 }
@@ -176,6 +210,7 @@ ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMe
       case 'DISPOSE': {
         isInitialized = false;
         isBusy = false;
+        motionDetector.reset();
         postResponse({ type: 'DISPOSED_CONFIRM' });
         break;
       }

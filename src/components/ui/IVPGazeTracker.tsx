@@ -25,6 +25,7 @@ import React, {
   useState,
 } from 'react';
 import { classifyFocusZone, evaluateEyeContact } from '@/lib/services/ivpGazeEngine';
+import { GazeAngleEMA } from '@/lib/services/temporalSmoothing';
 import type { GazeFrameInput, GazeFrameResult } from '@/types/index';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -167,6 +168,7 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
     const framesRef = useRef<GazeFrameInput[]>([]);
     const sessionStartRef = useRef<number>(Date.now());
     const isRunningRef = useRef(false);
+    const gazeEmaRef = useRef(new GazeAngleEMA(0.45));
 
     const [cameraError, setCameraError] = useState<string | null>(null);
     const [isStarted, setIsStarted] = useState(false);
@@ -282,10 +284,18 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
               const dx = centroid.cx - w / 2;
               const dy = centroid.cy - h / 2;
               const angles = estimateGazeAnglesFromDisplacement(dx, dy, w, h);
-              pitchDeg = angles.pitchDeg;
-              yawDeg = angles.yawDeg;
+              
+              // Apply EMA smoothing (alpha = 0.45: responsive eye saccades without micro-tremor jitter)
+              const smoothed = gazeEmaRef.current.update({
+                pitchDegrees: angles.pitchDeg,
+                yawDegrees: angles.yawDeg,
+              });
+              pitchDeg = smoothed.pitchDegrees;
+              yawDeg = smoothed.yawDegrees;
               eyeCx = centroid.cx;
               eyeCy = Math.max(0, centroid.cy - h * 0.08); // offset up to eye region
+            } else {
+              gazeEmaRef.current.reset();
             }
 
             const zone = classifyFocusZone(pitchDeg, yawDeg);
@@ -370,6 +380,7 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
         stop() {
           isRunningRef.current = false;
           cancelAnimationFrame(rafIdRef.current);
+          gazeEmaRef.current.reset();
           if (streamRef.current) {
             streamRef.current.getTracks().forEach(t => t.stop());
             streamRef.current = null;
@@ -384,6 +395,7 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
         },
         clearFrames() {
           framesRef.current = [];
+          gazeEmaRef.current.reset();
         },
       }),
       [runSamplingLoop]

@@ -22,6 +22,8 @@ import React, {
   useState,
 } from 'react';
 import { processPoseFrame } from '@/lib/services/ivpPoseEngine';
+import { TemporalMotionDetector } from '@/lib/services/temporalMotion';
+import { HeadPoseEMA } from '@/lib/services/temporalSmoothing';
 import type { HeadPoseFrameInput, HeadPoseFrameResult } from '@/types/index';
 
 const SAMPLE_FPS = 10;
@@ -139,6 +141,8 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
     const lastResultRef = useRef<HeadPoseFrameResult | undefined>(undefined);
     const sessionStartRef = useRef<number>(Date.now());
     const isRunningRef = useRef(false);
+    const motionDetectorRef = useRef(new TemporalMotionDetector());
+    const poseEmaRef = useRef(new HeadPoseEMA(0.35));
 
     const [cameraError, setCameraError] = useState<string | null>(null);
     const [isStarted, setIsStarted] = useState(false);
@@ -249,11 +253,14 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
             samplerCanvas.height = h;
             samplerCtx.drawImage(video, 0, 0, w, h);
 
+            const imgData = samplerCtx.getImageData(0, 0, w, h);
+            const motionRes = motionDetectorRef.current.processFrame(imgData.data, w, h);
+
             const centroid = estimateHeadCentroid(samplerCtx, w, h);
 
-            let yawDeg = 0;
-            let pitchDeg = 0;
-            let rollDeg = 0;
+            let rawYaw = 0;
+            let rawPitch = 0;
+            let rawRoll = 0;
             let headCx = w / 2;
             let headCy = h * 0.4;
 
@@ -262,9 +269,26 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
               headCy = centroid.cy;
               const dx = headCx - w / 2;
               const dy = headCy - h / 2;
-              yawDeg = Math.max(-45, Math.min(45, (dx / (w / 2)) * 40));
-              pitchDeg = Math.max(-35, Math.min(35, -(dy / (h / 2)) * 30));
-              rollDeg = Math.max(-25, Math.min(25, (dx / (w / 2)) * 15));
+              rawYaw = Math.max(-45, Math.min(45, (dx / (w / 2)) * 40));
+              rawPitch = Math.max(-35, Math.min(35, -(dy / (h / 2)) * 30));
+              rawRoll = Math.max(-25, Math.min(25, (dx / (w / 2)) * 15));
+            }
+
+            let yawDeg = rawYaw;
+            let pitchDeg = rawPitch;
+            let rollDeg = rawRoll;
+
+            if (motionRes.isSubjectPresent) {
+              const smoothed = poseEmaRef.current.update({
+                yawDegrees: rawYaw,
+                pitchDegrees: rawPitch,
+                rollDegrees: rawRoll,
+              });
+              yawDeg = smoothed.yawDegrees;
+              pitchDeg = smoothed.pitchDegrees;
+              rollDeg = smoothed.rollDegrees;
+            } else {
+              poseEmaRef.current.reset();
             }
 
             const timestampMs = Date.now() - sessionStartRef.current;
@@ -273,7 +297,9 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
               yawDegrees: Math.round(yawDeg * 100) / 100,
               pitchDegrees: Math.round(pitchDeg * 100) / 100,
               rollDegrees: Math.round(rollDeg * 100) / 100,
-              confidence: centroid ? 0.8 : 0.4,
+              confidence: centroid && motionRes.isSubjectPresent ? 0.8 : 0.0,
+              motionEnergy: motionRes.motionEnergy,
+              isSubjectPresent: motionRes.isSubjectPresent,
             };
 
             framesRef.current.push(input);
@@ -330,6 +356,8 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
         stop() {
           isRunningRef.current = false;
           cancelAnimationFrame(rafIdRef.current);
+          motionDetectorRef.current.reset();
+          poseEmaRef.current.reset();
           if (streamRef.current) {
             streamRef.current.getTracks().forEach(t => t.stop());
             streamRef.current = null;
@@ -344,6 +372,8 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
         },
         clearFrames() {
           framesRef.current = [];
+          motionDetectorRef.current.reset();
+          poseEmaRef.current.reset();
         },
       }),
       [runSamplingLoop]

@@ -112,6 +112,9 @@ export interface ProcessedVisionResults {
   poseResult?: HeadPoseFrameResult;
   affectResult?: AffectFrameResult;
   faceDetected: boolean;
+  motionEnergy?: number;
+  isSubjectPresent?: boolean;
+  isExcessiveMotion?: boolean;
 }
 
 export interface FrameResultResponseMessage {

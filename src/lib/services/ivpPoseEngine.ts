@@ -96,7 +96,8 @@ export function processPoseFrame(
   }
 
   let detectedGesture: HeadPoseFrameResult['detectedGesture'] = 'STATIC_COMPOSURE';
-  if (angularVelocity > 60) {
+  const hasExcessiveMotion = (input.motionEnergy !== undefined && input.motionEnergy >= 8.5) || angularVelocity > 60;
+  if (hasExcessiveMotion) {
     detectedGesture = 'EXCESSIVE_MOTION';
   }
 
@@ -105,6 +106,8 @@ export function processPoseFrame(
     angles,
     angularVelocity,
     detectedGesture,
+    motionEnergy: input.motionEnergy,
+    isSubjectPresent: input.isSubjectPresent ?? true,
   };
 }
 
@@ -285,10 +288,22 @@ export function analyzeHeadPoseAndGestures(
   const avgPitch = Math.round((frameTrace.reduce((s, f) => s + f.angles.pitchDegrees, 0) / total) * 100) / 100;
   const avgRoll = Math.round((frameTrace.reduce((s, f) => s + f.angles.rollDegrees, 0) / total) * 100) / 100;
 
-  // Restlessness & Composure calculation based on average angular velocity
+  // Restlessness & Composure calculation based on angular velocity + motion energy
   const avgVelocity = frameTrace.reduce((s, f) => s + f.angularVelocity, 0) / total;
-  // Angular velocity > 45 deg/s maps to high restlessness
-  const restlessnessIndex = Math.min(100, Math.max(0, Math.round((avgVelocity / 45) * 100 * 10) / 10));
+  let restlessnessIndex = Math.min(100, Math.max(0, Math.round((avgVelocity / 45) * 100 * 10) / 10));
+
+  let averageMotionEnergy: number | undefined = undefined;
+  const hasMotionEnergy = inputs.some(i => i.motionEnergy !== undefined);
+  if (hasMotionEnergy) {
+    const motionVals = inputs.map(i => i.motionEnergy ?? 0);
+    averageMotionEnergy = Math.round((motionVals.reduce((a, b) => a + b, 0) / total) * 100) / 100;
+    const motionRestlessness = Math.min(100, Math.max(0, Math.round((averageMotionEnergy / 8.5) * 100 * 10) / 10));
+    restlessnessIndex = Math.min(
+      100,
+      Math.max(0, Math.round((restlessnessIndex * 0.6 + motionRestlessness * 0.4) * 10) / 10)
+    );
+  }
+
   const postureComposureScore = Math.max(0, Math.min(100, Math.round((100 - restlessnessIndex * 0.75) * 10) / 10));
 
   return {
@@ -302,5 +317,6 @@ export function analyzeHeadPoseAndGestures(
     restlessnessIndex,
     gesturalEvents: events,
     frameTrace,
+    averageMotionEnergy,
   };
 }

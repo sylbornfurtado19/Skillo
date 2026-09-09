@@ -17,6 +17,7 @@ import React, {
   useState,
 } from 'react';
 import { processAffectFrame } from '@/lib/services/ivpAffectEngine';
+import { AffectiveEMA, CategoricalConsensusSmoother } from '@/lib/services/temporalSmoothing';
 import type { AffectFrameInput, AffectFrameResult } from '@/types/index';
 
 const SAMPLE_FPS = 2;
@@ -88,6 +89,8 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
     const framesRef = useRef<AffectFrameInput[]>([]);
     const sessionStartRef = useRef<number>(Date.now());
     const isRunningRef = useRef(false);
+    const affectEmaRef = useRef(new AffectiveEMA(0.25, 0.20));
+    const emotionConsensusRef = useRef(new CategoricalConsensusSmoother(5, 0.30));
 
     const [isStarted, setIsStarted] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -122,7 +125,21 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
 
             framesRef.current.push(input);
 
-            const frameResult = processAffectFrame(input);
+            const rawFrameResult = processAffectFrame(input);
+            const smoothedVA = affectEmaRef.current.update(
+              rawFrameResult.vaCoordinates,
+              rawFrameResult.composureScore
+            );
+            const smoothedEmotion = emotionConsensusRef.current.update(
+              rawFrameResult.dominantEmotion
+            );
+
+            const frameResult: AffectFrameResult = {
+              ...rawFrameResult,
+              vaCoordinates: smoothedVA.vaCoordinates,
+              composureScore: smoothedVA.composureScore,
+              dominantEmotion: smoothedEmotion,
+            };
             onFrame?.(frameResult);
           }
         }
@@ -164,6 +181,8 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
         stop() {
           isRunningRef.current = false;
           cancelAnimationFrame(rafIdRef.current);
+          affectEmaRef.current.reset();
+          emotionConsensusRef.current.reset();
           if (streamRef.current) {
             streamRef.current.getTracks().forEach(t => t.stop());
             streamRef.current = null;
@@ -178,6 +197,8 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
         },
         clearFrames() {
           framesRef.current = [];
+          affectEmaRef.current.reset();
+          emotionConsensusRef.current.reset();
         },
       }),
       [runSamplingLoop]

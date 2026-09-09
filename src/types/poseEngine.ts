@@ -13,6 +13,8 @@ export interface HeadPoseFrameResult {
   angles: EulerAngles3D;
   angularVelocity: number; // degrees per second
   detectedGesture: 'NODDING' | 'HEAD_SHAKING' | 'STATIC_COMPOSURE' | 'EXCESSIVE_MOTION';
+  motionEnergy?: number;
+  isSubjectPresent?: boolean;
 }
 
 /** Recorded gestural event over a continuous window */
@@ -39,6 +41,7 @@ export interface HeadPoseSessionMetrics {
   restlessnessIndex: number;     // 0.0 to 100.0%
   gesturalEvents: GesturalEvent[];
   frameTrace: HeadPoseFrameResult[];
+  averageMotionEnergy?: number;
 }
 
 /** Input frame accepted by the HopeNet engine (logits or pre-computed angles) */
@@ -51,4 +54,6 @@ export interface HeadPoseFrameInput {
   pitchDegrees?: number;
   rollDegrees?: number;
   confidence?: number;
+  motionEnergy?: number;
+  isSubjectPresent?: boolean;
 }
