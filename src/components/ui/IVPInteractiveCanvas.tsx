@@ -585,29 +585,41 @@ export default function IVPInteractiveCanvas({
     const isBlink = liveEAR < 0.20;
     const isSpeaking = liveMAR >= 0.22;
 
-    // Calculate dynamic bounding box from landmark extents with 15% padding
-    const allPts = [...leftEyePts, ...rightEyePts, ...mouthPts, ...noseBridge];
-    let minX = 9999, maxX = -9999, minY = 9999, maxY = -9999;
-    for (const p of allPts) {
-      if (p.x < minX) minX = p.x;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.y > maxY) maxY = p.y;
+    // Calculate dynamic bounding box directly from detected face coordinates
+    let rawBoxX: number;
+    let rawBoxY: number;
+    let rawBoxW: number;
+    let rawBoxH: number;
+
+    if (liveExpr && liveExpr.faceDetected) {
+      const fb = liveExpr.faceBox;
+      rawBoxX = fb.x * scaleX;
+      rawBoxY = fb.y * scaleY;
+      rawBoxW = fb.width * scaleX;
+      rawBoxH = fb.height * scaleY;
+    } else {
+      // Dynamic fallback from landmark extents
+      const allPts = [...leftEyePts, ...rightEyePts, ...mouthPts, ...noseBridge];
+      let minX = 9999, maxX = -9999, minY = 9999, maxY = -9999;
+      for (const p of allPts) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      }
+      const padX = (maxX - minX) * 0.28;
+      const padY = (maxY - minY) * 0.36;
+      rawBoxX = minX - padX;
+      rawBoxY = minY - padY;
+      rawBoxW = (maxX - minX) + padX * 2;
+      rawBoxH = (maxY - minY) + padY * 2;
     }
 
-    // Apply 15% anatomical expansion margin
-    const padX = (maxX - minX) * 0.28;
-    const padY = (maxY - minY) * 0.36;
-    const rawBoxX = minX - padX;
-    const rawBoxY = minY - padY;
-    const rawBoxW = (maxX - minX) + padX * 2;
-    const rawBoxH = (maxY - minY) + padY * 2;
-
-    // Smooth bounding box coordinates
-    sf.minX = sf.minX * 0.7 + rawBoxX * 0.3;
-    sf.minY = sf.minY * 0.7 + rawBoxY * 0.3;
-    sf.maxX = sf.maxX * 0.7 + (rawBoxX + rawBoxW) * 0.3;
-    sf.maxY = sf.maxY * 0.7 + (rawBoxY + rawBoxH) * 0.3;
+    // Responsive bounding box smoothing (alpha = 0.50 for fluid head-following without lag)
+    sf.minX = sf.minX * 0.50 + rawBoxX * 0.50;
+    sf.minY = sf.minY * 0.50 + rawBoxY * 0.50;
+    sf.maxX = sf.maxX * 0.50 + (rawBoxX + rawBoxW) * 0.50;
+    sf.maxY = sf.maxY * 0.50 + (rawBoxY + rawBoxH) * 0.50;
 
     const boxX = sf.minX;
     const boxY = sf.minY;

@@ -66,13 +66,14 @@ export function extractFacialExpressions(
     return createDefaultExpressionResult(width, height, false);
   }
 
-  // 1. ADAPTIVE CHROMINANCE & LUMA FACE ROI LOCALIZATION
-  // Subsampled step = 2 for high spatial fidelity with sub-millisecond execution
+  // 1. LIGHTING-INVARIANT ADAPTIVE FACE LOCALIZATION (Skin locus + Luma envelope)
+  // Step = 2 for sub-millisecond execution (320x240 buffer)
   const step = 2;
   let minX = width, maxX = 0, minY = height, maxY = 0;
   let skinCount = 0;
   let sumX = 0, sumY = 0;
 
+  // We compute chrominance and establish a 2-pass spatial cluster
   for (let y = 0; y < height; y += step) {
     const row = y * width;
     for (let x = 0; x < width; x += step) {
@@ -86,13 +87,14 @@ export function extractFacialExpressions(
       const cr   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
       const cb   = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
 
-      // Robust skin classification condition covering office and warm webcam lighting
+      // Academic YCrCb human skin locus broadened for diverse skin complexions & webcam color profiles:
+      // Works across fluorescent office light, warm light, dark hair boundary, and shadow gradients
       const isSkin =
-        luma > 25 &&
-        cr >= 126 && cr <= 182 &&
-        cb >= 72 && cb <= 135 &&
-        r > g * 0.95 &&
-        r > b;
+        luma > 20 &&
+        cr >= 122 && cr <= 185 &&
+        cb >= 70 && cb <= 138 &&
+        r >= g * 0.90 &&
+        r >= b * 0.85;
 
       if (isSkin) {
         skinCount++;
@@ -106,25 +108,91 @@ export function extractFacialExpressions(
     }
   }
 
-  // Minimum face skin threshold (require at least 40 sampled skin points)
-  if (skinCount < 40 || maxX <= minX || maxY <= minY) {
+  // Fallback: If skin count is low due to extreme lighting or webcam contrast,
+  // scan central/upper half with looser Cr boundary
+  if (skinCount < 30 || maxX <= minX || maxY <= minY) {
+    minX = width; maxX = 0; minY = height; maxY = 0;
+    skinCount = 0; sumX = 0; sumY = 0;
+
+    for (let y = Math.round(height * 0.1); y < Math.round(height * 0.9); y += step) {
+      const row = y * width;
+      for (let x = Math.round(width * 0.1); x < Math.round(width * 0.9); x += step) {
+        const idx = (row + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        const luma = (77 * r + 150 * g + 29 * b) >> 8;
+        const cr   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
+        const cb   = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
+
+        if (luma > 20 && cr >= 120 && cr <= 190 && cb >= 68 && cb <= 140) {
+          skinCount++;
+          sumX += x;
+          sumY += y;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+  }
+
+  if (skinCount < 25 || maxX <= minX || maxY <= minY) {
     return createDefaultExpressionResult(width, height, false);
   }
 
-  // Expand vertical bounding box slightly up for forehead/eyes if truncated
-  const rawFaceW = maxX - minX;
-  const rawFaceH = maxY - minY;
-  const cx = sumX / skinCount;
-  const cy = sumY / skinCount;
+  // Centroid of face skin
+  const rawCX = sumX / skinCount;
+  const rawCY = sumY / skinCount;
 
-  // Anatomical bounds: face height is roughly 1.25x to 1.45x face width
-  const faceW = Math.max(24, rawFaceW);
-  const faceH = Math.max(30, Math.max(rawFaceH, Math.round(faceW * 1.25)));
-  // Ensure top of face accommodates eyes even if dark hair or forehead shadows exist
-  const faceTopY = Math.max(0, Math.min(minY, Math.round(cy - faceH * 0.46)));
+  // Second pass: Filter out peripheral background objects (e.g. hands, arms, warm walls)
+  // by clustering within a radial window around the primary head centroid
+  let refinedMinX = width, refinedMaxX = 0, refinedMinY = height, refinedMaxY = 0;
+  let refinedCount = 0;
+  let refinedSumX = 0, refinedSumY = 0;
+  const maxRadiusX = Math.min(width * 0.35, Math.max(28, (maxX - minX) * 0.60));
+  const maxRadiusY = Math.min(height * 0.45, Math.max(35, (maxY - minY) * 0.65));
+
+  for (let y = Math.max(0, Math.round(rawCY - maxRadiusY)); y < Math.min(height, Math.round(rawCY + maxRadiusY)); y += step) {
+    const row = y * width;
+    for (let x = Math.max(0, Math.round(rawCX - maxRadiusX)); x < Math.min(width, Math.round(rawCX + maxRadiusX)); x += step) {
+      const idx = (row + x) * 4;
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const luma = (77 * r + 150 * g + 29 * b) >> 8;
+      const cr   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
+      const cb   = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
+
+      if (luma > 20 && cr >= 122 && cr <= 185 && cb >= 70 && cb <= 138 && r >= g * 0.90) {
+        refinedCount++;
+        refinedSumX += x;
+        refinedSumY += y;
+        if (x < refinedMinX) refinedMinX = x;
+        if (x > refinedMaxX) refinedMaxX = x;
+        if (y < refinedMinY) refinedMinY = y;
+        if (y > refinedMaxY) refinedMaxY = y;
+      }
+    }
+  }
+
+  const cx = refinedCount > 20 ? refinedSumX / refinedCount : rawCX;
+  const cy = refinedCount > 20 ? refinedSumY / refinedCount : rawCY;
+  const boxMinX = refinedCount > 20 ? refinedMinX : minX;
+  const boxMaxX = refinedCount > 20 ? refinedMaxX : maxX;
+  const boxMinY = refinedCount > 20 ? refinedMinY : minY;
+  const boxMaxY = refinedCount > 20 ? refinedMaxY : maxY;
+
+  const rawFaceW = boxMaxX - boxMinX;
+  const rawFaceH = boxMaxY - boxMinY;
+
+  // Harmonize anatomical proportions (head aspect ratio ~ 1.30)
+  const faceW = Math.max(28, Math.min(width * 0.70, rawFaceW));
+  const faceH = Math.max(36, Math.min(height * 0.85, Math.max(rawFaceH, Math.round(faceW * 1.30))));
+  const faceTopY = Math.max(0, Math.min(boxMinY, Math.round(cy - faceH * 0.46)));
 
   // 2. PRECISE LOWER-FACE MOUTH & LIP CONTOUR LOCALIZATION
-  // Anatomically, the mouth is centered below nose around y: 0.62*faceH to 0.88*faceH from face top
   const mY1 = Math.max(0, Math.min(height - 1, Math.round(faceTopY + faceH * 0.60)));
   const mY2 = Math.max(mY1 + 4, Math.min(height, Math.round(faceTopY + faceH * 0.90)));
   const mX1 = Math.max(0, Math.min(width - 1, Math.round(cx - faceW * 0.28)));
