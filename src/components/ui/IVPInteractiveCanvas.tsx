@@ -149,6 +149,8 @@ export default function IVPInteractiveCanvas({
   // ── Target-lost state ref ─────────────────────────────────────────────────
   const targetLostRef = useRef<boolean>(false);
   const lostFramesRef = useRef<number>(0);
+  const lastMetricsDispatchRef = useRef<number>(0);
+  const wasBlinkingRef = useRef<boolean>(false);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Initialise offscreen canvases & pre-allocated ImageData buffers on mount
@@ -927,10 +929,18 @@ export default function IVPInteractiveCanvas({
       targetLost: isTargetLost,
     };
 
+    // Dispatch metrics reliably: on state change or at least ~15 times per second (every 66ms)
+    // so physiological oscilloscopes and blink detectors never miss state transitions
+    const nowMs = performance.now();
     if (
       targetLostRef.current !== isTargetLost ||
-      frameCountRef.current === 0
+      !lastMetricsDispatchRef.current ||
+      nowMs - lastMetricsDispatchRef.current >= 65 ||
+      (liveEAR < 0.21 && !wasBlinkingRef.current) ||
+      (liveEAR >= 0.21 && wasBlinkingRef.current)
     ) {
+      wasBlinkingRef.current = liveEAR < 0.21;
+      lastMetricsDispatchRef.current = nowMs;
       targetLostRef.current = isTargetLost;
       setLiveMetrics(metrics);
       if (onMetricsUpdate) onMetricsUpdate(metrics);

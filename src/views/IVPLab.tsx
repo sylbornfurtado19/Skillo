@@ -72,6 +72,7 @@ export default function IVPLab() {
 
   // Blink state tracking
   const wasEyeClosedRef = useRef<boolean>(false);
+  const lastBlinkTimeRef = useRef<number>(0);
   const blinkTimestampsRef = useRef<number[]>([]);
 
   // 1. Initialize Sample Face Image
@@ -309,14 +310,18 @@ export default function IVPLab() {
                 setCanvasMetrics(metrics);
                 if (metrics.ear !== undefined) {
                   setCurrentEAR(metrics.ear);
-                  if (metrics.ear < 0.21 && !wasEyeClosedRef.current) {
-                    wasEyeClosedRef.current = true;
-                    setBlinkCount((prev) => prev + 1);
-                    const now = performance.now();
-                    blinkTimestampsRef.current.push(now);
-                    blinkTimestampsRef.current = blinkTimestampsRef.current.filter((t) => now - t <= 60000);
-                    setBlinkRatePerMin(blinkTimestampsRef.current.length);
-                  } else if (metrics.ear >= 0.21) {
+                  const now = performance.now();
+                  // Hysteresis thresholding: trigger close at < 0.20, reopen at >= 0.22, with 80ms debounce
+                  if (metrics.ear < 0.20 && !wasEyeClosedRef.current) {
+                    if (now - lastBlinkTimeRef.current > 80) {
+                      wasEyeClosedRef.current = true;
+                      lastBlinkTimeRef.current = now;
+                      setBlinkCount((prev) => prev + 1);
+                      blinkTimestampsRef.current.push(now);
+                      blinkTimestampsRef.current = blinkTimestampsRef.current.filter((t) => now - t <= 60000);
+                      setBlinkRatePerMin(blinkTimestampsRef.current.length);
+                    }
+                  } else if (metrics.ear >= 0.22 && wasEyeClosedRef.current) {
                     wasEyeClosedRef.current = false;
                   }
                 }

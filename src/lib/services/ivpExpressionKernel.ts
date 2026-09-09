@@ -66,8 +66,8 @@ export function extractFacialExpressions(
     return createDefaultExpressionResult(width, height, false);
   }
 
-  // 1. FAST SUBSAMPLED SKIN CHROMINANCE SEGMENTATION & FACE ROI LOCALIZATION
-  // Using step = 2 for high spatial fidelity with sub-millisecond execution
+  // 1. ADAPTIVE CHROMINANCE & LUMA FACE ROI LOCALIZATION
+  // Subsampled step = 2 for high spatial fidelity with sub-millisecond execution
   const step = 2;
   let minX = width, maxX = 0, minY = height, maxY = 0;
   let skinCount = 0;
@@ -86,8 +86,15 @@ export function extractFacialExpressions(
       const cr   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
       const cb   = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
 
-      // Academic YCrCb human skin locus
-      if (luma > 30 && cr >= 133 && cr <= 178 && cb >= 77 && cb <= 130 && r > g && g > b * 0.85) {
+      // Robust skin classification condition covering office and warm webcam lighting
+      const isSkin =
+        luma > 25 &&
+        cr >= 126 && cr <= 182 &&
+        cb >= 72 && cb <= 135 &&
+        r > g * 0.95 &&
+        r > b;
+
+      if (isSkin) {
         skinCount++;
         sumX += x;
         sumY += y;
@@ -99,38 +106,54 @@ export function extractFacialExpressions(
     }
   }
 
-  // Minimum face skin threshold (require at least 50 sampled skin points)
-  if (skinCount < 50 || maxX <= minX || maxY <= minY) {
+  // Minimum face skin threshold (require at least 40 sampled skin points)
+  if (skinCount < 40 || maxX <= minX || maxY <= minY) {
     return createDefaultExpressionResult(width, height, false);
   }
 
-  const faceW = maxX - minX;
-  const faceH = maxY - minY;
+  // Expand vertical bounding box slightly up for forehead/eyes if truncated
+  const rawFaceW = maxX - minX;
+  const rawFaceH = maxY - minY;
   const cx = sumX / skinCount;
   const cy = sumY / skinCount;
 
+  // Anatomical bounds: face height is roughly 1.25x to 1.45x face width
+  const faceW = Math.max(24, rawFaceW);
+  const faceH = Math.max(30, Math.max(rawFaceH, Math.round(faceW * 1.25)));
+  // Ensure top of face accommodates eyes even if dark hair or forehead shadows exist
+  const faceTopY = Math.max(0, Math.min(minY, Math.round(cy - faceH * 0.46)));
+
   // 2. PRECISE LOWER-FACE MOUTH & LIP CONTOUR LOCALIZATION
-  // Anatomically, the oral cavity is centered below nose around y: 0.60*faceH to 0.88*faceH
-  const mY1 = Math.max(0, Math.min(height - 1, Math.round(minY + faceH * 0.58)));
-  const mY2 = Math.max(mY1 + 4, Math.min(height, Math.round(minY + faceH * 0.90)));
-  const mX1 = Math.max(0, Math.min(width - 1, Math.round(cx - faceW * 0.32)));
-  const mX2 = Math.max(mX1 + 4, Math.min(width, Math.round(cx + faceW * 0.32)));
+  // Anatomically, the mouth is centered below nose around y: 0.62*faceH to 0.88*faceH from face top
+  const mY1 = Math.max(0, Math.min(height - 1, Math.round(faceTopY + faceH * 0.60)));
+  const mY2 = Math.max(mY1 + 4, Math.min(height, Math.round(faceTopY + faceH * 0.90)));
+  const mX1 = Math.max(0, Math.min(width - 1, Math.round(cx - faceW * 0.28)));
+  const mX2 = Math.max(mX1 + 4, Math.min(width, Math.round(cx + faceW * 0.28)));
 
   let mouthMinX = mX2, mouthMaxX = mX1, mouthMinY = mY2, mouthMaxY = mY1;
   let mouthLipPixels = 0;
-  let teethPixels = 0;
   let oralCavityDarkPixels = 0;
   let mouthSumX = 0, mouthSumY = 0;
 
-  // Track left, center, right vertical lip boundaries
   let leftCornerSumY = 0, leftCornerCount = 0;
   let rightCornerSumY = 0, rightCornerCount = 0;
-  let topLipMinY = mY2, bottomLipMaxY = mY1;
-  let topLipSumY = 0, topLipCount = 0;
-  let bottomLipSumY = 0, bottomLipCount = 0;
+  let mouthLumaSum = 0, mouthSampleCount = 0;
 
   const mouthW_ROI = mX2 - mX1;
   const mMidX = (mX1 + mX2) / 2;
+
+  // First pass: compute average luma in mouth ROI to establish adaptive threshold
+  for (let y = mY1; y < mY2; y += 2) {
+    const row = y * width;
+    for (let x = mX1; x < mX2; x += 2) {
+      const idx = (row + x) * 4;
+      const l = (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
+      mouthLumaSum += l;
+      mouthSampleCount++;
+    }
+  }
+  const avgMouthLuma = mouthSampleCount > 0 ? mouthLumaSum / mouthSampleCount : 100;
+  const cavityThreshold = Math.max(30, Math.min(75, avgMouthLuma * 0.55));
 
   for (let y = mY1; y < mY2; y++) {
     const row = y * width;
@@ -142,10 +165,11 @@ export function extractFacialExpressions(
       const luma = (77 * r + 150 * g + 29 * b) >> 8;
       const cr   = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
 
-      // Lip tissue exhibits elevated Cr and distinct red dominance over green
-      const isLip = (cr > 140 && (r > g * 1.08 || cr > 148)) || (luma < 55 && y > (mY1 + mY2) / 2 - 6 && y < (mY1 + mY2) / 2 + 10);
+      // Lip tissue: redness Cr relative to skin, or oral opening cavity
+      const isLipTissue = (cr >= 138 && r > g * 1.04) || (cr >= 145);
+      const isOralCavity = (luma < cavityThreshold && Math.abs(x - cx) < faceW * 0.16);
 
-      if (isLip) {
+      if (isLipTissue || isOralCavity) {
         mouthLipPixels++;
         mouthSumX += x;
         mouthSumY += y;
@@ -154,12 +178,6 @@ export function extractFacialExpressions(
         if (y < mouthMinY) mouthMinY = y;
         if (y > mouthMaxY) mouthMaxY = y;
 
-        // Dental contrast inside mouth region
-        if (luma > 140 && Math.abs(r - g) < 28 && Math.abs(g - b) < 32) {
-          teethPixels++;
-        }
-
-        // Corner vs center tracking
         if (x < mX1 + mouthW_ROI * 0.28) {
           leftCornerSumY += y;
           leftCornerCount++;
@@ -167,136 +185,128 @@ export function extractFacialExpressions(
           rightCornerSumY += y;
           rightCornerCount++;
         }
-
-        // Upper lip vs Lower lip partitioning
-        if (y < (mY1 + mY2) * 0.48) {
-          topLipSumY += y;
-          topLipCount++;
-          if (y < topLipMinY) topLipMinY = y;
-        } else if (y > (mY1 + mY2) * 0.52) {
-          bottomLipSumY += y;
-          bottomLipCount++;
-          if (y > bottomLipMaxY) bottomLipMaxY = y;
-        }
-      } else if (luma < 45 && Math.abs(x - cx) < faceW * 0.16) {
-        // Dark oral cavity when mouth opens
+      }
+      if (isOralCavity) {
         oralCavityDarkPixels++;
       }
     }
   }
 
-  const detectedMouthCenterY = mouthLipPixels > 10 ? (mouthSumY / mouthLipPixels) : (minY + faceH * 0.74);
-  const detectedMouthCenterX = mouthLipPixels > 10 ? (mouthSumX / mouthLipPixels) : cx;
-  const detectedMouthW = Math.max(18, mouthMaxX > mouthMinX ? (mouthMaxX - mouthMinX) : faceW * 0.35);
-  const detectedMouthH = Math.max(6, mouthMaxY > mouthMinY ? (mouthMaxY - mouthMinY) : faceH * 0.12);
+  const detectedMouthCenterY = mouthLipPixels > 8 ? (mouthSumY / mouthLipPixels) : (faceTopY + faceH * 0.74);
+  const detectedMouthCenterX = mouthLipPixels > 8 ? (mouthSumX / mouthLipPixels) : cx;
+  const detectedMouthW = Math.max(20, mouthMaxX > mouthMinX ? (mouthMaxX - mouthMinX) : faceW * 0.36);
+  const detectedMouthH = Math.max(4, mouthMaxY > mouthMinY ? (mouthMaxY - mouthMinY) : faceH * 0.10);
 
-  // Oral opening height: expanded if dark oral cavity or teeth detected
-  const oralOpening = Math.max(2, Math.min(detectedMouthH, (detectedMouthH * 0.45) + Math.sqrt(oralCavityDarkPixels) * 1.1));
-  const mar = Math.max(0.08, Math.min(0.68, oralOpening / detectedMouthW));
-
-  // Smile horizontal stretch ratio relative to face width
-  const mouthFaceRatio = detectedMouthW / Math.max(1, faceW);
+  // Oral cavity separation: mouth is open if dark oral cavity or vertical height expands
+  // Natural resting mouth: MAR ~ 0.10 - 0.16. Talking/open mouth: MAR > 0.22 - 0.45.
+  const oralCavityFactor = Math.min(18, Math.sqrt(oralCavityDarkPixels) * 0.85);
+  const effectiveMouthOpening = Math.max(3, detectedMouthH * 0.40 + oralCavityFactor);
+  const mar = Math.max(0.08, Math.min(0.65, effectiveMouthOpening / detectedMouthW));
 
   // Lip corner elevation curvature
   const leftCornerY = leftCornerCount > 0 ? leftCornerSumY / leftCornerCount : detectedMouthCenterY;
   const rightCornerY = rightCornerCount > 0 ? rightCornerSumY / rightCornerCount : detectedMouthCenterY;
   const avgCornerY = (leftCornerY + rightCornerY) / 2;
   const cornerElevation = (detectedMouthCenterY - avgCornerY) / Math.max(1, detectedMouthW);
-  const teethRatio = mouthLipPixels > 0 ? teethPixels / mouthLipPixels : 0;
 
+  const mouthFaceRatio = detectedMouthW / Math.max(1, faceW);
   const smileStretch = Math.max(0, Math.min(1, (mouthFaceRatio - 0.35) / 0.18));
   const smileElevation = Math.max(0, Math.min(1, (cornerElevation + 0.04) / 0.14));
-  const smileTeeth = Math.max(0, Math.min(1, teethRatio * 4.0));
-  const smileScore = Math.max(0.0, Math.min(1.0, smileStretch * 0.45 + smileElevation * 0.35 + smileTeeth * 0.20));
+  const smileScore = Math.max(0.0, Math.min(1.0, smileStretch * 0.50 + smileElevation * 0.50));
 
   // 3. UPPER-FACE EYE ROI & AUTHENTIC EYE/PUPIL LOCALIZATION
-  // Human eyes reside symmetrically in upper face: y between 0.20*faceH and 0.44*faceH
-  const eyeY1 = Math.max(0, Math.min(height - 1, Math.round(minY + faceH * 0.18)));
-  const eyeY2 = Math.max(eyeY1 + 6, Math.min(height, Math.round(minY + faceH * 0.44)));
-  const eyeBoxH = eyeY2 - eyeY1;
+  // Human eyes reside symmetrically in upper face: y between 0.22*faceH and 0.42*faceH from face top
+  const eyeY1 = Math.max(0, Math.min(height - 1, Math.round(faceTopY + faceH * 0.20)));
+  const eyeY2 = Math.max(eyeY1 + 6, Math.min(height, Math.round(faceTopY + faceH * 0.42)));
 
   // Left eye region (observer's left)
-  const leX1 = Math.max(0, Math.min(width - 1, Math.round(cx - faceW * 0.40)));
-  const leX2 = Math.max(leX1 + 6, Math.min(width, Math.round(cx - faceW * 0.06)));
+  const leX1 = Math.max(0, Math.min(width - 1, Math.round(cx - faceW * 0.38)));
+  const leX2 = Math.max(leX1 + 6, Math.min(width, Math.round(cx - faceW * 0.05)));
   // Right eye region (observer's right)
-  const reX1 = Math.max(0, Math.min(width - 1, Math.round(cx + faceW * 0.06)));
-  const reX2 = Math.max(reX1 + 6, Math.min(width, Math.round(cx + faceW * 0.40)));
+  const reX1 = Math.max(0, Math.min(width - 1, Math.round(cx + faceW * 0.05)));
+  const reX2 = Math.max(reX1 + 6, Math.min(width, Math.round(cx + faceW * 0.38)));
 
   // Find minimum luminance (darkest pupil/iris center) in each eye box
   let leftMinLuma = 255, leftPupilX = Math.round((leX1 + leX2) / 2), leftPupilY = Math.round((eyeY1 + eyeY2) / 2);
   let rightMinLuma = 255, rightPupilX = Math.round((reX1 + reX2) / 2), rightPupilY = Math.round((eyeY1 + eyeY2) / 2);
 
-  // Measure vertical gradient intensity across eye apertures to detect genuine blinks
-  let leftEyeVerticalGradSum = 0, leftEyeSampleCount = 0;
-  let rightEyeVerticalGradSum = 0, rightEyeSampleCount = 0;
+  let leftEyeLumaSum = 0, leftEyePixelCount = 0;
+  let rightEyeLumaSum = 0, rightEyePixelCount = 0;
 
-  // Sclera vs iris contrast calculation
-  let leftDarkPixelCount = 0;
-  let rightDarkPixelCount = 0;
-
-  // Scan Left Eye
-  for (let y = eyeY1 + 1; y < eyeY2 - 1; y++) {
+  // Scan Left Eye to locate pupil minimum and average luminance
+  for (let y = eyeY1; y < eyeY2; y++) {
     const row = y * width;
-    const rowPrev = (y - 1) * width;
-    const rowNext = (y + 1) * width;
     for (let x = leX1; x < leX2; x++) {
       const idx = (row + x) * 4;
       const luma = (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
-      const nLuma = (77 * data[(rowPrev + x) * 4] + 150 * data[(rowPrev + x) * 4 + 1] + 29 * data[(rowPrev + x) * 4 + 2]) >> 8;
-      const sLuma = (77 * data[(rowNext + x) * 4] + 150 * data[(rowNext + x) * 4 + 1] + 29 * data[(rowNext + x) * 4 + 2]) >> 8;
-
-      const vertGrad = Math.abs(sLuma - nLuma);
-      leftEyeVerticalGradSum += vertGrad;
-      leftEyeSampleCount++;
-
+      leftEyeLumaSum += luma;
+      leftEyePixelCount++;
       if (luma < leftMinLuma) {
         leftMinLuma = luma;
         leftPupilX = x;
         leftPupilY = y;
       }
-      if (luma < 60) {
-        leftDarkPixelCount++;
-      }
     }
   }
 
-  // Scan Right Eye
-  for (let y = eyeY1 + 1; y < eyeY2 - 1; y++) {
+  // Scan Right Eye to locate pupil minimum and average luminance
+  for (let y = eyeY1; y < eyeY2; y++) {
     const row = y * width;
-    const rowPrev = (y - 1) * width;
-    const rowNext = (y + 1) * width;
     for (let x = reX1; x < reX2; x++) {
       const idx = (row + x) * 4;
       const luma = (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
-      const nLuma = (77 * data[(rowPrev + x) * 4] + 150 * data[(rowPrev + x) * 4 + 1] + 29 * data[(rowPrev + x) * 4 + 2]) >> 8;
-      const sLuma = (77 * data[(rowNext + x) * 4] + 150 * data[(rowNext + x) * 4 + 1] + 29 * data[(rowNext + x) * 4 + 2]) >> 8;
-
-      const vertGrad = Math.abs(sLuma - nLuma);
-      rightEyeVerticalGradSum += vertGrad;
-      rightEyeSampleCount++;
-
+      rightEyeLumaSum += luma;
+      rightEyePixelCount++;
       if (luma < rightMinLuma) {
         rightMinLuma = luma;
         rightPupilX = x;
         rightPupilY = y;
       }
-      if (luma < 60) {
-        rightDarkPixelCount++;
-      }
     }
   }
 
-  const avgLeftGrad = leftEyeSampleCount > 0 ? (leftEyeVerticalGradSum / leftEyeSampleCount) : 10;
-  const avgRightGrad = rightEyeSampleCount > 0 ? (rightEyeVerticalGradSum / rightEyeSampleCount) : 10;
-  const avgEyeGrad = (avgLeftGrad + avgRightGrad) / 2;
+  const avgLeftEyeLuma = leftEyePixelCount > 0 ? leftEyeLumaSum / leftEyePixelCount : 120;
+  const avgRightEyeLuma = rightEyePixelCount > 0 ? rightEyeLumaSum / rightEyePixelCount : 120;
 
-  // Genuine Eye Aspect Ratio (EAR) based on vertical gradient and pupil visibility:
-  // When eyes are closed, vertical edge contrast between iris & sclera vanishes (grad drops < 14)
-  // When eyes are open, sharp contrast produces grad > 22.
-  // Normalized EAR: baseline ~ 0.28, blink < 0.20, wide > 0.35.
-  const rawEAR = 0.10 + (Math.max(0, avgEyeGrad - 8) / 38) * 0.26;
-  const isBlinkDetected = (leftDarkPixelCount < 4 && rightDarkPixelCount < 4) || avgEyeGrad < 12.5;
-  const ear = isBlinkDetected ? 0.14 : Math.max(0.18, Math.min(0.42, rawEAR));
+  // Contrast ratio between the eye socket background and the darkest pupil spot:
+  // When eye is OPEN: the pupil is substantially darker than surrounding sclera/eyelids
+  // (e.g. leftMinLuma is 25-45 while avgEyeLuma is 80-140 => ratio < 0.55).
+  // When eye is BLINKING/CLOSED: eyelid covers iris; contrast vanishes (ratio > 0.72).
+  const leftContrastRatio = leftMinLuma / Math.max(1, avgLeftEyeLuma);
+  const rightContrastRatio = rightMinLuma / Math.max(1, avgRightEyeLuma);
+  const avgContrastRatio = (leftContrastRatio + rightContrastRatio) / 2;
+
+  // Vertical gradient across the pupil center:
+  // Open eyes have strong step edges above and below pupil (sclera -> iris -> eyelid)
+  let eyeVerticalGradSum = 0;
+  let eyeGradSamples = 0;
+  const checkGrad = (px: number, py: number) => {
+    for (let dy = -3; dy <= 3; dy++) {
+      const y = py + dy;
+      if (y > 1 && y < height - 2) {
+        const topIdx = ((y - 1) * width + px) * 4;
+        const botIdx = ((y + 1) * width + px) * 4;
+        const tL = (77 * data[topIdx] + 150 * data[topIdx + 1] + 29 * data[topIdx + 2]) >> 8;
+        const bL = (77 * data[botIdx] + 150 * data[botIdx + 1] + 29 * data[botIdx + 2]) >> 8;
+        eyeVerticalGradSum += Math.abs(bL - tL);
+        eyeGradSamples++;
+      }
+    }
+  };
+  checkGrad(leftPupilX, leftPupilY);
+  checkGrad(rightPupilX, rightPupilY);
+  const avgPupilVerticalGrad = eyeGradSamples > 0 ? eyeVerticalGradSum / eyeGradSamples : 12;
+
+  // Eye Aspect Ratio (EAR) Formulation:
+  // Open baseline: EAR ~ 0.28 - 0.35. Blink / Closed: EAR < 0.18.
+  // When closed, avgContrastRatio is high (> 0.70) and avgPupilVerticalGrad is low (< 10).
+  const eyeOpenScore = Math.max(
+    0.0,
+    Math.min(1.0, (0.75 - avgContrastRatio) * 2.5 + (avgPupilVerticalGrad - 8) / 25)
+  );
+
+  // EAR smoothly scales between 0.10 (fully closed blink) and 0.36 (wide open)
+  const ear = Math.max(0.09, Math.min(0.38, 0.10 + eyeOpenScore * 0.25));
 
   // 4. GLABELLA / BROW FURROW DETECTION (AU4 Corrugator)
   const gY1 = Math.max(0, Math.min(height - 1, Math.round(minY + faceH * 0.14)));
