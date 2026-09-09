@@ -1,6 +1,6 @@
 // ── AffectNet Real-Time Facial Expression, Valence-Arousal Types (Mollahosseini et al., IEEE 2019) ──
 
-export type DiscreteEmotion = 'NEUTRAL' | 'CONFIDENT' | 'STRESSED' | 'HESITANT' | 'THINKING' | 'SURPRISED';
+export type DiscreteEmotion = 'NEUTRAL' | 'CONFIDENT' | 'HAPPY' | 'STRESSED' | 'HESITANT' | 'THINKING' | 'SURPRISED';
 
 export interface ValenceArousal2D {
   valence: number; // -1.0 to +1.0 (Sentiment positivity vs negativity)
@@ -44,4 +44,6 @@ export interface AffectFrameInput {
   valenceLogits?: number[];
   arousalLogits?: number[];
   confidence?: number;
+  smileScore?: number;
+  dominantEmotion?: DiscreteEmotion;
 }

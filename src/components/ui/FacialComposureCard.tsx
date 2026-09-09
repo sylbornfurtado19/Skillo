@@ -22,7 +22,8 @@ function pctToOffset(pct: number) {
 }
 
 const EMOTION_COLORS: Record<DiscreteEmotion, { bar: string; text: string; bg: string }> = {
-  CONFIDENT: { bar: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  HAPPY:     { bar: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  CONFIDENT: { bar: 'bg-teal-400',    text: 'text-teal-400',    bg: 'bg-teal-500/10'    },
   NEUTRAL:   { bar: 'bg-gray-400',    text: 'text-gray-300',    bg: 'bg-gray-500/10'    },
   THINKING:  { bar: 'bg-blue-400',    text: 'text-blue-400',    bg: 'bg-blue-500/10'    },
   HESITANT:  { bar: 'bg-amber-400',   text: 'text-amber-400',   bg: 'bg-amber-500/10'   },
@@ -147,7 +148,7 @@ export default function FacialComposureCard({ metrics }: FacialComposureCardProp
           {/* Composure Signal (Beta) Distribution Bars */}
           <div className="w-full space-y-2 border-t border-white/5 pt-3">
             <span className="text-[9px] text-gray-500 font-mono uppercase block">Composure Signal (Beta) Distribution</span>
-            {(['CONFIDENT', 'THINKING', 'NEUTRAL', 'HESITANT', 'STRESSED'] as DiscreteEmotion[]).map(emo => {
+            {(['HAPPY', 'CONFIDENT', 'THINKING', 'NEUTRAL', 'HESITANT', 'STRESSED', 'SURPRISED'] as DiscreteEmotion[]).map(emo => {
               const pct = dominantEmotionDistribution[emo] ?? 0;
               const cfg = EMOTION_COLORS[emo];
               return (

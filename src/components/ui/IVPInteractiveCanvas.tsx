@@ -18,6 +18,7 @@ import {
   type SobelGradientResult,
   type TemporalMADResult,
 } from '../../lib/services/ivpDiagnosticKernels';
+import { extractFacialExpressions } from '@/lib/services/ivpExpressionKernel';
 
 // ---------------------------------------------------------------------------
 // Internal canvas dimensions for the diagnostic processing pipeline.
@@ -428,14 +429,28 @@ export default function IVPInteractiveCanvas({
     const fcY = sf.cy + pitchOffset;
     const s = sf.scale;
 
-    // Organic blink & speech articulation dynamics
-    const blinkCycle = Math.sin(tSec * 1.85);
-    const isBlink = blinkCycle > 0.93;
-    const eyeAperture = isBlink ? 2 : 11 * s;
+    // Genuine live facial expression & geometric aperture extraction
+    const liveExpr = !isTargetLost
+      ? extractFacialExpressions(rawImgData.data, PROC_W, PROC_H)
+      : null;
 
-    const speechCycle = Math.abs(Math.sin(tSec * 3.4));
-    const isSpeaking = speechCycle > 0.35;
-    const mouthAperture = 4 + speechCycle * 18 * s;
+    // Real eye aperture & blink from live camera pixels (EAR < 0.20 indicates blink)
+    const isBlink = liveExpr ? liveExpr.ear < 0.20 : false;
+    const eyeAperture = isBlink
+      ? 2
+      : liveExpr
+      ? Math.max(3, liveExpr.eyeAperturePx * 0.9 * s)
+      : 10 * s;
+
+    // Real mouth aperture from live camera pixels (speaking / opening mouth)
+    const mouthAperture = liveExpr
+      ? Math.max(3, liveExpr.mouthAperturePx * 0.8 * s)
+      : 6 * s;
+    const isSpeaking = liveExpr ? liveExpr.mar >= 0.22 : false;
+
+    // Real smile elevation and lateral stretch
+    const smileLift = liveExpr ? liveExpr.smileScore * 7 * s : 0;
+    const mouthHalfW = liveExpr ? (28 + liveExpr.smileScore * 8) * s : 28 * s;
 
     // Eye Geometry Points (6 points per eye)
     const eyeDist = 48 * s;
@@ -466,11 +481,11 @@ export default function IVPInteractiveCanvas({
     // Mouth / Lip Geometry Points (8 Points)
     const mouthCenter: Point2D = { x: fcX, y: fcY + 54 * s };
     const mouthPts: Point2D[] = [
-      { x: mouthCenter.x - 28 * s, y: mouthCenter.y },
+      { x: mouthCenter.x - mouthHalfW, y: mouthCenter.y - smileLift },
       { x: mouthCenter.x - 14 * s, y: mouthCenter.y - mouthAperture * 0.6 },
       { x: mouthCenter.x,          y: mouthCenter.y - mouthAperture * 0.7 },
       { x: mouthCenter.x + 14 * s, y: mouthCenter.y - mouthAperture * 0.6 },
-      { x: mouthCenter.x + 28 * s, y: mouthCenter.y },
+      { x: mouthCenter.x + mouthHalfW, y: mouthCenter.y - smileLift },
       { x: mouthCenter.x + 14 * s, y: mouthCenter.y + mouthAperture * 0.8 },
       { x: mouthCenter.x,          y: mouthCenter.y + mouthAperture * 0.9 },
       { x: mouthCenter.x - 14 * s, y: mouthCenter.y + mouthAperture * 0.8 },

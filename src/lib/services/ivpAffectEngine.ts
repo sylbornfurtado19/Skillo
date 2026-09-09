@@ -68,9 +68,16 @@ export function calculateComposureScore(v: number, a: number): number {
   return Math.round(score * 10) / 10;
 }
 
-export function classifyDiscreteEmotion(v: number, a: number): DiscreteEmotion {
+export function classifyDiscreteEmotion(
+  v: number,
+  a: number,
+  smileScore?: number
+): DiscreteEmotion {
+  // Direct smile trigger
+  if (smileScore !== undefined && smileScore >= 0.32) return 'HAPPY';
+  if (v >= 0.48 && a >= 0.15) return 'HAPPY';
+
   // Conservative emotion thresholds: heavily biased toward NEUTRAL to prevent false commitments
-  // to specific emotion labels (e.g., CONFIDENT/HAPPY) that contradict actual facial composure.
   if (a >= 0.40 && v <= -0.30) return 'STRESSED';
   if (a >= 0.75) return 'SURPRISED';
   if (a <= -0.35 && v <= -0.30) return 'HESITANT';
@@ -98,7 +105,8 @@ export function processAffectFrame(input: AffectFrameInput): AffectFrameResult {
     arousal: Math.round(arousal * 100) / 100,
   };
 
-  const dominantEmotion = classifyDiscreteEmotion(valence, arousal);
+  const dominantEmotion =
+    input.dominantEmotion ?? classifyDiscreteEmotion(valence, arousal, input.smileScore);
   const composureScore = calculateComposureScore(valence, arousal);
   const confidenceScore = Math.min(1.0, Math.max(0.0, input.confidence ?? 0.85));
 
@@ -192,7 +200,8 @@ export function processAffectFrames(
 ): AffectiveSessionMetrics {
   const defaultDist: Record<DiscreteEmotion, number> = {
     NEUTRAL: 40,
-    CONFIDENT: 35,
+    CONFIDENT: 25,
+    HAPPY: 10,
     STRESSED: 5,
     HESITANT: 10,
     THINKING: 10,
@@ -224,6 +233,7 @@ export function processAffectFrames(
   const emotionCounts: Record<DiscreteEmotion, number> = {
     NEUTRAL: 0,
     CONFIDENT: 0,
+    HAPPY: 0,
     STRESSED: 0,
     HESITANT: 0,
     THINKING: 0,
@@ -237,6 +247,7 @@ export function processAffectFrames(
   const dominantEmotionDistribution: Record<DiscreteEmotion, number> = {
     NEUTRAL: Math.round((emotionCounts.NEUTRAL / total) * 100),
     CONFIDENT: Math.round((emotionCounts.CONFIDENT / total) * 100),
+    HAPPY: Math.round((emotionCounts.HAPPY / total) * 100),
     STRESSED: Math.round((emotionCounts.STRESSED / total) * 100),
     HESITANT: Math.round((emotionCounts.HESITANT / total) * 100),
     THINKING: Math.round((emotionCounts.THINKING / total) * 100),

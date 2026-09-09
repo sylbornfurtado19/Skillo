@@ -31,6 +31,7 @@ import {
   detectStressSpikes,
   processAffectFrames,
 } from '../src/lib/services/ivpAffectEngine';
+import { extractFacialExpressions } from '../src/lib/services/ivpExpressionKernel';
 import {
   calculateL2Distance,
   evaluateSyncStatus,
@@ -213,6 +214,21 @@ describe('Engine 9 — Facial Affect Engine', () => {
     ];
     const res = processAffectFrames(inputs);
     expect(res.stressSpikeEvents.length).toBe(1);
+  });
+
+  it('classifies HAPPY when smiling or high valence is present', () => {
+    expect(classifyDiscreteEmotion(0.55, 0.25)).toBe('HAPPY');
+    expect(classifyDiscreteEmotion(0.20, 0.10, 0.45)).toBe('HAPPY');
+  });
+
+  it('extractFacialExpressions gracefully handles black/empty frames', () => {
+    const blackFrame = new Uint8ClampedArray(320 * 240 * 4);
+    const result = extractFacialExpressions(blackFrame, 320, 240);
+    expect(result.faceDetected).toBe(false);
+    expect(result.dominantEmotion).toBe('NEUTRAL');
+    expect(result.confidence).toBe(0.0);
+    expect(result.ear).toBeGreaterThan(0);
+    expect(result.mar).toBeGreaterThan(0);
   });
 });
 

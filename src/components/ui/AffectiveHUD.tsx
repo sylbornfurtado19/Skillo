@@ -20,6 +20,7 @@ const EMOTION_BADGES: Record<
   string,
   { label: string; icon: string; color: string; bg: string }
 > = {
+  HAPPY:     { label: 'Composure Signal (Beta): Positive & Happy', icon: '😄', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
   CONFIDENT: { label: 'Composure Signal (Beta): Calm',            icon: '🟢', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
   STRESSED:  { label: 'Composure Signal (Beta): High Activation', icon: '⚠️', color: 'text-red-400',     bg: 'bg-red-500/10 border-red-500/20'     },
   HESITANT:  { label: 'Composure Signal (Beta): Subtle Shift',    icon: '❓', color: 'text-amber-400',   bg: 'bg-amber-500/10 border-amber-500/20' },

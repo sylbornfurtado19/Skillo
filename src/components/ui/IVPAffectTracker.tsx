@@ -16,11 +16,12 @@ import React, {
   forwardRef,
   useState,
 } from 'react';
+import { extractFacialExpressions } from '@/lib/services/ivpExpressionKernel';
 import { processAffectFrame } from '@/lib/services/ivpAffectEngine';
 import { AffectiveEMA, CategoricalConsensusSmoother } from '@/lib/services/temporalSmoothing';
 import type { AffectFrameInput, AffectFrameResult } from '@/types/index';
 
-const SAMPLE_FPS = 2;
+const SAMPLE_FPS = 4;
 const RAF_SKIP = Math.round(60 / SAMPLE_FPS);
 
 export interface IVPAffectTrackerHandle {
@@ -34,48 +35,6 @@ interface IVPAffectTrackerProps {
   onFrame?: (frame: AffectFrameResult) => void;
   visible?: boolean;
   className?: string;
-}
-
-function estimateValenceArousal(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number
-): { valence: number; arousal: number; confidence: number } {
-  try {
-    const imageData = ctx.getImageData(0, 0, w, Math.min(h, h * 0.8));
-    const data = imageData.data;
-    let rSum = 0, gSum = 0, bSum = 0, count = 0;
-    const len = data.length;
-
-    for (let i = 0; i < len; i += 16) {
-      rSum += data[i];
-      gSum += data[i + 1];
-      bSum += data[i + 2];
-      count++;
-    }
-
-    // Zero-frame / occlusion protection: return baseline with confidence = 0 if frame missing
-    if (count === 0) return { valence: 0.0, arousal: 0.0, confidence: 0.0 };
-
-    const rAvg = rSum / count;
-    const gAvg = gSum / count;
-    const bAvg = bSum / count;
-
-    // Ambient color temperature compensation: normalize warmth against average green baseline
-    const normalizedWarmth = (rAvg - gAvg * 0.9 - bAvg * 0.1) / 255;
-    const brightness = (rAvg + gAvg + bAvg) / 765;
-
-    const valence = Math.max(-0.8, Math.min(0.8, normalizedWarmth * 1.2 + (brightness - 0.5) * 0.3));
-    const arousal = Math.max(-0.8, Math.min(0.8, (brightness - 0.45) * 1.0));
-
-    return {
-      valence: Math.round(valence * 100) / 100,
-      arousal: Math.round(arousal * 100) / 100,
-      confidence: 0.82,
-    };
-  } catch {
-    return { valence: 0.0, arousal: 0.0, confidence: 0.0 };
-  }
 }
 
 const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProps>(
@@ -113,14 +72,17 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
             samplerCanvas.height = h;
             samplerCtx.drawImage(video, 0, 0, w, h);
 
-            const { valence, arousal, confidence } = estimateValenceArousal(samplerCtx, w, h);
+            const imgData = samplerCtx.getImageData(0, 0, w, h);
+            const expression = extractFacialExpressions(imgData.data, w, h);
             const timestampMs = Date.now() - sessionStartRef.current;
 
             const input: AffectFrameInput = {
               timestampMs,
-              valence,
-              arousal,
-              confidence,
+              valence: expression.valenceArousal.valence,
+              arousal: expression.valenceArousal.arousal,
+              confidence: expression.confidence,
+              smileScore: expression.smileScore,
+              dominantEmotion: expression.dominantEmotion,
             };
 
             framesRef.current.push(input);
