@@ -311,9 +311,9 @@ export default function IVPLab() {
                 if (metrics.ear !== undefined) {
                   setCurrentEAR(metrics.ear);
                   const now = performance.now();
-                  // Hysteresis thresholding: trigger close at < 0.20, reopen at >= 0.22, with 80ms debounce
-                  if (metrics.ear < 0.20 && !wasEyeClosedRef.current) {
-                    if (now - lastBlinkTimeRef.current > 80) {
+                  // Hysteresis thresholding: trigger close at < 0.22, reopen at >= 0.24, with 70ms debounce
+                  if (metrics.ear < 0.22 && !wasEyeClosedRef.current) {
+                    if (now - lastBlinkTimeRef.current > 70) {
                       wasEyeClosedRef.current = true;
                       lastBlinkTimeRef.current = now;
                       setBlinkCount((prev) => prev + 1);
@@ -321,7 +321,7 @@ export default function IVPLab() {
                       blinkTimestampsRef.current = blinkTimestampsRef.current.filter((t) => now - t <= 60000);
                       setBlinkRatePerMin(blinkTimestampsRef.current.length);
                     }
-                  } else if (metrics.ear >= 0.22 && wasEyeClosedRef.current) {
+                  } else if (metrics.ear >= 0.24 && wasEyeClosedRef.current) {
                     wasEyeClosedRef.current = false;
                   }
                 }

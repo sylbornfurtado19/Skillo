@@ -302,100 +302,136 @@ export function extractFacialExpressions(
   const smileElevation = Math.max(0, Math.min(1, (cornerElevation + 0.04) / 0.14));
   const smileScore = Math.max(0.0, Math.min(1.0, smileStretch * 0.50 + smileElevation * 0.50));
 
-  // 3. UPPER-FACE EYE ROI & AUTHENTIC EYE/PUPIL LOCALIZATION
-  // Human eyes reside symmetrically in upper face: y between 0.34*faceH and 0.48*faceH from face top
-  // (strictly below the eyebrows which sit at 0.24-0.34*faceH)
-  const eyeY1 = Math.max(0, Math.min(height - 1, Math.round(faceTopY + faceH * 0.34)));
-  const eyeY2 = Math.max(eyeY1 + 6, Math.min(height, Math.round(faceTopY + faceH * 0.48)));
+  // 3. UPPER-FACE EYE ROI & AUTHENTIC EYE/PUPIL (RETINA) LOCALIZATION
+  // Human eyes reside symmetrically in upper face: y between 0.33*faceH and 0.49*faceH from face top
+  // (strictly below the eyebrows which sit at 0.24-0.32*faceH)
+  const eyeY1 = Math.max(0, Math.min(height - 1, Math.round(faceTopY + faceH * 0.33)));
+  const eyeY2 = Math.max(eyeY1 + 6, Math.min(height, Math.round(faceTopY + faceH * 0.49)));
 
   // Left eye region (observer's left)
-  const leX1 = Math.max(0, Math.min(width - 1, Math.round(cx - faceW * 0.36)));
-  const leX2 = Math.max(leX1 + 6, Math.min(width, Math.round(cx - faceW * 0.07)));
+  const leX1 = Math.max(0, Math.min(width - 1, Math.round(cx - faceW * 0.35)));
+  const leX2 = Math.max(leX1 + 6, Math.min(width, Math.round(cx - faceW * 0.08)));
   // Right eye region (observer's right)
-  const reX1 = Math.max(0, Math.min(width - 1, Math.round(cx + faceW * 0.07)));
-  const reX2 = Math.max(reX1 + 6, Math.min(width, Math.round(cx + faceW * 0.36)));
-
-  // Find minimum luminance (darkest pupil/iris center) in each eye box
-  let leftMinLuma = 255, leftPupilX = Math.round((leX1 + leX2) / 2), leftPupilY = Math.round((eyeY1 + eyeY2) / 2);
-  let rightMinLuma = 255, rightPupilX = Math.round((reX1 + reX2) / 2), rightPupilY = Math.round((eyeY1 + eyeY2) / 2);
+  const reX1 = Math.max(0, Math.min(width - 1, Math.round(cx + faceW * 0.08)));
+  const reX2 = Math.max(reX1 + 6, Math.min(width, Math.round(cx + faceW * 0.35)));
 
   let leftEyeLumaSum = 0, leftEyePixelCount = 0;
   let rightEyeLumaSum = 0, rightEyePixelCount = 0;
 
-  // Scan Left Eye to locate pupil minimum and average luminance
   for (let y = eyeY1; y < eyeY2; y++) {
     const row = y * width;
     for (let x = leX1; x < leX2; x++) {
       const idx = (row + x) * 4;
-      const luma = (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
-      leftEyeLumaSum += luma;
+      leftEyeLumaSum += (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
       leftEyePixelCount++;
-      if (luma < leftMinLuma) {
-        leftMinLuma = luma;
-        leftPupilX = x;
-        leftPupilY = y;
-      }
     }
-  }
-
-  // Scan Right Eye to locate pupil minimum and average luminance
-  for (let y = eyeY1; y < eyeY2; y++) {
-    const row = y * width;
     for (let x = reX1; x < reX2; x++) {
       const idx = (row + x) * 4;
-      const luma = (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
-      rightEyeLumaSum += luma;
+      rightEyeLumaSum += (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
       rightEyePixelCount++;
-      if (luma < rightMinLuma) {
-        rightMinLuma = luma;
-        rightPupilX = x;
-        rightPupilY = y;
-      }
     }
   }
 
   const avgLeftEyeLuma = leftEyePixelCount > 0 ? leftEyeLumaSum / leftEyePixelCount : 120;
   const avgRightEyeLuma = rightEyePixelCount > 0 ? rightEyeLumaSum / rightEyePixelCount : 120;
 
-  // Contrast ratio between the eye socket background and the darkest pupil spot:
-  // When eye is OPEN: the pupil is substantially darker than surrounding sclera/eyelids
-  // (e.g. leftMinLuma is 25-45 while avgEyeLuma is 80-140 => ratio < 0.55).
-  // When eye is BLINKING/CLOSED: eyelid covers iris; contrast vanishes (ratio > 0.72).
-  const leftContrastRatio = leftMinLuma / Math.max(1, avgLeftEyeLuma);
-  const rightContrastRatio = rightMinLuma / Math.max(1, avgRightEyeLuma);
-  const avgContrastRatio = (leftContrastRatio + rightContrastRatio) / 2;
+  // Adaptive iris darkness threshold relative to ocular socket luminance
+  const leftIrisThresh = Math.max(30, Math.min(85, avgLeftEyeLuma * 0.68));
+  const rightIrisThresh = Math.max(30, Math.min(85, avgRightEyeLuma * 0.68));
 
-  // Vertical gradient across the pupil center:
-  // Open eyes have strong step edges above and below pupil (sclera -> iris -> eyelid)
-  let eyeVerticalGradSum = 0;
-  let eyeGradSamples = 0;
-  const checkGrad = (px: number, py: number) => {
-    for (let dy = -3; dy <= 3; dy++) {
-      const y = py + dy;
-      if (y > 1 && y < height - 2) {
-        const topIdx = ((y - 1) * width + px) * 4;
-        const botIdx = ((y + 1) * width + px) * 4;
-        const tL = (77 * data[topIdx] + 150 * data[topIdx + 1] + 29 * data[topIdx + 2]) >> 8;
-        const bL = (77 * data[botIdx] + 150 * data[botIdx + 1] + 29 * data[botIdx + 2]) >> 8;
-        eyeVerticalGradSum += Math.abs(bL - tL);
-        eyeGradSamples++;
+  // QUADRATIC DARKNESS CENTROID (Sub-pixel retina & iris tracking)
+  // Instead of a single noisy min-pixel, computes the center of gravity of the circular iris disc
+  let leftDarkWeightSum = 0;
+  let leftWSumX = 0, leftWSumY = 0;
+  let leftDarkCount = 0;
+
+  for (let y = eyeY1; y < eyeY2; y++) {
+    const row = y * width;
+    for (let x = leX1; x < leX2; x++) {
+      const idx = (row + x) * 4;
+      const l = (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
+      if (l < leftIrisThresh) {
+        const diff = leftIrisThresh - l;
+        const w = diff * diff;
+        leftWSumX += x * w;
+        leftWSumY += y * w;
+        leftDarkWeightSum += w;
+        leftDarkCount++;
       }
     }
-  };
-  checkGrad(leftPupilX, leftPupilY);
-  checkGrad(rightPupilX, rightPupilY);
-  const avgPupilVerticalGrad = eyeGradSamples > 0 ? eyeVerticalGradSum / eyeGradSamples : 12;
+  }
 
-  // Eye Aspect Ratio (EAR) Formulation:
-  // Open baseline: EAR ~ 0.28 - 0.35. Blink / Closed: EAR < 0.18.
-  // When closed, avgContrastRatio is high (> 0.70) and avgPupilVerticalGrad is low (< 10).
-  const eyeOpenScore = Math.max(
-    0.0,
-    Math.min(1.0, (0.75 - avgContrastRatio) * 2.5 + (avgPupilVerticalGrad - 8) / 25)
-  );
+  let rightDarkWeightSum = 0;
+  let rightWSumX = 0, rightWSumY = 0;
+  let rightDarkCount = 0;
 
-  // EAR smoothly scales between 0.10 (fully closed blink) and 0.36 (wide open)
-  const ear = Math.max(0.09, Math.min(0.38, 0.10 + eyeOpenScore * 0.25));
+  for (let y = eyeY1; y < eyeY2; y++) {
+    const row = y * width;
+    for (let x = reX1; x < reX2; x++) {
+      const idx = (row + x) * 4;
+      const l = (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
+      if (l < rightIrisThresh) {
+        const diff = rightIrisThresh - l;
+        const w = diff * diff;
+        rightWSumX += x * w;
+        rightWSumY += y * w;
+        rightDarkWeightSum += w;
+        rightDarkCount++;
+      }
+    }
+  }
+
+  // Active pupil/retina coordinates
+  const leftPupilX = (leftDarkCount >= 5 && leftDarkWeightSum > 0)
+    ? Math.round(leftWSumX / leftDarkWeightSum)
+    : Math.round((leX1 + leX2) / 2);
+  const leftPupilY = (leftDarkCount >= 5 && leftDarkWeightSum > 0)
+    ? Math.round(leftWSumY / leftDarkWeightSum)
+    : Math.round((eyeY1 + eyeY2) / 2);
+
+  const rightPupilX = (rightDarkCount >= 5 && rightDarkWeightSum > 0)
+    ? Math.round(rightWSumX / rightDarkWeightSum)
+    : Math.round((reX1 + reX2) / 2);
+  const rightPupilY = (rightDarkCount >= 5 && rightDarkWeightSum > 0)
+    ? Math.round(rightWSumY / rightDarkWeightSum)
+    : Math.round((eyeY1 + eyeY2) / 2);
+
+  // VERTICAL IRIS APERTURE (High-confidence blink & EAR detection)
+  // When eyes are open, the vertical span of dark iris pixels at pupil column is 5-10px.
+  // When eyes blink/close, the eyelid covers the iris (span collapses to <= 2px or darkCount < 5).
+  let leftAperture = 0;
+  if (leftDarkCount >= 5) {
+    for (let dy = -6; dy <= 6; dy++) {
+      const y = leftPupilY + dy;
+      if (y >= eyeY1 && y < eyeY2) {
+        const idx = (y * width + leftPupilX) * 4;
+        const l = (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
+        if (l < leftIrisThresh + 8) leftAperture++;
+      }
+    }
+  }
+
+  let rightAperture = 0;
+  if (rightDarkCount >= 5) {
+    for (let dy = -6; dy <= 6; dy++) {
+      const y = rightPupilY + dy;
+      if (y >= eyeY1 && y < eyeY2) {
+        const idx = (y * width + rightPupilX) * 4;
+        const l = (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
+        if (l < rightIrisThresh + 8) rightAperture++;
+      }
+    }
+  }
+
+  const avgAperture = (leftAperture + rightAperture) / 2;
+  const eyeW = (leX2 - leX1) * 0.70;
+
+  // Soukupová & Čech (2016) grounded EAR calculation:
+  // Closed / Blink: EAR ~ 0.08 - 0.14. Open: EAR ~ 0.28 - 0.36.
+  const isEyeClosed = leftDarkCount < 5 || rightDarkCount < 5 || avgAperture <= 2;
+  const ear = isEyeClosed
+    ? 0.10
+    : Math.max(0.24, Math.min(0.38, (avgAperture / eyeW) * 1.05));
 
   // 4. GLABELLA / BROW FURROW DETECTION (AU4 Corrugator)
   const gY1 = Math.max(0, Math.min(height - 1, Math.round(minY + faceH * 0.14)));

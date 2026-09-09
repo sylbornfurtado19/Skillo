@@ -549,8 +549,8 @@ export default function IVPInteractiveCanvas({
       targetMouthCenter = mCenter;
     }
 
-    // High-responsiveness temporal EMA filter (alpha = 0.55 for immediate tracking without jitter)
-    const landmarkAlpha = sm.initialized ? 0.55 : 1.0;
+    // High-responsiveness temporal EMA filter (alpha = 0.70 for immediate pupil/retina tracking without jitter)
+    const landmarkAlpha = sm.initialized ? 0.70 : 1.0;
     const leftEyePts = smoothPoints(targetLeftEye, sm.leftEyePts, landmarkAlpha);
     const rightEyePts = smoothPoints(targetRightEye, sm.rightEyePts, landmarkAlpha);
     const mouthPts = smoothPoints(targetMouth, sm.mouthPts, landmarkAlpha);
@@ -587,7 +587,7 @@ export default function IVPInteractiveCanvas({
     // Genuine live physiological metrics directly from authentic webcam pixels
     const liveEAR = liveExpr ? liveExpr.ear : Math.round(((calculateEAR(leftEyePts) + calculateEAR(rightEyePts)) / 2) * 1000) / 1000;
     const liveMAR = liveExpr ? liveExpr.mar : Math.round(calculateMAR([mouthPts[0], mouthPts[2], mouthPts[4], mouthPts[6]]) * 1000) / 1000;
-    const isBlink = liveEAR < 0.20;
+    const isBlink = liveEAR < 0.22;
     const isSpeaking = liveMAR >= 0.22;
 
     // Calculate dynamic bounding box directly from detected face coordinates
@@ -729,13 +729,13 @@ export default function IVPInteractiveCanvas({
           ctx.lineWidth = 1.6;
           ctx.stroke();
 
-          // Pupil Center directly tracked from optical image minimum
+          // Pupil Center directly tracked from optical image darkness centroid
           const pupilBase = isLeft ? leftPupil : rightPupil;
-          const pCenterX = pupilBase.x + gazeCoords.x * 2;
-          const pCenterY = pupilBase.y + gazeCoords.y * 2;
+          const pCenterX = pupilBase.x;
+          const pCenterY = pupilBase.y;
           ctx.fillStyle = '#22D3EE';
           ctx.beginPath();
-          ctx.arc(pCenterX, pCenterY, 2.8 * s, 0, 2 * Math.PI);
+          ctx.arc(pCenterX, pCenterY, 3.2 * s, 0, 2 * Math.PI);
           ctx.fill();
         }
       };
@@ -966,10 +966,10 @@ export default function IVPInteractiveCanvas({
       targetLostRef.current !== isTargetLost ||
       !lastMetricsDispatchRef.current ||
       nowMs - lastMetricsDispatchRef.current >= 65 ||
-      (liveEAR < 0.21 && !wasBlinkingRef.current) ||
-      (liveEAR >= 0.21 && wasBlinkingRef.current)
+      (liveEAR < 0.22 && !wasBlinkingRef.current) ||
+      (liveEAR >= 0.22 && wasBlinkingRef.current)
     ) {
-      wasBlinkingRef.current = liveEAR < 0.21;
+      wasBlinkingRef.current = liveEAR < 0.22;
       lastMetricsDispatchRef.current = nowMs;
       targetLostRef.current = isTargetLost;
       setLiveMetrics(metrics);
