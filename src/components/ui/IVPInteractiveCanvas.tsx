@@ -104,6 +104,29 @@ export default function IVPInteractiveCanvas({
     maxY: 360,
   });
 
+  // ── Persistent Landmark EMA State (Zero-Jitter Optical Clinging) ──────────
+  const smoothedLandmarksRef = useRef<{
+    leftEyePts: Point2D[];
+    rightEyePts: Point2D[];
+    mouthPts: Point2D[];
+    noseBridge: Point2D[];
+    noseTip: Point2D;
+    leftPupil: Point2D;
+    rightPupil: Point2D;
+    mouthCenter: Point2D;
+    initialized: boolean;
+  }>({
+    leftEyePts: [],
+    rightEyePts: [],
+    mouthPts: [],
+    noseBridge: [],
+    noseTip: { x: 320, y: 240 },
+    leftPupil: { x: 260, y: 200 },
+    rightPupil: { x: 380, y: 200 },
+    mouthCenter: { x: 320, y: 300 },
+    initialized: false,
+  });
+
   // ── Split-screen state ────────────────────────────────────────────────────
   const splitPercentRef = useRef<number>(50);
   const [splitPercent, setSplitPercent] = useState<number>(50);
@@ -401,109 +424,164 @@ export default function IVPInteractiveCanvas({
     ctx.restore();
 
     // ── 10. DYNAMIC 68-POINT GEOMETRIC FACIAL LANDMARK TRACKING ENGINE ──────
-    // Calculate face center dynamically based on detected skin centroid
-    let targetCX = CSS_W * 0.5;
-    let targetCY = CSS_H * 0.46;
-    let targetScale = 1.0;
-
-    if (otsuRes && otsuRes.skinPixelCount > 300) {
-      const mappedX = (otsuRes.centroidX / PROC_W) * CSS_W;
-      const mappedY = (otsuRes.centroidY / PROC_H) * CSS_H;
-      targetCX = Math.max(CSS_W * 0.25, Math.min(CSS_W * 0.75, mappedX));
-      targetCY = Math.max(CSS_H * 0.25, Math.min(CSS_H * 0.70, mappedY));
-      targetScale = Math.max(0.85, Math.min(1.25, Math.sqrt(otsuRes.skinPixelCount / 9000)));
-    }
-
-    // Smooth head position with EMA filter (alpha = 0.35)
-    const sf = smoothedFaceRef.current;
-    sf.cx = sf.cx * 0.65 + targetCX * 0.35;
-    sf.cy = sf.cy * 0.65 + targetCY * 0.35;
-    sf.scale = sf.scale * 0.7 + targetScale * 0.3;
-
-    const tSec = performance.now() / 1000;
-    const yawOffset = (poseAngles.yaw || 0) * 1.8;
-    const pitchOffset = (poseAngles.pitch || 0) * 1.5;
-    const rollRad = ((poseAngles.roll || 0) * Math.PI) / 180;
-
-    const fcX = sf.cx + yawOffset;
-    const fcY = sf.cy + pitchOffset;
-    const s = sf.scale;
-
-    // Genuine live facial expression & geometric aperture extraction
+    // Run real-time pixel extraction on every raw frame (sub-millisecond pure TS)
     const liveExpr = !isTargetLost
       ? extractFacialExpressions(rawImgData.data, PROC_W, PROC_H)
       : null;
 
-    // Real eye aperture & blink from live camera pixels (EAR < 0.20 indicates blink)
-    const isBlink = liveExpr ? liveExpr.ear < 0.20 : false;
-    const eyeAperture = isBlink
-      ? 2
-      : liveExpr
-      ? Math.max(3, liveExpr.eyeAperturePx * 0.9 * s)
-      : 10 * s;
+    // Calculate face center and scale directly from live camera detection
+    let targetCX = CSS_W * 0.5;
+    let targetCY = CSS_H * 0.46;
+    let targetScale = 1.0;
 
-    // Real mouth aperture from live camera pixels (speaking / opening mouth)
-    const mouthAperture = liveExpr
-      ? Math.max(3, liveExpr.mouthAperturePx * 0.8 * s)
-      : 6 * s;
-    const isSpeaking = liveExpr ? liveExpr.mar >= 0.22 : false;
+    if (liveExpr && liveExpr.faceDetected) {
+      const fb = liveExpr.faceBox;
+      targetCX = ((fb.x + fb.width * 0.5) / PROC_W) * CSS_W;
+      targetCY = ((fb.y + fb.height * 0.5) / PROC_H) * CSS_H;
+      targetScale = Math.max(0.75, Math.min(1.4, (fb.width / PROC_W) * 2.0));
+    } else if (otsuRes && otsuRes.skinPixelCount > 300) {
+      const mappedX = (otsuRes.centroidX / PROC_W) * CSS_W;
+      const mappedY = (otsuRes.centroidY / PROC_H) * CSS_H;
+      targetCX = Math.max(CSS_W * 0.20, Math.min(CSS_W * 0.80, mappedX));
+      targetCY = Math.max(CSS_H * 0.20, Math.min(CSS_H * 0.80, mappedY));
+      targetScale = Math.max(0.85, Math.min(1.25, Math.sqrt(otsuRes.skinPixelCount / 9000)));
+    }
 
-    // Real smile elevation and lateral stretch
-    const smileLift = liveExpr ? liveExpr.smileScore * 7 * s : 0;
-    const mouthHalfW = liveExpr ? (28 + liveExpr.smileScore * 8) * s : 28 * s;
+    // Smooth head position with responsive EMA filter (alpha = 0.40)
+    const sf = smoothedFaceRef.current;
+    sf.cx = sf.cx * 0.60 + targetCX * 0.40;
+    sf.cy = sf.cy * 0.60 + targetCY * 0.40;
+    sf.scale = sf.scale * 0.70 + targetScale * 0.30;
 
-    // Eye Geometry Points (6 points per eye)
-    const eyeDist = 48 * s;
-    const eyeY = fcY - 26 * s;
+    const s = sf.scale;
 
-    // Left Eye Socket (6 Points)
-    const leCenter: Point2D = { x: fcX - eyeDist, y: eyeY };
-    const leftEyePts: Point2D[] = [
-      { x: leCenter.x - 18 * s, y: leCenter.y },
-      { x: leCenter.x - 9 * s,  y: leCenter.y - eyeAperture * 0.8 },
-      { x: leCenter.x + 9 * s,  y: leCenter.y - eyeAperture * 0.8 },
-      { x: leCenter.x + 18 * s, y: leCenter.y },
-      { x: leCenter.x + 9 * s,  y: leCenter.y + eyeAperture * 0.6 },
-      { x: leCenter.x - 9 * s,  y: leCenter.y + eyeAperture * 0.6 },
-    ];
+    // Coordinate mapping factor from PROC resolution (320x240) to display CSS canvas (640x480)
+    const scaleX = CSS_W / PROC_W;
+    const scaleY = CSS_H / PROC_H;
 
-    // Right Eye Socket (6 Points)
-    const reCenter: Point2D = { x: fcX + eyeDist, y: eyeY };
-    const rightEyePts: Point2D[] = [
-      { x: reCenter.x - 18 * s, y: reCenter.y },
-      { x: reCenter.x - 9 * s,  y: reCenter.y - eyeAperture * 0.8 },
-      { x: reCenter.x + 9 * s,  y: reCenter.y - eyeAperture * 0.8 },
-      { x: reCenter.x + 18 * s, y: reCenter.y },
-      { x: reCenter.x + 9 * s,  y: reCenter.y + eyeAperture * 0.6 },
-      { x: reCenter.x - 9 * s,  y: reCenter.y + eyeAperture * 0.6 },
-    ];
+    // Retrieve detected landmarks or fallback
+    const rawLandmarks = liveExpr?.landmarks;
+    const sm = smoothedLandmarksRef.current;
 
-    // Mouth / Lip Geometry Points (8 Points)
-    const mouthCenter: Point2D = { x: fcX, y: fcY + 54 * s };
-    const mouthPts: Point2D[] = [
-      { x: mouthCenter.x - mouthHalfW, y: mouthCenter.y - smileLift },
-      { x: mouthCenter.x - 14 * s, y: mouthCenter.y - mouthAperture * 0.6 },
-      { x: mouthCenter.x,          y: mouthCenter.y - mouthAperture * 0.7 },
-      { x: mouthCenter.x + 14 * s, y: mouthCenter.y - mouthAperture * 0.6 },
-      { x: mouthCenter.x + mouthHalfW, y: mouthCenter.y - smileLift },
-      { x: mouthCenter.x + 14 * s, y: mouthCenter.y + mouthAperture * 0.8 },
-      { x: mouthCenter.x,          y: mouthCenter.y + mouthAperture * 0.9 },
-      { x: mouthCenter.x - 14 * s, y: mouthCenter.y + mouthAperture * 0.8 },
-    ];
+    // Helper: smooth landmark array using responsive EMA filter
+    const smoothPoints = (targetPts: Point2D[], storedPts: Point2D[], alpha: number): Point2D[] => {
+      if (!storedPts || storedPts.length !== targetPts.length) {
+        return targetPts.map(p => ({ x: p.x, y: p.y }));
+      }
+      return targetPts.map((t, idx) => ({
+        x: storedPts[idx].x * (1 - alpha) + t.x * alpha,
+        y: storedPts[idx].y * (1 - alpha) + t.y * alpha,
+      }));
+    };
 
-    // Nose Bridge & Tip (Nose Tip anchors the 3D Euler tripod)
-    const noseTip: Point2D = { x: fcX, y: fcY + 12 * s };
-    const noseBridge: Point2D[] = [
-      { x: fcX, y: fcY - 24 * s },
-      { x: fcX, y: fcY - 6 * s },
-      noseTip,
-      { x: fcX - 10 * s, y: fcY + 14 * s },
-      { x: fcX + 10 * s, y: fcY + 14 * s },
-    ];
+    // Calculate un-smoothed target points directly mapped from authentic camera pixels
+    let targetLeftEye: Point2D[];
+    let targetRightEye: Point2D[];
+    let targetMouth: Point2D[];
+    let targetNoseBridge: Point2D[];
+    let targetNoseTip: Point2D;
+    let targetLeftPupil: Point2D;
+    let targetRightPupil: Point2D;
+    let targetMouthCenter: Point2D;
 
-    // Compute live EAR and MAR from real geometric coordinates
-    const liveEAR = Math.round(((calculateEAR(leftEyePts) + calculateEAR(rightEyePts)) / 2) * 1000) / 1000;
-    const liveMAR = Math.round(calculateMAR([mouthPts[0], mouthPts[2], mouthPts[4], mouthPts[6]]) * 1000) / 1000;
+    if (rawLandmarks) {
+      targetLeftEye = rawLandmarks.leftEyePts.map(p => ({ x: p.x * scaleX, y: p.y * scaleY }));
+      targetRightEye = rawLandmarks.rightEyePts.map(p => ({ x: p.x * scaleX, y: p.y * scaleY }));
+      targetMouth = rawLandmarks.mouthPts.map(p => ({ x: p.x * scaleX, y: p.y * scaleY }));
+      targetNoseBridge = rawLandmarks.noseBridge.map(p => ({ x: p.x * scaleX, y: p.y * scaleY }));
+      targetNoseTip = { x: rawLandmarks.noseTip.x * scaleX, y: rawLandmarks.noseTip.y * scaleY };
+      targetLeftPupil = { x: rawLandmarks.leftPupil.x * scaleX, y: rawLandmarks.leftPupil.y * scaleY };
+      targetRightPupil = { x: rawLandmarks.rightPupil.x * scaleX, y: rawLandmarks.rightPupil.y * scaleY };
+      targetMouthCenter = { x: rawLandmarks.mouthCenter.x * scaleX, y: rawLandmarks.mouthCenter.y * scaleY };
+    } else {
+      const fcX = sf.cx;
+      const fcY = sf.cy;
+      const eyeDist = 48 * s;
+      const eyeY = fcY - 26 * s;
+      const eyeAp = 8 * s;
+      const mCenter = { x: fcX, y: fcY + 52 * s };
+      const mHW = 26 * s;
+      const mAp = 6 * s;
+
+      targetLeftEye = [
+        { x: fcX - eyeDist - 18 * s, y: eyeY },
+        { x: fcX - eyeDist - 9 * s,  y: eyeY - eyeAp * 0.8 },
+        { x: fcX - eyeDist + 9 * s,  y: eyeY - eyeAp * 0.8 },
+        { x: fcX - eyeDist + 18 * s, y: eyeY },
+        { x: fcX - eyeDist + 9 * s,  y: eyeY + eyeAp * 0.6 },
+        { x: fcX - eyeDist - 9 * s,  y: eyeY + eyeAp * 0.6 },
+      ];
+      targetRightEye = [
+        { x: fcX + eyeDist - 18 * s, y: eyeY },
+        { x: fcX + eyeDist - 9 * s,  y: eyeY - eyeAp * 0.8 },
+        { x: fcX + eyeDist + 9 * s,  y: eyeY - eyeAp * 0.8 },
+        { x: fcX + eyeDist + 18 * s, y: eyeY },
+        { x: fcX + eyeDist + 9 * s,  y: eyeY + eyeAp * 0.6 },
+        { x: fcX + eyeDist - 9 * s,  y: eyeY + eyeAp * 0.6 },
+      ];
+      targetMouth = [
+        { x: mCenter.x - mHW, y: mCenter.y },
+        { x: mCenter.x - 14 * s, y: mCenter.y - mAp * 0.6 },
+        { x: mCenter.x,          y: mCenter.y - mAp * 0.7 },
+        { x: mCenter.x + 14 * s, y: mCenter.y - mAp * 0.6 },
+        { x: mCenter.x + mHW, y: mCenter.y },
+        { x: mCenter.x + 14 * s, y: mCenter.y + mAp * 0.8 },
+        { x: mCenter.x,          y: mCenter.y + mAp * 0.9 },
+        { x: mCenter.x - 14 * s, y: mCenter.y + mAp * 0.8 },
+      ];
+      targetNoseTip = { x: fcX, y: fcY + 12 * s };
+      targetNoseBridge = [
+        { x: fcX, y: fcY - 24 * s },
+        { x: fcX, y: fcY - 6 * s },
+        targetNoseTip,
+        { x: fcX - 10 * s, y: fcY + 14 * s },
+        { x: fcX + 10 * s, y: fcY + 14 * s },
+      ];
+      targetLeftPupil = { x: fcX - eyeDist, y: eyeY };
+      targetRightPupil = { x: fcX + eyeDist, y: eyeY };
+      targetMouthCenter = mCenter;
+    }
+
+    // High-responsiveness temporal EMA filter (alpha = 0.55 for immediate tracking without jitter)
+    const landmarkAlpha = sm.initialized ? 0.55 : 1.0;
+    const leftEyePts = smoothPoints(targetLeftEye, sm.leftEyePts, landmarkAlpha);
+    const rightEyePts = smoothPoints(targetRightEye, sm.rightEyePts, landmarkAlpha);
+    const mouthPts = smoothPoints(targetMouth, sm.mouthPts, landmarkAlpha);
+    const noseBridge = smoothPoints(targetNoseBridge, sm.noseBridge, landmarkAlpha);
+
+    const noseTip = {
+      x: sm.initialized ? sm.noseTip.x * (1 - landmarkAlpha) + targetNoseTip.x * landmarkAlpha : targetNoseTip.x,
+      y: sm.initialized ? sm.noseTip.y * (1 - landmarkAlpha) + targetNoseTip.y * landmarkAlpha : targetNoseTip.y,
+    };
+    const leftPupil = {
+      x: sm.initialized ? sm.leftPupil.x * (1 - landmarkAlpha) + targetLeftPupil.x * landmarkAlpha : targetLeftPupil.x,
+      y: sm.initialized ? sm.leftPupil.y * (1 - landmarkAlpha) + targetLeftPupil.y * landmarkAlpha : targetLeftPupil.y,
+    };
+    const rightPupil = {
+      x: sm.initialized ? sm.rightPupil.x * (1 - landmarkAlpha) + targetRightPupil.x * landmarkAlpha : targetRightPupil.x,
+      y: sm.initialized ? sm.rightPupil.y * (1 - landmarkAlpha) + targetRightPupil.y * landmarkAlpha : targetRightPupil.y,
+    };
+    const mouthCenter = {
+      x: sm.initialized ? sm.mouthCenter.x * (1 - landmarkAlpha) + targetMouthCenter.x * landmarkAlpha : targetMouthCenter.x,
+      y: sm.initialized ? sm.mouthCenter.y * (1 - landmarkAlpha) + targetMouthCenter.y * landmarkAlpha : targetMouthCenter.y,
+    };
+
+    // Store smoothed state
+    sm.leftEyePts = leftEyePts;
+    sm.rightEyePts = rightEyePts;
+    sm.mouthPts = mouthPts;
+    sm.noseBridge = noseBridge;
+    sm.noseTip = noseTip;
+    sm.leftPupil = leftPupil;
+    sm.rightPupil = rightPupil;
+    sm.mouthCenter = mouthCenter;
+    sm.initialized = true;
+
+    // Genuine live physiological metrics directly from authentic webcam pixels
+    const liveEAR = liveExpr ? liveExpr.ear : Math.round(((calculateEAR(leftEyePts) + calculateEAR(rightEyePts)) / 2) * 1000) / 1000;
+    const liveMAR = liveExpr ? liveExpr.mar : Math.round(calculateMAR([mouthPts[0], mouthPts[2], mouthPts[4], mouthPts[6]]) * 1000) / 1000;
+    const isBlink = liveEAR < 0.20;
+    const isSpeaking = liveMAR >= 0.22;
 
     // Calculate dynamic bounding box from landmark extents with 15% padding
     const allPts = [...leftEyePts, ...rightEyePts, ...mouthPts, ...noseBridge];
@@ -619,9 +697,10 @@ export default function IVPInteractiveCanvas({
           ctx.lineWidth = 1.6;
           ctx.stroke();
 
-          // Pupil Center
-          const pCenterX = (pts[0].x + pts[3].x) / 2 + gazeCoords.x * 3;
-          const pCenterY = (pts[1].y + pts[4].y) / 2 + gazeCoords.y * 3;
+          // Pupil Center directly tracked from optical image minimum
+          const pupilBase = isLeft ? leftPupil : rightPupil;
+          const pCenterX = pupilBase.x + gazeCoords.x * 2;
+          const pCenterY = pupilBase.y + gazeCoords.y * 2;
           ctx.fillStyle = '#22D3EE';
           ctx.beginPath();
           ctx.arc(pCenterX, pCenterY, 2.8 * s, 0, 2 * Math.PI);
