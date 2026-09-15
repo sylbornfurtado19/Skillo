@@ -825,7 +825,9 @@ if (typeof ctx !== 'undefined' && typeof ctx.addEventListener === 'function') {
           }
 
           // Memory hygiene: close zero-copy ImageBitmap
-          imageBitmap.close();
+          try {
+            imageBitmap.close();
+          } catch {}
 
           const processingLatencyMs = Math.round((performance.now() - t0) * 100) / 100;
 

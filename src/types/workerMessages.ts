@@ -58,6 +58,9 @@ export interface VisionWorkerCapabilities {
   activeBackend: VisionModelBackend;
 }
 
+const RANGE = 0x40000000;
+const HALF = RANGE >> 1;
+
 /**
  * 30-bit safe modular monotonic sequence comparison.
  * Handles integer wrapping and out-of-order rejections reliably.
@@ -65,8 +68,7 @@ export interface VisionWorkerCapabilities {
 export function isNewerRequestId(newId: number, lastId: number): boolean {
   if (lastId === 0) return true;
   if (newId === lastId) return false;
-  const diff = (newId - lastId + (1 << 30)) % (1 << 30);
-  return diff > 0 && diff < (1 << 29);
+  return (((newId - lastId) % RANGE) + RANGE) % RANGE < HALF;
 }
 
 export interface VisionWorkerFramePayload {

@@ -109,6 +109,8 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   const droppedFramesRef = useRef(0);
   const processedFramesRef = useRef(0);
   const watchdogUnlocksRef = useRef(0);
+  const restartAttemptsRef = useRef(0);
+  const restartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Document Visibility & Lifecycle Handler ───────────────────────────────
   useEffect(() => {
@@ -261,6 +263,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
 
         switch (msg.type) {
           case 'MODEL_READY':
+            restartAttemptsRef.current = 0;
             setWorkerState('READY');
             setActiveBackend(msg.payload.activeBackend);
             setCapabilities(msg.payload.capabilities);
@@ -323,6 +326,26 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
           watchdogTimerRef.current = null;
         }
         isBusyRef.current = false;
+
+        const maxRestarts = 3;
+        if (restartAttemptsRef.current < maxRestarts) {
+          const attempt = restartAttemptsRef.current + 1;
+          restartAttemptsRef.current = attempt;
+          const backoffDelay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          setWorkerState('LOADING');
+          if (workerRef.current) {
+            try { workerRef.current.terminate(); } catch {}
+            workerRef.current = null;
+          }
+          if (restartTimeoutRef.current) {
+            clearTimeout(restartTimeoutRef.current);
+          }
+          restartTimeoutRef.current = setTimeout(() => {
+            initWorker();
+          }, backoffDelay);
+          return;
+        }
+
         setWorkerState('FAILED');
         setIsFallbackMode(true);
         setFallbackReason(err.message || 'Worker syntax or runtime error');
@@ -353,6 +376,10 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
         clearTimeout(watchdogTimerRef.current);
         watchdogTimerRef.current = null;
       }
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current);
+        restartTimeoutRef.current = null;
+      }
       if (workerRef.current) {
         workerRef.current.postMessage({ type: 'DISPOSE' });
         workerRef.current.terminate();
@@ -375,13 +402,17 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
         return false;
       }
 
+      let bitmap: ImageBitmap | null = null;
+      let bitmapTransferred = false;
       try {
-        const bitmap = await VisionPipeline.captureFrameBitmap(source);
+        bitmap = await VisionPipeline.captureFrameBitmap(source);
         if (!bitmap) return false;
 
         // Double check busy or paused flag in case async capture was delayed
         if (isBusyRef.current || isPausedRef.current) {
-          bitmap.close();
+          try {
+            bitmap.close();
+          } catch {}
           if (isBusyRef.current) {
             droppedFramesRef.current++;
             syncStats();
@@ -420,9 +451,15 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
           { type: 'PROCESS_FRAME', payload },
           [bitmap]
         );
+        bitmapTransferred = true;
 
         return true;
       } catch {
+        if (!bitmapTransferred && bitmap) {
+          try {
+            bitmap.close();
+          } catch {}
+        }
         isBusyRef.current = false;
         return false;
       }
@@ -431,9 +468,14 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   );
 
   const restartWorker = useCallback(() => {
+    restartAttemptsRef.current = 0;
     if (watchdogTimerRef.current) {
       clearTimeout(watchdogTimerRef.current);
       watchdogTimerRef.current = null;
+    }
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
     }
     if (workerRef.current) {
       workerRef.current.terminate();

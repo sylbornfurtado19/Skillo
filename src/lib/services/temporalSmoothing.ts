@@ -444,6 +444,20 @@ export class LandmarkKinematicFilter {
   } {
     const safeDt = Math.max(0.001, Math.min(0.200, dt));
 
+    // NaN / Infinity guard on raw observation
+    if (!Number.isFinite(obs.x) || !Number.isFinite(obs.y)) {
+      if (this.pos === null) {
+        this.pos = { x: 0.5, y: 0.5 };
+      }
+      return {
+        pos: { ...this.pos },
+        vel: { ...this.vel },
+        alphaUsed: 0.0,
+        opacity: this.visibilityOpacity,
+        occludedSec: this.occludedSec,
+      };
+    }
+
     if (this.pos === null) {
       this.pos = { x: obs.x, y: obs.y };
       this.vel = { x: 0, y: 0 };
@@ -464,15 +478,17 @@ export class LandmarkKinematicFilter {
       this.visibilityOpacity = 1.0;
       this.lastConfidentPos = { x: obs.x, y: obs.y };
 
-      const measuredVx = (obs.x - this.pos.x) / safeDt;
-      const measuredVy = (obs.y - this.pos.y) / safeDt;
+      const rawVx = (obs.x - this.pos.x) / safeDt;
+      const rawVy = (obs.y - this.pos.y) / safeDt;
+      const measuredVx = Number.isFinite(rawVx) ? rawVx : 0;
+      const measuredVy = Number.isFinite(rawVy) ? rawVy : 0;
       const speed = Math.hypot(measuredVx, measuredVy);
       const speedFactor = Math.max(0, Math.min(1, speed / this.maxSpeed));
 
       if (this.filterMode === 'KALMAN_HYBRID') {
         // Speed-adaptive process noise Q (increases gain during rapid saccades / head turns)
-        const qPos = 0.00003 * (1.0 + speedFactor * 8.0);
-        const qVel = 0.0012 * (1.0 + speedFactor * 8.0);
+        const qPos = 0.00005 * safeDt * (1.0 + speedFactor * 8.0);
+        const qVel = 0.0015 * safeDt * (1.0 + speedFactor * 8.0);
 
         // Measurement noise covariance R inversely scaled by detection confidence
         const safeConf = Math.max(0.1, Math.min(1.0, conf));
@@ -494,10 +510,11 @@ export class LandmarkKinematicFilter {
         const xNew = xPred + K0_x * y_x;
         const vxNew = vxPred + K1_x * y_x;
 
-        this.Px[0] = (1 - K0_x) * P00_x;
-        this.Px[1] = (1 - K0_x) * P01_x;
-        this.Px[2] = P10_x - K1_x * P00_x;
-        this.Px[3] = P11_x - K1_x * P01_x;
+        this.Px[0] = Math.max(1e-7, Math.min(1e9, (1 - K0_x) * P00_x));
+        const P01_x_sym = ((1 - K0_x) * P01_x + (P10_x - K1_x * P00_x)) * 0.5;
+        this.Px[1] = P01_x_sym;
+        this.Px[2] = P01_x_sym;
+        this.Px[3] = Math.max(1e-7, Math.min(1e9, P11_x - K1_x * P01_x));
 
         // --- Y-Axis Kalman Predict & Update ---
         const yPred = this.pos.y + this.vel.y * safeDt;
@@ -515,13 +532,22 @@ export class LandmarkKinematicFilter {
         const yNew = yPred + K0_y * y_y;
         const vyNew = vyPred + K1_y * y_y;
 
-        this.Py[0] = (1 - K0_y) * P00_y;
-        this.Py[1] = (1 - K0_y) * P01_y;
-        this.Py[2] = P10_y - K1_y * P00_y;
-        this.Py[3] = P11_y - K1_y * P01_y;
+        this.Py[0] = Math.max(1e-7, Math.min(1e9, (1 - K0_y) * P00_y));
+        const P01_y_sym = ((1 - K0_y) * P01_y + (P10_y - K1_y * P00_y)) * 0.5;
+        this.Py[1] = P01_y_sym;
+        this.Py[2] = P01_y_sym;
+        this.Py[3] = Math.max(1e-7, Math.min(1e9, P11_y - K1_y * P01_y));
 
-        this.pos = { x: xNew, y: yNew };
-        this.vel = { x: vxNew, y: vyNew };
+        if (!Number.isFinite(xNew) || !Number.isFinite(yNew) || !Number.isFinite(vxNew) || !Number.isFinite(vyNew)) {
+          const fallbackPos = this.lastConfidentPos || { x: obs.x, y: obs.y };
+          this.pos = { ...fallbackPos };
+          this.vel = { x: 0, y: 0 };
+          this.Px = [0.0001, 0, 0, 0.005];
+          this.Py = [0.0001, 0, 0, 0.005];
+        } else {
+          this.pos = { x: xNew, y: yNew };
+          this.vel = { x: vxNew, y: vyNew };
+        }
 
         const alphaUsed = (K0_x + K0_y) / 2;
         return {
@@ -542,11 +568,17 @@ export class LandmarkKinematicFilter {
         const smoothedX = alpha * obs.x + (1 - alpha) * predX;
         const smoothedY = alpha * obs.y + (1 - alpha) * predY;
 
-        this.pos = { x: smoothedX, y: smoothedY };
-        this.vel = {
-          x: this.beta * measuredVx + (1 - this.beta) * this.vel.x,
-          y: this.beta * measuredVy + (1 - this.beta) * this.vel.y,
-        };
+        if (!Number.isFinite(smoothedX) || !Number.isFinite(smoothedY)) {
+          const fallbackPos = this.lastConfidentPos || { x: obs.x, y: obs.y };
+          this.pos = { ...fallbackPos };
+          this.vel = { x: 0, y: 0 };
+        } else {
+          this.pos = { x: smoothedX, y: smoothedY };
+          this.vel = {
+            x: Number.isFinite(measuredVx) ? this.beta * measuredVx + (1 - this.beta) * this.vel.x : 0,
+            y: Number.isFinite(measuredVy) ? this.beta * measuredVy + (1 - this.beta) * this.vel.y : 0,
+          };
+        }
 
         return {
           pos: { ...this.pos },
@@ -668,6 +700,71 @@ export interface SmoothedLandmarksResult {
   relocalizationProgress: number;
 }
 
+export interface SimilarityTransform2D {
+  scale: number;
+  rotation: number;
+  tx: number;
+  ty: number;
+}
+
+/**
+ * Computes optimal 2D Procrustes similarity transform (scale, rotation, translation)
+ * mapping sourcePts rigidly onto targetPts.
+ */
+export function computeSimilarityTransform(
+  sourcePts: LandmarkPoint2D[],
+  targetPts: LandmarkPoint2D[]
+): SimilarityTransform2D {
+  const k = Math.min(sourcePts.length, targetPts.length);
+  if (k < 2) {
+    return { scale: 1, rotation: 0, tx: 0, ty: 0 };
+  }
+
+  let meanSrcX = 0, meanSrcY = 0;
+  let meanTgtX = 0, meanTgtY = 0;
+  for (let i = 0; i < k; i++) {
+    meanSrcX += sourcePts[i].x;
+    meanSrcY += sourcePts[i].y;
+    meanTgtX += targetPts[i].x;
+    meanTgtY += targetPts[i].y;
+  }
+  meanSrcX /= k;
+  meanSrcY /= k;
+  meanTgtX /= k;
+  meanTgtY /= k;
+
+  let varSrc = 0;
+  let c11 = 0;
+  let c12 = 0;
+
+  for (let i = 0; i < k; i++) {
+    const sx = sourcePts[i].x - meanSrcX;
+    const sy = sourcePts[i].y - meanSrcY;
+    const tx = targetPts[i].x - meanTgtX;
+    const ty = targetPts[i].y - meanTgtY;
+
+    varSrc += sx * sx + sy * sy;
+    c11 += sx * tx + sy * ty;
+    c12 += sx * ty - sy * tx;
+  }
+
+  if (varSrc < 1e-7) {
+    return { scale: 1, rotation: 0, tx: meanTgtX - meanSrcX, ty: meanTgtY - meanSrcY };
+  }
+
+  const rotation = Math.atan2(c12, c11);
+  const norm = Math.hypot(c11, c12);
+  const rawScale = norm / varSrc;
+  const scale = Math.max(0.6, Math.min(1.5, rawScale));
+
+  const cosR = Math.cos(rotation);
+  const sinR = Math.sin(rotation);
+  const tx = meanTgtX - scale * (cosR * meanSrcX - sinR * meanSrcY);
+  const ty = meanTgtY - scale * (sinR * meanSrcX + cosR * meanSrcY);
+
+  return { scale, rotation, tx, ty };
+}
+
 /**
  * Dense Multi-Point Facial Landmark Smoother.
  * Manages per-landmark kinematic filters with per-region specialization,
@@ -683,13 +780,28 @@ export class DenseLandmarksSmoother {
   private reLocProgress: number = 1.0;
   private reLocDurationSec: number = 0.12; // 120ms glide
   private reLocStartPositions: LandmarkPoint2D[] = [];
+  private reLocTransform: SimilarityTransform2D = { scale: 1, rotation: 0, tx: 0, ty: 0 };
   private reLocThreshold: number = 0.06; // 0.06 normalized distance threshold (~38px at 640x480)
   private minOcclusionForRelocSec: number = 0.30; // 300ms minimum occlusion hold
   private lastMaxOccludedSec: number = 0;
 
-  constructor(numPoints: number = 68, preset: TrackingPreset = 'BALANCED') {
+  private filterMode: FilterEngineMode = 'EMA_KINEMATIC';
+
+  constructor(
+    numPoints: number = 68,
+    preset: TrackingPreset = 'BALANCED',
+    filterMode: FilterEngineMode = 'EMA_KINEMATIC'
+  ) {
     this.currentPreset = preset;
+    this.filterMode = filterMode;
     this.initFilters(numPoints);
+  }
+
+  public setFilterMode(mode: FilterEngineMode): void {
+    this.filterMode = mode;
+    for (const filter of this.filters) {
+      filter.setConfig({ filterMode: mode });
+    }
   }
 
   public setRelocalizationConfig(config: {
@@ -726,7 +838,10 @@ export class DenseLandmarksSmoother {
     const configs = PRESET_REGIONAL_CONFIGS[this.currentPreset];
     for (let i = 0; i < numPoints; i++) {
       const region = this.getRegionKeyForIndex(i);
-      this.filters.push(new LandmarkKinematicFilter(configs[region]));
+      this.filters.push(new LandmarkKinematicFilter({
+        ...configs[region],
+        filterMode: this.filterMode,
+      }));
     }
     this.isRelocalizing = false;
     this.reLocProgress = 1.0;
@@ -810,9 +925,19 @@ export class DenseLandmarksSmoother {
         const displacement = Math.hypot(incAnchorX - prevAnchorX, incAnchorY - prevAnchorY);
 
         if (displacement >= this.reLocThreshold) {
-          // Trigger global smooth re-localization glide across all landmarks
+          // Trigger global smooth re-localization glide across all landmarks via Procrustes similarity transform
           this.isRelocalizing = true;
           this.reLocProgress = 0.0;
+          const prevAnchors: LandmarkPoint2D[] = [];
+          const incAnchors: LandmarkPoint2D[] = [];
+          for (const idx of anchorIndices) {
+            const p = this.filters[idx]?.getPos();
+            if (p) {
+              prevAnchors.push(p);
+              incAnchors.push({ x: buffer[idx * 4], y: buffer[idx * 4 + 1] });
+            }
+          }
+          this.reLocTransform = computeSimilarityTransform(prevAnchors, incAnchors);
           this.reLocStartPositions = this.filters.map((f, i) => {
             const p = f.getPos();
             return p ? { ...p } : { x: buffer[i * 4], y: buffer[i * 4 + 1] };
@@ -821,6 +946,7 @@ export class DenseLandmarksSmoother {
       }
     }
 
+    const wasRelocalizing = this.isRelocalizing;
     if (this.isRelocalizing) {
       this.reLocProgress += dt / this.reLocDurationSec;
       if (this.reLocProgress >= 1.0) {
@@ -849,15 +975,28 @@ export class DenseLandmarksSmoother {
       let y = buffer[offset + 1];
       const conf = buffer[offset + 3];
 
-      // If global re-localizing, interpolate the observation to glide smoothly
-      if (this.isRelocalizing && this.reLocStartPositions[i]) {
+      // If global re-localizing, apply interpolated Procrustes similarity transform + smooth glide
+      if (wasRelocalizing && this.reLocStartPositions[i]) {
         const start = this.reLocStartPositions[i];
-        x = start.x + (x - start.x) * blend;
-        y = start.y + (y - start.y) * blend;
+        const targetX = buffer[offset];
+        const targetY = buffer[offset + 1];
+
+        const s = 1.0 + (this.reLocTransform.scale - 1.0) * blend;
+        const theta = this.reLocTransform.rotation * blend;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+        const tx = this.reLocTransform.tx * blend;
+        const ty = this.reLocTransform.ty * blend;
+
+        const xRigid = s * (cosT * start.x - sinT * start.y) + tx;
+        const yRigid = s * (sinT * start.x + cosT * start.y) + ty;
+
+        x = xRigid + (targetX - xRigid) * blend;
+        y = yRigid + (targetY - yRigid) * blend;
 
         // Explicitly blend internal velocity toward target glide velocity to prevent post-glide overshoot
-        const targetVx = (buffer[offset] - start.x) / this.reLocDurationSec;
-        const targetVy = (buffer[offset + 1] - start.y) / this.reLocDurationSec;
+        const targetVx = (targetX - start.x) / this.reLocDurationSec;
+        const targetVy = (targetY - start.y) / this.reLocDurationSec;
         const currentVel = this.filters[i].getVel();
         this.filters[i].setVelocity({
           x: currentVel.x * (1 - blend) + targetVx * blend * 0.5,
@@ -961,6 +1100,16 @@ export class DenseLandmarksSmoother {
         if (displacement >= this.reLocThreshold) {
           this.isRelocalizing = true;
           this.reLocProgress = 0.0;
+          const prevAnchors: LandmarkPoint2D[] = [];
+          const incAnchors: LandmarkPoint2D[] = [];
+          for (const idx of anchorIndices) {
+            const p = this.filters[idx]?.getPos();
+            if (p) {
+              prevAnchors.push(p);
+              incAnchors.push({ x: rawPoints[idx].x, y: rawPoints[idx].y });
+            }
+          }
+          this.reLocTransform = computeSimilarityTransform(prevAnchors, incAnchors);
           this.reLocStartPositions = this.filters.map((f, i) => {
             const p = f.getPos();
             return p ? { ...p } : { x: rawPoints[i].x, y: rawPoints[i].y };
@@ -969,6 +1118,7 @@ export class DenseLandmarksSmoother {
       }
     }
 
+    const wasRelocalizing = this.isRelocalizing;
     if (this.isRelocalizing) {
       this.reLocProgress += dt / this.reLocDurationSec;
       if (this.reLocProgress >= 1.0) {
@@ -997,14 +1147,27 @@ export class DenseLandmarksSmoother {
       let y = p.y;
       const conf = p.confidence ?? 1.0;
 
-      if (this.isRelocalizing && this.reLocStartPositions[i]) {
+      if (wasRelocalizing && this.reLocStartPositions[i]) {
         const start = this.reLocStartPositions[i];
-        x = start.x + (x - start.x) * blend;
-        y = start.y + (y - start.y) * blend;
+        const targetX = p.x;
+        const targetY = p.y;
+
+        const s = 1.0 + (this.reLocTransform.scale - 1.0) * blend;
+        const theta = this.reLocTransform.rotation * blend;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+        const tx = this.reLocTransform.tx * blend;
+        const ty = this.reLocTransform.ty * blend;
+
+        const xRigid = s * (cosT * start.x - sinT * start.y) + tx;
+        const yRigid = s * (sinT * start.x + cosT * start.y) + ty;
+
+        x = xRigid + (targetX - xRigid) * blend;
+        y = yRigid + (targetY - yRigid) * blend;
 
         // Explicitly blend internal velocity toward target glide velocity to prevent post-glide overshoot
-        const targetVx = (p.x - start.x) / this.reLocDurationSec;
-        const targetVy = (p.y - start.y) / this.reLocDurationSec;
+        const targetVx = (targetX - start.x) / this.reLocDurationSec;
+        const targetVy = (targetY - start.y) / this.reLocDurationSec;
         const currentVel = this.filters[i].getVel();
         this.filters[i].setVelocity({
           x: currentVel.x * (1 - blend) + targetVx * blend * 0.5,

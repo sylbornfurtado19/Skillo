@@ -399,30 +399,54 @@ export default function IVPInteractiveCanvas({
     // ── 5. Blit processed pixels to offscreen proc canvas (320x240) ────────
     procCtx.putImageData(procImgData, 0, 0);
 
-    // ── 6. Robust 9-Parameter Blit to Viewport Canvas (640x480) ────────────
-    ctx.clearRect(0, 0, CSS_W, CSS_H);
+    // ── 6. Compute Exact Coordinate Mapping & Letterbox Viewport Blit ────────
+    const videoW = sourceElement instanceof HTMLVideoElement && sourceElement.videoWidth > 0
+      ? sourceElement.videoWidth
+      : (sourceElement instanceof HTMLImageElement && sourceElement.naturalWidth > 0 ? sourceElement.naturalWidth : PROC_W);
+    const videoH = sourceElement instanceof HTMLVideoElement && sourceElement.videoHeight > 0
+      ? sourceElement.videoHeight
+      : (sourceElement instanceof HTMLImageElement && sourceElement.naturalHeight > 0 ? sourceElement.naturalHeight : PROC_H);
+
+    const mapping = computeCoordinateMapping({
+      videoWidth: videoW,
+      videoHeight: videoH,
+      canvasWidth: CSS_W,
+      canvasHeight: CSS_H,
+      fitMode: 'contain',
+      mirrored,
+    });
+
+    ctx.fillStyle = '#030712';
+    ctx.fillRect(0, 0, CSS_W, CSS_H);
+
+    const destX = Math.round(mapping.offsetX);
+    const destY = Math.round(mapping.offsetY);
+    const destW = Math.round(mapping.videoWidth * mapping.scaleX);
+    const destH = Math.round(mapping.videoHeight * mapping.scaleY);
 
     const splitPct = Math.max(0.02, Math.min(0.98, splitPercentRef.current / 100));
-    const splitX = Math.round(splitPct * CSS_W);
+    const targetW = Math.round(splitPct * destW);
+    const splitX = destX + targetW;
     const splitSrcX = splitPct * PROC_W;
 
     // Draw Left Slice (Raw Input Video)
-    if (splitX > 0) {
+    if (splitPct > 0) {
       ctx.drawImage(
         rawCanvas,
         0, 0, splitSrcX, PROC_H,
-        0, 0, splitX, CSS_H
+        destX, destY, targetW, destH
       );
     }
 
     // Draw Right Slice (Transformed Computer Vision Output)
-    const rightW = CSS_W - splitX;
+    const targetRightW = destW - targetW;
+    const targetRightX = destX + targetW;
     const rightSrcW = PROC_W - splitSrcX;
-    if (rightW > 0 && rightSrcW > 0) {
+    if (targetRightW > 0 && rightSrcW > 0) {
       ctx.drawImage(
         procCanvas,
         splitSrcX, 0, rightSrcW, PROC_H,
-        splitX, 0, rightW, CSS_H
+        targetRightX, destY, targetRightW, destH
       );
     }
 
@@ -485,23 +509,6 @@ export default function IVPInteractiveCanvas({
     ctx.restore();
 
     // ── 10. DENSE 70-POINT GEOMETRIC FACIAL LANDMARK & KINEMATIC ENGINE ─────
-    // Exact Aspect-Ratio Normalization & Coordinate Transform Pipeline
-    const videoW = sourceElement instanceof HTMLVideoElement && sourceElement.videoWidth > 0
-      ? sourceElement.videoWidth
-      : (sourceElement instanceof HTMLImageElement && sourceElement.naturalWidth > 0 ? sourceElement.naturalWidth : PROC_W);
-    const videoH = sourceElement instanceof HTMLVideoElement && sourceElement.videoHeight > 0
-      ? sourceElement.videoHeight
-      : (sourceElement instanceof HTMLImageElement && sourceElement.naturalHeight > 0 ? sourceElement.naturalHeight : PROC_H);
-
-    const mapping = computeCoordinateMapping({
-      videoWidth: videoW,
-      videoHeight: videoH,
-      canvasWidth: CSS_W,
-      canvasHeight: CSS_H,
-      fitMode: 'contain',
-      mirrored,
-    });
-
     let denseRes: SmoothedLandmarksResult;
     let isFaceGenuinelyDetected = false;
     let liveEAR = 0.285;
@@ -529,24 +536,28 @@ export default function IVPInteractiveCanvas({
 
         // Initialize / refresh micro-patch templates on new inference packet
         if (isFaceGenuinelyDetected && rawImgData) {
+          const normMicroX = (x: number) => (mirrored ? (1.0 - x) : x);
           microTrackerRef.current.updateTemplates(rawImgData.data, PROC_W, PROC_H, [
-            { index: 68, x: rawPts[68].x, y: rawPts[68].y }, // Right pupil
-            { index: 69, x: rawPts[69].x, y: rawPts[69].y }, // Left pupil
-            { index: 48, x: rawPts[48].x, y: rawPts[48].y }, // Mouth right corner
-            { index: 54, x: rawPts[54].x, y: rawPts[54].y }, // Mouth left corner
+            { index: 68, x: normMicroX(rawPts[68].x), y: rawPts[68].y }, // Right pupil
+            { index: 69, x: normMicroX(rawPts[69].x), y: rawPts[69].y }, // Left pupil
+            { index: 48, x: normMicroX(rawPts[48].x), y: rawPts[48].y }, // Mouth right corner
+            { index: 54, x: normMicroX(rawPts[54].x), y: rawPts[54].y }, // Mouth left corner
           ]);
         }
       } else {
         // Intermediate 60 FPS RAF frame: track micro-features (pupils & lip corners) using NCC
         if (isFaceGenuinelyDetected && rawImgData) {
           const tracked = microTrackerRef.current.track(rawImgData.data, PROC_W, PROC_H, 0.55);
-          lastMicroTrackedRef.current = tracked;
+          const canonicalTracked = new Map<number, TrackedFeature>();
           for (const [idx, feat] of tracked.entries()) {
-            denseSmootherRef.current.updatePoint(idx, { x: feat.x, y: feat.y }, feat.ncc, now);
-            workerLandmarks.buffer[idx * 4] = feat.x;
+            const canonicalX = mirrored ? (1.0 - feat.x) : feat.x;
+            canonicalTracked.set(idx, { ...feat, x: canonicalX });
+            denseSmootherRef.current.updatePoint(idx, { x: canonicalX, y: feat.y }, feat.ncc, now);
+            workerLandmarks.buffer[idx * 4] = canonicalX;
             workerLandmarks.buffer[idx * 4 + 1] = feat.y;
             workerLandmarks.buffer[idx * 4 + 3] = feat.ncc;
           }
+          lastMicroTrackedRef.current = canonicalTracked;
         }
         denseRes = denseSmootherRef.current.updateFromBuffer(
           workerLandmarks.buffer,

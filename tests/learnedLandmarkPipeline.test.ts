@@ -5,8 +5,10 @@ import {
 import {
   DenseLandmarksSmoother,
   LandmarkKinematicFilter,
+  computeSimilarityTransform,
 } from '../src/lib/services/temporalSmoothing';
 import { MicroPatchTracker } from '../src/lib/services/microPatchTracker';
+import { isNewerRequestId } from '../src/types/workerMessages';
 
 describe('Learned MediaPipe Landmark Pipeline & 70-Point Canonical Mapping', () => {
   it('defines a valid 70-point canonical index mapping from MediaPipe 478 mesh', () => {
@@ -218,4 +220,302 @@ describe('Learned MediaPipe Landmark Pipeline & 70-Point Canonical Mapping', () 
     expect(updatedPos).not.toBeNull();
     expect(updatedPos!.x).toBeCloseTo(34 / W, 2);
   });
+
+  describe('30-Bit Monotonic Request ID Modular Comparison', () => {
+    it('handles initial state, sequential progression, and stale frame rejection', () => {
+      // First frame from worker with any positive ID accepted
+      expect(isNewerRequestId(1, 0)).toBe(true);
+      expect(isNewerRequestId(100, 0)).toBe(true);
+
+      // Monotonically increasing ID is newer
+      expect(isNewerRequestId(2, 1)).toBe(true);
+      expect(isNewerRequestId(105, 100)).toBe(true);
+
+      // Same ID is not newer
+      expect(isNewerRequestId(100, 100)).toBe(false);
+
+      // Out-of-order or stale ID is rejected
+      expect(isNewerRequestId(99, 100)).toBe(false);
+      expect(isNewerRequestId(50, 100)).toBe(false);
+    });
+
+    it('safely handles 30-bit integer wraparound without signed overflow', () => {
+      const RANGE = 0x40000000; // 2^30
+      const lastId = RANGE - 1; // 0x3fffffff
+      const newId = 0; // Wraparound to 0
+
+      // After 0x3fffffff, next frame 0 is newer
+      expect(isNewerRequestId(newId, lastId)).toBe(true);
+      expect(isNewerRequestId(1, lastId)).toBe(true);
+
+      // But an old frame from before wraparound arriving after wrap is stale
+      expect(isNewerRequestId(RANGE - 10, 5)).toBe(false);
+    });
+  });
+
+  describe('Procrustes 2D Similarity Transform Relocalization', () => {
+    it('accurately recovers scale, rotation, and translation between point sets', () => {
+      // Triangular facial anchors (left eye, right eye, nose tip)
+      const srcPts = [
+        { x: 0.35, y: 0.35 },
+        { x: 0.65, y: 0.35 },
+        { x: 0.50, y: 0.55 },
+      ];
+
+      // Pure translation (+0.05 in X, -0.02 in Y)
+      const translated = srcPts.map(p => ({ x: p.x + 0.05, y: p.y - 0.02 }));
+      const tformTrans = computeSimilarityTransform(srcPts, translated);
+      expect(tformTrans.scale).toBeCloseTo(1.0, 2);
+      expect(tformTrans.rotation).toBeCloseTo(0.0, 2);
+      expect(tformTrans.tx).toBeCloseTo(0.05, 2);
+      expect(tformTrans.ty).toBeCloseTo(-0.02, 2);
+
+      // Pure rotation (10 degrees = ~0.1745 rad) around (0.5, 0.4)
+      const angle = 0.1745;
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+      const rotated = srcPts.map(p => {
+        const dx = p.x - 0.5;
+        const dy = p.y - 0.4;
+        return {
+          x: 0.5 + (dx * cosA - dy * sinA),
+          y: 0.4 + (dx * sinA + dy * cosA),
+        };
+      });
+      const tformRot = computeSimilarityTransform(srcPts, rotated);
+      expect(tformRot.scale).toBeCloseTo(1.0, 2);
+      expect(tformRot.rotation).toBeCloseTo(angle, 2);
+
+      // Scaled by 1.15
+      const scaled = srcPts.map(p => ({
+        x: 0.5 + (p.x - 0.5) * 1.15,
+        y: 0.4 + (p.y - 0.4) * 1.15,
+      }));
+      const tformScale = computeSimilarityTransform(srcPts, scaled);
+      expect(tformScale.scale).toBeCloseTo(1.15, 2);
+      expect(tformScale.rotation).toBeCloseTo(0.0, 2);
+    });
+
+    it('preserves topology during relocalization glide in DenseLandmarksSmoother', () => {
+      const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+      smoother.setRelocalizationConfig({ minOcclusionSec: 0 });
+      const initialBuffer = new Float32Array(70 * 4);
+      for (let i = 0; i < 70; i++) {
+        initialBuffer[i * 4] = 0.4 + (i % 10) * 0.02;
+        initialBuffer[i * 4 + 1] = 0.3 + Math.floor(i / 10) * 0.03;
+        initialBuffer[i * 4 + 2] = 0;
+        initialBuffer[i * 4 + 3] = 0.99;
+      }
+
+      // Initialize smoother
+      smoother.updateFromBuffer(initialBuffer, 70, 1000);
+
+      // Simulate re-entry jump (> 0.06 normalized distance)
+      const jumpedBuffer = new Float32Array(70 * 4);
+      for (let i = 0; i < 70; i++) {
+        jumpedBuffer[i * 4] = initialBuffer[i * 4] + 0.15; // +15% X jump
+        jumpedBuffer[i * 4 + 1] = initialBuffer[i * 4 + 1] + 0.10; // +10% Y jump
+        jumpedBuffer[i * 4 + 2] = 0;
+        jumpedBuffer[i * 4 + 3] = 0.99;
+      }
+
+      // First step into relocalization
+      const res1 = smoother.updateFromBuffer(jumpedBuffer, 70, 1033);
+      expect(res1.isRelocalizing).toBe(true);
+
+      // Eye-to-eye distance should remain structurally consistent (not warped)
+      const initialEyeDist = Math.hypot(
+        initialBuffer[36 * 4] - initialBuffer[45 * 4],
+        initialBuffer[36 * 4 + 1] - initialBuffer[45 * 4 + 1]
+      );
+      const relocalizingEyeDist = Math.hypot(
+        res1.points[36].x - res1.points[45].x,
+        res1.points[36].y - res1.points[45].y
+      );
+      expect(relocalizingEyeDist).toBeCloseTo(initialEyeDist, 1);
+    });
+  });
+
+  describe('Kalman Numerical Stability & Boundary Guards', () => {
+    it('recovers gracefully from NaN / Infinity inputs without diverging', () => {
+      const filter = new LandmarkKinematicFilter({
+        filterMode: 'KALMAN_HYBRID',
+      });
+
+      // Warm up with valid observations
+      filter.update({ x: 0.5, y: 0.5 }, 0.95, 0.033);
+      const warm = filter.update({ x: 0.51, y: 0.51 }, 0.95, 0.033);
+      expect(warm.pos.x).toBeCloseTo(0.51, 1);
+
+      // Inject NaN observation
+      const nanRes = filter.update({ x: NaN, y: NaN }, 0.95, 0.033);
+      expect(Number.isNaN(nanRes.pos.x)).toBe(false);
+      expect(Number.isNaN(nanRes.pos.y)).toBe(false);
+      expect(nanRes.pos.x).toBeCloseTo(0.51, 1);
+
+      // Inject Infinity observation
+      const infRes = filter.update({ x: Infinity, y: -Infinity }, 0.95, 0.033);
+      expect(Number.isFinite(infRes.pos.x)).toBe(true);
+      expect(Number.isFinite(infRes.pos.y)).toBe(true);
+
+      // Subsequent valid update tracks normally
+      const nextValid = filter.update({ x: 0.52, y: 0.52 }, 0.95, 0.033);
+      expect(nextValid.pos.x).toBeCloseTo(0.52, 1);
+    });
+
+    it('safely clamps anomalous delta time spikes to [1e-3, 0.2] seconds', () => {
+      const filter = new LandmarkKinematicFilter({
+        filterMode: 'KALMAN_HYBRID',
+      });
+
+      filter.update({ x: 0.5, y: 0.5 }, 0.95, 0.033);
+
+      // Huge delta time spike (e.g. tab backgrounded for 10 seconds)
+      const resSpike = filter.update({ x: 0.55, y: 0.55 }, 0.95, 10.0);
+      expect(Number.isFinite(resSpike.pos.x)).toBe(true);
+      expect(Number.isFinite(resSpike.vel.x)).toBe(true);
+
+      // Near zero or negative delta time
+      const resZero = filter.update({ x: 0.55, y: 0.55 }, 0.95, -0.05);
+      expect(Number.isFinite(resZero.pos.x)).toBe(true);
+    });
+  });
+
+  describe('Quantitative Acceptance Criteria Benchmarks (720p Baseline)', () => {
+    // 720p baseline: 1280 x 720
+    const W_720P = 1280;
+    const H_720P = 720;
+
+    it('satisfies production accuracy thresholds: Nose <= 6px, Eyes <= 8px, Lips <= 10px RMSE', () => {
+      const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+
+      // Canonical true anchor positions (normalized)
+      const groundTruth = {
+        noseTip: { x: 640 / W_720P, y: 380 / H_720P },      // index 33
+        leftEyeCentroid: { x: 480 / W_720P, y: 300 / H_720P }, // index 69
+        rightEyeCentroid: { x: 800 / W_720P, y: 300 / H_720P },// index 68
+        leftMouthCorner: { x: 540 / W_720P, y: 480 / H_720P }, // index 48
+        rightMouthCorner: { x: 740 / W_720P, y: 480 / H_720P },// index 54
+      };
+
+      const noseErrorsPx: number[] = [];
+      const eyeErrorsPx: number[] = [];
+      const mouthErrorsPx: number[] = [];
+
+      const NUM_FRAMES = 60;
+      for (let f = 0; f < NUM_FRAMES; f++) {
+        const buffer = new Float32Array(70 * 4);
+        // Add zero-mean pseudo-random sensor noise (+/- 2.5px std dev)
+        const sensorNoiseX = (Math.sin(f * 2.1) + Math.cos(f * 3.7)) * (2.5 / W_720P);
+        const sensorNoiseY = (Math.cos(f * 1.9) + Math.sin(f * 4.1)) * (2.5 / H_720P);
+
+        for (let i = 0; i < 70; i++) {
+          let gx = 0.5;
+          let gy = 0.5;
+          if (i === 33) {
+            gx = groundTruth.noseTip.x;
+            gy = groundTruth.noseTip.y;
+          } else if (i === 68) {
+            gx = groundTruth.rightEyeCentroid.x;
+            gy = groundTruth.rightEyeCentroid.y;
+          } else if (i === 69) {
+            gx = groundTruth.leftEyeCentroid.x;
+            gy = groundTruth.leftEyeCentroid.y;
+          } else if (i === 48) {
+            gx = groundTruth.leftMouthCorner.x;
+            gy = groundTruth.leftMouthCorner.y;
+          } else if (i === 54) {
+            gx = groundTruth.rightMouthCorner.x;
+            gy = groundTruth.rightMouthCorner.y;
+          }
+
+          buffer[i * 4] = gx + sensorNoiseX;
+          buffer[i * 4 + 1] = gy + sensorNoiseY;
+          buffer[i * 4 + 2] = 0;
+          buffer[i * 4 + 3] = 0.98;
+        }
+
+        const res = smoother.updateFromBuffer(buffer, 70, 1000 + f * 33);
+
+        // Record pixel errors on warm frames (f >= 15)
+        if (f >= 15) {
+          const nosePx = Math.hypot(
+            (res.points[33].x - groundTruth.noseTip.x) * W_720P,
+            (res.points[33].y - groundTruth.noseTip.y) * H_720P
+          );
+          noseErrorsPx.push(nosePx);
+
+          const eyePx = Math.hypot(
+            (res.points[68].x - groundTruth.rightEyeCentroid.x) * W_720P,
+            (res.points[68].y - groundTruth.rightEyeCentroid.y) * H_720P
+          );
+          eyeErrorsPx.push(eyePx);
+
+          const mouthPx = Math.hypot(
+            (res.points[48].x - groundTruth.leftMouthCorner.x) * W_720P,
+            (res.points[48].y - groundTruth.leftMouthCorner.y) * H_720P
+          );
+          mouthErrorsPx.push(mouthPx);
+        }
+      }
+
+      const rmse = (errors: number[]) =>
+        Math.sqrt(errors.reduce((sum, e) => sum + e * e, 0) / errors.length);
+
+      const noseRMSE = rmse(noseErrorsPx);
+      const eyeRMSE = rmse(eyeErrorsPx);
+      const mouthRMSE = rmse(mouthErrorsPx);
+
+      // Assertions against quantitative production acceptance gates:
+      // Nose tip RMSE <= 6 px (720p baseline)
+      expect(noseRMSE).toBeLessThanOrEqual(6.0);
+      // Eye centroid RMSE <= 8 px (720p baseline)
+      expect(eyeRMSE).toBeLessThanOrEqual(8.0);
+      // Lip corner RMSE <= 10 px (720p baseline)
+      expect(mouthRMSE).toBeLessThanOrEqual(10.0);
+    });
+
+    it('achieves >= 60% jitter reduction compared to raw noisy input', () => {
+      const smoother = new DenseLandmarksSmoother(70, 'BALANCED', 'KALMAN_HYBRID');
+      const rawDeltas: number[] = [];
+      const filteredDeltas: number[] = [];
+
+      let prevRawX = 0.5;
+      let prevFiltX = 0.5;
+
+      for (let f = 0; f < 60; f++) {
+        // High frequency sensor flutter
+        const jitter = (Math.sin(f * 5.7) + Math.cos(f * 7.3)) * 0.008;
+        const rawX = 0.5 + jitter;
+
+        const buffer = new Float32Array(70 * 4);
+        for (let i = 0; i < 70; i++) {
+          buffer[i * 4] = rawX;
+          buffer[i * 4 + 1] = 0.5;
+          buffer[i * 4 + 2] = 0;
+          buffer[i * 4 + 3] = 0.95;
+        }
+
+        const res = smoother.updateFromBuffer(buffer, 70, 1000 + f * 33);
+        const filtX = res.points[33].x;
+
+        if (f > 10) {
+          rawDeltas.push(Math.abs(rawX - prevRawX));
+          filteredDeltas.push(Math.abs(filtX - prevFiltX));
+        }
+
+        prevRawX = rawX;
+        prevFiltX = filtX;
+      }
+
+      const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+      const rawJitter = mean(rawDeltas);
+      const filteredJitter = mean(filteredDeltas);
+      const jitterReductionPercent = ((rawJitter - filteredJitter) / rawJitter) * 100;
+
+      // Assert jitter reduction is >= 60%
+      expect(jitterReductionPercent).toBeGreaterThanOrEqual(60);
+    });
+  });
 });
+
