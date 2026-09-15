@@ -29,11 +29,15 @@ interface TemplatePatch {
   landmarkIndex: number;
   centerX: number; // Pixel coordinate
   centerY: number; // Pixel coordinate
+  anchorX: number; // Stored model-frame anchor
+  anchorY: number;
   patchRadius: number;
   patchWidth: number;
   patchHeight: number;
   grayData: Float32Array; // Zero-mean normalized template
+  sobelData?: Float32Array; // Zero-mean normalized Sobel gradient descriptor
   stdDev: number;
+  sobelStdDev?: number;
   missCount: number;
 }
 
@@ -42,6 +46,7 @@ export class MicroPatchTracker {
   private readonly patchRadius: number;
   private readonly searchRadius: number;
   private readonly maxMisses: number;
+  private evictionCount: number = 0;
 
   /**
    * @param patchRadius Half-width of template patch (default 8 -> 16x16 patch)
@@ -52,6 +57,13 @@ export class MicroPatchTracker {
     this.patchRadius = patchRadius;
     this.searchRadius = searchRadius;
     this.maxMisses = maxMisses;
+  }
+
+  /**
+   * Returns total number of evicted templates across tracking lifetime.
+   */
+  public getEvictionCount(): number {
+    return this.evictionCount;
   }
 
   /**
@@ -156,15 +168,54 @@ export class MicroPatchTracker {
         continue;
       }
 
+      // Compute Sobel gradient descriptor for fallback matching
+      const sobel = new Float32Array(totalPixels);
+      let sobelSum = 0;
+      let sPtr = 0;
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          const ym1 = Math.max(0, y - 1);
+          const yp1 = Math.min(height - 1, y + 1);
+          const xm1 = Math.max(0, x - 1);
+          const xp1 = Math.min(width - 1, x + 1);
+
+          const getLuma = (pxlX: number, pxlY: number) => {
+            const i = (pxlY * width + pxlX) * 4;
+            return 0.299 * rgbaPixels[i] + 0.587 * rgbaPixels[i + 1] + 0.114 * rgbaPixels[i + 2];
+          };
+
+          const gx = (getLuma(xp1, ym1) + 2 * getLuma(xp1, y) + getLuma(xp1, yp1)) -
+                     (getLuma(xm1, ym1) + 2 * getLuma(xm1, y) + getLuma(xm1, yp1));
+          const gy = (getLuma(xm1, yp1) + 2 * getLuma(x, yp1) + getLuma(xp1, yp1)) -
+                     (getLuma(xm1, ym1) + 2 * getLuma(x, ym1) + getLuma(xp1, ym1));
+
+          const mag = Math.hypot(gx, gy);
+          sobel[sPtr++] = mag;
+          sobelSum += mag;
+        }
+      }
+
+      const sobelMean = sobelSum / totalPixels;
+      let sobelVarSum = 0;
+      for (let i = 0; i < totalPixels; i++) {
+        sobel[i] -= sobelMean;
+        sobelVarSum += sobel[i] * sobel[i];
+      }
+      const sobelStdDev = Math.sqrt(sobelVarSum / totalPixels);
+
       this.templates.set(lm.index, {
         landmarkIndex: lm.index,
         centerX: px,
         centerY: py,
+        anchorX: px,
+        anchorY: py,
         patchRadius: pRadius,
         patchWidth: pWidth,
         patchHeight: pHeight,
         grayData: gray,
+        sobelData: sobel,
         stdDev,
+        sobelStdDev,
         missCount: 0,
       });
     }
@@ -220,33 +271,28 @@ export class MicroPatchTracker {
 
           const gx = dx + this.searchRadius;
 
-          // Compute NCC between template and candidate window
+          // Compute Single-Pass ZNCC: template is already zero-mean (sum(tmplGray) == 0)
           let sumI = 0;
-          for (let y = y0; y <= y1; y++) {
-            const rowOff = y * width * 4;
-            for (let x = x0; x <= x1; x++) {
-              const idx = rowOff + x * 4;
-              sumI += 0.299 * rgbaPixels[idx] + 0.587 * rgbaPixels[idx + 1] + 0.114 * rgbaPixels[idx + 2];
-            }
-          }
-          const meanI = sumI / totalPixels;
-
+          let sumSqI = 0;
           let num = 0;
-          let varI = 0;
           let pIdx = 0;
 
           for (let y = y0; y <= y1; y++) {
             const rowOff = y * width * 4;
             for (let x = x0; x <= x1; x++) {
               const idx = rowOff + x * 4;
-              const luma = (0.299 * rgbaPixels[idx] + 0.587 * rgbaPixels[idx + 1] + 0.114 * rgbaPixels[idx + 2]) - meanI;
+              const luma = 0.299 * rgbaPixels[idx] + 0.587 * rgbaPixels[idx + 1] + 0.114 * rgbaPixels[idx + 2];
+              sumI += luma;
+              sumSqI += luma * luma;
               num += tmplGray[pIdx++] * luma;
-              varI += luma * luma;
             }
           }
 
-          const denom = tmpl.stdDev * Math.sqrt(varI / totalPixels) * totalPixels;
-          const ncc = denom > 0.0001 ? num / denom : 0;
+          const varI = Math.max(0, sumSqI - (sumI * sumI) / totalPixels);
+          const candStdDev = Math.sqrt(varI / totalPixels);
+          const ncc = (candStdDev >= 1.0 && tmpl.stdDev >= 1.0)
+            ? num / (tmpl.stdDev * candStdDev * totalPixels)
+            : 0;
           nccGrid[gy * gridDim + gx] = ncc;
 
           if (ncc > bestNCC) {
@@ -257,7 +303,80 @@ export class MicroPatchTracker {
         }
       }
 
-      if (bestNCC >= minConfidence) {
+      // Fallback: If standard grayscale NCC fails, evaluate Sobel gradient correlation
+      let usedFallback = false;
+      if (bestNCC < minConfidence && tmpl.sobelData && tmpl.sobelStdDev && tmpl.sobelStdDev > 0.5) {
+        const tmplSobel = tmpl.sobelData;
+        const sobelStdDev = tmpl.sobelStdDev;
+        let bestSobelNCC = -1;
+        let bestSobelDx = 0;
+        let bestSobelDy = 0;
+
+        for (let dy = -this.searchRadius; dy <= this.searchRadius; dy += step) {
+          const cy = tmpl.centerY + dy;
+          const y0 = cy - pRadius;
+          const y1 = cy + pRadius;
+          if (y0 < 0 || y1 >= height) continue;
+
+          for (let dx = -this.searchRadius; dx <= this.searchRadius; dx += step) {
+            const cx = tmpl.centerX + dx;
+            const x0 = cx - pRadius;
+            const x1 = cx + pRadius;
+            if (x0 < 0 || x1 >= width) continue;
+
+            // Extract Sobel magnitudes for candidate
+            let sumS = 0;
+            let pIdx = 0;
+            const candSobel = new Float32Array(totalPixels);
+            for (let y = y0; y <= y1; y++) {
+              for (let x = x0; x <= x1; x++) {
+                const ym1 = Math.max(0, y - 1);
+                const yp1 = Math.min(height - 1, y + 1);
+                const xm1 = Math.max(0, x - 1);
+                const xp1 = Math.min(width - 1, x + 1);
+
+                const getLuma = (pxlX: number, pxlY: number) => {
+                  const i = (pxlY * width + pxlX) * 4;
+                  return 0.299 * rgbaPixels[i] + 0.587 * rgbaPixels[i + 1] + 0.114 * rgbaPixels[i + 2];
+                };
+
+                const gx = (getLuma(xp1, ym1) + 2 * getLuma(xp1, y) + getLuma(xp1, yp1)) -
+                           (getLuma(xm1, ym1) + 2 * getLuma(xm1, y) + getLuma(xm1, yp1));
+                const gy = (getLuma(xm1, yp1) + 2 * getLuma(x, yp1) + getLuma(xp1, yp1)) -
+                           (getLuma(xm1, ym1) + 2 * getLuma(x, ym1) + getLuma(xp1, ym1));
+                const mag = Math.hypot(gx, gy);
+                candSobel[pIdx++] = mag;
+                sumS += mag;
+              }
+            }
+
+            const meanS = sumS / totalPixels;
+            let numS = 0;
+            let varS = 0;
+            for (let i = 0; i < totalPixels; i++) {
+              const diff = candSobel[i] - meanS;
+              numS += tmplSobel[i] * diff;
+              varS += diff * diff;
+            }
+            const denomS = sobelStdDev * Math.sqrt(varS / totalPixels) * totalPixels;
+            const sobelNCC = denomS > 0.0001 ? numS / denomS : 0;
+            if (sobelNCC > bestSobelNCC) {
+              bestSobelNCC = sobelNCC;
+              bestSobelDx = dx;
+              bestSobelDy = dy;
+            }
+          }
+        }
+
+        if (bestSobelNCC >= minConfidence * 0.82) {
+          bestNCC = bestSobelNCC;
+          bestDx = bestSobelDx;
+          bestDy = bestSobelDy;
+          usedFallback = true;
+        }
+      }
+
+      if (bestNCC >= minConfidence || usedFallback) {
         tmpl.missCount = 0;
 
         // Sub-pixel quadratic peak interpolation around bestDx, bestDy (when stride === 1)
@@ -266,7 +385,7 @@ export class MicroPatchTracker {
         const gx = bestDx + this.searchRadius;
         const gy = bestDy + this.searchRadius;
 
-        if (step === 1) {
+        if (step === 1 && !usedFallback) {
           if (gx > 0 && gx < gridDim - 1) {
             const c0 = nccGrid[gy * gridDim + gx];
             const cL = nccGrid[gy * gridDim + (gx - 1)];
@@ -304,13 +423,39 @@ export class MicroPatchTracker {
           ncc: Math.min(1.0, Math.max(0, bestNCC)),
         });
       } else {
-        // Increment miss count and evict stale templates that have drifted or fallen below threshold
+        // Increment miss count and apply template aging logic:
+        // Evict stale templates after maxMisses, but attempt re-capture from initial model anchor before full eviction
         tmpl.missCount++;
-        if (tmpl.missCount >= this.maxMisses) {
+        if (tmpl.missCount < this.maxMisses) {
+          tmpl.centerX = tmpl.anchorX;
+          tmpl.centerY = tmpl.anchorY;
+        } else {
+          this.evictionCount++;
           this.templates.delete(index);
         }
       }
     }
+
+    // Region-level topology preservation check (reject one if bilateral scale expands or collapses > 50%)
+    const checkTopologyPair = (idxA: number, idxB: number) => {
+      const rA = results.get(idxA);
+      const rB = results.get(idxB);
+      const tA = this.templates.get(idxA);
+      const tB = this.templates.get(idxB);
+      if (rA && rB && tA && tB) {
+        const initialDist = Math.hypot(tA.anchorX - tB.anchorX, tA.anchorY - tB.anchorY);
+        const currentDist = Math.hypot((rA.x - rB.x) * width, (rA.y - rB.y) * height);
+        if (initialDist > 2 && (currentDist < initialDist * 0.50 || currentDist > initialDist * 1.50)) {
+          if (rA.ncc < rB.ncc) {
+            results.delete(idxA);
+          } else {
+            results.delete(idxB);
+          }
+        }
+      }
+    };
+    checkTopologyPair(68, 69); // Eyes
+    checkTopologyPair(48, 54); // Mouth corners
 
     return results;
   }
