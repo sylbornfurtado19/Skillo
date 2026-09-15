@@ -965,7 +965,7 @@ export default function IVPInteractiveCanvas({
 
       // C. Render High-Tech Debug Metrics Card (Bottom-Right)
       const isThrottled = workerStats?.isThrottled ?? false;
-      const dbgW = 295;
+      const dbgW = 320;
       const dbgH = isThrottled ? 122 : 108;
       const dbgX = CSS_W - dbgW - 12;
       const dbgY = CSS_H - dbgH - 12;
@@ -980,7 +980,7 @@ export default function IVPInteractiveCanvas({
       ctx.fillStyle = isThrottled ? '#F59E0B' : '#06B6D4';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('⚡ TRACKING DEBUG & TRANSFORM HUD', dbgX + 8, dbgY + 8);
+      ctx.fillText('⚡ TRACKING HUD (Amber: Raw | Cyan: Smoothed)', dbgX + 8, dbgY + 8);
 
       ctx.font = '8.5px monospace';
       ctx.fillStyle = '#D1D5DB';

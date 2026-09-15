@@ -548,6 +548,10 @@ export class LandmarkKinematicFilter {
     return { ...this.vel };
   }
 
+  public setVelocity(vel: LandmarkPoint2D): void {
+    this.vel = { ...vel };
+  }
+
   public getOpacity(): number {
     return this.visibilityOpacity;
   }
@@ -768,6 +772,15 @@ export class DenseLandmarksSmoother {
         const start = this.reLocStartPositions[i];
         x = start.x + (x - start.x) * blend;
         y = start.y + (y - start.y) * blend;
+
+        // Explicitly blend internal velocity toward target glide velocity to prevent post-glide overshoot
+        const targetVx = (buffer[offset] - start.x) / this.reLocDurationSec;
+        const targetVy = (buffer[offset + 1] - start.y) / this.reLocDurationSec;
+        const currentVel = this.filters[i].getVel();
+        this.filters[i].setVelocity({
+          x: currentVel.x * (1 - blend) + targetVx * blend * 0.5,
+          y: currentVel.y * (1 - blend) + targetVy * blend * 0.5,
+        });
       }
 
       const res = this.filters[i].update({ x, y }, conf, dt);
@@ -906,6 +919,15 @@ export class DenseLandmarksSmoother {
         const start = this.reLocStartPositions[i];
         x = start.x + (x - start.x) * blend;
         y = start.y + (y - start.y) * blend;
+
+        // Explicitly blend internal velocity toward target glide velocity to prevent post-glide overshoot
+        const targetVx = (p.x - start.x) / this.reLocDurationSec;
+        const targetVy = (p.y - start.y) / this.reLocDurationSec;
+        const currentVel = this.filters[i].getVel();
+        this.filters[i].setVelocity({
+          x: currentVel.x * (1 - blend) + targetVx * blend * 0.5,
+          y: currentVel.y * (1 - blend) + targetVy * blend * 0.5,
+        });
       }
 
       const res = this.filters[i].update({ x, y }, conf, dt);
