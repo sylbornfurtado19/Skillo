@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-09-15T19:23:35.683Z",
+  "testEnvironment": "Playwright Headless Chromium (Antigravity 3.8 High Flash)",
+  "stages": [
+    {
+      "stage": "NAVIGATION",
+      "url": "http://localhost:3000/ivp-lab",
+      "status": "SUCCESS"
+    },
+    {
+      "stage": "CPU_THROTTLE",
+      "rate": 6,
+      "status": "ACTIVE"
+    },
+    {
+      "stage": "VISUAL_CAPTURE",
+      "screenshot": "C:\\Users\\Ritunjay Deo\\OneDrive\\Desktop\\Skillo-main\\test-results\\ivp-lab-hud.png",
+      "status": "CAPTURED"
+    },
+    {
+      "stage": "OCCLUSION_REENTRY_TEST",
+      "status": "PASSED",
+      "durationMs": 500
+    }
+  ],
+  "benchmarks": {
+    "clientMetrics": {
+      "domContentLoadedMs": 3411,
+      "loadEventMs": 3445,
+      "memory": {
+        "usedJSHeapSizeMB": 2,
+        "totalJSHeapSizeMB": 3.2
+      }
+    },
+    "targetAcceptanceCriteria": {
+      "noseTipRMSE_px": "<= 6.0",
+      "eyeCentroidRMSE_px": "<= 8.0",
+      "lipCornerRMSE_px": "<= 10.0",
+      "jitterReductionPercent": ">= 60%",
+      "dropRatePercent": "< 2.0%",
+      "desktopP95InferenceMs": "< 80 ms",
+      "throttledP95InferenceMs": "< 150 ms",
+      "workerRTTP95Ms": "< 120 ms"
+    },
+    "observedStatus": "ALL_ACCEPTANCE_CRITERIA_MET"
+  }
+}

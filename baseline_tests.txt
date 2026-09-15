@@ -1,0 +1,40 @@
+PASS tests/resumeAnalysisAndRateLimit.test.ts
+  ΓùÅ Console
+
+    console.warn
+      [RateLimiter] Notice: Using in-memory rate limiting fallback. In-memory state does not synchronize across distributed serverless instances. To enable cross-instance synchronization, create the `request_logs` table in Supabase or connect Upstash Redis.
+
+      83 |   // 2. In-memory sliding window fallback
+      84 |   if (!hasLoggedInMemoryWarning) {
+    > 85 |     console.warn(
+         |             ^
+      86 |       '[RateLimiter] Notice: Using in-memory rate limiting fallback. In-memory state does not synchronize across distributed serverless instances. To enable cross-instance synchronization, create the `request_logs` table in Supabase or connect Upstash Redis.'
+      87 |     );
+      88 |     hasLoggedInMemoryWarning = true;
+
+      at checkRateLimit (src/lib/services/rateLimiter.server.ts:85:13)
+      at Object.<anonymous> (tests/resumeAnalysisAndRateLimit.test.ts:75:16)
+
+PASS tests/microTrackerPerformance.test.ts
+PASS tests/onboardingWidget.test.ts
+PASS tests/learnedLandmarkPipeline.test.ts
+PASS tests/boundaryTesting.test.ts
+PASS tests/adaptiveCadenceAndRelocalization.test.ts
+PASS tests/aiEngine.test.ts
+PASS tests/microPatchTrackerPixelMapping.test.ts
+PASS tests/templateAging.test.ts
+PASS tests/ivpEngine.test.ts
+PASS tests/interviewModes.test.ts
+PASS tests/backpressureAndOcclusion.test.ts
+PASS tests/temporalSmoothing.test.ts
+PASS tests/temporalMotion.test.ts
+PASS tests/mirroredRoundtrip.test.ts
+PASS tests/landmarkTracking.test.ts
+PASS tests/theme.test.ts
+PASS tests/systemDesignCanvas.test.ts
+
+Test Suites: 18 passed, 18 total
+Tests:       157 passed, 157 total
+Snapshots:   0 total
+Time:        3.689 s
+Ran all test suites.

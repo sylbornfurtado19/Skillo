@@ -1,0 +1,38 @@
+
+> skillo@0.0.0 build
+> next build
+
+Γû▓ Next.js 16.2.12 (Turbopack)
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 6.4s
+  Running TypeScript ...
+  Finished TypeScript in 6.0s ...
+  Collecting page data using 15 workers ...
+  Generating static pages using 15 workers (0/12) ...
+  Generating static pages using 15 workers (3/12) 
+  Generating static pages using 15 workers (6/12) 
+  Generating static pages using 15 workers (9/12) 
+Γ£ô Generating static pages using 15 workers (12/12) in 289ms
+  Finalizing page optimization ...
+
+Route (app)
+Γöî Γùï /
+Γö£ Γùï /_not-found
+Γö£ ╞Æ /api/interview/evaluate
+Γö£ ╞Æ /api/interview/followup
+Γö£ ╞Æ /api/resume/analyze
+Γö£ Γùï /dashboard
+Γö£ Γùï /interview
+Γö£ Γùï /ivp-lab
+Γö£ Γùï /login
+Γö£ Γùï /profile
+Γö£ Γùï /results
+Γö£ Γùï /resume
+Γö£ Γùï /settings
+Γöö Γùï /setup
+
+
+Γùï  (Static)   prerendered as static content
+╞Æ  (Dynamic)  server-rendered on demand
+
