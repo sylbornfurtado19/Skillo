@@ -211,3 +211,36 @@ export function mapNormalizedPointsToCanvas(
 ): Array<{ x: number; y: number }> {
   return normPoints.map(p => mapNormalizedToCanvas(p, mapping));
 }
+
+/**
+ * Converts a normalized coordinate relative to the PROC canvas (320x240)
+ * into a normalized coordinate relative to the full video frame [0..1].
+ */
+export function procToVideoCoord(normProc: number, procDim: number, videoDim: number): number {
+  return (normProc * procDim) / Math.max(1, videoDim);
+}
+
+/**
+ * Converts a normalized coordinate relative to the full video frame [0..1]
+ * into a normalized coordinate relative to the PROC canvas (320x240).
+ */
+export function videoToProcCoord(normVid: number, procDim: number, videoDim: number): number {
+  return (normVid * Math.max(1, videoDim)) / Math.max(1, procDim);
+}
+
+export function procToVideoX(procX: number, procW: number, videoW: number): number {
+  return procToVideoCoord(procX, procW, videoW);
+}
+
+export function procToVideoY(procY: number, procH: number, videoH: number): number {
+  return procToVideoCoord(procY, procH, videoH);
+}
+
+export function videoToProcX(videoX: number, procW: number, videoW: number): number {
+  return videoToProcCoord(videoX, procW, videoW);
+}
+
+export function videoToProcY(videoY: number, procH: number, videoH: number): number {
+  return videoToProcCoord(videoY, procH, videoH);
+}
+

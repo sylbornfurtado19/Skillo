@@ -536,28 +536,59 @@ export default function IVPInteractiveCanvas({
 
         // Initialize / refresh micro-patch templates on new inference packet
         if (isFaceGenuinelyDetected && rawImgData) {
+          const toProcX = (videoNormX: number) => Math.round(videoNormX * PROC_W);
+          if (rawPts[68] && (toProcX(rawPts[68].x) < 0 || toProcX(rawPts[68].x) >= PROC_W)) {
+            console.warn('[IVP] template X out of bounds', toProcX(rawPts[68].x), 'PROC_W', PROC_W);
+          }
           const normMicroX = (x: number) => (mirrored ? (1.0 - x) : x);
           microTrackerRef.current.updateTemplates(rawImgData.data, PROC_W, PROC_H, [
-            { index: 68, x: normMicroX(rawPts[68].x), y: rawPts[68].y }, // Right pupil
-            { index: 69, x: normMicroX(rawPts[69].x), y: rawPts[69].y }, // Left pupil
-            { index: 48, x: normMicroX(rawPts[48].x), y: rawPts[48].y }, // Mouth right corner
-            { index: 54, x: normMicroX(rawPts[54].x), y: rawPts[54].y }, // Mouth left corner
+            { index: 68, x: normMicroX(rawPts[68].x), y: rawPts[68].y, patchRadius: 8 }, // Right pupil
+            { index: 69, x: normMicroX(rawPts[69].x), y: rawPts[69].y, patchRadius: 8 }, // Left pupil
+            { index: 48, x: normMicroX(rawPts[48].x), y: rawPts[48].y, patchRadius: 12 }, // Mouth right corner
+            { index: 54, x: normMicroX(rawPts[54].x), y: rawPts[54].y, patchRadius: 12 }, // Mouth left corner
           ]);
         }
       } else {
         // Intermediate 60 FPS RAF frame: track micro-features (pupils & lip corners) using NCC
+        // Convert micro-tracker (PROC-space) -> video-normalized space before feeding smoother/buffer.
         if (isFaceGenuinelyDetected && rawImgData) {
           const tracked = microTrackerRef.current.track(rawImgData.data, PROC_W, PROC_H, 0.55);
           const canonicalTracked = new Map<number, TrackedFeature>();
+
+          // Safe guards: ensure mapping available
+          const videoW = mapping.videoWidth || PROC_W;
+          const videoH = mapping.videoHeight || PROC_H;
+          const procToVideoX = (procX: number) => (procX * PROC_W) / Math.max(1, videoW);
+          const procToVideoY = (procY: number) => (procY * PROC_H) / Math.max(1, videoH);
+
           for (const [idx, feat] of tracked.entries()) {
-            const canonicalX = mirrored ? (1.0 - feat.x) : feat.x;
-            canonicalTracked.set(idx, { ...feat, x: canonicalX });
-            denseSmootherRef.current.updatePoint(idx, { x: canonicalX, y: feat.y }, feat.ncc, now);
-            workerLandmarks.buffer[idx * 4] = canonicalX;
-            workerLandmarks.buffer[idx * 4 + 1] = feat.y;
-            workerLandmarks.buffer[idx * 4 + 3] = feat.ncc;
+            // feat.x/feat.y are normalized relative to PROC_W/PROC_H
+            const procX = mirrored ? (1.0 - feat.x) : feat.x;
+            const procY = feat.y;
+
+            // Convert PROC normalized -> video normalized
+            const videoNormX = procToVideoX(procX); // in [0..1] relative to video width
+            const videoNormY = procToVideoY(procY); // in [0..1] relative to video height
+
+            // Save canonical tracked in video-normalized space for HUD & downstream use
+            canonicalTracked.set(idx, { landmarkIndex: idx, x: videoNormX, y: videoNormY, ncc: feat.ncc });
+
+            // Feed the smoother with video normalized coordinates (the smoother & buffer expect same normalization)
+            denseSmootherRef.current.updatePoint(idx, { x: videoNormX, y: videoNormY }, feat.ncc, now);
+
+            // Update the zero-copy buffer which will be consumed by updateFromBuffer (also expects video-normalized coords)
+            if (workerLandmarks && workerLandmarks.buffer && workerLandmarks.buffer.length >= (idx + 1) * 4) {
+              workerLandmarks.buffer[idx * 4] = videoNormX;
+              workerLandmarks.buffer[idx * 4 + 1] = videoNormY;
+              workerLandmarks.buffer[idx * 4 + 3] = feat.ncc;
+            }
           }
           lastMicroTrackedRef.current = canonicalTracked;
+
+          if (tracked.size > 0 && process.env.NODE_ENV === 'development') {
+            console.debug('[MICRO-TRACK] templates:', microTrackerRef.current.templateCount(), 'tracked:', Array.from(tracked.entries()).map(([i,f])=>`${i}:${f.x.toFixed(3)},${f.y.toFixed(3)} ncc:${f.ncc.toFixed(2)}`));
+            console.debug('[MICRO->VIDEO]', Array.from(canonicalTracked.entries()).map(([i,f])=>`${i}:${f.x.toFixed(4)},${f.y.toFixed(4)}`));
+          }
         }
         denseRes = denseSmootherRef.current.updateFromBuffer(
           workerLandmarks.buffer,
@@ -1077,7 +1108,8 @@ export default function IVPInteractiveCanvas({
       const relocStr = denseRes.isRelocalizing ? `GLIDE (${Math.round(denseRes.relocalizationProgress * 100)}%)` : 'LOCKED';
       const engineStr = workerLandmarks?.envelope.trackingMode === 'LEARNED_FACELANDMARKER' ? 'LEARNED (MediaPipe)' : 'OPTICAL TRACKER';
       const microCount = lastMicroTrackedRef.current?.size ?? 0;
-      ctx.fillText(`ENGINE: ${engineStr} | MICRO-NCC: ${microCount} pts (60 FPS)`, dbgX + 8, dbgY + 64);
+      const tmplCount = microTrackerRef.current.templateCount();
+      ctx.fillText(`ENGINE: ${engineStr} | MICRO-NCC: ${microCount}/${tmplCount} pts (60 FPS)`, dbgX + 8, dbgY + 64);
       ctx.fillText(`PRESET: ${denseRes.activePreset} | α: ${denseRes.meanAlpha.toFixed(2)} | OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s`, dbgX + 8, dbgY + 78);
       ctx.fillText(`MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight} (S: ${mapping.scale.toFixed(2)}) | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 92);
 

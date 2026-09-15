@@ -516,6 +516,82 @@ describe('Learned MediaPipe Landmark Pipeline & 70-Point Canonical Mapping', () 
       // Assert jitter reduction is >= 60%
       expect(jitterReductionPercent).toBeGreaterThanOrEqual(60);
     });
+
+    it('correctly integrates PROC-space micro-tracking into video-normalized worker buffer and smoother', () => {
+      const videoW = 1280;
+      const videoH = 720;
+      const PROC_W = 320;
+      const PROC_H = 240;
+
+      const workerBuffer = new Float32Array(70 * 4);
+      // Setup mock landmarks normalized to video
+      workerBuffer[68 * 4] = 0.50;
+      workerBuffer[68 * 4 + 1] = 0.50;
+      workerBuffer[68 * 4 + 3] = 0.95;
+
+      const tracker = new MicroPatchTracker(8, 8);
+      const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+
+      // Create synthetic PROC frame (320x240)
+      const procFrame1 = new Uint8ClampedArray(PROC_W * PROC_H * 4);
+      // Pupil at (160, 120) in PROC
+      for (let y = 0; y < PROC_H; y++) {
+        for (let x = 0; x < PROC_W; x++) {
+          const idx = (y * PROC_W + x) * 4;
+          const d = Math.hypot(x - 160, y - 120);
+          const luma = d < 4 ? 20 : 200;
+          procFrame1[idx] = luma;
+          procFrame1[idx + 1] = luma;
+          procFrame1[idx + 2] = luma;
+          procFrame1[idx + 3] = 255;
+        }
+      }
+
+      // Initialize templates using video-normalized coords
+      tracker.updateTemplates(procFrame1, PROC_W, PROC_H, [
+        { index: 68, x: workerBuffer[68 * 4], y: workerBuffer[68 * 4 + 1], patchRadius: 8 },
+      ]);
+      expect(tracker.templateCount()).toBe(1);
+
+      // Frame 2 with small movement in PROC (+2px X, +2px Y)
+      const procFrame2 = new Uint8ClampedArray(PROC_W * PROC_H * 4);
+      for (let y = 0; y < PROC_H; y++) {
+        for (let x = 0; x < PROC_W; x++) {
+          const idx = (y * PROC_W + x) * 4;
+          const d = Math.hypot(x - 162, y - 122);
+          const luma = d < 4 ? 20 : 200;
+          procFrame2[idx] = luma;
+          procFrame2[idx + 1] = luma;
+          procFrame2[idx + 2] = luma;
+          procFrame2[idx + 3] = 255;
+        }
+      }
+
+      const tracked = tracker.track(procFrame2, PROC_W, PROC_H, 0.55);
+      expect(tracked.has(68)).toBe(true);
+
+      const feat = tracked.get(68)!;
+      expect(feat.x).toBeCloseTo(162 / PROC_W, 2);
+      expect(feat.y).toBeCloseTo(122 / PROC_H, 2);
+
+      // Convert PROC-normalized -> video-normalized
+      const procToVideoX = (procX: number) => (procX * PROC_W) / videoW;
+      const procToVideoY = (procY: number) => (procY * PROC_H) / videoH;
+
+      const videoNormX = procToVideoX(feat.x);
+      const videoNormY = procToVideoY(feat.y);
+
+      // Update buffer and smoother
+      workerBuffer[68 * 4] = videoNormX;
+      workerBuffer[68 * 4 + 1] = videoNormY;
+      workerBuffer[68 * 4 + 3] = feat.ncc;
+
+      const smoothed = smoother.updatePoint(68, { x: videoNormX, y: videoNormY }, feat.ncc, 1033);
+      expect(smoothed).not.toBeNull();
+      expect(workerBuffer[68 * 4]).toBeCloseTo(videoNormX, 5);
+      expect(workerBuffer[68 * 4 + 1]).toBeCloseTo(videoNormY, 5);
+      expect(workerBuffer[68 * 4 + 3]).toBeCloseTo(feat.ncc, 4);
+    });
   });
 });
 

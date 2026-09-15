@@ -19,6 +19,7 @@ interface TemplatePatch {
   landmarkIndex: number;
   centerX: number; // Pixel coordinate
   centerY: number; // Pixel coordinate
+  patchRadius: number;
   patchWidth: number;
   patchHeight: number;
   grayData: Float32Array; // Zero-mean normalized template
@@ -40,6 +41,13 @@ export class MicroPatchTracker {
   }
 
   /**
+   * Returns the count of active reference templates currently tracked.
+   */
+  public templateCount(): number {
+    return this.templates.size;
+  }
+
+  /**
    * Resets all stored templates.
    */
   public reset(): void {
@@ -52,24 +60,25 @@ export class MicroPatchTracker {
    * @param rgbaPixels Frame pixel buffer (320x240)
    * @param width Frame width
    * @param height Frame height
-   * @param targetLandmarks Array of points { index, x, y } in normalized [0..1] space
+   * @param targetLandmarks Array of points { index, x, y, patchRadius? } in normalized [0..1] space
    */
   public updateTemplates(
     rgbaPixels: Uint8ClampedArray,
     width: number,
     height: number,
-    targetLandmarks: Array<{ index: number; x: number; y: number }>
+    targetLandmarks: Array<{ index: number; x: number; y: number; patchRadius?: number }>
   ): void {
     this.templates.clear();
 
     for (const lm of targetLandmarks) {
       const px = Math.round(lm.x * width);
       const py = Math.round(lm.y * height);
+      const pRadius = lm.patchRadius ?? this.patchRadius;
 
-      const x0 = px - this.patchRadius;
-      const y0 = py - this.patchRadius;
-      const x1 = px + this.patchRadius;
-      const y1 = py + this.patchRadius;
+      const x0 = px - pRadius;
+      const y0 = py - pRadius;
+      const x1 = px + pRadius;
+      const y1 = py + pRadius;
 
       // Ensure template lies completely inside image boundaries
       if (x0 < 0 || y0 < 0 || x1 >= width || y1 >= height) {
@@ -111,6 +120,7 @@ export class MicroPatchTracker {
         landmarkIndex: lm.index,
         centerX: px,
         centerY: py,
+        patchRadius: pRadius,
         patchWidth: pWidth,
         patchHeight: pHeight,
         grayData: gray,
@@ -134,28 +144,37 @@ export class MicroPatchTracker {
     minConfidence: number = 0.55
   ): Map<number, TrackedFeature> {
     const results = new Map<number, TrackedFeature>();
+    const gridDim = this.searchRadius * 2 + 1;
+    const nccGrid = new Float32Array(gridDim * gridDim);
 
     for (const [index, tmpl] of this.templates.entries()) {
       let bestNCC = -1;
       let bestDx = 0;
       let bestDy = 0;
 
+      const pRadius = tmpl.patchRadius;
       const pWidth = tmpl.patchWidth;
       const pHeight = tmpl.patchHeight;
       const totalPixels = pWidth * pHeight;
       const tmplGray = tmpl.grayData;
 
-      for (let dy = -this.searchRadius; dy <= this.searchRadius; dy += 2) {
+      nccGrid.fill(-1);
+
+      for (let dy = -this.searchRadius; dy <= this.searchRadius; dy += 1) {
         const cy = tmpl.centerY + dy;
-        const y0 = cy - this.patchRadius;
-        const y1 = cy + this.patchRadius;
+        const y0 = cy - pRadius;
+        const y1 = cy + pRadius;
         if (y0 < 0 || y1 >= height) continue;
 
-        for (let dx = -this.searchRadius; dx <= this.searchRadius; dx += 2) {
+        const gy = dy + this.searchRadius;
+
+        for (let dx = -this.searchRadius; dx <= this.searchRadius; dx += 1) {
           const cx = tmpl.centerX + dx;
-          const x0 = cx - this.patchRadius;
-          const x1 = cx + this.patchRadius;
+          const x0 = cx - pRadius;
+          const x1 = cx + pRadius;
           if (x0 < 0 || x1 >= width) continue;
+
+          const gx = dx + this.searchRadius;
 
           // Compute NCC between template and candidate window
           let sumI = 0;
@@ -184,6 +203,7 @@ export class MicroPatchTracker {
 
           const denom = tmpl.stdDev * Math.sqrt(varI / totalPixels) * totalPixels;
           const ncc = denom > 0.0001 ? num / denom : 0;
+          nccGrid[gy * gridDim + gx] = ncc;
 
           if (ncc > bestNCC) {
             bestNCC = ncc;
@@ -194,8 +214,40 @@ export class MicroPatchTracker {
       }
 
       if (bestNCC >= minConfidence) {
-        const updatedX = (tmpl.centerX + bestDx) / width;
-        const updatedY = (tmpl.centerY + bestDy) / height;
+        // Sub-pixel quadratic peak interpolation around bestDx, bestDy
+        let subDx = bestDx;
+        let subDy = bestDy;
+        const gx = bestDx + this.searchRadius;
+        const gy = bestDy + this.searchRadius;
+
+        if (gx > 0 && gx < gridDim - 1) {
+          const c0 = nccGrid[gy * gridDim + gx];
+          const cL = nccGrid[gy * gridDim + (gx - 1)];
+          const cR = nccGrid[gy * gridDim + (gx + 1)];
+          if (cL >= 0 && cR >= 0) {
+            const denom = cL - 2 * c0 + cR;
+            if (denom < -1e-5) {
+              const deltaX = (cL - cR) / (2 * denom);
+              subDx += Math.max(-0.5, Math.min(0.5, deltaX));
+            }
+          }
+        }
+
+        if (gy > 0 && gy < gridDim - 1) {
+          const c0 = nccGrid[gy * gridDim + gx];
+          const cT = nccGrid[(gy - 1) * gridDim + gx];
+          const cB = nccGrid[(gy + 1) * gridDim + gx];
+          if (cT >= 0 && cB >= 0) {
+            const denom = cT - 2 * c0 + cB;
+            if (denom < -1e-5) {
+              const deltaY = (cT - cB) / (2 * denom);
+              subDy += Math.max(-0.5, Math.min(0.5, deltaY));
+            }
+          }
+        }
+
+        const updatedX = (tmpl.centerX + subDx) / width;
+        const updatedY = (tmpl.centerY + subDy) / height;
 
         results.set(index, {
           landmarkIndex: index,
