@@ -48,6 +48,9 @@ export default function IVPLab() {
     isFallbackMode,
     fallbackReason,
     processFrame: processWorkerFrame,
+    isTabPaused,
+    isThrottled,
+    suggestedCadenceFps,
   } = useVisionWorker({
     autoStart: true,
     backend: 'WEBGL',
@@ -153,7 +156,7 @@ export default function IVPLab() {
     reader.readAsDataURL(file);
   };
 
-  // 4. Continuous Asynchronous ONNX Background Inference Loop (11 FPS)
+  // 4. Continuous Asynchronous ONNX Background Inference Loop (Adaptive Cadence)
   useEffect(() => {
     if (!offscreenInferCanvasRef.current) {
       const c = document.createElement('canvas');
@@ -162,7 +165,13 @@ export default function IVPLab() {
       offscreenInferCanvasRef.current = c;
     }
 
+    // Adaptive cadence: default 90ms (~11 FPS) when healthy, throttled to 180ms (~5.5 FPS) under overload
+    const intervalMs = isThrottled ? 180 : 90;
+
     inferIntervalRef.current = setInterval(async () => {
+      // Pause inference loop if tab is hidden / pagehide
+      if (isTabPaused) return;
+
       const inferCanvas = offscreenInferCanvasRef.current;
       if (!inferCanvas) return;
       const ctx = inferCanvas.getContext('2d');
@@ -187,12 +196,12 @@ export default function IVPLab() {
       } catch (err) {
         console.warn('Continuous ONNX pipeline tick warning:', err);
       }
-    }, 90);
+    }, intervalMs);
 
     return () => {
       if (inferIntervalRef.current) clearInterval(inferIntervalRef.current);
     };
-  }, [inputSource, processWorkerFrame]);
+  }, [inputSource, processWorkerFrame, isTabPaused, isThrottled]);
 
   return (
     <div className="space-y-6 text-left max-w-7xl mx-auto pb-16">
@@ -346,6 +355,16 @@ export default function IVPLab() {
                 {isFallbackMode && fallbackReason && (
                   <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
                     ⚠ FALLBACK: {fallbackReason}
+                  </span>
+                )}
+                {isThrottled && (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
+                    ⚡ THROTTLED ({suggestedCadenceFps} FPS)
+                  </span>
+                )}
+                {isTabPaused && (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                    ⏸ TAB PAUSED
                   </span>
                 )}
               </div>

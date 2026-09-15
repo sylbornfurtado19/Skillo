@@ -662,6 +662,8 @@ ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMe
         isInitialized = false;
         isBusy = false;
         motionDetector.reset();
+        offscreenCanvas = null;
+        offscreenCtx = null;
         postResponse({ type: 'DISPOSED_CONFIRM' });
         break;
       }

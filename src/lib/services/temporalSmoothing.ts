@@ -578,20 +578,50 @@ export interface SmoothedLandmarksResult {
   visibilityOpacity: number;
   occludedDurationSec: number;
   activePreset: TrackingPreset;
+  isRelocalizing: boolean;
+  relocalizationProgress: number;
 }
 
 /**
  * Dense Multi-Point Facial Landmark Smoother.
- * Manages per-landmark kinematic filters with per-region specialization and dynamic presets.
+ * Manages per-landmark kinematic filters with per-region specialization,
+ * dynamic presets, and global anti-snap re-localization glide.
  */
 export class DenseLandmarksSmoother {
   private filters: LandmarkKinematicFilter[] = [];
   private lastTimestampMs: number = 0;
   private currentPreset: TrackingPreset = 'BALANCED';
 
+  // Global anti-snap re-localization state
+  private isRelocalizing: boolean = false;
+  private reLocProgress: number = 1.0;
+  private reLocDurationSec: number = 0.12; // 120ms glide
+  private reLocStartPositions: LandmarkPoint2D[] = [];
+  private reLocThreshold: number = 0.06; // 0.06 normalized distance threshold (~38px at 640x480)
+  private minOcclusionForRelocSec: number = 0.30; // 300ms minimum occlusion hold
+  private lastMaxOccludedSec: number = 0;
+
   constructor(numPoints: number = 68, preset: TrackingPreset = 'BALANCED') {
     this.currentPreset = preset;
     this.initFilters(numPoints);
+  }
+
+  public setRelocalizationConfig(config: {
+    threshold?: number;
+    durationMs?: number;
+    minOcclusionSec?: number;
+  }) {
+    if (config.threshold !== undefined) this.reLocThreshold = config.threshold;
+    if (config.durationMs !== undefined) this.reLocDurationSec = Math.max(0.02, config.durationMs / 1000);
+    if (config.minOcclusionSec !== undefined) this.minOcclusionForRelocSec = config.minOcclusionSec;
+  }
+
+  public getIsRelocalizing(): boolean {
+    return this.isRelocalizing;
+  }
+
+  public getRelocalizationProgress(): number {
+    return this.reLocProgress;
   }
 
   private getRegionKeyForIndex(index: number): 'eyes' | 'lips' | 'noseJaw' | 'general' {
@@ -612,6 +642,9 @@ export class DenseLandmarksSmoother {
       const region = this.getRegionKeyForIndex(i);
       this.filters.push(new LandmarkKinematicFilter(configs[region]));
     }
+    this.isRelocalizing = false;
+    this.reLocProgress = 1.0;
+    this.reLocStartPositions = [];
   }
 
   public setPreset(preset: TrackingPreset): void {
@@ -649,9 +682,66 @@ export class DenseLandmarksSmoother {
     }
 
     const dt = this.lastTimestampMs > 0
-      ? Math.max(0.001, (timestampMs - this.lastTimestampMs) / 1000)
+      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastTimestampMs) / 1000))
       : 0.033;
     this.lastTimestampMs = timestampMs;
+
+    // 1. Global Anchor Centroid calculation for Re-localization Gating
+    const anchorIndices = [30, 33, 36, 39, 42, 45]; // nose base, tip, eye corners
+    let anchorSumX = 0, anchorSumY = 0, anchorConfSum = 0, anchorCount = 0;
+
+    for (const idx of anchorIndices) {
+      if (idx < numPoints) {
+        const off = idx * 4;
+        anchorSumX += buffer[off];
+        anchorSumY += buffer[off + 1];
+        anchorConfSum += buffer[off + 3];
+        anchorCount++;
+      }
+    }
+    const incomingAnchorConf = anchorCount > 0 ? anchorConfSum / anchorCount : 0;
+
+    if (
+      !this.isRelocalizing &&
+      incomingAnchorConf >= 0.45 &&
+      this.lastMaxOccludedSec >= this.minOcclusionForRelocSec &&
+      this.filters.length === numPoints
+    ) {
+      let prevAnchorSumX = 0, prevAnchorSumY = 0, prevCount = 0;
+      for (const idx of anchorIndices) {
+        const p = this.filters[idx]?.getPos();
+        if (p) {
+          prevAnchorSumX += p.x;
+          prevAnchorSumY += p.y;
+          prevCount++;
+        }
+      }
+      if (prevCount > 0) {
+        const prevAnchorX = prevAnchorSumX / prevCount;
+        const prevAnchorY = prevAnchorSumY / prevCount;
+        const incAnchorX = anchorSumX / anchorCount;
+        const incAnchorY = anchorSumY / anchorCount;
+        const displacement = Math.hypot(incAnchorX - prevAnchorX, incAnchorY - prevAnchorY);
+
+        if (displacement >= this.reLocThreshold) {
+          // Trigger global smooth re-localization glide across all landmarks
+          this.isRelocalizing = true;
+          this.reLocProgress = 0.0;
+          this.reLocStartPositions = this.filters.map((f, i) => {
+            const p = f.getPos();
+            return p ? { ...p } : { x: buffer[i * 4], y: buffer[i * 4 + 1] };
+          });
+        }
+      }
+    }
+
+    if (this.isRelocalizing) {
+      this.reLocProgress += dt / this.reLocDurationSec;
+      if (this.reLocProgress >= 1.0) {
+        this.reLocProgress = 1.0;
+        this.isRelocalizing = false;
+      }
+    }
 
     const points: LandmarkPoint2D[] = [];
     const confidences: number[] = [];
@@ -664,11 +754,21 @@ export class DenseLandmarksSmoother {
     let mouthConfSum = 0, mouthCount = 0;
     let totalConfSum = 0;
 
+    const t = Math.min(1.0, this.reLocProgress);
+    const blend = t * t * (3 - 2 * t); // Hermite cubic smoothstep
+
     for (let i = 0; i < numPoints; i++) {
       const offset = i * 4;
-      const x = buffer[offset];
-      const y = buffer[offset + 1];
+      let x = buffer[offset];
+      let y = buffer[offset + 1];
       const conf = buffer[offset + 3];
+
+      // If global re-localizing, interpolate the observation to glide smoothly
+      if (this.isRelocalizing && this.reLocStartPositions[i]) {
+        const start = this.reLocStartPositions[i];
+        x = start.x + (x - start.x) * blend;
+        y = start.y + (y - start.y) * blend;
+      }
 
       const res = this.filters[i].update({ x, y }, conf, dt);
       points.push(res.pos);
@@ -691,6 +791,8 @@ export class DenseLandmarksSmoother {
       }
     }
 
+    this.lastMaxOccludedSec = maxOccludedSec;
+
     return {
       points,
       confidences,
@@ -704,6 +806,8 @@ export class DenseLandmarksSmoother {
       visibilityOpacity: numPoints > 0 ? opacitySum / numPoints : 1.0,
       occludedDurationSec: maxOccludedSec,
       activePreset: this.currentPreset,
+      isRelocalizing: this.isRelocalizing,
+      relocalizationProgress: this.reLocProgress,
     };
   }
 
@@ -720,9 +824,63 @@ export class DenseLandmarksSmoother {
     }
 
     const dt = this.lastTimestampMs > 0
-      ? Math.max(0.001, (timestampMs - this.lastTimestampMs) / 1000)
+      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastTimestampMs) / 1000))
       : 0.033;
     this.lastTimestampMs = timestampMs;
+
+    const anchorIndices = [30, 33, 36, 39, 42, 45];
+    let anchorSumX = 0, anchorSumY = 0, anchorConfSum = 0, anchorCount = 0;
+
+    for (const idx of anchorIndices) {
+      if (idx < numPoints) {
+        anchorSumX += rawPoints[idx].x;
+        anchorSumY += rawPoints[idx].y;
+        anchorConfSum += rawPoints[idx].confidence ?? 1.0;
+        anchorCount++;
+      }
+    }
+    const incomingAnchorConf = anchorCount > 0 ? anchorConfSum / anchorCount : 0;
+
+    if (
+      !this.isRelocalizing &&
+      incomingAnchorConf >= 0.45 &&
+      this.lastMaxOccludedSec >= this.minOcclusionForRelocSec &&
+      this.filters.length === numPoints
+    ) {
+      let prevAnchorSumX = 0, prevAnchorSumY = 0, prevCount = 0;
+      for (const idx of anchorIndices) {
+        const p = this.filters[idx]?.getPos();
+        if (p) {
+          prevAnchorSumX += p.x;
+          prevAnchorSumY += p.y;
+          prevCount++;
+        }
+      }
+      if (prevCount > 0) {
+        const prevAnchorX = prevAnchorSumX / prevCount;
+        const prevAnchorY = prevAnchorSumY / prevCount;
+        const incAnchorX = anchorSumX / anchorCount;
+        const incAnchorY = anchorSumY / anchorCount;
+        const displacement = Math.hypot(incAnchorX - prevAnchorX, incAnchorY - prevAnchorY);
+
+        if (displacement >= this.reLocThreshold) {
+          this.isRelocalizing = true;
+          this.reLocProgress = 0.0;
+          this.reLocStartPositions = this.filters.map((f, i) => {
+            const p = f.getPos();
+            return p ? { ...p } : { x: rawPoints[i].x, y: rawPoints[i].y };
+          });
+        }
+      }
+    }
+
+    if (this.isRelocalizing) {
+      this.reLocProgress += dt / this.reLocDurationSec;
+      if (this.reLocProgress >= 1.0) {
+        this.reLocProgress = 1.0;
+        this.isRelocalizing = false;
+      }
+    }
 
     const points: LandmarkPoint2D[] = [];
     const confidences: number[] = [];
@@ -735,10 +893,22 @@ export class DenseLandmarksSmoother {
     let mouthConfSum = 0, mouthCount = 0;
     let totalConfSum = 0;
 
+    const t = Math.min(1.0, this.reLocProgress);
+    const blend = t * t * (3 - 2 * t);
+
     for (let i = 0; i < numPoints; i++) {
       const p = rawPoints[i];
+      let x = p.x;
+      let y = p.y;
       const conf = p.confidence ?? 1.0;
-      const res = this.filters[i].update({ x: p.x, y: p.y }, conf, dt);
+
+      if (this.isRelocalizing && this.reLocStartPositions[i]) {
+        const start = this.reLocStartPositions[i];
+        x = start.x + (x - start.x) * blend;
+        y = start.y + (y - start.y) * blend;
+      }
+
+      const res = this.filters[i].update({ x, y }, conf, dt);
       points.push(res.pos);
       confidences.push(conf);
       alphaSum += res.alphaUsed;
@@ -758,6 +928,8 @@ export class DenseLandmarksSmoother {
       }
     }
 
+    this.lastMaxOccludedSec = maxOccludedSec;
+
     return {
       points,
       confidences,
@@ -771,6 +943,8 @@ export class DenseLandmarksSmoother {
       visibilityOpacity: numPoints > 0 ? opacitySum / numPoints : 1.0,
       occludedDurationSec: maxOccludedSec,
       activePreset: this.currentPreset,
+      isRelocalizing: this.isRelocalizing,
+      relocalizationProgress: this.reLocProgress,
     };
   }
 
@@ -779,5 +953,9 @@ export class DenseLandmarksSmoother {
       f.reset();
     }
     this.lastTimestampMs = 0;
+    this.isRelocalizing = false;
+    this.reLocProgress = 1.0;
+    this.reLocStartPositions = [];
+    this.lastMaxOccludedSec = 0;
   }
 }

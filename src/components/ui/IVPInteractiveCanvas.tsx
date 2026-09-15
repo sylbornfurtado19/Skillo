@@ -964,19 +964,20 @@ export default function IVPInteractiveCanvas({
       }
 
       // C. Render High-Tech Debug Metrics Card (Bottom-Right)
+      const isThrottled = workerStats?.isThrottled ?? false;
       const dbgW = 295;
-      const dbgH = 108;
+      const dbgH = isThrottled ? 122 : 108;
       const dbgX = CSS_W - dbgW - 12;
       const dbgY = CSS_H - dbgH - 12;
 
       ctx.fillStyle = 'rgba(3, 7, 18, 0.94)';
-      ctx.strokeStyle = '#06B6D4';
+      ctx.strokeStyle = isThrottled ? '#F59E0B' : '#06B6D4';
       ctx.lineWidth = 1.2;
       ctx.fillRect(dbgX, dbgY, dbgW, dbgH);
       ctx.strokeRect(dbgX, dbgY, dbgW, dbgH);
 
       ctx.font = 'bold 9px monospace';
-      ctx.fillStyle = '#06B6D4';
+      ctx.fillStyle = isThrottled ? '#F59E0B' : '#06B6D4';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       ctx.fillText('⚡ TRACKING DEBUG & TRANSFORM HUD', dbgX + 8, dbgY + 8);
@@ -989,16 +990,23 @@ export default function IVPInteractiveCanvas({
 
       const rttStr = workerLandmarks ? `${workerLandmarks.envelope.inferenceTimeMs.toFixed(1)} ms` : '< 1.5 ms';
       const inFlightStr = workerStats ? `${workerStats.inFlightMs} ms` : '-';
-      ctx.fillText(`INFER: ${rttStr} | DRAW: ${fpsRef.current} FPS | IN-FLIGHT: ${inFlightStr}`, dbgX + 8, dbgY + 36);
+      const throttleStr = isThrottled ? `[THROTTLED: ${workerStats?.suggestedCadenceFps ?? 15} FPS]` : `[${workerStats?.suggestedCadenceFps ?? 30} FPS]`;
+      ctx.fillText(`INFER: ${rttStr} | DRAW: ${fpsRef.current} FPS | CADENCE: ${throttleStr}`, dbgX + 8, dbgY + 36);
 
       const rc = denseRes.regionConfidences;
       ctx.fillStyle = '#10B981';
       ctx.fillText(`CONF: EYES ${(rc.eyes * 100).toFixed(0)}% | NOSE ${(rc.nose * 100).toFixed(0)}% | LIP ${(rc.mouth * 100).toFixed(0)}%`, dbgX + 8, dbgY + 50);
 
       ctx.fillStyle = '#FBBF24';
-      ctx.fillText(`PRESET: ${denseRes.activePreset} | α: ${denseRes.meanAlpha.toFixed(2)} | OPACITY: ${(denseRes.visibilityOpacity * 100).toFixed(0)}%`, dbgX + 8, dbgY + 64);
-      ctx.fillText(`OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s | FIT: ${mapping.fitMode} | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 78);
+      const relocStr = denseRes.isRelocalizing ? `GLIDE (${Math.round(denseRes.relocalizationProgress * 100)}%)` : 'LOCKED';
+      ctx.fillText(`PRESET: ${denseRes.activePreset} | RE-LOCK: ${relocStr} | α: ${denseRes.meanAlpha.toFixed(2)}`, dbgX + 8, dbgY + 64);
+      ctx.fillText(`OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s | OPACITY: ${(denseRes.visibilityOpacity * 100).toFixed(0)}% | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 78);
       ctx.fillText(`MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight} (S: ${mapping.scale.toFixed(2)})`, dbgX + 8, dbgY + 92);
+
+      if (isThrottled) {
+        ctx.fillStyle = '#F87171';
+        ctx.fillText(`⚠ Throttled to ${workerStats?.suggestedCadenceFps ?? 15} FPS — switch to RESPONSIVE preset`, dbgX + 8, dbgY + 106);
+      }
 
       ctx.restore();
     }

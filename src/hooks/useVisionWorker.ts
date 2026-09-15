@@ -28,6 +28,10 @@ export interface VisionWorkerStats {
   inFlightMs: number;
   watchdogUnlocks: number;
   latestRequestId: number;
+  isThrottled: boolean;
+  suggestedCadenceFps: number;
+  rollingDropRateEMA: number;
+  rollingLatencyEMA: number;
 }
 
 interface UseVisionWorkerReturn {
@@ -39,6 +43,9 @@ interface UseVisionWorkerReturn {
   activeBackend: VisionModelBackend;
   capabilities: VisionWorkerCapabilities | null;
   stats: VisionWorkerStats;
+  isTabPaused: boolean;
+  isThrottled: boolean;
+  suggestedCadenceFps: number;
   lastResults: ProcessedVisionResults | null;
   lastLandmarks: { envelope: DenseLandmarksEnvelope; buffer: Float32Array } | null;
   processingLatencyMs: number;
@@ -64,6 +71,19 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   const [lastLandmarks, setLastLandmarks] = useState<{ envelope: DenseLandmarksEnvelope; buffer: Float32Array } | null>(null);
   const [processingLatencyMs, setProcessingLatencyMs] = useState(0);
 
+  // Tab visibility state
+  const [isTabPaused, setIsTabPaused] = useState(false);
+  const isPausedRef = useRef(false);
+
+  // Adaptive Cadence State
+  const [isThrottled, setIsThrottled] = useState(false);
+  const [suggestedCadenceFps, setSuggestedCadenceFps] = useState(30);
+  const dropRateEMARef = useRef(0);
+  const latencyEMARef = useRef(20);
+  const lastCadenceChangeTsRef = useRef(0);
+  const overloadStartTimeRef = useRef<number | null>(null);
+  const healthyStartTimeRef = useRef<number | null>(null);
+
   const [stats, setStats] = useState<VisionWorkerStats>({
     droppedFrames: 0,
     processedFrames: 0,
@@ -71,6 +91,10 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
     inFlightMs: 0,
     watchdogUnlocks: 0,
     latestRequestId: 0,
+    isThrottled: false,
+    suggestedCadenceFps: 30,
+    rollingDropRateEMA: 0,
+    rollingLatencyEMA: 20,
   });
 
   const executionMode: ExecutionMode = workerState === 'READY' && !isFallbackMode ? 'VERIFIED_MODEL' : 'ESTIMATED_FALLBACK';
@@ -85,12 +109,106 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   const droppedFramesRef = useRef(0);
   const processedFramesRef = useRef(0);
   const watchdogUnlocksRef = useRef(0);
-  const avgLatencyRef = useRef(20);
 
-  // Helper: update stats state
+  // ── Document Visibility & Lifecycle Handler ───────────────────────────────
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const handleVisibilityChange = () => {
+      const isHidden = document.hidden;
+      isPausedRef.current = isHidden;
+      setIsTabPaused(isHidden);
+
+      if (isHidden) {
+        if (watchdogTimerRef.current) {
+          clearTimeout(watchdogTimerRef.current);
+          watchdogTimerRef.current = null;
+        }
+        isBusyRef.current = false;
+      } else {
+        lastSendTimeRef.current = performance.now();
+        isBusyRef.current = false;
+      }
+    };
+
+    const handlePageHide = () => {
+      isPausedRef.current = true;
+      setIsTabPaused(true);
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
+      isBusyRef.current = false;
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, []);
+
+  // Helper: update stats state & adaptive cadence hysteresis
   const syncStats = useCallback((inFlightMs: number = 0) => {
+    const now = performance.now();
     const total = droppedFramesRef.current + processedFramesRef.current;
     const dropRate = total > 0 ? (droppedFramesRef.current / total) * 100 : 0;
+
+    // Rolling EMA smoothing
+    dropRateEMARef.current = dropRateEMARef.current * 0.85 + dropRate * 0.15;
+    if (inFlightMs > 0) {
+      latencyEMARef.current = latencyEMARef.current * 0.85 + inFlightMs * 0.15;
+    }
+
+    // Adaptive Cadence Hysteresis
+    const isOverloaded = dropRateEMARef.current > 10.0 || latencyEMARef.current > 80.0;
+    const isHealthy = dropRateEMARef.current < 3.0 && latencyEMARef.current < 35.0;
+
+    let currentFps = suggestedCadenceFps;
+    let currentThrottled = isThrottled;
+
+    if (isOverloaded) {
+      healthyStartTimeRef.current = null;
+      if (!overloadStartTimeRef.current) overloadStartTimeRef.current = now;
+
+      // Degrade hold: 1.5s sustained overload requirement
+      if (now - overloadStartTimeRef.current >= 1500 && now - lastCadenceChangeTsRef.current >= 2000) {
+        if (currentFps > 15) {
+          currentFps = 15;
+          currentThrottled = true;
+          setSuggestedCadenceFps(15);
+          setIsThrottled(true);
+          lastCadenceChangeTsRef.current = now;
+        } else if (currentFps === 15 && (dropRateEMARef.current > 25.0 || latencyEMARef.current > 140.0)) {
+          currentFps = 10;
+          currentThrottled = true;
+          setSuggestedCadenceFps(10);
+          setIsThrottled(true);
+          lastCadenceChangeTsRef.current = now;
+        }
+      }
+    } else if (isHealthy) {
+      overloadStartTimeRef.current = null;
+      if (!healthyStartTimeRef.current) healthyStartTimeRef.current = now;
+
+      // Restore hold: 3.0s sustained healthy load requirement
+      if (now - healthyStartTimeRef.current >= 3000 && now - lastCadenceChangeTsRef.current >= 3000) {
+        if (currentFps < 30) {
+          const nextFps = currentFps === 10 ? 15 : 30;
+          currentFps = nextFps;
+          currentThrottled = nextFps < 30;
+          setSuggestedCadenceFps(nextFps);
+          setIsThrottled(nextFps < 30);
+          lastCadenceChangeTsRef.current = now;
+        }
+      }
+    } else {
+      overloadStartTimeRef.current = null;
+      healthyStartTimeRef.current = null;
+    }
+
     setStats({
       droppedFrames: droppedFramesRef.current,
       processedFrames: processedFramesRef.current,
@@ -98,8 +216,12 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
       inFlightMs: Math.round(inFlightMs * 10) / 10,
       watchdogUnlocks: watchdogUnlocksRef.current,
       latestRequestId: requestIdRef.current,
+      isThrottled: currentThrottled,
+      suggestedCadenceFps: currentFps,
+      rollingDropRateEMA: Math.round(dropRateEMARef.current * 10) / 10,
+      rollingLatencyEMA: Math.round(latencyEMARef.current * 10) / 10,
     });
-  }, []);
+  }, [suggestedCadenceFps, isThrottled]);
 
   // ── Worker Initialization ──────────────────────────────────────────────────
   const initWorker = useCallback(() => {
@@ -157,7 +279,6 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
             processedFramesRef.current++;
 
             const inFlight = performance.now() - lastSendTimeRef.current;
-            avgLatencyRef.current = avgLatencyRef.current * 0.8 + inFlight * 0.2;
 
             const floatArr = new Float32Array(msg.payload.landmarksBuffer);
             const packet = { envelope, buffer: floatArr };
@@ -243,7 +364,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   // ── Non-Blocking Frame Dispatcher with Backpressure & Watchdog ─────────────
   const processFrame = useCallback(
     async (source: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement): Promise<boolean> => {
-      if (!workerRef.current || workerState !== 'READY') {
+      if (!workerRef.current || workerState !== 'READY' || isPausedRef.current) {
         return false;
       }
 
@@ -258,11 +379,13 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
         const bitmap = await VisionPipeline.captureFrameBitmap(source);
         if (!bitmap) return false;
 
-        // Double check busy flag in case async capture was delayed
-        if (isBusyRef.current) {
+        // Double check busy or paused flag in case async capture was delayed
+        if (isBusyRef.current || isPausedRef.current) {
           bitmap.close();
-          droppedFramesRef.current++;
-          syncStats();
+          if (isBusyRef.current) {
+            droppedFramesRef.current++;
+            syncStats();
+          }
           return false;
         }
 
@@ -279,11 +402,11 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
 
         const payload = VisionPipeline.createFramePayload(bitmap, w, h, nextId);
 
-        // Arm adaptive watchdog timer (3x average inference latency, bounded [500ms, 1000ms])
+        // Arm adaptive watchdog timer (bounded [500ms, 1200ms])
         if (watchdogTimerRef.current) {
           clearTimeout(watchdogTimerRef.current);
         }
-        const adaptiveTimeout = Math.max(500, Math.min(1000, Math.round(avgLatencyRef.current * 3)));
+        const adaptiveTimeout = Math.max(500, Math.min(1200, Math.round(latencyEMARef.current * 3)));
         watchdogTimerRef.current = setTimeout(() => {
           if (isBusyRef.current) {
             isBusyRef.current = false;
@@ -328,6 +451,9 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
     activeBackend,
     capabilities,
     stats,
+    isTabPaused,
+    isThrottled,
+    suggestedCadenceFps,
     lastResults,
     lastLandmarks,
     processingLatencyMs,
