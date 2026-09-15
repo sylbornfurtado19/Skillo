@@ -104,6 +104,35 @@ export interface ModelReadyResponseMessage {
   };
 }
 
+export interface DenseLandmarkPoint {
+  x: number;
+  y: number;
+  z?: number;
+  confidence: number;
+}
+
+export interface DenseLandmarksEnvelope {
+  version: 1;
+  frameId: number;
+  timestampMs: number;
+  videoWidth: number;
+  videoHeight: number;
+  mirrored: boolean;
+  inferenceTimeMs: number;
+  numPoints: number;
+  faceDetected: boolean;
+  faceBox: { x: number; y: number; width: number; height: number };
+  ear: number;
+  mar: number;
+  regionConfidences: {
+    eyes: number;
+    nose: number;
+    mouth: number;
+    overall: number;
+  };
+  trackingMode: 'MEDIAPIPE_FACEMESH' | 'HYBRID_OPTICAL_TRACKER' | 'CANVAS_HEURISTIC';
+}
+
 export interface ProcessedVisionResults {
   frameId: number;
   timestampMs: number;
@@ -115,6 +144,18 @@ export interface ProcessedVisionResults {
   motionEnergy?: number;
   isSubjectPresent?: boolean;
   isExcessiveMotion?: boolean;
+  denseLandmarks?: DenseLandmarksEnvelope & {
+    landmarks?: DenseLandmarkPoint[];
+  };
+}
+
+export interface DenseLandmarksResponseMessage {
+  type: 'LANDMARKS_PACKET';
+  payload: {
+    envelope: DenseLandmarksEnvelope;
+    // Transferable Float32Array buffer: [x0, y0, z0, c0, x1, y1, z1, c1, ...]
+    landmarksBuffer: ArrayBuffer;
+  };
 }
 
 export interface FrameResultResponseMessage {
@@ -149,6 +190,7 @@ export interface DisposedConfirmResponseMessage {
 export type VisionWorkerResponseMessage =
   | ModelReadyResponseMessage
   | FrameResultResponseMessage
+  | DenseLandmarksResponseMessage
   | PerformanceWarningResponseMessage
   | WorkerErrorResponseMessage
   | DisposedConfirmResponseMessage;

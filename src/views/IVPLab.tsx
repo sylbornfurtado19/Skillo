@@ -22,6 +22,7 @@ import {
   runContinuousUnifiedONNX,
   type SmoothedTelemetry,
 } from '../lib/services/onnxInferenceService';
+import { useVisionWorker } from '../hooks/useVisionWorker';
 
 export default function IVPLab() {
   // Active Diagnostic Mode — DEFAULTS IMMEDIATELY TO SOBEL (Unit 4/5) FOR INSTANT VISUAL IMPACT
@@ -35,6 +36,17 @@ export default function IVPLab() {
   const [showHistogram, setShowHistogram] = useState<boolean>(true);
   const [showBoundingBox, setShowBoundingBox] = useState<boolean>(true);
   const [showLandmarks, setShowLandmarks] = useState<boolean>(true);
+  const [showDebugHUD, setShowDebugHUD] = useState<boolean>(false);
+  const [mirrored, setMirrored] = useState<boolean>(true);
+
+  // Dedicated Off-Main-Thread Vision Worker
+  const {
+    lastLandmarks,
+    processFrame: processWorkerFrame,
+  } = useVisionWorker({
+    autoStart: true,
+    backend: 'WEBGL',
+  });
 
   // Live Physiological Signals (EAR & MAR)
   const [currentEAR, setCurrentEAR] = useState<number>(0.285);
@@ -161,6 +173,9 @@ export default function IVPLab() {
           ctx.drawImage(source, 0, 0, 224, 224);
         }
 
+        // Continuous off-main-thread landmark extraction
+        processWorkerFrame(source);
+
         // Run continuous inference over all 3 models in background
         const res = await runContinuousUnifiedONNX(inferCanvas, 0.35);
         setOnnxTelemetry(res);
@@ -172,7 +187,7 @@ export default function IVPLab() {
     return () => {
       if (inferIntervalRef.current) clearInterval(inferIntervalRef.current);
     };
-  }, [inputSource]);
+  }, [inputSource, processWorkerFrame]);
 
   return (
     <div className="space-y-6 text-left max-w-7xl mx-auto pb-16">
@@ -285,6 +300,26 @@ export default function IVPLab() {
                 >
                   256-Bin Hist HUD
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDebugHUD(!showDebugHUD)}
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-mono transition cursor-pointer ${
+                    showDebugHUD ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-white/5 text-gray-400'
+                  }`}
+                >
+                  ⚡ Debug HUD
+                </button>
+                {inputSource === 'webcam' && (
+                  <button
+                    type="button"
+                    onClick={() => setMirrored(!mirrored)}
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-mono transition cursor-pointer ${
+                      mirrored ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-white/5 text-gray-400'
+                    }`}
+                  >
+                    Mirror: {mirrored ? 'ON' : 'OFF'}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -297,6 +332,9 @@ export default function IVPLab() {
               showHistogram={showHistogram}
               showBoundingBox={showBoundingBox}
               showLandmarks={showLandmarks}
+              showDebugHUD={showDebugHUD}
+              mirrored={mirrored && inputSource === 'webcam'}
+              workerLandmarks={lastLandmarks}
               poseAngles={{
                 yaw: onnxTelemetry.yaw,
                 pitch: onnxTelemetry.pitch,

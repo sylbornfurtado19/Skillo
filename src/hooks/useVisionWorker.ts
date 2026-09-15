@@ -10,6 +10,7 @@ import type {
   WorkerLifecycleState,
   VisionWorkerResponseMessage,
   ProcessedVisionResults,
+  DenseLandmarksEnvelope,
   VisionModelBackend,
 } from '@/types/workerMessages';
 import { VisionPipeline } from '@/lib/services/visionPipeline';
@@ -19,6 +20,7 @@ interface UseVisionWorkerOptions {
   targetFPS?: number;
   backend?: VisionModelBackend;
   onResults?: (results: ProcessedVisionResults) => void;
+  onLandmarks?: (envelope: DenseLandmarksEnvelope, buffer: Float32Array) => void;
   onError?: (error: string) => void;
 }
 
@@ -31,8 +33,9 @@ interface UseVisionWorkerReturn {
   executionMode: ExecutionMode;
   activeBackend: VisionModelBackend;
   lastResults: ProcessedVisionResults | null;
+  lastLandmarks: { envelope: DenseLandmarksEnvelope; buffer: Float32Array } | null;
   processingLatencyMs: number;
-  processFrame: (source: HTMLVideoElement | HTMLCanvasElement) => Promise<boolean>;
+  processFrame: (source: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement) => Promise<boolean>;
   restartWorker: () => void;
 }
 
@@ -41,6 +44,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
     autoStart = true,
     backend = 'WEBGL',
     onResults,
+    onLandmarks,
     onError,
   } = options;
 
@@ -48,6 +52,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   const [isFallbackMode, setIsFallbackMode] = useState(false);
   const [activeBackend, setActiveBackend] = useState<VisionModelBackend>(backend);
   const [lastResults, setLastResults] = useState<ProcessedVisionResults | null>(null);
+  const [lastLandmarks, setLastLandmarks] = useState<{ envelope: DenseLandmarksEnvelope; buffer: Float32Array } | null>(null);
   const [processingLatencyMs, setProcessingLatencyMs] = useState(0);
 
   const executionMode: ExecutionMode = workerState === 'READY' && !isFallbackMode ? 'VERIFIED_MODEL' : 'ESTIMATED_FALLBACK';
@@ -79,6 +84,16 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
             setWorkerState('READY');
             setActiveBackend(msg.payload.activeBackend);
             break;
+
+          case 'LANDMARKS_PACKET': {
+            isBusyRef.current = false;
+            const floatArr = new Float32Array(msg.payload.landmarksBuffer);
+            const packet = { envelope: msg.payload.envelope, buffer: floatArr };
+            setLastLandmarks(packet);
+            setProcessingLatencyMs(msg.payload.envelope.inferenceTimeMs);
+            onLandmarks?.(msg.payload.envelope, floatArr);
+            break;
+          }
 
           case 'FRAME_RESULT':
             isBusyRef.current = false;
@@ -142,7 +157,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
 
   // ── Non-Blocking Frame Dispatcher ──────────────────────────────────────────
   const processFrame = useCallback(
-    async (source: HTMLVideoElement | HTMLCanvasElement): Promise<boolean> => {
+    async (source: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement): Promise<boolean> => {
       if (!workerRef.current || workerState !== 'READY' || isBusyRef.current) {
         // Drop frame under backpressure or unready state
         return false;
@@ -153,8 +168,8 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
         if (!bitmap) return false;
 
         isBusyRef.current = true;
-        const w = source instanceof HTMLVideoElement ? source.videoWidth || 320 : source.width;
-        const h = source instanceof HTMLVideoElement ? source.videoHeight || 240 : source.height;
+        const w = source instanceof HTMLVideoElement ? (source.videoWidth || 320) : (source.width || 320);
+        const h = source instanceof HTMLVideoElement ? (source.videoHeight || 240) : (source.height || 240);
 
         const payload = VisionPipeline.createFramePayload(bitmap, w, h);
 
@@ -188,6 +203,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
     executionMode,
     activeBackend,
     lastResults,
+    lastLandmarks,
     processingLatencyMs,
     processFrame,
     restartWorker,

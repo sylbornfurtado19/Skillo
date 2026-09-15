@@ -312,3 +312,282 @@ export function computeJitterReduction(
     reductionPercentage: Math.max(0, reduction),
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DENSE 2D LANDMARK KINEMATIC FILTER & ADAPTIVE VELOCITY SMOOTHER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface LandmarkPoint2D {
+  x: number;
+  y: number;
+}
+
+export interface KinematicFilterConfig {
+  alphaSlow?: number;
+  alphaFast?: number;
+  maxSpeed?: number;
+  beta?: number;
+  confThreshold?: number;
+  velocityDecay?: number;
+}
+
+/**
+ * 2D Constant-Velocity Kinematic Filter for a single facial landmark.
+ *
+ * Implements:
+ * - Velocity-adaptive EMA: Lower alpha (0.25) when resting for rock-solid stability;
+ *   Higher alpha (0.70) during rapid head turns and eye saccades for zero lag.
+ * - Kinematic extrapolation: p' = p + v * dt when occluded or confidence < threshold.
+ * - Velocity dampening: Decays residual velocity under missing measurement.
+ */
+export class LandmarkKinematicFilter {
+  private pos: LandmarkPoint2D | null = null;
+  private vel: LandmarkPoint2D = { x: 0, y: 0 };
+  private alphaSlow: number;
+  private alphaFast: number;
+  private maxSpeed: number;
+  private beta: number;
+  private confThreshold: number;
+  private velocityDecay: number;
+
+  constructor(config: KinematicFilterConfig = {}) {
+    this.alphaSlow = config.alphaSlow ?? 0.25;
+    this.alphaFast = config.alphaFast ?? 0.70;
+    this.maxSpeed = config.maxSpeed ?? 1.5;
+    this.beta = config.beta ?? 0.60;
+    this.confThreshold = config.confThreshold ?? 0.35;
+    this.velocityDecay = config.velocityDecay ?? 0.90;
+  }
+
+  public update(
+    obs: LandmarkPoint2D,
+    conf: number = 1.0,
+    dt: number = 0.033
+  ): { pos: LandmarkPoint2D; vel: LandmarkPoint2D; alphaUsed: number } {
+    const safeDt = Math.max(0.001, Math.min(0.2, dt));
+
+    if (this.pos === null) {
+      this.pos = { x: obs.x, y: obs.y };
+      this.vel = { x: 0, y: 0 };
+      return { pos: { ...this.pos }, vel: { ...this.vel }, alphaUsed: 1.0 };
+    }
+
+    if (conf >= this.confThreshold) {
+      const measuredVx = (obs.x - this.pos.x) / safeDt;
+      const measuredVy = (obs.y - this.pos.y) / safeDt;
+      const speed = Math.hypot(measuredVx, measuredVy);
+
+      const speedFactor = Math.max(0, Math.min(1, speed / this.maxSpeed));
+      const alpha = this.alphaSlow + (this.alphaFast - this.alphaSlow) * speedFactor;
+
+      const predX = this.pos.x + this.vel.x * safeDt;
+      const predY = this.pos.y + this.vel.y * safeDt;
+
+      const smoothedX = alpha * obs.x + (1 - alpha) * predX;
+      const smoothedY = alpha * obs.y + (1 - alpha) * predY;
+
+      this.pos = { x: smoothedX, y: smoothedY };
+      this.vel = {
+        x: this.beta * measuredVx + (1 - this.beta) * this.vel.x,
+        y: this.beta * measuredVy + (1 - this.beta) * this.vel.y,
+      };
+
+      return { pos: { ...this.pos }, vel: { ...this.vel }, alphaUsed: alpha };
+    } else {
+      // Extrapolate on low confidence / occlusion without snapping
+      const predX = this.pos.x + this.vel.x * safeDt;
+      const predY = this.pos.y + this.vel.y * safeDt;
+      this.pos = { x: predX, y: predY };
+      this.vel = {
+        x: this.vel.x * this.velocityDecay,
+        y: this.vel.y * this.velocityDecay,
+      };
+      return { pos: { ...this.pos }, vel: { ...this.vel }, alphaUsed: 0.0 };
+    }
+  }
+
+  public predict(dt: number = 0.033): LandmarkPoint2D {
+    if (this.pos === null) return { x: 0, y: 0 };
+    return {
+      x: this.pos.x + this.vel.x * dt,
+      y: this.pos.y + this.vel.y * dt,
+    };
+  }
+
+  public getPos(): LandmarkPoint2D | null {
+    return this.pos ? { ...this.pos } : null;
+  }
+
+  public getVel(): LandmarkPoint2D {
+    return { ...this.vel };
+  }
+
+  public reset(initialPos?: LandmarkPoint2D): void {
+    this.pos = initialPos ? { ...initialPos } : null;
+    this.vel = { x: 0, y: 0 };
+  }
+}
+
+export interface SmoothedLandmarksResult {
+  points: LandmarkPoint2D[];
+  confidences: number[];
+  regionConfidences: {
+    eyes: number;
+    nose: number;
+    mouth: number;
+    overall: number;
+  };
+  meanAlpha: number;
+}
+
+/**
+ * Dense Multi-Point Facial Landmark Smoother.
+ * Manages per-landmark kinematic filters for all feature points.
+ */
+export class DenseLandmarksSmoother {
+  private filters: LandmarkKinematicFilter[] = [];
+  private lastTimestampMs: number = 0;
+
+  constructor(numPoints: number = 68, config: KinematicFilterConfig = {}) {
+    this.initFilters(numPoints, config);
+  }
+
+  private initFilters(numPoints: number, config: KinematicFilterConfig) {
+    this.filters = [];
+    for (let i = 0; i < numPoints; i++) {
+      this.filters.push(new LandmarkKinematicFilter(config));
+    }
+  }
+
+  /**
+   * Updates landmark state directly from a zero-copy transferable Float32Array
+   * formatted as [x0, y0, z0, c0, x1, y1, z1, c1, ...].
+   */
+  public updateFromBuffer(
+    buffer: Float32Array,
+    numPoints: number,
+    timestampMs: number
+  ): SmoothedLandmarksResult {
+    if (this.filters.length !== numPoints) {
+      this.initFilters(numPoints, {});
+    }
+
+    const dt = this.lastTimestampMs > 0
+      ? Math.max(0.001, (timestampMs - this.lastTimestampMs) / 1000)
+      : 0.033;
+    this.lastTimestampMs = timestampMs;
+
+    const points: LandmarkPoint2D[] = [];
+    const confidences: number[] = [];
+    let alphaSum = 0;
+
+    let eyeConfSum = 0, eyeCount = 0;
+    let noseConfSum = 0, noseCount = 0;
+    let mouthConfSum = 0, mouthCount = 0;
+    let totalConfSum = 0;
+
+    for (let i = 0; i < numPoints; i++) {
+      const offset = i * 4;
+      const x = buffer[offset];
+      const y = buffer[offset + 1];
+      const conf = buffer[offset + 3];
+
+      const res = this.filters[i].update({ x, y }, conf, dt);
+      points.push(res.pos);
+      confidences.push(conf);
+      alphaSum += res.alphaUsed;
+      totalConfSum += conf;
+
+      // Classify region by standard 68-point landmark indices
+      if ((i >= 36 && i <= 47) || i === 68 || i === 69) {
+        eyeConfSum += conf;
+        eyeCount++;
+      } else if (i >= 27 && i <= 35) {
+        noseConfSum += conf;
+        noseCount++;
+      } else if (i >= 48 && i <= 67) {
+        mouthConfSum += conf;
+        mouthCount++;
+      }
+    }
+
+    return {
+      points,
+      confidences,
+      regionConfidences: {
+        eyes: eyeCount > 0 ? eyeConfSum / eyeCount : 1.0,
+        nose: noseCount > 0 ? noseConfSum / noseCount : 1.0,
+        mouth: mouthCount > 0 ? mouthConfSum / mouthCount : 1.0,
+        overall: numPoints > 0 ? totalConfSum / numPoints : 1.0,
+      },
+      meanAlpha: numPoints > 0 ? alphaSum / numPoints : 0.5,
+    };
+  }
+
+  /**
+   * Updates landmark state from array of Point2D objects.
+   */
+  public updateFromPoints(
+    rawPoints: Array<{ x: number; y: number; confidence?: number }>,
+    timestampMs: number
+  ): SmoothedLandmarksResult {
+    const numPoints = rawPoints.length;
+    if (this.filters.length !== numPoints) {
+      this.initFilters(numPoints, {});
+    }
+
+    const dt = this.lastTimestampMs > 0
+      ? Math.max(0.001, (timestampMs - this.lastTimestampMs) / 1000)
+      : 0.033;
+    this.lastTimestampMs = timestampMs;
+
+    const points: LandmarkPoint2D[] = [];
+    const confidences: number[] = [];
+    let alphaSum = 0;
+
+    let eyeConfSum = 0, eyeCount = 0;
+    let noseConfSum = 0, noseCount = 0;
+    let mouthConfSum = 0, mouthCount = 0;
+    let totalConfSum = 0;
+
+    for (let i = 0; i < numPoints; i++) {
+      const p = rawPoints[i];
+      const conf = p.confidence ?? 1.0;
+      const res = this.filters[i].update({ x: p.x, y: p.y }, conf, dt);
+      points.push(res.pos);
+      confidences.push(conf);
+      alphaSum += res.alphaUsed;
+      totalConfSum += conf;
+
+      if ((i >= 36 && i <= 47) || i === 68 || i === 69) {
+        eyeConfSum += conf;
+        eyeCount++;
+      } else if (i >= 27 && i <= 35) {
+        noseConfSum += conf;
+        noseCount++;
+      } else if (i >= 48 && i <= 67) {
+        mouthConfSum += conf;
+        mouthCount++;
+      }
+    }
+
+    return {
+      points,
+      confidences,
+      regionConfidences: {
+        eyes: eyeCount > 0 ? eyeConfSum / eyeCount : 1.0,
+        nose: noseCount > 0 ? noseConfSum / noseCount : 1.0,
+        mouth: mouthCount > 0 ? mouthConfSum / mouthCount : 1.0,
+        overall: numPoints > 0 ? totalConfSum / numPoints : 1.0,
+      },
+      meanAlpha: numPoints > 0 ? alphaSum / numPoints : 0.5,
+    };
+  }
+
+  public reset(): void {
+    for (const f of this.filters) {
+      f.reset();
+    }
+    this.lastTimestampMs = 0;
+  }
+}

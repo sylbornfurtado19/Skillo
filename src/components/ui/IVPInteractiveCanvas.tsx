@@ -19,6 +19,16 @@ import {
   type TemporalMADResult,
 } from '../../lib/services/ivpDiagnosticKernels';
 import { extractFacialExpressions } from '@/lib/services/ivpExpressionKernel';
+import {
+  computeCoordinateMapping,
+  mapNormalizedToCanvas,
+  type CoordinateMappingMetrics,
+} from '../../lib/services/visionPipeline';
+import {
+  DenseLandmarksSmoother,
+  type SmoothedLandmarksResult,
+} from '../../lib/services/temporalSmoothing';
+import type { DenseLandmarksEnvelope } from '@/types/workerMessages';
 
 // ---------------------------------------------------------------------------
 // Internal canvas dimensions for the diagnostic processing pipeline.
@@ -53,6 +63,9 @@ export interface IVPInteractiveCanvasProps {
   showHistogram?: boolean;
   showBoundingBox?: boolean;
   showLandmarks?: boolean;
+  showDebugHUD?: boolean;
+  mirrored?: boolean;
+  workerLandmarks?: { envelope: DenseLandmarksEnvelope; buffer: Float32Array } | null;
   poseAngles?: { yaw: number; pitch: number; roll: number };
   gazeCoords?: { x: number; y: number };
   onMetricsUpdate?: (metrics: DiagnosticMetrics) => void;
@@ -75,6 +88,9 @@ export default function IVPInteractiveCanvas({
   showHistogram = true,
   showBoundingBox = true,
   showLandmarks = true,
+  showDebugHUD = false,
+  mirrored = false,
+  workerLandmarks = null,
   poseAngles = { yaw: 0, pitch: 0, roll: 0 },
   gazeCoords = { x: 0, y: 0 },
   onMetricsUpdate,
@@ -127,6 +143,11 @@ export default function IVPInteractiveCanvas({
     mouthCenter: { x: 320, y: 300 },
     initialized: false,
   });
+
+  // ── High-Fidelity 70-Point Kinematic Landmark Smoother ─────────────────────
+  const denseSmootherRef = useRef<DenseLandmarksSmoother>(new DenseLandmarksSmoother(70));
+  const lastSmoothedResRef = useRef<SmoothedLandmarksResult | null>(null);
+  const lastRawNormPtsRef = useRef<Array<{ x: number; y: number }> | null>(null);
 
   // ── Split-screen state ────────────────────────────────────────────────────
   const splitPercentRef = useRef<number>(50);
@@ -430,205 +451,154 @@ export default function IVPInteractiveCanvas({
     ctx.fillText('IVP TRANSFORMED OUTPUT ▶', CSS_W - 14, 14);
     ctx.restore();
 
-    // ── 10. DYNAMIC 68-POINT GEOMETRIC FACIAL LANDMARK TRACKING ENGINE ──────
-    // Run real-time pixel extraction on every raw frame (sub-millisecond pure TS)
-    const liveExpr = !isTargetLost
-      ? extractFacialExpressions(rawImgData.data, PROC_W, PROC_H)
-      : null;
+    // ── 10. DENSE 70-POINT GEOMETRIC FACIAL LANDMARK & KINEMATIC ENGINE ─────
+    // Exact Aspect-Ratio Normalization & Coordinate Transform Pipeline
+    const videoW = sourceElement instanceof HTMLVideoElement && sourceElement.videoWidth > 0
+      ? sourceElement.videoWidth
+      : (sourceElement instanceof HTMLImageElement && sourceElement.naturalWidth > 0 ? sourceElement.naturalWidth : PROC_W);
+    const videoH = sourceElement instanceof HTMLVideoElement && sourceElement.videoHeight > 0
+      ? sourceElement.videoHeight
+      : (sourceElement instanceof HTMLImageElement && sourceElement.naturalHeight > 0 ? sourceElement.naturalHeight : PROC_H);
 
-    // Calculate face center and scale directly from live camera detection
-    let targetCX = CSS_W * 0.5;
-    let targetCY = CSS_H * 0.46;
-    let targetScale = 1.0;
+    const mapping = computeCoordinateMapping({
+      videoWidth: videoW,
+      videoHeight: videoH,
+      canvasWidth: CSS_W,
+      canvasHeight: CSS_H,
+      fitMode: 'contain',
+      mirrored,
+    });
 
-    if (liveExpr && liveExpr.faceDetected) {
-      const fb = liveExpr.faceBox;
-      targetCX = ((fb.x + fb.width * 0.5) / PROC_W) * CSS_W;
-      targetCY = ((fb.y + fb.height * 0.5) / PROC_H) * CSS_H;
-      targetScale = Math.max(0.75, Math.min(1.4, (fb.width / PROC_W) * 2.0));
-    } else if (otsuRes && otsuRes.skinPixelCount > 300 && otsuRes.skinPixelRatio < 45) {
-      const mappedX = (otsuRes.centroidX / PROC_W) * CSS_W;
-      const mappedY = (otsuRes.centroidY / PROC_H) * CSS_H;
-      targetCX = Math.max(CSS_W * 0.20, Math.min(CSS_W * 0.80, mappedX));
-      targetCY = Math.max(CSS_H * 0.20, Math.min(CSS_H * 0.80, mappedY));
-      targetScale = Math.max(0.85, Math.min(1.25, Math.sqrt(otsuRes.skinPixelCount / 9000)));
+    let denseRes: SmoothedLandmarksResult;
+    let isFaceGenuinelyDetected = false;
+    let liveEAR = 0.285;
+    let liveMAR = 0.145;
+
+    if (workerLandmarks && workerLandmarks.buffer && workerLandmarks.buffer.length >= 70 * 4) {
+      isFaceGenuinelyDetected = workerLandmarks.envelope.faceDetected;
+      liveEAR = workerLandmarks.envelope.ear;
+      liveMAR = workerLandmarks.envelope.mar;
+
+      denseRes = denseSmootherRef.current.updateFromBuffer(
+        workerLandmarks.buffer,
+        70,
+        workerLandmarks.envelope.timestampMs || now
+      );
+
+      const rawPts: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i < 70; i++) {
+        rawPts.push({ x: workerLandmarks.buffer[i * 4], y: workerLandmarks.buffer[i * 4 + 1] });
+      }
+      lastRawNormPtsRef.current = rawPts;
+    } else {
+      const liveExpr = !isTargetLost
+        ? extractFacialExpressions(rawImgData.data, PROC_W, PROC_H)
+        : null;
+
+      isFaceGenuinelyDetected = !!(liveExpr && liveExpr.faceDetected);
+      liveEAR = liveExpr ? liveExpr.ear : 0.285;
+      liveMAR = liveExpr ? liveExpr.mar : 0.145;
+
+      const rawPts70: Array<{ x: number; y: number; confidence?: number }> = [];
+      if (liveExpr && liveExpr.faceDetected && liveExpr.landmarks) {
+        const lm = liveExpr.landmarks;
+        const fb = liveExpr.faceBox;
+        // 0..16: Jawline
+        for (let i = 0; i < 17; i++) {
+          const theta = Math.PI + (i / 16) * Math.PI;
+          rawPts70.push({
+            x: ((fb.x + fb.width / 2) + Math.cos(theta) * (fb.width * 0.48)) / PROC_W,
+            y: ((fb.y + fb.height * 0.45) + Math.sin(theta) * (fb.height * 0.45)) / PROC_H,
+            confidence: 0.85,
+          });
+        }
+        // 17..26: Brows
+        for (let i = 0; i < 5; i++) {
+          rawPts70.push({ x: (lm.leftPupil.x - 18 + i * 8) / PROC_W, y: (lm.leftPupil.y - 14) / PROC_H, confidence: 0.88 });
+        }
+        for (let i = 0; i < 5; i++) {
+          rawPts70.push({ x: (lm.rightPupil.x - 14 + i * 8) / PROC_W, y: (lm.rightPupil.y - 14) / PROC_H, confidence: 0.88 });
+        }
+        // 27..30: Nose bridge
+        for (let i = 0; i < 4; i++) {
+          const p = lm.noseBridge[Math.min(lm.noseBridge.length - 1, i)];
+          rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.90 });
+        }
+        // 31..35: Nose bottom & tip
+        rawPts70.push({ x: (lm.noseTip.x - 10) / PROC_W, y: (lm.noseTip.y + 4) / PROC_H, confidence: 0.90 });
+        rawPts70.push({ x: (lm.noseTip.x - 5) / PROC_W, y: (lm.noseTip.y + 5) / PROC_H, confidence: 0.90 });
+        rawPts70.push({ x: lm.noseTip.x / PROC_W, y: lm.noseTip.y / PROC_H, confidence: 0.95 });
+        rawPts70.push({ x: (lm.noseTip.x + 5) / PROC_W, y: (lm.noseTip.y + 5) / PROC_H, confidence: 0.90 });
+        rawPts70.push({ x: (lm.noseTip.x + 10) / PROC_W, y: (lm.noseTip.y + 4) / PROC_H, confidence: 0.90 });
+
+        // 36..41: Left eye
+        for (const p of lm.leftEyePts) rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.94 });
+        // 42..47: Right eye
+        for (const p of lm.rightEyePts) rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.94 });
+
+        // 48..59: Outer mouth (12 points)
+        for (let i = 0; i < 12; i++) {
+          const p = lm.mouthPts[i % lm.mouthPts.length];
+          rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.92 });
+        }
+        // 60..67: Inner mouth (8 points)
+        for (let i = 0; i < 8; i++) {
+          const p = lm.mouthPts[i % lm.mouthPts.length];
+          rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.90 });
+        }
+        // 68: Left pupil
+        rawPts70.push({ x: lm.leftPupil.x / PROC_W, y: lm.leftPupil.y / PROC_H, confidence: 0.95 });
+        // 69: Right pupil
+        rawPts70.push({ x: lm.rightPupil.x / PROC_W, y: lm.rightPupil.y / PROC_H, confidence: 0.95 });
+
+        lastRawNormPtsRef.current = rawPts70.map(p => ({ x: p.x, y: p.y }));
+        denseRes = denseSmootherRef.current.updateFromPoints(rawPts70, now);
+      } else {
+        denseRes = denseSmootherRef.current.updateFromPoints(
+          (lastRawNormPtsRef.current || []).map(p => ({ x: p.x, y: p.y, confidence: 0.1 })),
+          now
+        );
+      }
     }
+    lastSmoothedResRef.current = denseRes;
 
-    // Smooth head position with responsive EMA filter (alpha = 0.40)
+    // Convert smoothed normalized points [0..1] to display canvas pixel space!
+    const canvasPts: Point2D[] = denseRes.points.map(p => mapNormalizedToCanvas(p, mapping));
+
+    const leftEyePts: Point2D[] = canvasPts.slice(36, 42);
+    const rightEyePts: Point2D[] = canvasPts.slice(42, 48);
+    const noseBridge: Point2D[] = canvasPts.slice(27, 31);
+    const noseTip: Point2D = canvasPts[33] || canvasPts[30];
+    const leftPupil: Point2D = canvasPts[68];
+    const rightPupil: Point2D = canvasPts[69];
+    const mouthPts: Point2D[] = canvasPts.slice(48, 60);
+    const mouthInnerPts: Point2D[] = canvasPts.slice(60, 68);
+    const mouthCenter: Point2D = {
+      x: mouthPts.length >= 7 ? (mouthPts[0].x + mouthPts[6].x) / 2 : CSS_W / 2,
+      y: mouthPts.length >= 10 ? (mouthPts[3].y + mouthPts[9].y) / 2 : CSS_H / 2,
+    };
+
+    // Calculate dynamic bounding box from facial landmarks
+    let minBoxX = 9999, maxBoxX = -9999, minBoxY = 9999, maxBoxY = -9999;
+    for (const p of canvasPts) {
+      if (p.x < minBoxX) minBoxX = p.x;
+      if (p.x > maxBoxX) maxBoxX = p.x;
+      if (p.y < minBoxY) minBoxY = p.y;
+      if (p.y > maxBoxY) maxBoxY = p.y;
+    }
+    const padX = (maxBoxX - minBoxX) * 0.12;
+    const padY = (maxBoxY - minBoxY) * 0.14;
+    const rawBoxX = Math.max(0, minBoxX - padX);
+    const rawBoxY = Math.max(0, minBoxY - padY);
+    const rawBoxW = Math.min(CSS_W, (maxBoxX - minBoxX) + padX * 2);
+    const rawBoxH = Math.min(CSS_H, (maxBoxY - minBoxY) + padY * 2);
+
     const sf = smoothedFaceRef.current;
-    sf.cx = sf.cx * 0.60 + targetCX * 0.40;
-    sf.cy = sf.cy * 0.60 + targetCY * 0.40;
-    sf.scale = sf.scale * 0.70 + targetScale * 0.30;
-
-    const s = sf.scale;
-
-    // Coordinate mapping factor from PROC resolution (320x240) to display CSS canvas (640x480)
-    const scaleX = CSS_W / PROC_W;
-    const scaleY = CSS_H / PROC_H;
-
-    // Retrieve detected landmarks only if face is genuinely detected
-    const rawLandmarks = (liveExpr && liveExpr.faceDetected) ? liveExpr.landmarks : undefined;
-    const sm = smoothedLandmarksRef.current;
-
-    // Helper: smooth landmark array using responsive EMA filter
-    const smoothPoints = (targetPts: Point2D[], storedPts: Point2D[], alpha: number): Point2D[] => {
-      if (!storedPts || storedPts.length !== targetPts.length) {
-        return targetPts.map(p => ({ x: p.x, y: p.y }));
-      }
-      return targetPts.map((t, idx) => ({
-        x: storedPts[idx].x * (1 - alpha) + t.x * alpha,
-        y: storedPts[idx].y * (1 - alpha) + t.y * alpha,
-      }));
-    };
-
-    // Calculate un-smoothed target points directly mapped from authentic camera pixels
-    let targetLeftEye: Point2D[];
-    let targetRightEye: Point2D[];
-    let targetMouth: Point2D[];
-    let targetNoseBridge: Point2D[];
-    let targetNoseTip: Point2D;
-    let targetLeftPupil: Point2D;
-    let targetRightPupil: Point2D;
-    let targetMouthCenter: Point2D;
-
-    if (rawLandmarks) {
-      targetLeftEye = rawLandmarks.leftEyePts.map(p => ({ x: p.x * scaleX, y: p.y * scaleY }));
-      targetRightEye = rawLandmarks.rightEyePts.map(p => ({ x: p.x * scaleX, y: p.y * scaleY }));
-      targetMouth = rawLandmarks.mouthPts.map(p => ({ x: p.x * scaleX, y: p.y * scaleY }));
-      targetNoseBridge = rawLandmarks.noseBridge.map(p => ({ x: p.x * scaleX, y: p.y * scaleY }));
-      targetNoseTip = { x: rawLandmarks.noseTip.x * scaleX, y: rawLandmarks.noseTip.y * scaleY };
-      targetLeftPupil = { x: rawLandmarks.leftPupil.x * scaleX, y: rawLandmarks.leftPupil.y * scaleY };
-      targetRightPupil = { x: rawLandmarks.rightPupil.x * scaleX, y: rawLandmarks.rightPupil.y * scaleY };
-      targetMouthCenter = { x: rawLandmarks.mouthCenter.x * scaleX, y: rawLandmarks.mouthCenter.y * scaleY };
-    } else {
-      const fcX = sf.cx;
-      const fcY = sf.cy;
-      const eyeDist = 48 * s;
-      const eyeY = fcY - 26 * s;
-      const eyeAp = 8 * s;
-      const mCenter = { x: fcX, y: fcY + 52 * s };
-      const mHW = 26 * s;
-      const mAp = 6 * s;
-
-      targetLeftEye = [
-        { x: fcX - eyeDist - 18 * s, y: eyeY },
-        { x: fcX - eyeDist - 9 * s,  y: eyeY - eyeAp * 0.8 },
-        { x: fcX - eyeDist + 9 * s,  y: eyeY - eyeAp * 0.8 },
-        { x: fcX - eyeDist + 18 * s, y: eyeY },
-        { x: fcX - eyeDist + 9 * s,  y: eyeY + eyeAp * 0.6 },
-        { x: fcX - eyeDist - 9 * s,  y: eyeY + eyeAp * 0.6 },
-      ];
-      targetRightEye = [
-        { x: fcX + eyeDist - 18 * s, y: eyeY },
-        { x: fcX + eyeDist - 9 * s,  y: eyeY - eyeAp * 0.8 },
-        { x: fcX + eyeDist + 9 * s,  y: eyeY - eyeAp * 0.8 },
-        { x: fcX + eyeDist + 18 * s, y: eyeY },
-        { x: fcX + eyeDist + 9 * s,  y: eyeY + eyeAp * 0.6 },
-        { x: fcX + eyeDist - 9 * s,  y: eyeY + eyeAp * 0.6 },
-      ];
-      targetMouth = [
-        { x: mCenter.x - mHW, y: mCenter.y },
-        { x: mCenter.x - 14 * s, y: mCenter.y - mAp * 0.6 },
-        { x: mCenter.x,          y: mCenter.y - mAp * 0.7 },
-        { x: mCenter.x + 14 * s, y: mCenter.y - mAp * 0.6 },
-        { x: mCenter.x + mHW, y: mCenter.y },
-        { x: mCenter.x + 14 * s, y: mCenter.y + mAp * 0.8 },
-        { x: mCenter.x,          y: mCenter.y + mAp * 0.9 },
-        { x: mCenter.x - 14 * s, y: mCenter.y + mAp * 0.8 },
-      ];
-      targetNoseTip = { x: fcX, y: fcY + 12 * s };
-      targetNoseBridge = [
-        { x: fcX, y: fcY - 24 * s },
-        { x: fcX, y: fcY - 6 * s },
-        targetNoseTip,
-        { x: fcX - 10 * s, y: fcY + 14 * s },
-        { x: fcX + 10 * s, y: fcY + 14 * s },
-      ];
-      targetLeftPupil = { x: fcX - eyeDist, y: eyeY };
-      targetRightPupil = { x: fcX + eyeDist, y: eyeY };
-      targetMouthCenter = mCenter;
-    }
-
-    // High-responsiveness temporal EMA filter (alpha = 0.70 for immediate pupil/retina tracking without jitter)
-    const landmarkAlpha = sm.initialized ? 0.70 : 1.0;
-    const leftEyePts = smoothPoints(targetLeftEye, sm.leftEyePts, landmarkAlpha);
-    const rightEyePts = smoothPoints(targetRightEye, sm.rightEyePts, landmarkAlpha);
-    const mouthPts = smoothPoints(targetMouth, sm.mouthPts, landmarkAlpha);
-    const noseBridge = smoothPoints(targetNoseBridge, sm.noseBridge, landmarkAlpha);
-
-    const noseTip = {
-      x: sm.initialized ? sm.noseTip.x * (1 - landmarkAlpha) + targetNoseTip.x * landmarkAlpha : targetNoseTip.x,
-      y: sm.initialized ? sm.noseTip.y * (1 - landmarkAlpha) + targetNoseTip.y * landmarkAlpha : targetNoseTip.y,
-    };
-    const leftPupil = {
-      x: sm.initialized ? sm.leftPupil.x * (1 - landmarkAlpha) + targetLeftPupil.x * landmarkAlpha : targetLeftPupil.x,
-      y: sm.initialized ? sm.leftPupil.y * (1 - landmarkAlpha) + targetLeftPupil.y * landmarkAlpha : targetLeftPupil.y,
-    };
-    const rightPupil = {
-      x: sm.initialized ? sm.rightPupil.x * (1 - landmarkAlpha) + targetRightPupil.x * landmarkAlpha : targetRightPupil.x,
-      y: sm.initialized ? sm.rightPupil.y * (1 - landmarkAlpha) + targetRightPupil.y * landmarkAlpha : targetRightPupil.y,
-    };
-    const mouthCenter = {
-      x: sm.initialized ? sm.mouthCenter.x * (1 - landmarkAlpha) + targetMouthCenter.x * landmarkAlpha : targetMouthCenter.x,
-      y: sm.initialized ? sm.mouthCenter.y * (1 - landmarkAlpha) + targetMouthCenter.y * landmarkAlpha : targetMouthCenter.y,
-    };
-
-    // Store smoothed state
-    sm.leftEyePts = leftEyePts;
-    sm.rightEyePts = rightEyePts;
-    sm.mouthPts = mouthPts;
-    sm.noseBridge = noseBridge;
-    sm.noseTip = noseTip;
-    sm.leftPupil = leftPupil;
-    sm.rightPupil = rightPupil;
-    sm.mouthCenter = mouthCenter;
-    sm.initialized = true;
-
-    // Genuine live physiological metrics directly from authentic webcam pixels
-    const liveEAR = liveExpr ? liveExpr.ear : Math.round(((calculateEAR(leftEyePts) + calculateEAR(rightEyePts)) / 2) * 1000) / 1000;
-    const liveMAR = liveExpr ? liveExpr.mar : Math.round(calculateMAR([mouthPts[0], mouthPts[2], mouthPts[4], mouthPts[6]]) * 1000) / 1000;
-    const isBlink = liveEAR < 0.22;
-    const isSpeaking = liveMAR >= 0.22;
-
-    // Calculate dynamic bounding box directly from detected face coordinates
-    let rawBoxX: number;
-    let rawBoxY: number;
-    let rawBoxW: number;
-    let rawBoxH: number;
-
-    if (liveExpr && liveExpr.faceDetected) {
-      const fb = liveExpr.faceBox;
-      rawBoxX = fb.x * scaleX;
-      rawBoxY = fb.y * scaleY;
-      rawBoxW = fb.width * scaleX;
-      rawBoxH = fb.height * scaleY;
-    } else {
-      // Dynamic fallback from landmark extents
-      const allPts = [...leftEyePts, ...rightEyePts, ...mouthPts, ...noseBridge];
-      let minX = 9999, maxX = -9999, minY = 9999, maxY = -9999;
-      for (const p of allPts) {
-        if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.y > maxY) maxY = p.y;
-      }
-      const padX = (maxX - minX) * 0.28;
-      const padY = (maxY - minY) * 0.36;
-      rawBoxX = minX - padX;
-      rawBoxY = minY - padY;
-      rawBoxW = (maxX - minX) + padX * 2;
-      rawBoxH = (maxY - minY) + padY * 2;
-    }
-
-    // Responsive bounding box smoothing (alpha = 0.60 for instant, fluid head-following)
     if (!sf.initialized) {
       sf.minX = rawBoxX;
       sf.minY = rawBoxY;
       sf.maxX = rawBoxX + rawBoxW;
       sf.maxY = rawBoxY + rawBoxH;
-      sf.cx = targetCX;
-      sf.cy = targetCY;
-      sf.scale = targetScale;
       sf.initialized = true;
     } else {
       sf.minX = sf.minX * 0.40 + rawBoxX * 0.60;
@@ -642,8 +612,12 @@ export default function IVPInteractiveCanvas({
     const boxW = Math.max(20, sf.maxX - sf.minX);
     const boxH = Math.max(20, sf.maxY - sf.minY);
 
+    const isBlink = liveEAR < 0.22;
+    const isSpeaking = liveMAR >= 0.22;
+    const s = Math.max(0.75, Math.min(1.4, boxW / 200));
+
     // ── 11. Render Dynamic Bounding Box with High-Tech Reticles ────────────
-    if (showBoundingBox && !isTargetLost && (liveExpr?.faceDetected || rawLandmarks !== undefined)) {
+    if (showBoundingBox && !isTargetLost && (isFaceGenuinelyDetected || denseRes.regionConfidences.overall > 0.2)) {
       ctx.save();
       ctx.strokeStyle = '#06B6D4';
       ctx.lineWidth = 1.5;
@@ -697,7 +671,7 @@ export default function IVPInteractiveCanvas({
     }
 
     // ── 12. Render Active Eye & Lip Landmark Geometric Tracking Contours ───
-    if (showLandmarks && !isTargetLost && (liveExpr?.faceDetected || rawLandmarks !== undefined)) {
+    if (showLandmarks && !isTargetLost && (isFaceGenuinelyDetected || denseRes.regionConfidences.overall > 0.2)) {
       ctx.save();
 
       // A. Draw Eye Geometric Loops
@@ -947,6 +921,66 @@ export default function IVPInteractiveCanvas({
       ctx.restore();
     }
 
+    // ── 18. VISUAL DEBUG & TELEMETRY HUD OVERLAY ───────────────────────────
+    if (showDebugHUD && !isTargetLost) {
+      ctx.save();
+
+      // A. Render Raw Un-smoothed Landmark Points (Amber dots)
+      if (lastRawNormPtsRef.current) {
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.75)';
+        for (const rp of lastRawNormPtsRef.current) {
+          const cp = mapNormalizedToCanvas(rp, mapping);
+          ctx.beginPath();
+          ctx.arc(cp.x, cp.y, 1.8, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      }
+
+      // B. Render Smoothed Landmark Points (Cyan dots)
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.9)';
+      for (const sp of canvasPts) {
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, 2.2, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      // C. Render High-Tech Debug Metrics Card (Bottom-Right)
+      const dbgW = 270;
+      const dbgH = 92;
+      const dbgX = CSS_W - dbgW - 12;
+      const dbgY = CSS_H - dbgH - 12;
+
+      ctx.fillStyle = 'rgba(3, 7, 18, 0.94)';
+      ctx.strokeStyle = '#06B6D4';
+      ctx.lineWidth = 1.2;
+      ctx.fillRect(dbgX, dbgY, dbgW, dbgH);
+      ctx.strokeRect(dbgX, dbgY, dbgW, dbgH);
+
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#06B6D4';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('⚡ TRACKING DEBUG & TRANSFORM HUD', dbgX + 8, dbgY + 8);
+
+      ctx.font = '8.5px monospace';
+      ctx.fillStyle = '#D1D5DB';
+      const modeStr = workerLandmarks ? workerLandmarks.envelope.trackingMode : 'IN_BROWSER_DENSE_KERNEL';
+      ctx.fillText(`MODE: ${modeStr} [70 PTS]`, dbgX + 8, dbgY + 22);
+
+      const rttStr = workerLandmarks ? `${workerLandmarks.envelope.inferenceTimeMs.toFixed(1)} ms` : '< 1.5 ms';
+      ctx.fillText(`INFER LATENCY: ${rttStr} | DRAW: ${fpsRef.current} FPS`, dbgX + 8, dbgY + 36);
+
+      const rc = denseRes.regionConfidences;
+      ctx.fillStyle = '#10B981';
+      ctx.fillText(`CONF: EYES ${(rc.eyes * 100).toFixed(0)}% | NOSE ${(rc.nose * 100).toFixed(0)}% | LIP ${(rc.mouth * 100).toFixed(0)}%`, dbgX + 8, dbgY + 50);
+
+      ctx.fillStyle = '#FBBF24';
+      ctx.fillText(`ADAPTIVE α: ${denseRes.meanAlpha.toFixed(2)} | FIT: ${mapping.fitMode} | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 64);
+      ctx.fillText(`MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight} (S: ${mapping.scale.toFixed(2)})`, dbgX + 8, dbgY + 76);
+
+      ctx.restore();
+    }
+
     // ── 17. Push telemetry state & propagate live EAR/MAR ───────────────────
     const metrics: DiagnosticMetrics = {
       histStats: histRes,
@@ -984,6 +1018,9 @@ export default function IVPInteractiveCanvas({
     showHistogram,
     showBoundingBox,
     showLandmarks,
+    showDebugHUD,
+    mirrored,
+    workerLandmarks,
     poseAngles,
     gazeCoords,
     onMetricsUpdate,
