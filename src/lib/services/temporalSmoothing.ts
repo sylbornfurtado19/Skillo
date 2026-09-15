@@ -383,6 +383,7 @@ export class LandmarkKinematicFilter {
   private lastConfidentPos: LandmarkPoint2D | null = null;
   private occludedSec: number = 0;
   private visibilityOpacity: number = 1.0;
+  private lastConfidence: number = 0.95;
 
   private alphaSlow: number;
   private alphaFast: number;
@@ -474,6 +475,7 @@ export class LandmarkKinematicFilter {
     }
 
     if (conf >= this.confThreshold) {
+      this.lastConfidence = conf;
       this.occludedSec = 0;
       this.visibilityOpacity = 1.0;
       this.lastConfidentPos = { x: obs.x, y: obs.y };
@@ -670,6 +672,10 @@ export class LandmarkKinematicFilter {
 
   public getOccludedSec(): number {
     return this.occludedSec;
+  }
+
+  public getConfidence(): number {
+    return this.lastConfidence;
   }
 
   public reset(initialPos?: LandmarkPoint2D): void {
@@ -1233,6 +1239,71 @@ export class DenseLandmarksSmoother {
       this.lastTimestampMs = timestampMs;
     }
     return res.pos;
+  }
+
+  /**
+   * Retrieves the current smoothed state across all landmarks without mutating
+   * kinematic filters with stale intermediate observations.
+   */
+  public getCurrentResult(): SmoothedLandmarksResult {
+    const points: LandmarkPoint2D[] = [];
+    const confidences: number[] = [];
+    let eyeConfSum = 0, eyeCount = 0;
+    let noseConfSum = 0, noseCount = 0;
+    let mouthConfSum = 0, mouthCount = 0;
+    let totalConfSum = 0;
+
+    for (let i = 0; i < this.filters.length; i++) {
+      const p = this.filters[i].getPos() || { x: 0.5, y: 0.5 };
+      points.push(p);
+      const conf = this.filters[i].getConfidence();
+      confidences.push(conf);
+      totalConfSum += conf;
+
+      if ((i >= 36 && i <= 47) || i === 68 || i === 69) {
+        eyeConfSum += conf;
+        eyeCount++;
+      } else if (i >= 27 && i <= 35) {
+        noseConfSum += conf;
+        noseCount++;
+      } else if (i >= 48 && i <= 67) {
+        mouthConfSum += conf;
+        mouthCount++;
+      }
+    }
+
+    return {
+      points,
+      confidences,
+      regionConfidences: {
+        eyes: eyeCount > 0 ? eyeConfSum / eyeCount : 1.0,
+        nose: noseCount > 0 ? noseConfSum / noseCount : 1.0,
+        mouth: mouthCount > 0 ? mouthConfSum / mouthCount : 1.0,
+        overall: this.filters.length > 0 ? totalConfSum / this.filters.length : 1.0,
+      },
+      meanAlpha: 0.5,
+      visibilityOpacity: 1.0,
+      occludedDurationSec: this.lastMaxOccludedSec,
+      activePreset: this.currentPreset,
+      isRelocalizing: this.isRelocalizing,
+      relocalizationProgress: this.reLocProgress,
+    };
+  }
+
+  /**
+   * Returns the 1-step predicted position for a specific landmark filter.
+   */
+  public predictPoint(index: number, dt: number = 0.016): LandmarkPoint2D | null {
+    if (index < 0 || index >= this.filters.length) return null;
+    return this.filters[index].predict(dt);
+  }
+
+  /**
+   * Exposes raw filter reference for diagnostic inspection.
+   */
+  public getFilter(index: number): LandmarkKinematicFilter | null {
+    if (index < 0 || index >= this.filters.length) return null;
+    return this.filters[index];
   }
 
   public reset(): void {

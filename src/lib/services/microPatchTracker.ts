@@ -15,6 +15,16 @@ export interface TrackedFeature {
   ncc: number; // Confidence score [0..1]
 }
 
+export interface TemplateDiagnostic {
+  landmarkIndex: number;
+  centerX: number; // in PROC pixels
+  centerY: number; // in PROC pixels
+  patchRadius: number;
+  searchRadius: number;
+  missCount: number;
+  stdDev: number;
+}
+
 interface TemplatePatch {
   landmarkIndex: number;
   centerX: number; // Pixel coordinate
@@ -56,6 +66,25 @@ export class MicroPatchTracker {
    */
   public getMissCount(index: number): number {
     return this.templates.get(index)?.missCount ?? -1;
+  }
+
+  /**
+   * Returns diagnostic information about all currently stored reference templates.
+   */
+  public getTemplatesDiagnostics(): TemplateDiagnostic[] {
+    const list: TemplateDiagnostic[] = [];
+    for (const tmpl of this.templates.values()) {
+      list.push({
+        landmarkIndex: tmpl.landmarkIndex,
+        centerX: tmpl.centerX,
+        centerY: tmpl.centerY,
+        patchRadius: tmpl.patchRadius,
+        searchRadius: this.searchRadius,
+        missCount: tmpl.missCount,
+        stdDev: tmpl.stdDev,
+      });
+    }
+    return list;
   }
 
   /**

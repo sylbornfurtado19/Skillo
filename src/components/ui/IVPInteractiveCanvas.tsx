@@ -549,8 +549,8 @@ export default function IVPInteractiveCanvas({
           microTrackerRef.current.updateTemplates(rawImgData.data, PROC_W, PROC_H, [
             { index: 68, x: normMicroX(rawPts[68].x), y: rawPts[68].y, patchRadius: 8 }, // Right pupil
             { index: 69, x: normMicroX(rawPts[69].x), y: rawPts[69].y, patchRadius: 8 }, // Left pupil
-            { index: 48, x: normMicroX(rawPts[48].x), y: rawPts[48].y, patchRadius: 12 }, // Mouth right corner
-            { index: 54, x: normMicroX(rawPts[54].x), y: rawPts[54].y, patchRadius: 12 }, // Mouth left corner
+            { index: 48, x: normMicroX(rawPts[48].x), y: rawPts[48].y, patchRadius: 16 }, // Mouth right corner (32x32)
+            { index: 54, x: normMicroX(rawPts[54].x), y: rawPts[54].y, patchRadius: 16 }, // Mouth left corner (32x32)
           ]);
         }
       } else {
@@ -568,6 +568,10 @@ export default function IVPInteractiveCanvas({
           const procToVideoX = (procX: number) => (procX * PROC_W) / Math.max(1, videoW);
           const procToVideoY = (procY: number) => (procY * PROC_H) / Math.max(1, videoH);
 
+          // Acceptance & Gating Thresholds
+          const MIN_APPLY_NCC = 0.70;
+          const MAX_MAHALANOBIS_DELTA = 0.06;
+
           for (const [idx, feat] of tracked.entries()) {
             // feat.x/feat.y are normalized relative to PROC_W/PROC_H
             const procX = mirrored ? (1.0 - feat.x) : feat.x;
@@ -577,17 +581,31 @@ export default function IVPInteractiveCanvas({
             const videoNormX = procToVideoX(procX); // in [0..1] relative to video width
             const videoNormY = procToVideoY(procY); // in [0..1] relative to video height
 
-            // Save canonical tracked in video-normalized space for HUD & downstream use
+            // Save canonical tracked in video-normalized space for HUD visual rings
             canonicalTracked.set(idx, { landmarkIndex: idx, x: videoNormX, y: videoNormY, ncc: feat.ncc });
 
-            // Feed the smoother with video normalized coordinates (the smoother & buffer expect same normalization)
-            denseSmootherRef.current.updatePoint(idx, { x: videoNormX, y: videoNormY }, feat.ncc, now);
+            // Gate 1: High confidence threshold for applying to smoother & buffer
+            if (feat.ncc >= MIN_APPLY_NCC) {
+              // Gate 2: Mahalanobis / Euclidean consistency check against 1-step predicted position
+              const pred = denseSmootherRef.current.predictPoint(idx, 0.016);
+              const delta = pred ? Math.hypot(pred.x - videoNormX, pred.y - videoNormY) : 0;
 
-            // Update the zero-copy buffer which will be consumed by updateFromBuffer (also expects video-normalized coords)
-            if (workerLandmarks && workerLandmarks.buffer && workerLandmarks.buffer.length >= (idx + 1) * 4) {
-              workerLandmarks.buffer[idx * 4] = videoNormX;
-              workerLandmarks.buffer[idx * 4 + 1] = videoNormY;
-              workerLandmarks.buffer[idx * 4 + 3] = feat.ncc;
+              if (delta < MAX_MAHALANOBIS_DELTA || feat.ncc >= 0.90) {
+                const scaledConf = Math.max(0.1, Math.min(1.0, feat.ncc));
+                const updatedPos = denseSmootherRef.current.updatePoint(
+                  idx,
+                  { x: videoNormX, y: videoNormY },
+                  scaledConf,
+                  now
+                );
+
+                // Gate 3: Mutate buffer ONLY IF smoother accepted the measurement
+                if (updatedPos && workerLandmarks?.buffer && workerLandmarks.buffer.length >= (idx + 1) * 4) {
+                  workerLandmarks.buffer[idx * 4] = videoNormX;
+                  workerLandmarks.buffer[idx * 4 + 1] = videoNormY;
+                  workerLandmarks.buffer[idx * 4 + 3] = feat.ncc;
+                }
+              }
             }
           }
           lastMicroTrackedRef.current = canonicalTracked;
@@ -597,11 +615,9 @@ export default function IVPInteractiveCanvas({
             console.debug('[MICRO->VIDEO]', Array.from(canonicalTracked.entries()).map(([i,f])=>`${i}:${f.x.toFixed(4)},${f.y.toFixed(4)}`));
           }
         }
-        denseRes = denseSmootherRef.current.updateFromBuffer(
-          workerLandmarks.buffer,
-          70,
-          now
-        );
+        // On intermediate frames: do not re-feed stale static coordinates to updateFromBuffer!
+        // Instead, retrieve the current stable smoothed state:
+        denseRes = denseSmootherRef.current.getCurrentResult();
       }
     } else {
       const liveExpr = !isTargetLost
@@ -1063,7 +1079,7 @@ export default function IVPInteractiveCanvas({
         ctx.fill();
       }
 
-      // C. Render 60 FPS Micro-Tracked Feature Points (Emerald rings for pupils/lips)
+      // C. Render 60 FPS Micro-Tracked Feature Points (Emerald rings for pupils/lips) & Template Bounds
       if (lastMicroTrackedRef.current && lastMicroTrackedRef.current.size > 0) {
         ctx.save();
         ctx.strokeStyle = '#10B981';
@@ -1073,6 +1089,33 @@ export default function IVPInteractiveCanvas({
           ctx.beginPath();
           ctx.arc(cp.x, cp.y, 6, 0, 2 * Math.PI);
           ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // C2. Render Active Micro-Tracker Template Bounds & Search Windows
+      const tmplDiags = microTrackerRef.current.getTemplatesDiagnostics();
+      if (tmplDiags.length > 0) {
+        ctx.save();
+        for (const tmpl of tmplDiags) {
+          const canX = destX + (tmpl.centerX / PROC_W) * destW;
+          const canY = destY + (tmpl.centerY / PROC_H) * destH;
+          const canPatchW = (tmpl.patchRadius * 2 / PROC_W) * destW;
+          const canPatchH = (tmpl.patchRadius * 2 / PROC_H) * destH;
+          const canSearchW = (tmpl.searchRadius * 2 / PROC_W) * destW;
+          const canSearchH = (tmpl.searchRadius * 2 / PROC_H) * destH;
+
+          // Search window: amber dashed rectangle
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.40)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.strokeRect(canX - canSearchW / 2, canY - canSearchH / 2, canSearchW, canSearchH);
+
+          // Template patch: emerald solid rectangle
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.80)';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([]);
+          ctx.strokeRect(canX - canPatchW / 2, canY - canPatchH / 2, canPatchW, canPatchH);
         }
         ctx.restore();
       }

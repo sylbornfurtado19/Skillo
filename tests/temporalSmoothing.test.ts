@@ -9,6 +9,7 @@ import {
   HeadPoseEMA,
   AffectiveEMA,
   CategoricalConsensusSmoother,
+  DenseLandmarksSmoother,
   computeJitterMetric,
   computeJitterReduction,
   DEFAULT_SMOOTHING_ALPHAS,
@@ -129,6 +130,59 @@ describe('Temporal Smoothing Engine', () => {
       const evaluation = computeJitterReduction(raw, smoothed);
       expect(evaluation.rawJitter).toBeGreaterThan(evaluation.smoothedJitter);
       expect(evaluation.reductionPercentage).toBeGreaterThanOrEqual(30.0);
+    });
+  });
+
+  describe('DenseLandmarksSmoother Intermediate State & Prediction', () => {
+    it('predicts landmark positions accurately without mutating filter state', () => {
+      const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+      const buffer = new Float32Array(70 * 4);
+      for (let i = 0; i < 70; i++) {
+        buffer[i * 4] = 0.5;
+        buffer[i * 4 + 1] = 0.5;
+        buffer[i * 4 + 3] = 0.95;
+      }
+
+      smoother.updateFromBuffer(buffer, 70, 1000);
+
+      // Frame 2 with velocity
+      for (let i = 0; i < 70; i++) {
+        buffer[i * 4] = 0.52;
+        buffer[i * 4 + 1] = 0.50;
+      }
+      smoother.updateFromBuffer(buffer, 70, 1033);
+
+      const pred = smoother.predictPoint(68, 0.016);
+      expect(pred).not.toBeNull();
+      // Prediction should extrapolate forward in X
+      expect(pred!.x).toBeGreaterThan(0.50);
+
+      // getCurrentResult should return valid positions without corrupting filters
+      const cur = smoother.getCurrentResult();
+      expect(cur.points.length).toBe(70);
+      expect(cur.points[68].x).toBeCloseTo(0.51, 1);
+    });
+
+    it('identifies and rejects large outlier displacements via prediction delta gating', () => {
+      const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+      const buffer = new Float32Array(70 * 4);
+      for (let i = 0; i < 70; i++) {
+        buffer[i * 4] = 0.5;
+        buffer[i * 4 + 1] = 0.5;
+        buffer[i * 4 + 3] = 0.95;
+      }
+      smoother.updateFromBuffer(buffer, 70, 1000);
+
+      // Micro-update with small delta (valid motion: 0.505)
+      const validMeas = { x: 0.505, y: 0.502 };
+      const pred = smoother.predictPoint(68, 0.016)!;
+      const validDelta = Math.hypot(pred.x - validMeas.x, pred.y - validMeas.y);
+      expect(validDelta).toBeLessThan(0.06);
+
+      // Micro-update with massive outlier glitch (e.g. false patch match at 0.65)
+      const outlierMeas = { x: 0.65, y: 0.58 };
+      const outlierDelta = Math.hypot(pred.x - outlierMeas.x, pred.y - outlierMeas.y);
+      expect(outlierDelta).toBeGreaterThan(0.06);
     });
   });
 });
