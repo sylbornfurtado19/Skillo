@@ -24,20 +24,24 @@ interface TemplatePatch {
   patchHeight: number;
   grayData: Float32Array; // Zero-mean normalized template
   stdDev: number;
+  missCount: number;
 }
 
 export class MicroPatchTracker {
   private templates: Map<number, TemplatePatch> = new Map();
   private readonly patchRadius: number;
   private readonly searchRadius: number;
+  private readonly maxMisses: number;
 
   /**
    * @param patchRadius Half-width of template patch (default 8 -> 16x16 patch)
    * @param searchRadius Search window displacement bounds (default 8 -> +/- 8px search)
+   * @param maxMisses Maximum consecutive frames with low confidence before evicting template (default 5)
    */
-  constructor(patchRadius: number = 8, searchRadius: number = 8) {
+  constructor(patchRadius: number = 8, searchRadius: number = 8, maxMisses: number = 5) {
     this.patchRadius = patchRadius;
     this.searchRadius = searchRadius;
+    this.maxMisses = maxMisses;
   }
 
   /**
@@ -45,6 +49,13 @@ export class MicroPatchTracker {
    */
   public templateCount(): number {
     return this.templates.size;
+  }
+
+  /**
+   * Returns consecutive miss count for a tracked template, or -1 if non-existent.
+   */
+  public getMissCount(index: number): number {
+    return this.templates.get(index)?.missCount ?? -1;
   }
 
   /**
@@ -125,6 +136,7 @@ export class MicroPatchTracker {
         patchHeight: pHeight,
         grayData: gray,
         stdDev,
+        missCount: 0,
       });
     }
   }
@@ -136,16 +148,19 @@ export class MicroPatchTracker {
    * @param width Frame width
    * @param height Frame height
    * @param minConfidence Minimum NCC correlation coefficient [0..1] (default 0.55)
+   * @param stride Search grid step size (1 for high-accuracy sub-pixel, 2 for CPU conservation)
    */
   public track(
     rgbaPixels: Uint8ClampedArray,
     width: number,
     height: number,
-    minConfidence: number = 0.55
+    minConfidence: number = 0.55,
+    stride: number = 1
   ): Map<number, TrackedFeature> {
     const results = new Map<number, TrackedFeature>();
     const gridDim = this.searchRadius * 2 + 1;
     const nccGrid = new Float32Array(gridDim * gridDim);
+    const step = Math.max(1, Math.round(stride));
 
     for (const [index, tmpl] of this.templates.entries()) {
       let bestNCC = -1;
@@ -160,7 +175,7 @@ export class MicroPatchTracker {
 
       nccGrid.fill(-1);
 
-      for (let dy = -this.searchRadius; dy <= this.searchRadius; dy += 1) {
+      for (let dy = -this.searchRadius; dy <= this.searchRadius; dy += step) {
         const cy = tmpl.centerY + dy;
         const y0 = cy - pRadius;
         const y1 = cy + pRadius;
@@ -168,7 +183,7 @@ export class MicroPatchTracker {
 
         const gy = dy + this.searchRadius;
 
-        for (let dx = -this.searchRadius; dx <= this.searchRadius; dx += 1) {
+        for (let dx = -this.searchRadius; dx <= this.searchRadius; dx += step) {
           const cx = tmpl.centerX + dx;
           const x0 = cx - pRadius;
           const x1 = cx + pRadius;
@@ -214,34 +229,38 @@ export class MicroPatchTracker {
       }
 
       if (bestNCC >= minConfidence) {
-        // Sub-pixel quadratic peak interpolation around bestDx, bestDy
+        tmpl.missCount = 0;
+
+        // Sub-pixel quadratic peak interpolation around bestDx, bestDy (when stride === 1)
         let subDx = bestDx;
         let subDy = bestDy;
         const gx = bestDx + this.searchRadius;
         const gy = bestDy + this.searchRadius;
 
-        if (gx > 0 && gx < gridDim - 1) {
-          const c0 = nccGrid[gy * gridDim + gx];
-          const cL = nccGrid[gy * gridDim + (gx - 1)];
-          const cR = nccGrid[gy * gridDim + (gx + 1)];
-          if (cL >= 0 && cR >= 0) {
-            const denom = cL - 2 * c0 + cR;
-            if (denom < -1e-5) {
-              const deltaX = (cL - cR) / (2 * denom);
-              subDx += Math.max(-0.5, Math.min(0.5, deltaX));
+        if (step === 1) {
+          if (gx > 0 && gx < gridDim - 1) {
+            const c0 = nccGrid[gy * gridDim + gx];
+            const cL = nccGrid[gy * gridDim + (gx - 1)];
+            const cR = nccGrid[gy * gridDim + (gx + 1)];
+            if (cL >= 0 && cR >= 0) {
+              const denom = cL - 2 * c0 + cR;
+              if (Math.abs(denom) > 1e-6) {
+                const deltaX = (cL - cR) / (2 * denom);
+                subDx += Math.max(-0.5, Math.min(0.5, deltaX));
+              }
             }
           }
-        }
 
-        if (gy > 0 && gy < gridDim - 1) {
-          const c0 = nccGrid[gy * gridDim + gx];
-          const cT = nccGrid[(gy - 1) * gridDim + gx];
-          const cB = nccGrid[(gy + 1) * gridDim + gx];
-          if (cT >= 0 && cB >= 0) {
-            const denom = cT - 2 * c0 + cB;
-            if (denom < -1e-5) {
-              const deltaY = (cT - cB) / (2 * denom);
-              subDy += Math.max(-0.5, Math.min(0.5, deltaY));
+          if (gy > 0 && gy < gridDim - 1) {
+            const c0 = nccGrid[gy * gridDim + gx];
+            const cT = nccGrid[(gy - 1) * gridDim + gx];
+            const cB = nccGrid[(gy + 1) * gridDim + gx];
+            if (cT >= 0 && cB >= 0) {
+              const denom = cT - 2 * c0 + cB;
+              if (Math.abs(denom) > 1e-6) {
+                const deltaY = (cT - cB) / (2 * denom);
+                subDy += Math.max(-0.5, Math.min(0.5, deltaY));
+              }
             }
           }
         }
@@ -255,6 +274,12 @@ export class MicroPatchTracker {
           y: Math.max(0, Math.min(1, updatedY)),
           ncc: Math.min(1.0, Math.max(0, bestNCC)),
         });
+      } else {
+        // Increment miss count and evict stale templates that have drifted or fallen below threshold
+        tmpl.missCount++;
+        if (tmpl.missCount >= this.maxMisses) {
+          this.templates.delete(index);
+        }
       }
     }
 

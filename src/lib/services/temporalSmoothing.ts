@@ -1229,7 +1229,9 @@ export class DenseLandmarksSmoother {
       ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastTimestampMs) / 1000))
       : 0.016;
     const res = this.filters[index].update(pos, confidence, dt);
-    this.lastTimestampMs = timestampMs;
+    if (timestampMs > this.lastTimestampMs) {
+      this.lastTimestampMs = timestampMs;
+    }
     return res.pos;
   }
 

@@ -158,6 +158,7 @@ export default function IVPInteractiveCanvas({
   const microTrackerRef = useRef<MicroPatchTracker>(new MicroPatchTracker(8, 8));
   const lastWorkerBufferRef = useRef<Float32Array | null>(null);
   const lastMicroTrackedRef = useRef<Map<number, TrackedFeature>>(new Map());
+  const lastMicroTrackMsRef = useRef<number>(0);
 
   // Synchronize tracking preset with dense smoother
   useEffect(() => {
@@ -416,6 +417,10 @@ export default function IVPInteractiveCanvas({
       mirrored,
     });
 
+    if (process.env.NODE_ENV === 'development' && mapping.videoWidth < PROC_W && mapping.videoWidth > 0) {
+      console.warn('[IVP] Video width is smaller than PROC_W:', mapping.videoWidth, 'PROC_W:', PROC_W);
+    }
+
     ctx.fillStyle = '#030712';
     ctx.fillRect(0, 0, CSS_W, CSS_H);
 
@@ -552,7 +557,9 @@ export default function IVPInteractiveCanvas({
         // Intermediate 60 FPS RAF frame: track micro-features (pupils & lip corners) using NCC
         // Convert micro-tracker (PROC-space) -> video-normalized space before feeding smoother/buffer.
         if (isFaceGenuinelyDetected && rawImgData) {
-          const tracked = microTrackerRef.current.track(rawImgData.data, PROC_W, PROC_H, 0.55);
+          const t0 = performance.now();
+          const tracked = microTrackerRef.current.track(rawImgData.data, PROC_W, PROC_H, 0.55, 1);
+          lastMicroTrackMsRef.current = performance.now() - t0;
           const canonicalTracked = new Map<number, TrackedFeature>();
 
           // Safe guards: ensure mapping available
@@ -1109,7 +1116,8 @@ export default function IVPInteractiveCanvas({
       const engineStr = workerLandmarks?.envelope.trackingMode === 'LEARNED_FACELANDMARKER' ? 'LEARNED (MediaPipe)' : 'OPTICAL TRACKER';
       const microCount = lastMicroTrackedRef.current?.size ?? 0;
       const tmplCount = microTrackerRef.current.templateCount();
-      ctx.fillText(`ENGINE: ${engineStr} | MICRO-NCC: ${microCount}/${tmplCount} pts (60 FPS)`, dbgX + 8, dbgY + 64);
+      const trackMsStr = lastMicroTrackMsRef.current > 0 ? ` (${lastMicroTrackMsRef.current.toFixed(1)}ms)` : '';
+      ctx.fillText(`ENGINE: ${engineStr} | MICRO-NCC: ${microCount}/${tmplCount} pts (60 FPS)${trackMsStr}`, dbgX + 8, dbgY + 64);
       ctx.fillText(`PRESET: ${denseRes.activePreset} | α: ${denseRes.meanAlpha.toFixed(2)} | OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s`, dbgX + 8, dbgY + 78);
       ctx.fillText(`MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight} (S: ${mapping.scale.toFixed(2)}) | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 92);
 

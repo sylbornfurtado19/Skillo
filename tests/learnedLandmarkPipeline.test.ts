@@ -24,6 +24,8 @@ describe('Learned MediaPipe Landmark Pipeline & 70-Point Canonical Mapping', () 
     // Verify anchor points
     expect(MEDIAPIPE_478_TO_CANONICAL_70[33]).toBe(1);   // Nose tip
     expect(MEDIAPIPE_478_TO_CANONICAL_70[8]).toBe(152);  // Chin
+    expect(MEDIAPIPE_478_TO_CANONICAL_70[48]).toBe(61);  // Right mouth corner
+    expect(MEDIAPIPE_478_TO_CANONICAL_70[54]).toBe(291); // Left mouth corner
     expect(MEDIAPIPE_478_TO_CANONICAL_70[68]).toBe(468); // Right pupil iris
     expect(MEDIAPIPE_478_TO_CANONICAL_70[69]).toBe(473); // Left pupil iris
   });
@@ -63,6 +65,10 @@ describe('Learned MediaPipe Landmark Pipeline & 70-Point Canonical Mapping', () 
     mockLandmarks[291] = { x: 0.58, y: 0.55, z: 0, visibility: 0.98 };
     mockLandmarks[0] = { x: 0.50, y: 0.53, z: 0, visibility: 0.98 };
     mockLandmarks[17] = { x: 0.50, y: 0.57, z: 0, visibility: 0.98 };
+    mockLandmarks[37] = { x: 0.46, y: 0.53, z: 0, visibility: 0.98 };
+    mockLandmarks[267] = { x: 0.54, y: 0.53, z: 0, visibility: 0.98 };
+    mockLandmarks[84] = { x: 0.46, y: 0.57, z: 0, visibility: 0.98 };
+    mockLandmarks[314] = { x: 0.54, y: 0.57, z: 0, visibility: 0.98 };
 
     const output = extractDenseLandmarksFromLearnedModel(mockLandmarks, 640, 480);
 

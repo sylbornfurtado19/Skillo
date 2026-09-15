@@ -40,8 +40,8 @@ export const MEDIAPIPE_478_TO_CANONICAL_70: number[] = [
   33, 160, 158, 133, 153, 144,
   // 42..47: Left eye contour (6 points, dlib 42..47)
   362, 385, 387, 263, 373, 380,
-  // 48..59: Outer lips contour (12 points, dlib 48..59)
-  61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375,
+  // 48..59: Outer lips contour (12 points, dlib 48..59; 48=right corner MP 61, 54=left corner MP 291)
+  61, 40, 37, 0, 267, 270, 291, 405, 314, 17, 84, 181,
   // 60..67: Inner lips contour (8 points, dlib 60..67)
   78, 95, 88, 178, 87, 14, 317, 402,
   // 68: Right pupil center (MediaPipe iris landmark 468)
