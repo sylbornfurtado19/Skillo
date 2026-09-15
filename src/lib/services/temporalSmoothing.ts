@@ -455,7 +455,13 @@ export class LandmarkKinematicFilter {
       const speed = Math.hypot(measuredVx, measuredVy);
 
       const speedFactor = Math.max(0, Math.min(1, speed / this.maxSpeed));
-      const alpha = this.alphaSlow + (this.alphaFast - this.alphaSlow) * speedFactor;
+      const baseAlpha = this.alphaSlow + (this.alphaFast - this.alphaSlow) * speedFactor;
+
+      // Confidence-weighted adaptive gain (Kalman-hybrid measurement confidence):
+      // High-confidence points use full speed-adaptive alpha.
+      // Lower confidence points smoothly scale down alpha, placing greater reliance on kinematic prediction.
+      const confWeight = Math.max(0.25, Math.min(1.0, conf));
+      const alpha = baseAlpha * confWeight;
 
       const predX = this.pos.x + this.vel.x * safeDt;
       const predY = this.pos.y + this.vel.y * safeDt;

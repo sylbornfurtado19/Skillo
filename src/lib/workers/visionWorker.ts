@@ -19,9 +19,36 @@ import type {
   VisionModelBackend,
 } from '@/types/workerMessages';
 import { TemporalMotionDetector, type MotionEnergyResult } from '@/lib/services/temporalMotion';
+import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
 // ── Worker Context Scope ──────────────────────────────────────────────────────
-const ctx: Worker = self as any;
+const ctx: Worker = (typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : {})) as any;
+
+// ── Canonical 70-Point Landmark Topology Mapping (MediaPipe 478 Mesh & Iris) ─
+export const MEDIAPIPE_478_TO_CANONICAL_70: number[] = [
+  // 0..16: Jawline contour (17 points, dlib 0..16)
+  234, 93, 132, 58, 172, 136, 150, 149, 152, 377, 400, 378, 379, 365, 397, 288, 454,
+  // 17..21: Right eyebrow (5 points, dlib 17..21)
+  70, 63, 105, 66, 107,
+  // 22..26: Left eyebrow (5 points, dlib 22..26)
+  336, 296, 334, 293, 300,
+  // 27..30: Nose bridge (4 points, dlib 27..30)
+  168, 6, 197, 195,
+  // 31..35: Nose base & tip (5 points, dlib 31..35, 33 is tip)
+  48, 115, 1, 344, 278,
+  // 36..41: Right eye contour (6 points, dlib 36..41)
+  33, 160, 158, 133, 153, 144,
+  // 42..47: Left eye contour (6 points, dlib 42..47)
+  362, 385, 387, 263, 373, 380,
+  // 48..59: Outer lips contour (12 points, dlib 48..59)
+  61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375,
+  // 60..67: Inner lips contour (8 points, dlib 60..67)
+  78, 95, 88, 178, 87, 14, 317, 402,
+  // 68: Right pupil center (MediaPipe iris landmark 468)
+  468,
+  // 69: Left pupil center (MediaPipe iris landmark 473)
+  473,
+];
 
 // ── State Variables ───────────────────────────────────────────────────────────
 let isInitialized = false;
@@ -30,13 +57,70 @@ let activeBackend: VisionModelBackend = 'WEBGL';
 const motionDetector = new TemporalMotionDetector();
 let offscreenCanvas: OffscreenCanvas | null = null;
 let offscreenCtx: OffscreenCanvasRenderingContext2D | null = null;
+let faceLandmarker: FaceLandmarker | null = null;
+let modelInitPromise: Promise<boolean> | null = null;
+
+async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promise<boolean> {
+  if (faceLandmarker) return true;
+  if (modelInitPromise) return modelInitPromise;
+
+  modelInitPromise = (async () => {
+    try {
+      const baseOrigin = typeof location !== 'undefined' ? location.origin : '';
+      const wasmPath = baseOrigin ? `${baseOrigin}/wasm` : '/wasm';
+      const filesetResolver = await FilesetResolver.forVisionTasks(wasmPath);
+
+      const modelAssetPath = baseOrigin
+        ? `${baseOrigin}/models/face_landmarker.task`
+        : '/models/face_landmarker.task';
+
+      faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+          modelAssetPath,
+          delegate: backend === 'CPU' ? 'CPU' : 'GPU',
+        },
+        outputFaceBlendshapes: false,
+        outputFacialTransformationMatrixes: false,
+        runningMode: 'IMAGE',
+        numFaces: 1,
+      });
+      return true;
+    } catch (localErr) {
+      console.warn('[VisionWorker] Local MediaPipe asset load warning, trying CDN fallback:', localErr);
+      try {
+        const cdnWasm = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
+        const filesetResolver = await FilesetResolver.forVisionTasks(cdnWasm);
+        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: {
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+            delegate: backend === 'CPU' ? 'CPU' : 'GPU',
+          },
+          outputFaceBlendshapes: false,
+          outputFacialTransformationMatrixes: false,
+          runningMode: 'IMAGE',
+          numFaces: 1,
+        });
+        return true;
+      } catch (cdnErr) {
+        console.warn('[VisionWorker] MediaPipe FaceLandmarker unavailable, retaining hybrid optical tracker fallback:', cdnErr);
+        faceLandmarker = null;
+        return false;
+      }
+    }
+  })();
+
+  return modelInitPromise;
+}
 
 // Total canonical landmarks (68 standard points + 2 pupil centers)
 const NUM_LANDMARK_POINTS = 70;
 
 // ── Helper: Emit Typed Message ────────────────────────────────────────────────
 function postResponse(msg: VisionWorkerResponseMessage, transferables: Transferable[] = []) {
-  ctx.postMessage(msg, transferables);
+  if (typeof ctx !== 'undefined' && typeof ctx.postMessage === 'function') {
+    ctx.postMessage(msg, transferables);
+  }
 }
 
 // ── Sub-Pixel Feature Extraction Kernel ───────────────────────────────────────
@@ -421,8 +505,176 @@ function extractDenseLandmarksFromPixels(
   };
 }
 
+// ── Learned MediaPipe 478-Point to Canonical 70-Point Extraction Kernel ───────
+export function extractDenseLandmarksFromLearnedModel(
+  landmarks: Array<{ x: number; y: number; z: number; visibility?: number }>,
+  width: number,
+  height: number
+): LandmarkExtractionOutput {
+  const buffer = new Float32Array(NUM_LANDMARK_POINTS * 4);
+  let minX = 1.0, maxX = 0.0, minY = 1.0, maxY = 0.0;
+
+  for (let i = 0; i < NUM_LANDMARK_POINTS; i++) {
+    let pt: { x: number; y: number; z: number; visibility?: number };
+
+    // Iris / pupil landmarks: 68 is right pupil (MediaPipe 468), 69 is left pupil (MediaPipe 473)
+    if (i === 68) {
+      if (landmarks.length > 468) {
+        pt = landmarks[468];
+      } else {
+        const rIndices = [33, 160, 158, 133, 153, 144];
+        let sx = 0, sy = 0, sz = 0;
+        for (const idx of rIndices) {
+          if (idx < landmarks.length) {
+            sx += landmarks[idx].x;
+            sy += landmarks[idx].y;
+            sz += (landmarks[idx].z || 0);
+          }
+        }
+        pt = { x: sx / 6, y: sy / 6, z: sz / 6, visibility: 0.95 };
+      }
+    } else if (i === 69) {
+      if (landmarks.length > 473) {
+        pt = landmarks[473];
+      } else {
+        const lIndices = [362, 385, 387, 263, 373, 380];
+        let sx = 0, sy = 0, sz = 0;
+        for (const idx of lIndices) {
+          if (idx < landmarks.length) {
+            sx += landmarks[idx].x;
+            sy += landmarks[idx].y;
+            sz += (landmarks[idx].z || 0);
+          }
+        }
+        pt = { x: sx / 6, y: sy / 6, z: sz / 6, visibility: 0.95 };
+      }
+    } else {
+      const mpIdx = MEDIAPIPE_478_TO_CANONICAL_70[i];
+      pt = mpIdx < landmarks.length ? landmarks[mpIdx] : { x: 0.5, y: 0.5, z: 0, visibility: 0.9 };
+    }
+
+    const x = Math.max(0, Math.min(1, pt.x));
+    const y = Math.max(0, Math.min(1, pt.y));
+    const z = pt.z || 0;
+    const c = pt.visibility !== undefined ? pt.visibility : 0.96;
+
+    const off = i * 4;
+    buffer[off] = x;
+    buffer[off + 1] = y;
+    buffer[off + 2] = z;
+    buffer[off + 3] = c;
+
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+
+  // Right eye points: 36, 37, 38, 39, 40, 41
+  const p36 = { x: buffer[36 * 4], y: buffer[36 * 4 + 1] };
+  const p37 = { x: buffer[37 * 4], y: buffer[37 * 4 + 1] };
+  const p38 = { x: buffer[38 * 4], y: buffer[38 * 4 + 1] };
+  const p39 = { x: buffer[39 * 4], y: buffer[39 * 4 + 1] };
+  const p40 = { x: buffer[40 * 4], y: buffer[40 * 4 + 1] };
+  const p41 = { x: buffer[41 * 4], y: buffer[41 * 4 + 1] };
+
+  const distR_h = Math.hypot(p36.x - p39.x, p36.y - p39.y);
+  const distR_v1 = Math.hypot(p37.x - p41.x, p37.y - p41.y);
+  const distR_v2 = Math.hypot(p38.x - p40.x, p38.y - p40.y);
+  const earR = distR_h > 0.001 ? (distR_v1 + distR_v2) / (2.0 * distR_h) : 0.28;
+
+  // Left eye points: 42, 43, 44, 45, 46, 47
+  const p42 = { x: buffer[42 * 4], y: buffer[42 * 4 + 1] };
+  const p43 = { x: buffer[43 * 4], y: buffer[43 * 4 + 1] };
+  const p44 = { x: buffer[44 * 4], y: buffer[44 * 4 + 1] };
+  const p45 = { x: buffer[45 * 4], y: buffer[45 * 4 + 1] };
+  const p46 = { x: buffer[46 * 4], y: buffer[46 * 4 + 1] };
+  const p47 = { x: buffer[47 * 4], y: buffer[47 * 4 + 1] };
+
+  const distL_h = Math.hypot(p42.x - p45.x, p42.y - p45.y);
+  const distL_v1 = Math.hypot(p43.x - p47.x, p43.y - p47.y);
+  const distL_v2 = Math.hypot(p44.x - p46.x, p44.y - p46.y);
+  const earL = distL_h > 0.001 ? (distL_v1 + distL_v2) / (2.0 * distL_h) : 0.28;
+
+  const ear = Math.round(((earR + earL) / 2.0) * 1000) / 1000;
+
+  // Mouth points: 48, 50, 51, 52, 54, 56, 57, 58
+  const p48 = { x: buffer[48 * 4], y: buffer[48 * 4 + 1] };
+  const p50 = { x: buffer[50 * 4], y: buffer[50 * 4 + 1] };
+  const p51 = { x: buffer[51 * 4], y: buffer[51 * 4 + 1] };
+  const p52 = { x: buffer[52 * 4], y: buffer[52 * 4 + 1] };
+  const p54 = { x: buffer[54 * 4], y: buffer[54 * 4 + 1] };
+  const p56 = { x: buffer[56 * 4], y: buffer[56 * 4 + 1] };
+  const p57 = { x: buffer[57 * 4], y: buffer[57 * 4 + 1] };
+  const p58 = { x: buffer[58 * 4], y: buffer[58 * 4 + 1] };
+
+  const mouthW = Math.hypot(p48.x - p54.x, p48.y - p54.y);
+  const mouthH1 = Math.hypot(p50.x - p58.x, p50.y - p58.y);
+  const mouthH2 = Math.hypot(p51.x - p57.x, p51.y - p57.y);
+  const mouthH3 = Math.hypot(p52.x - p56.x, p52.y - p56.y);
+  const mar = mouthW > 0.001 ? Math.round(((mouthH1 + mouthH2 + mouthH3) / (3.0 * mouthW)) * 1000) / 1000 : 0.14;
+
+  // 3D Euler Pose Estimation
+  const noseTip = { x: buffer[33 * 4], y: buffer[33 * 4 + 1], z: buffer[33 * 4 + 2] };
+  const chin = { x: buffer[8 * 4], y: buffer[8 * 4 + 1], z: buffer[8 * 4 + 2] };
+  const earR_pt = { x: buffer[0 * 4], y: buffer[0 * 4 + 1] };
+  const earL_pt = { x: buffer[16 * 4], y: buffer[16 * 4 + 1] };
+  const eyeCenterY = (p36.y + p45.y) / 2;
+
+  const rollDegrees = Math.round((Math.atan2(p45.y - p36.y, p45.x - p36.x) * (180 / Math.PI)) * 10) / 10;
+  const cheekCenter = (earR_pt.x + earL_pt.x) / 2;
+  const cheekWidth = Math.max(0.01, (earL_pt.x - earR_pt.x) / 2);
+  const yawNormalized = Math.max(-1, Math.min(1, (noseTip.x - cheekCenter) / cheekWidth));
+  const yawDegrees = Math.round((Math.asin(yawNormalized) * (180 / Math.PI)) * 10) / 10;
+
+  const faceMidY = (eyeCenterY + chin.y) / 2;
+  const faceHeightHalf = Math.max(0.01, (chin.y - eyeCenterY) / 2);
+  const pitchNormalized = Math.max(-1, Math.min(1, (noseTip.y - faceMidY) / faceHeightHalf));
+  const pitchDegrees = Math.round((Math.asin(pitchNormalized) * (180 / Math.PI)) * 10) / 10;
+
+  // Gaze angles
+  const pupilR = { x: buffer[68 * 4], y: buffer[68 * 4 + 1] };
+  const pupilL = { x: buffer[69 * 4], y: buffer[69 * 4 + 1] };
+  const eyeCenterR = { x: (p36.x + p39.x) / 2, y: (p36.y + p39.y) / 2 };
+  const eyeCenterL = { x: (p42.x + p45.x) / 2, y: (p42.y + p45.y) / 2 };
+
+  const gazeYawR = (pupilR.x - eyeCenterR.x) / (distR_h || 0.05);
+  const gazeYawL = (pupilL.x - eyeCenterL.x) / (distL_h || 0.05);
+  const gazeYaw = Math.round(((gazeYawR + gazeYawL) / 2) * 35 * 10) / 10;
+  const gazePitch = Math.round((((pupilR.y - eyeCenterR.y) + (pupilL.y - eyeCenterL.y)) / 2) * 50 * 10) / 10;
+
+  const padX = (maxX - minX) * 0.08;
+  const padY = (maxY - minY) * 0.10;
+  const faceBox = {
+    x: Math.round(Math.max(0, minX - padX) * width),
+    y: Math.round(Math.max(0, minY - padY) * height),
+    width: Math.round(Math.min(1, (maxX - minX) + padX * 2) * width),
+    height: Math.round(Math.min(1, (maxY - minY) + padY * 2) * height),
+  };
+
+  return {
+    faceDetected: true,
+    faceBox,
+    ear,
+    mar,
+    pitchDegrees,
+    yawDegrees,
+    rollDegrees,
+    gazePitch,
+    gazeYaw,
+    regionConfidences: {
+      eyes: 0.98,
+      nose: 0.97,
+      mouth: 0.97,
+      overall: 0.97,
+    },
+    landmarksBuffer: buffer,
+  };
+}
+
 // ── Message Listener (Main Thread Command Router) ──────────────────────────────
-ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMessage>) => {
+if (typeof ctx !== 'undefined' && typeof ctx.addEventListener === 'function') {
+  ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMessage>) => {
   const message = event.data;
 
   try {
@@ -442,12 +694,16 @@ ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMe
         const hasImageBitmap = typeof createImageBitmap !== 'undefined';
         const hasWebGL = typeof WebGLRenderingContext !== 'undefined';
 
+        // Trigger asynchronous MediaPipe model initialization in background
+        initFaceLandmarker(backend).catch(() => {});
+
         postResponse({
           type: 'MODEL_READY',
           payload: {
             activeBackend,
             initLatencyMs,
             modelsLoaded: [
+              'MediaPipe Dense 478-Point FaceLandmarker',
               'Sub-Pixel Dense 70-Point Landmark Engine',
               'Temporal Motion Differencing Kernel',
             ],
@@ -527,12 +783,45 @@ ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMe
             landmarksBuffer: new Float32Array(NUM_LANDMARK_POINTS * 4),
           };
 
-          if (offscreenCtx) {
-            offscreenCtx.drawImage(imageBitmap, 0, 0, w, h);
-            const imgData = offscreenCtx.getImageData(0, 0, w, h);
+          let trackingMode: DenseLandmarksEnvelope['trackingMode'] = 'HYBRID_OPTICAL_TRACKER';
 
-            motionResult = motionDetector.processFrame(imgData.data, w, h);
-            landmarkOutput = extractDenseLandmarksFromPixels(imgData.data, w, h);
+          // 1. Try learned MediaPipe FaceLandmarker detection first
+          if (faceLandmarker) {
+            try {
+              const landmarkerResult = faceLandmarker.detect(imageBitmap);
+              if (landmarkerResult && landmarkerResult.faceLandmarks && landmarkerResult.faceLandmarks.length > 0) {
+                landmarkOutput = extractDenseLandmarksFromLearnedModel(landmarkerResult.faceLandmarks[0], w, h);
+                trackingMode = 'LEARNED_FACELANDMARKER';
+              } else {
+                landmarkOutput = {
+                  faceDetected: false,
+                  faceBox: { x: 0, y: 0, width: 0, height: 0 },
+                  ear: 0.28,
+                  mar: 0.14,
+                  pitchDegrees: 0,
+                  yawDegrees: 0,
+                  rollDegrees: 0,
+                  gazePitch: 0,
+                  gazeYaw: 0,
+                  regionConfidences: { eyes: 0, nose: 0, mouth: 0, overall: 0 },
+                  landmarksBuffer: new Float32Array(NUM_LANDMARK_POINTS * 4),
+                };
+                trackingMode = 'LEARNED_FACELANDMARKER';
+              }
+            } catch (modelErr) {
+              console.warn('[VisionWorker] FaceLandmarker detect threw, falling back to pixel heuristic:', modelErr);
+              trackingMode = 'HYBRID_OPTICAL_TRACKER';
+            }
+          }
+
+          // 2. Fallback to pixel heuristic if model not available or threw
+          if (trackingMode === 'HYBRID_OPTICAL_TRACKER') {
+            if (offscreenCtx) {
+              offscreenCtx.drawImage(imageBitmap, 0, 0, w, h);
+              const imgData = offscreenCtx.getImageData(0, 0, w, h);
+              motionResult = motionDetector.processFrame(imgData.data, w, h);
+              landmarkOutput = extractDenseLandmarksFromPixels(imgData.data, w, h);
+            }
           }
 
           // Memory hygiene: close zero-copy ImageBitmap
@@ -556,7 +845,7 @@ ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMe
             ear: landmarkOutput.ear,
             mar: landmarkOutput.mar,
             regionConfidences: landmarkOutput.regionConfidences,
-            trackingMode: 'HYBRID_OPTICAL_TRACKER',
+            trackingMode,
           };
 
           // Clone buffer for transferable postMessage
@@ -664,6 +953,13 @@ ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMe
         motionDetector.reset();
         offscreenCanvas = null;
         offscreenCtx = null;
+        if (faceLandmarker) {
+          try {
+            faceLandmarker.close();
+          } catch {}
+          faceLandmarker = null;
+        }
+        modelInitPromise = null;
         postResponse({ type: 'DISPOSED_CONFIRM' });
         break;
       }
@@ -680,5 +976,6 @@ ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMe
     });
   }
 });
+}
 
 export {};

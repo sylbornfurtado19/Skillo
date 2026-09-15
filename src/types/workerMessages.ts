@@ -153,7 +153,7 @@ export interface DenseLandmarksEnvelope {
     mouth: number;
     overall: number;
   };
-  trackingMode: 'MEDIAPIPE_FACEMESH' | 'HYBRID_OPTICAL_TRACKER' | 'CANVAS_HEURISTIC';
+  trackingMode: 'LEARNED_FACELANDMARKER' | 'MEDIAPIPE_FACEMESH' | 'HYBRID_OPTICAL_TRACKER' | 'CANVAS_HEURISTIC';
 }
 
 export interface ProcessedVisionResults {

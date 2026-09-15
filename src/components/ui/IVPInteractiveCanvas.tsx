@@ -999,9 +999,10 @@ export default function IVPInteractiveCanvas({
 
       ctx.fillStyle = '#FBBF24';
       const relocStr = denseRes.isRelocalizing ? `GLIDE (${Math.round(denseRes.relocalizationProgress * 100)}%)` : 'LOCKED';
-      ctx.fillText(`PRESET: ${denseRes.activePreset} | RE-LOCK: ${relocStr} | α: ${denseRes.meanAlpha.toFixed(2)}`, dbgX + 8, dbgY + 64);
-      ctx.fillText(`OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s | OPACITY: ${(denseRes.visibilityOpacity * 100).toFixed(0)}% | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 78);
-      ctx.fillText(`MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight} (S: ${mapping.scale.toFixed(2)})`, dbgX + 8, dbgY + 92);
+      const engineStr = workerLandmarks?.envelope.trackingMode === 'LEARNED_FACELANDMARKER' ? 'LEARNED (MediaPipe)' : 'OPTICAL TRACKER';
+      ctx.fillText(`ENGINE: ${engineStr} | RE-LOCK: ${relocStr}`, dbgX + 8, dbgY + 64);
+      ctx.fillText(`PRESET: ${denseRes.activePreset} | α: ${denseRes.meanAlpha.toFixed(2)} | OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s`, dbgX + 8, dbgY + 78);
+      ctx.fillText(`MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight} (S: ${mapping.scale.toFixed(2)}) | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 92);
 
       if (isThrottled) {
         ctx.fillStyle = '#F87171';
