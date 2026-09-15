@@ -31,6 +31,7 @@ import {
 } from '../../lib/services/temporalSmoothing';
 import type { DenseLandmarksEnvelope } from '@/types/workerMessages';
 import type { VisionWorkerStats } from '@/hooks/useVisionWorker';
+import { MicroPatchTracker, type TrackedFeature } from '../../lib/services/microPatchTracker';
 
 // ---------------------------------------------------------------------------
 // Internal canvas dimensions for the diagnostic processing pipeline.
@@ -154,6 +155,9 @@ export default function IVPInteractiveCanvas({
   const denseSmootherRef = useRef<DenseLandmarksSmoother>(new DenseLandmarksSmoother(70, trackingPreset));
   const lastSmoothedResRef = useRef<SmoothedLandmarksResult | null>(null);
   const lastRawNormPtsRef = useRef<Array<{ x: number; y: number }> | null>(null);
+  const microTrackerRef = useRef<MicroPatchTracker>(new MicroPatchTracker(8, 8));
+  const lastWorkerBufferRef = useRef<Float32Array | null>(null);
+  const lastMicroTrackedRef = useRef<Map<number, TrackedFeature>>(new Map());
 
   // Synchronize tracking preset with dense smoother
   useEffect(() => {
@@ -303,12 +307,28 @@ export default function IVPInteractiveCanvas({
     try {
       if (sourceElement instanceof HTMLVideoElement) {
         if (sourceElement.readyState >= 2 && sourceElement.videoWidth > 0) {
-          rawCtx.drawImage(sourceElement, 0, 0, PROC_W, PROC_H);
+          if (mirrored) {
+            rawCtx.save();
+            rawCtx.translate(PROC_W, 0);
+            rawCtx.scale(-1, 1);
+            rawCtx.drawImage(sourceElement, 0, 0, PROC_W, PROC_H);
+            rawCtx.restore();
+          } else {
+            rawCtx.drawImage(sourceElement, 0, 0, PROC_W, PROC_H);
+          }
           frameValid = true;
         }
       } else if (sourceElement instanceof HTMLImageElement) {
         if (sourceElement.complete && sourceElement.naturalWidth > 0) {
-          rawCtx.drawImage(sourceElement, 0, 0, PROC_W, PROC_H);
+          if (mirrored) {
+            rawCtx.save();
+            rawCtx.translate(PROC_W, 0);
+            rawCtx.scale(-1, 1);
+            rawCtx.drawImage(sourceElement, 0, 0, PROC_W, PROC_H);
+            rawCtx.restore();
+          } else {
+            rawCtx.drawImage(sourceElement, 0, 0, PROC_W, PROC_H);
+          }
           frameValid = true;
         }
       }
@@ -492,17 +512,48 @@ export default function IVPInteractiveCanvas({
       liveEAR = workerLandmarks.envelope.ear;
       liveMAR = workerLandmarks.envelope.mar;
 
-      denseRes = denseSmootherRef.current.updateFromBuffer(
-        workerLandmarks.buffer,
-        70,
-        workerLandmarks.envelope.timestampMs || now
-      );
+      const isNewPacket = workerLandmarks.buffer !== lastWorkerBufferRef.current;
+      if (isNewPacket) {
+        lastWorkerBufferRef.current = workerLandmarks.buffer;
+        denseRes = denseSmootherRef.current.updateFromBuffer(
+          workerLandmarks.buffer,
+          70,
+          workerLandmarks.envelope.timestampMs || now
+        );
 
-      const rawPts: Array<{ x: number; y: number }> = [];
-      for (let i = 0; i < 70; i++) {
-        rawPts.push({ x: workerLandmarks.buffer[i * 4], y: workerLandmarks.buffer[i * 4 + 1] });
+        const rawPts: Array<{ x: number; y: number }> = [];
+        for (let i = 0; i < 70; i++) {
+          rawPts.push({ x: workerLandmarks.buffer[i * 4], y: workerLandmarks.buffer[i * 4 + 1] });
+        }
+        lastRawNormPtsRef.current = rawPts;
+
+        // Initialize / refresh micro-patch templates on new inference packet
+        if (isFaceGenuinelyDetected && rawImgData) {
+          microTrackerRef.current.updateTemplates(rawImgData.data, PROC_W, PROC_H, [
+            { index: 68, x: rawPts[68].x, y: rawPts[68].y }, // Right pupil
+            { index: 69, x: rawPts[69].x, y: rawPts[69].y }, // Left pupil
+            { index: 48, x: rawPts[48].x, y: rawPts[48].y }, // Mouth right corner
+            { index: 54, x: rawPts[54].x, y: rawPts[54].y }, // Mouth left corner
+          ]);
+        }
+      } else {
+        // Intermediate 60 FPS RAF frame: track micro-features (pupils & lip corners) using NCC
+        if (isFaceGenuinelyDetected && rawImgData) {
+          const tracked = microTrackerRef.current.track(rawImgData.data, PROC_W, PROC_H, 0.55);
+          lastMicroTrackedRef.current = tracked;
+          for (const [idx, feat] of tracked.entries()) {
+            denseSmootherRef.current.updatePoint(idx, { x: feat.x, y: feat.y }, feat.ncc, now);
+            workerLandmarks.buffer[idx * 4] = feat.x;
+            workerLandmarks.buffer[idx * 4 + 1] = feat.y;
+            workerLandmarks.buffer[idx * 4 + 3] = feat.ncc;
+          }
+        }
+        denseRes = denseSmootherRef.current.updateFromBuffer(
+          workerLandmarks.buffer,
+          70,
+          now
+        );
       }
-      lastRawNormPtsRef.current = rawPts;
     } else {
       const liveExpr = !isTargetLost
         ? extractFacialExpressions(rawImgData.data, PROC_W, PROC_H)
@@ -946,24 +997,38 @@ export default function IVPInteractiveCanvas({
 
       // A. Render Raw Un-smoothed Landmark Points (Amber dots)
       if (lastRawNormPtsRef.current) {
-        ctx.fillStyle = 'rgba(245, 158, 11, 0.75)';
+        ctx.fillStyle = 'rgba(255, 140, 0, 0.95)';
         for (const rp of lastRawNormPtsRef.current) {
           const cp = mapNormalizedToCanvas(rp, mapping);
           ctx.beginPath();
-          ctx.arc(cp.x, cp.y, 1.8, 0, 2 * Math.PI);
+          ctx.arc(cp.x, cp.y, 3, 0, 2 * Math.PI);
           ctx.fill();
         }
       }
 
       // B. Render Smoothed Landmark Points (Cyan dots)
-      ctx.fillStyle = 'rgba(6, 182, 212, 0.9)';
+      ctx.fillStyle = 'rgba(0, 240, 255, 0.95)';
       for (const sp of canvasPts) {
         ctx.beginPath();
-        ctx.arc(sp.x, sp.y, 2.2, 0, 2 * Math.PI);
+        ctx.arc(sp.x, sp.y, 3, 0, 2 * Math.PI);
         ctx.fill();
       }
 
-      // C. Render High-Tech Debug Metrics Card (Bottom-Right)
+      // C. Render 60 FPS Micro-Tracked Feature Points (Emerald rings for pupils/lips)
+      if (lastMicroTrackedRef.current && lastMicroTrackedRef.current.size > 0) {
+        ctx.save();
+        ctx.strokeStyle = '#10B981';
+        ctx.lineWidth = 1.8;
+        for (const [, feat] of lastMicroTrackedRef.current.entries()) {
+          const cp = mapNormalizedToCanvas({ x: feat.x, y: feat.y }, mapping);
+          ctx.beginPath();
+          ctx.arc(cp.x, cp.y, 6, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // D. Render High-Tech Debug Metrics Card (Bottom-Right)
       const isThrottled = workerStats?.isThrottled ?? false;
       const dbgW = 320;
       const dbgH = isThrottled ? 122 : 108;
@@ -980,7 +1045,7 @@ export default function IVPInteractiveCanvas({
       ctx.fillStyle = isThrottled ? '#F59E0B' : '#06B6D4';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('⚡ TRACKING HUD (Amber: Raw | Cyan: Smoothed)', dbgX + 8, dbgY + 8);
+      ctx.fillText('⚡ TRACKING HUD (Amber: Raw | Cyan: Smoothed | Green: Micro)', dbgX + 8, dbgY + 8);
 
       ctx.font = '8.5px monospace';
       ctx.fillStyle = '#D1D5DB';
@@ -1000,7 +1065,8 @@ export default function IVPInteractiveCanvas({
       ctx.fillStyle = '#FBBF24';
       const relocStr = denseRes.isRelocalizing ? `GLIDE (${Math.round(denseRes.relocalizationProgress * 100)}%)` : 'LOCKED';
       const engineStr = workerLandmarks?.envelope.trackingMode === 'LEARNED_FACELANDMARKER' ? 'LEARNED (MediaPipe)' : 'OPTICAL TRACKER';
-      ctx.fillText(`ENGINE: ${engineStr} | RE-LOCK: ${relocStr}`, dbgX + 8, dbgY + 64);
+      const microCount = lastMicroTrackedRef.current?.size ?? 0;
+      ctx.fillText(`ENGINE: ${engineStr} | MICRO-NCC: ${microCount} pts (60 FPS)`, dbgX + 8, dbgY + 64);
       ctx.fillText(`PRESET: ${denseRes.activePreset} | α: ${denseRes.meanAlpha.toFixed(2)} | OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s`, dbgX + 8, dbgY + 78);
       ctx.fillText(`MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight} (S: ${mapping.scale.toFixed(2)}) | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 92);
 

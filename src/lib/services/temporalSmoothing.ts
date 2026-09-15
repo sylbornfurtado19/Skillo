@@ -322,6 +322,8 @@ export interface LandmarkPoint2D {
   y: number;
 }
 
+export type FilterEngineMode = 'KALMAN_HYBRID' | 'EMA_KINEMATIC';
+
 export interface KinematicFilterConfig {
   alphaSlow?: number;
   alphaFast?: number;
@@ -333,6 +335,8 @@ export interface KinematicFilterConfig {
   maxCumulativeDrift?: number;   // Cap cumulative drift from last confident anchor (default 0.08)
   fadeStartSec?: number;         // Start fading opacity after T seconds of occlusion (default 0.35)
   fadeEndSec?: number;           // Complete fade to 0 opacity after T seconds of occlusion (default 1.0)
+  filterMode?: FilterEngineMode; // Kalman Hybrid or Adaptive EMA (default KALMAN_HYBRID)
+  r0?: number;                   // Base measurement covariance (default 0.0004)
 }
 
 export type TrackingPreset = 'ULTRA_SMOOTH' | 'BALANCED' | 'ULTRA_RESPONSIVE';
@@ -390,6 +394,12 @@ export class LandmarkKinematicFilter {
   private maxCumulativeDrift: number;
   private fadeStartSec: number;
   private fadeEndSec: number;
+  private filterMode: FilterEngineMode;
+  private r0: number;
+
+  // Decoupled 2x2 state covariance matrices for X and Y: [P00, P01, P10, P11]
+  private Px: [number, number, number, number] = [0.0001, 0, 0, 0.005];
+  private Py: [number, number, number, number] = [0.0001, 0, 0, 0.005];
 
   constructor(config: KinematicFilterConfig = {}) {
     this.alphaSlow = config.alphaSlow ?? 0.25;
@@ -402,6 +412,8 @@ export class LandmarkKinematicFilter {
     this.maxCumulativeDrift = config.maxCumulativeDrift ?? 0.08;
     this.fadeStartSec = config.fadeStartSec ?? 0.35;
     this.fadeEndSec = config.fadeEndSec ?? 1.0;
+    this.filterMode = config.filterMode ?? 'EMA_KINEMATIC';
+    this.r0 = config.r0 ?? 0.0004;
   }
 
   public setConfig(config: Partial<KinematicFilterConfig>) {
@@ -415,6 +427,8 @@ export class LandmarkKinematicFilter {
     if (config.maxCumulativeDrift !== undefined) this.maxCumulativeDrift = config.maxCumulativeDrift;
     if (config.fadeStartSec !== undefined) this.fadeStartSec = config.fadeStartSec;
     if (config.fadeEndSec !== undefined) this.fadeEndSec = config.fadeEndSec;
+    if (config.filterMode !== undefined) this.filterMode = config.filterMode;
+    if (config.r0 !== undefined) this.r0 = config.r0;
   }
 
   public update(
@@ -453,35 +467,95 @@ export class LandmarkKinematicFilter {
       const measuredVx = (obs.x - this.pos.x) / safeDt;
       const measuredVy = (obs.y - this.pos.y) / safeDt;
       const speed = Math.hypot(measuredVx, measuredVy);
-
       const speedFactor = Math.max(0, Math.min(1, speed / this.maxSpeed));
-      const baseAlpha = this.alphaSlow + (this.alphaFast - this.alphaSlow) * speedFactor;
 
-      // Confidence-weighted adaptive gain (Kalman-hybrid measurement confidence):
-      // High-confidence points use full speed-adaptive alpha.
-      // Lower confidence points smoothly scale down alpha, placing greater reliance on kinematic prediction.
-      const confWeight = Math.max(0.25, Math.min(1.0, conf));
-      const alpha = baseAlpha * confWeight;
+      if (this.filterMode === 'KALMAN_HYBRID') {
+        // Speed-adaptive process noise Q (increases gain during rapid saccades / head turns)
+        const qPos = 0.00003 * (1.0 + speedFactor * 8.0);
+        const qVel = 0.0012 * (1.0 + speedFactor * 8.0);
 
-      const predX = this.pos.x + this.vel.x * safeDt;
-      const predY = this.pos.y + this.vel.y * safeDt;
+        // Measurement noise covariance R inversely scaled by detection confidence
+        const safeConf = Math.max(0.1, Math.min(1.0, conf));
+        const R = this.r0 / (safeConf * safeConf);
 
-      const smoothedX = alpha * obs.x + (1 - alpha) * predX;
-      const smoothedY = alpha * obs.y + (1 - alpha) * predY;
+        // --- X-Axis Kalman Predict & Update ---
+        const xPred = this.pos.x + this.vel.x * safeDt;
+        const vxPred = this.vel.x;
+        const P00_x = this.Px[0] + safeDt * (this.Px[1] + this.Px[2]) + safeDt * safeDt * this.Px[3] + qPos;
+        const P01_x = this.Px[1] + safeDt * this.Px[3];
+        const P10_x = this.Px[2] + safeDt * this.Px[3];
+        const P11_x = this.Px[3] + qVel;
 
-      this.pos = { x: smoothedX, y: smoothedY };
-      this.vel = {
-        x: this.beta * measuredVx + (1 - this.beta) * this.vel.x,
-        y: this.beta * measuredVy + (1 - this.beta) * this.vel.y,
-      };
+        const y_x = obs.x - xPred;
+        const S_x = P00_x + R;
+        const K0_x = P00_x / S_x;
+        const K1_x = P10_x / S_x;
 
-      return {
-        pos: { ...this.pos },
-        vel: { ...this.vel },
-        alphaUsed: alpha,
-        opacity: 1.0,
-        occludedSec: 0,
-      };
+        const xNew = xPred + K0_x * y_x;
+        const vxNew = vxPred + K1_x * y_x;
+
+        this.Px[0] = (1 - K0_x) * P00_x;
+        this.Px[1] = (1 - K0_x) * P01_x;
+        this.Px[2] = P10_x - K1_x * P00_x;
+        this.Px[3] = P11_x - K1_x * P01_x;
+
+        // --- Y-Axis Kalman Predict & Update ---
+        const yPred = this.pos.y + this.vel.y * safeDt;
+        const vyPred = this.vel.y;
+        const P00_y = this.Py[0] + safeDt * (this.Py[1] + this.Py[2]) + safeDt * safeDt * this.Py[3] + qPos;
+        const P01_y = this.Py[1] + safeDt * this.Py[3];
+        const P10_y = this.Py[2] + safeDt * this.Py[3];
+        const P11_y = this.Py[3] + qVel;
+
+        const y_y = obs.y - yPred;
+        const S_y = P00_y + R;
+        const K0_y = P00_y / S_y;
+        const K1_y = P10_y / S_y;
+
+        const yNew = yPred + K0_y * y_y;
+        const vyNew = vyPred + K1_y * y_y;
+
+        this.Py[0] = (1 - K0_y) * P00_y;
+        this.Py[1] = (1 - K0_y) * P01_y;
+        this.Py[2] = P10_y - K1_y * P00_y;
+        this.Py[3] = P11_y - K1_y * P01_y;
+
+        this.pos = { x: xNew, y: yNew };
+        this.vel = { x: vxNew, y: vyNew };
+
+        const alphaUsed = (K0_x + K0_y) / 2;
+        return {
+          pos: { ...this.pos },
+          vel: { ...this.vel },
+          alphaUsed,
+          opacity: 1.0,
+          occludedSec: 0,
+        };
+      } else {
+        const baseAlpha = this.alphaSlow + (this.alphaFast - this.alphaSlow) * speedFactor;
+        const confWeight = Math.max(0.25, Math.min(1.0, conf));
+        const alpha = baseAlpha * confWeight;
+
+        const predX = this.pos.x + this.vel.x * safeDt;
+        const predY = this.pos.y + this.vel.y * safeDt;
+
+        const smoothedX = alpha * obs.x + (1 - alpha) * predX;
+        const smoothedY = alpha * obs.y + (1 - alpha) * predY;
+
+        this.pos = { x: smoothedX, y: smoothedY };
+        this.vel = {
+          x: this.beta * measuredVx + (1 - this.beta) * this.vel.x,
+          y: this.beta * measuredVy + (1 - this.beta) * this.vel.y,
+        };
+
+        return {
+          pos: { ...this.pos },
+          vel: { ...this.vel },
+          alphaUsed: alpha,
+          opacity: 1.0,
+          occludedSec: 0,
+        };
+      }
     } else {
       // Missing measurement / occlusion tracking
       this.occludedSec += safeDt;
@@ -572,6 +646,8 @@ export class LandmarkKinematicFilter {
     this.lastConfidentPos = initialPos ? { ...initialPos } : null;
     this.occludedSec = 0;
     this.visibilityOpacity = 1.0;
+    this.Px = [0.0001, 0, 0, 0.005];
+    this.Py = [0.0001, 0, 0, 0.005];
   }
 }
 
@@ -974,6 +1050,23 @@ export class DenseLandmarksSmoother {
       isRelocalizing: this.isRelocalizing,
       relocalizationProgress: this.reLocProgress,
     };
+  }
+
+  /**
+   * Updates a single landmark filter (e.g. from high-speed micro-patch tracker).
+   */
+  public updatePoint(
+    index: number,
+    pos: LandmarkPoint2D,
+    confidence: number,
+    timestampMs: number
+  ): LandmarkPoint2D | null {
+    if (index < 0 || index >= this.filters.length) return null;
+    const dt = this.lastTimestampMs > 0
+      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastTimestampMs) / 1000))
+      : 0.016;
+    const res = this.filters[index].update(pos, confidence, dt);
+    return res.pos;
   }
 
   public reset(): void {

@@ -2,7 +2,11 @@ import {
   MEDIAPIPE_478_TO_CANONICAL_70,
   extractDenseLandmarksFromLearnedModel,
 } from '../src/lib/workers/visionWorker';
-import { DenseLandmarksSmoother } from '../src/lib/services/temporalSmoothing';
+import {
+  DenseLandmarksSmoother,
+  LandmarkKinematicFilter,
+} from '../src/lib/services/temporalSmoothing';
+import { MicroPatchTracker } from '../src/lib/services/microPatchTracker';
 
 describe('Learned MediaPipe Landmark Pipeline & 70-Point Canonical Mapping', () => {
   it('defines a valid 70-point canonical index mapping from MediaPipe 478 mesh', () => {
@@ -127,5 +131,91 @@ describe('Learned MediaPipe Landmark Pipeline & 70-Point Canonical Mapping', () 
     expect(smoothedRes.points[33].x).toBeCloseTo(0.5, 2);
     expect(smoothedRes.points[68].x).toBeCloseTo(0.5, 2);
     expect(smoothedRes.regionConfidences.overall).toBeGreaterThan(0.9);
+  });
+
+  it('reduces static jitter and tracks step motion in KALMAN_HYBRID filter mode', () => {
+    const kalman = new LandmarkKinematicFilter({
+      filterMode: 'KALMAN_HYBRID',
+      r0: 0.0004,
+    });
+
+    // 1. Static noisy input
+    const truePos = { x: 0.5, y: 0.5 };
+    const rawNoisyX: number[] = [];
+    const filteredX: number[] = [];
+
+    for (let i = 0; i < 40; i++) {
+      const noise = (Math.sin(i * 1.7) + Math.cos(i * 2.3)) * 0.015;
+      const obs = { x: truePos.x + noise, y: truePos.y };
+      rawNoisyX.push(obs.x);
+      const res = kalman.update(obs, 0.95, 0.033);
+      if (i > 10) filteredX.push(res.pos.x);
+    }
+
+    // Measure standard deviation of raw vs filtered
+    const stdDev = (arr: number[]) => {
+      const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+      return Math.sqrt(arr.reduce((acc, v) => acc + (v - mean) ** 2, 0) / arr.length);
+    };
+
+    const rawStd = stdDev(rawNoisyX.slice(10));
+    const filtStd = stdDev(filteredX);
+    expect(filtStd).toBeLessThan(rawStd);
+
+    // 2. Step response (saccade from 0.5 to 0.7)
+    const stepRes = kalman.update({ x: 0.7, y: 0.5 }, 1.0, 0.033);
+    expect(stepRes.pos.x).toBeGreaterThan(0.5);
+    expect(stepRes.vel.x).toBeGreaterThan(0);
+  });
+
+  it('tracks micro-features (pupils/lips) across frame translation with MicroPatchTracker', () => {
+    const tracker = new MicroPatchTracker(8, 8);
+    const W = 64;
+    const H = 64;
+    const frame1 = new Uint8ClampedArray(W * H * 4);
+
+    // Create a high-contrast dark pupil feature at (32, 32)
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const idx = (y * W + x) * 4;
+        const dist = Math.hypot(x - 32, y - 32);
+        const luma = dist < 4 ? 20 : 200;
+        frame1[idx] = luma;
+        frame1[idx + 1] = luma;
+        frame1[idx + 2] = luma;
+        frame1[idx + 3] = 255;
+      }
+    }
+
+    // Update reference template at (32/64, 32/64)
+    tracker.updateTemplates(frame1, W, H, [{ index: 68, x: 32 / W, y: 32 / H }]);
+
+    // Create frame 2 with the pupil shifted by +2px in X and +2px in Y
+    const frame2 = new Uint8ClampedArray(W * H * 4);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const idx = (y * W + x) * 4;
+        const dist = Math.hypot(x - 34, y - 34);
+        const luma = dist < 4 ? 20 : 200;
+        frame2[idx] = luma;
+        frame2[idx + 1] = luma;
+        frame2[idx + 2] = luma;
+        frame2[idx + 3] = 255;
+      }
+    }
+
+    const tracked = tracker.track(frame2, W, H, 0.50);
+    expect(tracked.has(68)).toBe(true);
+
+    const feat = tracked.get(68)!;
+    expect(feat.x).toBeCloseTo(34 / W, 2);
+    expect(feat.y).toBeCloseTo(34 / W, 2);
+    expect(feat.ncc).toBeGreaterThan(0.60);
+
+    // Verify integration into DenseLandmarksSmoother
+    const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+    const updatedPos = smoother.updatePoint(68, { x: feat.x, y: feat.y }, feat.ncc, 1033);
+    expect(updatedPos).not.toBeNull();
+    expect(updatedPos!.x).toBeCloseTo(34 / W, 2);
   });
 });
