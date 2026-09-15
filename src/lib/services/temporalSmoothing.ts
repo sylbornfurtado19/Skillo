@@ -778,7 +778,8 @@ export function computeSimilarityTransform(
  */
 export class DenseLandmarksSmoother {
   private filters: LandmarkKinematicFilter[] = [];
-  private lastTimestampMs: number = 0;
+  private lastModelTimestampMs: number = 0;
+  private lastMicroTimestampMs: number = 0;
   private currentPreset: TrackingPreset = 'BALANCED';
 
   // Global anti-snap re-localization state
@@ -888,10 +889,10 @@ export class DenseLandmarksSmoother {
       this.initFilters(numPoints);
     }
 
-    const dt = this.lastTimestampMs > 0
-      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastTimestampMs) / 1000))
+    const dt = this.lastModelTimestampMs > 0
+      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastModelTimestampMs) / 1000))
       : 0.033;
-    this.lastTimestampMs = timestampMs;
+    this.lastModelTimestampMs = timestampMs;
 
     // 1. Global Anchor Centroid calculation for Re-localization Gating
     const anchorIndices = [30, 33, 36, 39, 42, 45]; // nose base, tip, eye corners
@@ -1063,10 +1064,10 @@ export class DenseLandmarksSmoother {
       this.initFilters(numPoints);
     }
 
-    const dt = this.lastTimestampMs > 0
-      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastTimestampMs) / 1000))
+    const dt = this.lastModelTimestampMs > 0
+      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastModelTimestampMs) / 1000))
       : 0.033;
-    this.lastTimestampMs = timestampMs;
+    this.lastModelTimestampMs = timestampMs;
 
     const anchorIndices = [30, 33, 36, 39, 42, 45];
     let anchorSumX = 0, anchorSumY = 0, anchorConfSum = 0, anchorCount = 0;
@@ -1231,13 +1232,11 @@ export class DenseLandmarksSmoother {
     timestampMs: number
   ): LandmarkPoint2D | null {
     if (index < 0 || index >= this.filters.length) return null;
-    const dt = this.lastTimestampMs > 0
-      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastTimestampMs) / 1000))
+    const dt = this.lastMicroTimestampMs > 0
+      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastMicroTimestampMs) / 1000))
       : 0.016;
     const res = this.filters[index].update(pos, confidence, dt);
-    if (timestampMs > this.lastTimestampMs) {
-      this.lastTimestampMs = timestampMs;
-    }
+    this.lastMicroTimestampMs = timestampMs;
     return res.pos;
   }
 
@@ -1310,7 +1309,8 @@ export class DenseLandmarksSmoother {
     for (const f of this.filters) {
       f.reset();
     }
-    this.lastTimestampMs = 0;
+    this.lastModelTimestampMs = 0;
+    this.lastMicroTimestampMs = 0;
     this.isRelocalizing = false;
     this.reLocProgress = 1.0;
     this.reLocStartPositions = [];

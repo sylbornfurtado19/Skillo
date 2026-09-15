@@ -184,5 +184,53 @@ describe('Temporal Smoothing Engine', () => {
       const outlierDelta = Math.hypot(pred.x - outlierMeas.x, pred.y - outlierMeas.y);
       expect(outlierDelta).toBeGreaterThan(0.06);
     });
+
+    it('calling getCurrentResult() repeatedly without new model packets returns stable values and does not move filters', () => {
+      const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+      const buffer = new Float32Array(70 * 4);
+      for (let i = 0; i < 70; i++) {
+        buffer[i * 4] = 0.35 + i * 0.005;
+        buffer[i * 4 + 1] = 0.40;
+        buffer[i * 4 + 3] = 0.95;
+      }
+      smoother.updateFromBuffer(buffer, 70, 1000);
+
+      const res1 = smoother.getCurrentResult();
+
+      // Call repeatedly 20 times across simulated RAF frames
+      for (let frame = 0; frame < 20; frame++) {
+        const resN = smoother.getCurrentResult();
+        expect(resN.points.length).toBe(70);
+        for (let i = 0; i < 70; i++) {
+          expect(resN.points[i].x).toBe(res1.points[i].x);
+          expect(resN.points[i].y).toBe(res1.points[i].y);
+        }
+      }
+    });
+
+    it('updatePoint updates micro-only timestamp without corrupting model frame dt calculation', () => {
+      const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+      const buffer = new Float32Array(70 * 4);
+      for (let i = 0; i < 70; i++) {
+        buffer[i * 4] = 0.5;
+        buffer[i * 4 + 1] = 0.5;
+        buffer[i * 4 + 3] = 0.95;
+      }
+
+      // Model frame 1 at t=1000ms
+      smoother.updateFromBuffer(buffer, 70, 1000);
+
+      // Intermediate micro RAF frames at t=1016ms, 1033ms
+      smoother.updatePoint(68, { x: 0.502, y: 0.501 }, 0.85, 1016);
+      smoother.updatePoint(68, { x: 0.504, y: 0.502 }, 0.85, 1033);
+
+      // Model frame 2 at t=1100ms: should use dt = (1100 - 1000) / 1000 = 0.1s, NOT (1100 - 1033)
+      for (let i = 0; i < 70; i++) {
+        buffer[i * 4] = 0.55;
+      }
+      const resModel2 = smoother.updateFromBuffer(buffer, 70, 1100);
+      expect(resModel2.points[33].x).toBeGreaterThan(0.50);
+      expect(resModel2.points[33].x).toBeLessThan(0.55);
+    });
   });
 });
