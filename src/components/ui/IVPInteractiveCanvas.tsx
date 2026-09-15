@@ -22,6 +22,8 @@ import { extractFacialExpressions } from '@/lib/services/ivpExpressionKernel';
 import {
   computeCoordinateMapping,
   mapNormalizedToCanvas,
+  procToVideoX,
+  procToVideoY,
   type CoordinateMappingMetrics,
 } from '../../lib/services/visionPipeline';
 import {
@@ -159,6 +161,20 @@ export default function IVPInteractiveCanvas({
   const lastWorkerBufferRef = useRef<Float32Array | null>(null);
   const lastMicroTrackedRef = useRef<Map<number, TrackedFeature>>(new Map());
   const lastMicroTrackMsRef = useRef<number>(0);
+  const microMatchesTriedRef = useRef<number>(0);
+  const microMatchesAcceptedRef = useRef<number>(0);
+  const microTrackMsSamplesRef = useRef<number[]>([]);
+  const isMicroPausedRef = useRef<boolean>(false);
+  const [isMicroPaused, setIsMicroPaused] = useState<boolean>(false);
+
+  const getMicroTrackPercentiles = () => {
+    const samples = microTrackMsSamplesRef.current;
+    if (samples.length === 0) return { p50: 0, p95: 0 };
+    const sorted = [...samples].sort((a, b) => a - b);
+    const p50 = sorted[Math.floor(sorted.length * 0.50)];
+    const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
+    return { p50, p95 };
+  };
 
   // Synchronize tracking preset with dense smoother
   useEffect(() => {
@@ -541,45 +557,47 @@ export default function IVPInteractiveCanvas({
 
         // Initialize / refresh micro-patch templates on new inference packet
         if (isFaceGenuinelyDetected && rawImgData) {
-          const toProcX = (videoNormX: number) => Math.round(videoNormX * PROC_W);
-          if (rawPts[68] && (toProcX(rawPts[68].x) < 0 || toProcX(rawPts[68].x) >= PROC_W)) {
-            console.warn('[IVP] template X out of bounds', toProcX(rawPts[68].x), 'PROC_W', PROC_W);
-          }
           const normMicroX = (x: number) => (mirrored ? (1.0 - x) : x);
+          const workerEnv = workerLandmarks.envelope;
+          const fbW = workerEnv.faceBox ? (workerEnv.faceBox.width > 1.0 ? workerEnv.faceBox.width : workerEnv.faceBox.width * PROC_W) : 80;
+          const lipRadius = Math.max(8, Math.min(20, Math.ceil(fbW * 0.08)));
+
           microTrackerRef.current.updateTemplates(rawImgData.data, PROC_W, PROC_H, [
             { index: 68, x: normMicroX(rawPts[68].x), y: rawPts[68].y, patchRadius: 8 }, // Right pupil
             { index: 69, x: normMicroX(rawPts[69].x), y: rawPts[69].y, patchRadius: 8 }, // Left pupil
-            { index: 48, x: normMicroX(rawPts[48].x), y: rawPts[48].y, patchRadius: 16 }, // Mouth right corner (32x32)
-            { index: 54, x: normMicroX(rawPts[54].x), y: rawPts[54].y, patchRadius: 16 }, // Mouth left corner (32x32)
+            { index: 48, x: normMicroX(rawPts[48].x), y: rawPts[48].y, patchRadius: lipRadius }, // Mouth right corner
+            { index: 54, x: normMicroX(rawPts[54].x), y: rawPts[54].y, patchRadius: lipRadius }, // Mouth left corner
           ]);
         }
       } else {
         // Intermediate 60 FPS RAF frame: track micro-features (pupils & lip corners) using NCC
-        // Convert micro-tracker (PROC-space) -> video-normalized space before feeding smoother/buffer.
-        if (isFaceGenuinelyDetected && rawImgData) {
+        if (isFaceGenuinelyDetected && rawImgData && !isMicroPausedRef.current) {
           const t0 = performance.now();
           const tracked = microTrackerRef.current.track(rawImgData.data, PROC_W, PROC_H, 0.55, 1);
-          lastMicroTrackMsRef.current = performance.now() - t0;
+          const trackDurationMs = performance.now() - t0;
+          lastMicroTrackMsRef.current = trackDurationMs;
+          microTrackMsSamplesRef.current.push(trackDurationMs);
+          if (microTrackMsSamplesRef.current.length > 200) {
+            microTrackMsSamplesRef.current.shift();
+          }
+
           const canonicalTracked = new Map<number, TrackedFeature>();
 
-          // Safe guards: ensure mapping available
-          const videoW = mapping.videoWidth || PROC_W;
-          const videoH = mapping.videoHeight || PROC_H;
-          const procToVideoX = (procX: number) => (procX * PROC_W) / Math.max(1, videoW);
-          const procToVideoY = (procY: number) => (procY * PROC_H) / Math.max(1, videoH);
-
           // Acceptance & Gating Thresholds
-          const MIN_APPLY_NCC = 0.70;
+          const MIN_APPLY_NCC = 0.75; // configurable default high confidence threshold
           const MAX_MAHALANOBIS_DELTA = 0.06;
 
+          microMatchesTriedRef.current += tracked.size;
+
           for (const [idx, feat] of tracked.entries()) {
-            // feat.x/feat.y are normalized relative to PROC_W/PROC_H
+            // feat.x/feat.y are normalized relative to PROC_W/PROC_H in rawImgData
             const procX = mirrored ? (1.0 - feat.x) : feat.x;
             const procY = feat.y;
 
-            // Convert PROC normalized -> video normalized
-            const videoNormX = procToVideoX(procX); // in [0..1] relative to video width
-            const videoNormY = procToVideoY(procY); // in [0..1] relative to video height
+            // rawCanvas draws source directly to PROC_W x PROC_H (full span).
+            // procToVideoX helper maintains exact normalized coordinate
+            const videoNormX = procToVideoX(procX, PROC_W, PROC_W);
+            const videoNormY = procToVideoY(procY, PROC_H, PROC_H);
 
             // Save canonical tracked in video-normalized space for HUD visual rings
             canonicalTracked.set(idx, { landmarkIndex: idx, x: videoNormX, y: videoNormY, ncc: feat.ncc });
@@ -590,8 +608,9 @@ export default function IVPInteractiveCanvas({
               const pred = denseSmootherRef.current.predictPoint(idx, 0.016);
               const delta = pred ? Math.hypot(pred.x - videoNormX, pred.y - videoNormY) : 0;
 
-              if (delta < MAX_MAHALANOBIS_DELTA || feat.ncc >= 0.90) {
+              if (delta < MAX_MAHALANOBIS_DELTA || feat.ncc >= 0.92) {
                 const scaledConf = Math.max(0.1, Math.min(1.0, feat.ncc));
+                // Atomic update: call updatePoint first
                 const updatedPos = denseSmootherRef.current.updatePoint(
                   idx,
                   { x: videoNormX, y: videoNormY },
@@ -604,16 +623,12 @@ export default function IVPInteractiveCanvas({
                   workerLandmarks.buffer[idx * 4] = videoNormX;
                   workerLandmarks.buffer[idx * 4 + 1] = videoNormY;
                   workerLandmarks.buffer[idx * 4 + 3] = feat.ncc;
+                  microMatchesAcceptedRef.current++;
                 }
               }
             }
           }
           lastMicroTrackedRef.current = canonicalTracked;
-
-          if (tracked.size > 0 && process.env.NODE_ENV === 'development') {
-            console.debug('[MICRO-TRACK] templates:', microTrackerRef.current.templateCount(), 'tracked:', Array.from(tracked.entries()).map(([i,f])=>`${i}:${f.x.toFixed(3)},${f.y.toFixed(3)} ncc:${f.ncc.toFixed(2)}`));
-            console.debug('[MICRO->VIDEO]', Array.from(canonicalTracked.entries()).map(([i,f])=>`${i}:${f.x.toFixed(4)},${f.y.toFixed(4)}`));
-          }
         }
         // On intermediate frames: do not re-feed stale static coordinates to updateFromBuffer!
         // Instead, retrieve the current stable smoothed state:
@@ -702,25 +717,60 @@ export default function IVPInteractiveCanvas({
     const rightPupil: Point2D = canvasPts[69];
     const mouthPts: Point2D[] = canvasPts.slice(48, 60);
     const mouthInnerPts: Point2D[] = canvasPts.slice(60, 68);
-    const mouthCenter: Point2D = {
-      x: mouthPts.length >= 7 ? (mouthPts[0].x + mouthPts[6].x) / 2 : CSS_W / 2,
-      y: mouthPts.length >= 10 ? (mouthPts[3].y + mouthPts[9].y) / 2 : CSS_H / 2,
-    };
+    const rawMouthX = mouthPts.length >= 7 ? (mouthPts[0].x + mouthPts[6].x) / 2 : CSS_W / 2;
+    const rawMouthY = mouthPts.length >= 10 ? (mouthPts[3].y + mouthPts[9].y) / 2 : CSS_H / 2;
 
-    // Calculate dynamic bounding box from facial landmarks
-    let minBoxX = 9999, maxBoxX = -9999, minBoxY = 9999, maxBoxY = -9999;
-    for (const p of canvasPts) {
-      if (p.x < minBoxX) minBoxX = p.x;
-      if (p.x > maxBoxX) maxBoxX = p.x;
-      if (p.y < minBoxY) minBoxY = p.y;
-      if (p.y > maxBoxY) maxBoxY = p.y;
+    // ── Canonical Face Bounding Box Transformation ─────────────────────────
+    // Directly transform worker envelope faceBox via computeCoordinateMapping.
+    // This replaces loose/stale heuristic landmark loops that distort when points wander.
+    let rawBoxX = 0;
+    let rawBoxY = 0;
+    let rawBoxW = 0;
+    let rawBoxH = 0;
+    let authenticBoxW = 0;
+    let authenticBoxH = 0;
+
+    const workerEnv = workerLandmarks?.envelope;
+    if (workerEnv && workerEnv.faceDetected && workerEnv.faceBox && workerEnv.faceBox.width > 0) {
+      const fb = workerEnv.faceBox;
+      const envW = workerEnv.videoWidth || mapping.videoWidth || 320;
+      const envH = workerEnv.videoHeight || mapping.videoHeight || 240;
+
+      // Normalize faceBox coordinates to [0..1]
+      const normX = fb.width > 1.0 ? fb.x / envW : fb.x;
+      const normY = fb.height > 1.0 ? fb.y / envH : fb.y;
+      const normW = fb.width > 1.0 ? fb.width / envW : fb.width;
+      const normH = fb.height > 1.0 ? fb.height / envH : fb.height;
+
+      const scaleX = mapping.videoWidth * mapping.scaleX;
+      const scaleY = mapping.videoHeight * mapping.scaleY;
+
+      // When mirrored: horizontal coordinates invert: [normX, normX + normW] -> [1 - (normX + normW), 1 - normX]
+      rawBoxX = (mapping.mirrored ? (1.0 - (normX + normW)) : normX) * scaleX + mapping.offsetX;
+      rawBoxY = normY * scaleY + mapping.offsetY;
+      rawBoxW = normW * scaleX;
+      rawBoxH = normH * scaleY;
+
+      authenticBoxW = fb.width > 1.0 ? fb.width : Math.round(rawBoxW);
+      authenticBoxH = fb.height > 1.0 ? fb.height : Math.round(rawBoxH);
+    } else {
+      // Fallback: derive from canvasPts
+      let minBoxX = 9999, maxBoxX = -9999, minBoxY = 9999, maxBoxY = -9999;
+      for (const p of canvasPts) {
+        if (p.x < minBoxX) minBoxX = p.x;
+        if (p.x > maxBoxX) maxBoxX = p.x;
+        if (p.y < minBoxY) minBoxY = p.y;
+        if (p.y > maxBoxY) maxBoxY = p.y;
+      }
+      const padX = (maxBoxX - minBoxX) * 0.12;
+      const padY = (maxBoxY - minBoxY) * 0.14;
+      rawBoxX = Math.max(0, minBoxX - padX);
+      rawBoxY = Math.max(0, minBoxY - padY);
+      rawBoxW = Math.min(CSS_W, (maxBoxX - minBoxX) + padX * 2);
+      rawBoxH = Math.min(CSS_H, (maxBoxY - minBoxY) + padY * 2);
+      authenticBoxW = Math.round(rawBoxW);
+      authenticBoxH = Math.round(rawBoxH);
     }
-    const padX = (maxBoxX - minBoxX) * 0.12;
-    const padY = (maxBoxY - minBoxY) * 0.14;
-    const rawBoxX = Math.max(0, minBoxX - padX);
-    const rawBoxY = Math.max(0, minBoxY - padY);
-    const rawBoxW = Math.min(CSS_W, (maxBoxX - minBoxX) + padX * 2);
-    const rawBoxH = Math.min(CSS_H, (maxBoxY - minBoxY) + padY * 2);
 
     const sf = smoothedFaceRef.current;
     if (!sf.initialized) {
@@ -736,25 +786,39 @@ export default function IVPInteractiveCanvas({
       sf.maxY = sf.maxY * 0.40 + (rawBoxY + rawBoxH) * 0.60;
     }
 
-    const boxX = sf.minX;
-    const boxY = sf.minY;
-    const boxW = Math.max(20, sf.maxX - sf.minX);
-    const boxH = Math.max(20, sf.maxY - sf.minY);
+    const smoothedBoxX = sf.minX;
+    const smoothedBoxY = sf.minY;
+    const smoothedBoxW = Math.max(20, sf.maxX - sf.minX);
+    const smoothedBoxH = Math.max(20, sf.maxY - sf.minY);
+
+    const boxX = rawBoxW > 0 ? rawBoxX : smoothedBoxX;
+    const boxY = rawBoxH > 0 ? rawBoxY : smoothedBoxY;
+    const boxW = rawBoxW > 0 ? rawBoxW : smoothedBoxW;
+    const boxH = rawBoxH > 0 ? rawBoxH : smoothedBoxH;
 
     const isBlink = liveEAR < 0.22;
     const isSpeaking = liveMAR >= 0.22;
     const s = Math.max(0.75, Math.min(1.4, boxW / 200));
 
+    // Clamp mouth center within facial envelope to prevent stray vector detachment
+    const mouthCenter: Point2D = {
+      x: Math.max(boxX - 20, Math.min(boxX + boxW + 20, rawMouthX)),
+      y: Math.max(boxY - 20, Math.min(boxY + boxH + 20, rawMouthY)),
+    };
+
     // ── 11. Render Dynamic Bounding Box with High-Tech Reticles ────────────
     if (showBoundingBox && !isTargetLost && (isFaceGenuinelyDetected || denseRes.regionConfidences.overall > 0.2) && denseRes.visibilityOpacity > 0.02) {
       ctx.save();
       ctx.globalAlpha = denseRes.visibilityOpacity;
+
+      // Draw smoothed comparison box (dashed cyan line)
       ctx.strokeStyle = '#06B6D4';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 4]);
-      ctx.strokeRect(boxX, boxY, boxW, boxH);
+      ctx.strokeRect(smoothedBoxX, smoothedBoxY, smoothedBoxW, smoothedBoxH);
       ctx.setLineDash([]);
 
+      // Draw canonical worker faceBox corners (solid cyan reticle)
       const cLen = 16;
       ctx.strokeStyle = '#22D3EE';
       ctx.lineWidth = 2.5;
@@ -788,7 +852,7 @@ export default function IVPInteractiveCanvas({
       ctx.stroke();
 
       // Tracking HUD Badge with authentic live dimensions
-      const roiText = `FACE ROI: ${Math.round(boxW)}x${Math.round(boxH)} [ACTIVE]`;
+      const roiText = `FACE ROI: ${Math.round(authenticBoxW)}x${Math.round(authenticBoxH)} [ACTIVE]`;
       ctx.font = 'bold 9px monospace';
       const badgeW = Math.max(148, ctx.measureText(roiText).width + 12);
       ctx.fillStyle = 'rgba(6, 182, 212, 0.9)';
@@ -869,15 +933,18 @@ export default function IVPInteractiveCanvas({
         ctx.lineWidth = 1.5;
         ctx.setLineDash([2, 2]);
         ctx.beginPath();
-        ctx.moveTo(mouthPts[2].x, mouthPts[2].y);
-        ctx.lineTo(mouthPts[6].x, mouthPts[6].y);
+        if (mouthPts[2] && mouthPts[6]) {
+          ctx.moveTo(mouthPts[2].x, mouthPts[2].y);
+          ctx.lineTo(mouthPts[6].x, mouthPts[6].y);
+        }
         ctx.stroke();
         ctx.setLineDash([]);
 
         ctx.fillStyle = '#34D399';
         ctx.font = 'bold 9px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(`SPEECH [MAR: ${liveMAR.toFixed(2)}]`, mouthCenter.x, mouthPts[6].y + 14);
+        const speechAnchorY = mouthPts[6] ? Math.min(boxY + boxH + 20, mouthPts[6].y + 14) : mouthCenter.y + 14;
+        ctx.fillText(`SPEECH [MAR: ${liveMAR.toFixed(2)}]`, mouthCenter.x, speechAnchorY);
       } else {
         // Resting Mouth: Subtle Emerald Loop
         ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
@@ -1159,10 +1226,32 @@ export default function IVPInteractiveCanvas({
       const engineStr = workerLandmarks?.envelope.trackingMode === 'LEARNED_FACELANDMARKER' ? 'LEARNED (MediaPipe)' : 'OPTICAL TRACKER';
       const microCount = lastMicroTrackedRef.current?.size ?? 0;
       const tmplCount = microTrackerRef.current.templateCount();
-      const trackMsStr = lastMicroTrackMsRef.current > 0 ? ` (${lastMicroTrackMsRef.current.toFixed(1)}ms)` : '';
-      ctx.fillText(`ENGINE: ${engineStr} | MICRO-NCC: ${microCount}/${tmplCount} pts (60 FPS)${trackMsStr}`, dbgX + 8, dbgY + 64);
+      const tried = microMatchesTriedRef.current;
+      const accepted = microMatchesAcceptedRef.current;
+      const evictions = microTrackerRef.current.getEvictionCount();
+      const { p50, p95 } = getMicroTrackPercentiles();
+      const pausedTag = isMicroPausedRef.current ? ' [PAUSED]' : '';
+      ctx.fillText(`ENGINE: ${engineStr} | MICRO: ${accepted}/${tried} acc | EVICT: ${evictions} | p50/p95: ${p50.toFixed(1)}/${p95.toFixed(1)}ms${pausedTag}`, dbgX + 8, dbgY + 64);
       ctx.fillText(`PRESET: ${denseRes.activePreset} | α: ${denseRes.meanAlpha.toFixed(2)} | OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s`, dbgX + 8, dbgY + 78);
       ctx.fillText(`MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight} (S: ${mapping.scale.toFixed(2)}) | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 92);
+
+      if (typeof window !== 'undefined') {
+        (window as any).__IVP_HUD_TELEMETRY__ = {
+          microMatchesTried: tried,
+          microMatchesAccepted: accepted,
+          microEvictions: evictions,
+          microTrackMsP50: p50,
+          microTrackMsP95: p95,
+          currentStride: 1,
+          templatesActive: tmplCount,
+          isMicroPaused: isMicroPausedRef.current,
+          boxW,
+          boxH,
+          authenticBoxW,
+          authenticBoxH,
+          fps: fpsRef.current,
+        };
+      }
 
       if (isThrottled) {
         ctx.fillStyle = '#F87171';
@@ -1269,6 +1358,23 @@ export default function IVPInteractiveCanvas({
             </strong>
           </span>
           <span className="text-gray-500">Split: {Math.round(splitPercent)}%</span>
+          {/* Pause Micro Updates Button */}
+          <button
+            id="pause-micro-btn"
+            type="button"
+            onClick={() => {
+              const next = !isMicroPaused;
+              isMicroPausedRef.current = next;
+              setIsMicroPaused(next);
+            }}
+            className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors ${
+              isMicroPaused
+                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+            }`}
+          >
+            {isMicroPaused ? '▶ RESUME MICRO' : '⏸ PAUSE MICRO'}
+          </button>
         </div>
       </div>
 

@@ -33,7 +33,8 @@ export class VisionPipeline {
     bitmap: ImageBitmap,
     width: number,
     height: number,
-    requestId?: number
+    requestId?: number,
+    mirrored?: boolean
   ): VisionWorkerFramePayload {
     this.frameCounter++;
     return {
@@ -43,6 +44,7 @@ export class VisionPipeline {
       imageBitmap: bitmap,
       width,
       height,
+      mirrored,
     };
   }
 
