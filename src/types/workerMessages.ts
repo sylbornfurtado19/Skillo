@@ -80,6 +80,7 @@ export interface VisionWorkerFramePayload {
   // Pixel dimensions fallback
   width: number;
   height: number;
+  mirrored?: boolean;
 }
 
 export interface VisionWorkerConfigPayload {

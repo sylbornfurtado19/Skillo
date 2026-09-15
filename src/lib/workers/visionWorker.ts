@@ -50,6 +50,14 @@ export const MEDIAPIPE_478_TO_CANONICAL_70: number[] = [
   473,
 ];
 
+// Startup verification: ensure every canonical index maps to a valid MediaPipe 478 index (< 478)
+for (let i = 0; i < MEDIAPIPE_478_TO_CANONICAL_70.length; i++) {
+  const mpIdx = MEDIAPIPE_478_TO_CANONICAL_70[i];
+  if (mpIdx < 0 || mpIdx >= 478) {
+    console.error(`[VisionWorker] Invalid MediaPipe mapping at canonical index ${i}: ${mpIdx} >= 478`);
+  }
+}
+
 // ── State Variables ───────────────────────────────────────────────────────────
 let isInitialized = false;
 let isBusy = false;
@@ -740,7 +748,7 @@ if (typeof ctx !== 'undefined' && typeof ctx.addEventListener === 'function') {
         }
 
         isBusy = true;
-        const { requestId = 0, frameId, timestampMs, imageBitmap } = message.payload;
+        const { requestId = 0, frameId, timestampMs, imageBitmap, mirrored = false } = message.payload;
 
         if (!imageBitmap) {
           isBusy = false;
@@ -839,7 +847,7 @@ if (typeof ctx !== 'undefined' && typeof ctx.addEventListener === 'function') {
             timestampMs,
             videoWidth: w,
             videoHeight: h,
-            mirrored: false,
+            mirrored: !!mirrored,
             inferenceTimeMs: processingLatencyMs,
             numPoints: NUM_LANDMARK_POINTS,
             faceDetected: landmarkOutput.faceDetected,

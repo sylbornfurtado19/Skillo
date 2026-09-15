@@ -49,7 +49,7 @@ interface UseVisionWorkerReturn {
   lastResults: ProcessedVisionResults | null;
   lastLandmarks: { envelope: DenseLandmarksEnvelope; buffer: Float32Array } | null;
   processingLatencyMs: number;
-  processFrame: (source: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement) => Promise<boolean>;
+  processFrame: (source: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement, mirrored?: boolean) => Promise<boolean>;
   restartWorker: () => void;
 }
 
@@ -390,7 +390,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
 
   // ── Non-Blocking Frame Dispatcher with Backpressure & Watchdog ─────────────
   const processFrame = useCallback(
-    async (source: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement): Promise<boolean> => {
+    async (source: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement, mirrored?: boolean): Promise<boolean> => {
       if (!workerRef.current || workerState !== 'READY' || isPausedRef.current) {
         return false;
       }
@@ -431,7 +431,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
         const w = source instanceof HTMLVideoElement ? (source.videoWidth || 320) : (source.width || 320);
         const h = source instanceof HTMLVideoElement ? (source.videoHeight || 240) : (source.height || 240);
 
-        const payload = VisionPipeline.createFramePayload(bitmap, w, h, nextId);
+        const payload = VisionPipeline.createFramePayload(bitmap, w, h, nextId, mirrored);
 
         // Arm adaptive watchdog timer (bounded [500ms, 1200ms])
         if (watchdogTimerRef.current) {
