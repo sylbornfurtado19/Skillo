@@ -329,26 +329,67 @@ export interface KinematicFilterConfig {
   beta?: number;
   confThreshold?: number;
   velocityDecay?: number;
+  maxDisplacementPerDt?: number; // Cap step extrapolation displacement (default 0.035)
+  maxCumulativeDrift?: number;   // Cap cumulative drift from last confident anchor (default 0.08)
+  fadeStartSec?: number;         // Start fading opacity after T seconds of occlusion (default 0.35)
+  fadeEndSec?: number;           // Complete fade to 0 opacity after T seconds of occlusion (default 1.0)
 }
+
+export type TrackingPreset = 'ULTRA_SMOOTH' | 'BALANCED' | 'ULTRA_RESPONSIVE';
+
+export interface RegionalKinematicConfigs {
+  eyes: KinematicFilterConfig;
+  lips: KinematicFilterConfig;
+  noseJaw: KinematicFilterConfig;
+  general: KinematicFilterConfig;
+}
+
+export const PRESET_REGIONAL_CONFIGS: Record<TrackingPreset, RegionalKinematicConfigs> = {
+  BALANCED: {
+    eyes:    { alphaSlow: 0.18, alphaFast: 0.85, maxSpeed: 1.20, beta: 0.65, confThreshold: 0.35, maxDisplacementPerDt: 0.04, maxCumulativeDrift: 0.09, fadeStartSec: 0.35, fadeEndSec: 1.0 },
+    lips:    { alphaSlow: 0.22, alphaFast: 0.75, maxSpeed: 0.90, beta: 0.60, confThreshold: 0.35, maxDisplacementPerDt: 0.035, maxCumulativeDrift: 0.08, fadeStartSec: 0.35, fadeEndSec: 1.0 },
+    noseJaw: { alphaSlow: 0.35, alphaFast: 0.60, maxSpeed: 0.50, beta: 0.50, confThreshold: 0.35, maxDisplacementPerDt: 0.025, maxCumulativeDrift: 0.06, fadeStartSec: 0.35, fadeEndSec: 1.0 },
+    general: { alphaSlow: 0.25, alphaFast: 0.70, maxSpeed: 1.00, beta: 0.60, confThreshold: 0.35, maxDisplacementPerDt: 0.035, maxCumulativeDrift: 0.08, fadeStartSec: 0.35, fadeEndSec: 1.0 },
+  },
+  ULTRA_SMOOTH: {
+    eyes:    { alphaSlow: 0.12, alphaFast: 0.65, maxSpeed: 0.90, beta: 0.50, confThreshold: 0.30, maxDisplacementPerDt: 0.03, maxCumulativeDrift: 0.07, fadeStartSec: 0.35, fadeEndSec: 1.0 },
+    lips:    { alphaSlow: 0.16, alphaFast: 0.55, maxSpeed: 0.70, beta: 0.45, confThreshold: 0.30, maxDisplacementPerDt: 0.025, maxCumulativeDrift: 0.06, fadeStartSec: 0.35, fadeEndSec: 1.0 },
+    noseJaw: { alphaSlow: 0.25, alphaFast: 0.45, maxSpeed: 0.40, beta: 0.40, confThreshold: 0.30, maxDisplacementPerDt: 0.02, maxCumulativeDrift: 0.05, fadeStartSec: 0.35, fadeEndSec: 1.0 },
+    general: { alphaSlow: 0.18, alphaFast: 0.55, maxSpeed: 0.70, beta: 0.45, confThreshold: 0.30, maxDisplacementPerDt: 0.025, maxCumulativeDrift: 0.06, fadeStartSec: 0.35, fadeEndSec: 1.0 },
+  },
+  ULTRA_RESPONSIVE: {
+    eyes:    { alphaSlow: 0.30, alphaFast: 0.95, maxSpeed: 1.80, beta: 0.75, confThreshold: 0.40, maxDisplacementPerDt: 0.06, maxCumulativeDrift: 0.12, fadeStartSec: 0.30, fadeEndSec: 0.9 },
+    lips:    { alphaSlow: 0.35, alphaFast: 0.88, maxSpeed: 1.40, beta: 0.70, confThreshold: 0.40, maxDisplacementPerDt: 0.05, maxCumulativeDrift: 0.10, fadeStartSec: 0.30, fadeEndSec: 0.9 },
+    noseJaw: { alphaSlow: 0.45, alphaFast: 0.75, maxSpeed: 0.80, beta: 0.60, confThreshold: 0.40, maxDisplacementPerDt: 0.035, maxCumulativeDrift: 0.08, fadeStartSec: 0.30, fadeEndSec: 0.9 },
+    general: { alphaSlow: 0.35, alphaFast: 0.85, maxSpeed: 1.40, beta: 0.70, confThreshold: 0.40, maxDisplacementPerDt: 0.05, maxCumulativeDrift: 0.10, fadeStartSec: 0.30, fadeEndSec: 0.9 },
+  },
+};
 
 /**
  * 2D Constant-Velocity Kinematic Filter for a single facial landmark.
  *
  * Implements:
- * - Velocity-adaptive EMA: Lower alpha (0.25) when resting for rock-solid stability;
- *   Higher alpha (0.70) during rapid head turns and eye saccades for zero lag.
- * - Kinematic extrapolation: p' = p + v * dt when occluded or confidence < threshold.
- * - Velocity dampening: Decays residual velocity under missing measurement.
+ * - Velocity-adaptive EMA: Lower alpha when resting; Higher alpha during rapid head saccades.
+ * - Kinematic extrapolation with per-step and cumulative drift clamps when occluded.
+ * - Progressive ease-out cubic opacity fade to prevent "ghost" wandering overlays.
  */
 export class LandmarkKinematicFilter {
   private pos: LandmarkPoint2D | null = null;
   private vel: LandmarkPoint2D = { x: 0, y: 0 };
+  private lastConfidentPos: LandmarkPoint2D | null = null;
+  private occludedSec: number = 0;
+  private visibilityOpacity: number = 1.0;
+
   private alphaSlow: number;
   private alphaFast: number;
   private maxSpeed: number;
   private beta: number;
   private confThreshold: number;
   private velocityDecay: number;
+  private maxDisplacementPerDt: number;
+  private maxCumulativeDrift: number;
+  private fadeStartSec: number;
+  private fadeEndSec: number;
 
   constructor(config: KinematicFilterConfig = {}) {
     this.alphaSlow = config.alphaSlow ?? 0.25;
@@ -357,22 +398,58 @@ export class LandmarkKinematicFilter {
     this.beta = config.beta ?? 0.60;
     this.confThreshold = config.confThreshold ?? 0.35;
     this.velocityDecay = config.velocityDecay ?? 0.90;
+    this.maxDisplacementPerDt = config.maxDisplacementPerDt ?? 0.035;
+    this.maxCumulativeDrift = config.maxCumulativeDrift ?? 0.08;
+    this.fadeStartSec = config.fadeStartSec ?? 0.35;
+    this.fadeEndSec = config.fadeEndSec ?? 1.0;
+  }
+
+  public setConfig(config: Partial<KinematicFilterConfig>) {
+    if (config.alphaSlow !== undefined) this.alphaSlow = config.alphaSlow;
+    if (config.alphaFast !== undefined) this.alphaFast = config.alphaFast;
+    if (config.maxSpeed !== undefined) this.maxSpeed = config.maxSpeed;
+    if (config.beta !== undefined) this.beta = config.beta;
+    if (config.confThreshold !== undefined) this.confThreshold = config.confThreshold;
+    if (config.velocityDecay !== undefined) this.velocityDecay = config.velocityDecay;
+    if (config.maxDisplacementPerDt !== undefined) this.maxDisplacementPerDt = config.maxDisplacementPerDt;
+    if (config.maxCumulativeDrift !== undefined) this.maxCumulativeDrift = config.maxCumulativeDrift;
+    if (config.fadeStartSec !== undefined) this.fadeStartSec = config.fadeStartSec;
+    if (config.fadeEndSec !== undefined) this.fadeEndSec = config.fadeEndSec;
   }
 
   public update(
     obs: LandmarkPoint2D,
     conf: number = 1.0,
     dt: number = 0.033
-  ): { pos: LandmarkPoint2D; vel: LandmarkPoint2D; alphaUsed: number } {
-    const safeDt = Math.max(0.001, Math.min(0.2, dt));
+  ): {
+    pos: LandmarkPoint2D;
+    vel: LandmarkPoint2D;
+    alphaUsed: number;
+    opacity: number;
+    occludedSec: number;
+  } {
+    const safeDt = Math.max(0.001, Math.min(0.200, dt));
 
     if (this.pos === null) {
       this.pos = { x: obs.x, y: obs.y };
       this.vel = { x: 0, y: 0 };
-      return { pos: { ...this.pos }, vel: { ...this.vel }, alphaUsed: 1.0 };
+      this.lastConfidentPos = { x: obs.x, y: obs.y };
+      this.occludedSec = 0;
+      this.visibilityOpacity = 1.0;
+      return {
+        pos: { ...this.pos },
+        vel: { ...this.vel },
+        alphaUsed: 1.0,
+        opacity: 1.0,
+        occludedSec: 0,
+      };
     }
 
     if (conf >= this.confThreshold) {
+      this.occludedSec = 0;
+      this.visibilityOpacity = 1.0;
+      this.lastConfidentPos = { x: obs.x, y: obs.y };
+
       const measuredVx = (obs.x - this.pos.x) / safeDt;
       const measuredVy = (obs.y - this.pos.y) / safeDt;
       const speed = Math.hypot(measuredVx, measuredVy);
@@ -392,17 +469,66 @@ export class LandmarkKinematicFilter {
         y: this.beta * measuredVy + (1 - this.beta) * this.vel.y,
       };
 
-      return { pos: { ...this.pos }, vel: { ...this.vel }, alphaUsed: alpha };
-    } else {
-      // Extrapolate on low confidence / occlusion without snapping
-      const predX = this.pos.x + this.vel.x * safeDt;
-      const predY = this.pos.y + this.vel.y * safeDt;
-      this.pos = { x: predX, y: predY };
-      this.vel = {
-        x: this.vel.x * this.velocityDecay,
-        y: this.vel.y * this.velocityDecay,
+      return {
+        pos: { ...this.pos },
+        vel: { ...this.vel },
+        alphaUsed: alpha,
+        opacity: 1.0,
+        occludedSec: 0,
       };
-      return { pos: { ...this.pos }, vel: { ...this.vel }, alphaUsed: 0.0 };
+    } else {
+      // Missing measurement / occlusion tracking
+      this.occludedSec += safeDt;
+
+      // Progressive ease-out cubic opacity fade: 1.0 -> 0.0
+      if (this.occludedSec <= this.fadeStartSec) {
+        this.visibilityOpacity = 1.0;
+      } else if (this.occludedSec >= this.fadeEndSec) {
+        this.visibilityOpacity = 0.0;
+      } else {
+        const t = (this.occludedSec - this.fadeStartSec) / (this.fadeEndSec - this.fadeStartSec);
+        this.visibilityOpacity = Math.max(0, Math.min(1, 1 - Math.pow(t, 3)));
+      }
+
+      // Step extrapolation with clamped displacement per dt
+      let stepX = this.vel.x * safeDt;
+      let stepY = this.vel.y * safeDt;
+      const stepDist = Math.hypot(stepX, stepY);
+      if (stepDist > this.maxDisplacementPerDt && stepDist > 0.0001) {
+        const clampRatio = this.maxDisplacementPerDt / stepDist;
+        stepX *= clampRatio;
+        stepY *= clampRatio;
+      }
+
+      let predX = this.pos.x + stepX;
+      let predY = this.pos.y + stepY;
+
+      // Cap cumulative drift from last confident anchor
+      if (this.lastConfidentPos) {
+        const driftDist = Math.hypot(predX - this.lastConfidentPos.x, predY - this.lastConfidentPos.y);
+        if (driftDist > this.maxCumulativeDrift && driftDist > 0.0001) {
+          const driftRatio = this.maxCumulativeDrift / driftDist;
+          predX = this.lastConfidentPos.x + (predX - this.lastConfidentPos.x) * driftRatio;
+          predY = this.lastConfidentPos.y + (predY - this.lastConfidentPos.y) * driftRatio;
+        }
+      }
+
+      this.pos = { x: predX, y: predY };
+
+      // Decay velocity exponentially faster under prolonged occlusion
+      const decay = this.occludedSec > 0.5 ? this.velocityDecay * 0.75 : this.velocityDecay;
+      this.vel = {
+        x: this.occludedSec >= this.fadeEndSec ? 0 : this.vel.x * decay,
+        y: this.occludedSec >= this.fadeEndSec ? 0 : this.vel.y * decay,
+      };
+
+      return {
+        pos: { ...this.pos },
+        vel: { ...this.vel },
+        alphaUsed: 0.0,
+        opacity: this.visibilityOpacity,
+        occludedSec: this.occludedSec,
+      };
     }
   }
 
@@ -422,9 +548,20 @@ export class LandmarkKinematicFilter {
     return { ...this.vel };
   }
 
+  public getOpacity(): number {
+    return this.visibilityOpacity;
+  }
+
+  public getOccludedSec(): number {
+    return this.occludedSec;
+  }
+
   public reset(initialPos?: LandmarkPoint2D): void {
     this.pos = initialPos ? { ...initialPos } : null;
     this.vel = { x: 0, y: 0 };
+    this.lastConfidentPos = initialPos ? { ...initialPos } : null;
+    this.occludedSec = 0;
+    this.visibilityOpacity = 1.0;
   }
 }
 
@@ -438,24 +575,63 @@ export interface SmoothedLandmarksResult {
     overall: number;
   };
   meanAlpha: number;
+  visibilityOpacity: number;
+  occludedDurationSec: number;
+  activePreset: TrackingPreset;
 }
 
 /**
  * Dense Multi-Point Facial Landmark Smoother.
- * Manages per-landmark kinematic filters for all feature points.
+ * Manages per-landmark kinematic filters with per-region specialization and dynamic presets.
  */
 export class DenseLandmarksSmoother {
   private filters: LandmarkKinematicFilter[] = [];
   private lastTimestampMs: number = 0;
+  private currentPreset: TrackingPreset = 'BALANCED';
 
-  constructor(numPoints: number = 68, config: KinematicFilterConfig = {}) {
-    this.initFilters(numPoints, config);
+  constructor(numPoints: number = 68, preset: TrackingPreset = 'BALANCED') {
+    this.currentPreset = preset;
+    this.initFilters(numPoints);
   }
 
-  private initFilters(numPoints: number, config: KinematicFilterConfig) {
+  private getRegionKeyForIndex(index: number): 'eyes' | 'lips' | 'noseJaw' | 'general' {
+    if ((index >= 36 && index <= 47) || index === 68 || index === 69) {
+      return 'eyes';
+    } else if (index >= 48 && index <= 67) {
+      return 'lips';
+    } else if (index >= 0 && index <= 35) {
+      return 'noseJaw';
+    }
+    return 'general';
+  }
+
+  private initFilters(numPoints: number) {
     this.filters = [];
+    const configs = PRESET_REGIONAL_CONFIGS[this.currentPreset];
     for (let i = 0; i < numPoints; i++) {
-      this.filters.push(new LandmarkKinematicFilter(config));
+      const region = this.getRegionKeyForIndex(i);
+      this.filters.push(new LandmarkKinematicFilter(configs[region]));
+    }
+  }
+
+  public setPreset(preset: TrackingPreset): void {
+    this.currentPreset = preset;
+    const configs = PRESET_REGIONAL_CONFIGS[preset];
+    for (let i = 0; i < this.filters.length; i++) {
+      const region = this.getRegionKeyForIndex(i);
+      this.filters[i].setConfig(configs[region]);
+    }
+  }
+
+  public setRegionConfig(
+    region: 'eyes' | 'lips' | 'noseJaw' | 'all',
+    config: Partial<KinematicFilterConfig>
+  ): void {
+    for (let i = 0; i < this.filters.length; i++) {
+      const rk = this.getRegionKeyForIndex(i);
+      if (region === 'all' || region === rk) {
+        this.filters[i].setConfig(config);
+      }
     }
   }
 
@@ -469,7 +645,7 @@ export class DenseLandmarksSmoother {
     timestampMs: number
   ): SmoothedLandmarksResult {
     if (this.filters.length !== numPoints) {
-      this.initFilters(numPoints, {});
+      this.initFilters(numPoints);
     }
 
     const dt = this.lastTimestampMs > 0
@@ -480,6 +656,8 @@ export class DenseLandmarksSmoother {
     const points: LandmarkPoint2D[] = [];
     const confidences: number[] = [];
     let alphaSum = 0;
+    let opacitySum = 0;
+    let maxOccludedSec = 0;
 
     let eyeConfSum = 0, eyeCount = 0;
     let noseConfSum = 0, noseCount = 0;
@@ -496,9 +674,11 @@ export class DenseLandmarksSmoother {
       points.push(res.pos);
       confidences.push(conf);
       alphaSum += res.alphaUsed;
+      opacitySum += res.opacity;
+      if (res.occludedSec > maxOccludedSec) maxOccludedSec = res.occludedSec;
       totalConfSum += conf;
 
-      // Classify region by standard 68-point landmark indices
+      // Classify region by canonical landmark indices
       if ((i >= 36 && i <= 47) || i === 68 || i === 69) {
         eyeConfSum += conf;
         eyeCount++;
@@ -521,6 +701,9 @@ export class DenseLandmarksSmoother {
         overall: numPoints > 0 ? totalConfSum / numPoints : 1.0,
       },
       meanAlpha: numPoints > 0 ? alphaSum / numPoints : 0.5,
+      visibilityOpacity: numPoints > 0 ? opacitySum / numPoints : 1.0,
+      occludedDurationSec: maxOccludedSec,
+      activePreset: this.currentPreset,
     };
   }
 
@@ -533,7 +716,7 @@ export class DenseLandmarksSmoother {
   ): SmoothedLandmarksResult {
     const numPoints = rawPoints.length;
     if (this.filters.length !== numPoints) {
-      this.initFilters(numPoints, {});
+      this.initFilters(numPoints);
     }
 
     const dt = this.lastTimestampMs > 0
@@ -544,6 +727,8 @@ export class DenseLandmarksSmoother {
     const points: LandmarkPoint2D[] = [];
     const confidences: number[] = [];
     let alphaSum = 0;
+    let opacitySum = 0;
+    let maxOccludedSec = 0;
 
     let eyeConfSum = 0, eyeCount = 0;
     let noseConfSum = 0, noseCount = 0;
@@ -557,6 +742,8 @@ export class DenseLandmarksSmoother {
       points.push(res.pos);
       confidences.push(conf);
       alphaSum += res.alphaUsed;
+      opacitySum += res.opacity;
+      if (res.occludedSec > maxOccludedSec) maxOccludedSec = res.occludedSec;
       totalConfSum += conf;
 
       if ((i >= 36 && i <= 47) || i === 68 || i === 69) {
@@ -581,6 +768,9 @@ export class DenseLandmarksSmoother {
         overall: numPoints > 0 ? totalConfSum / numPoints : 1.0,
       },
       meanAlpha: numPoints > 0 ? alphaSum / numPoints : 0.5,
+      visibilityOpacity: numPoints > 0 ? opacitySum / numPoints : 1.0,
+      occludedDurationSec: maxOccludedSec,
+      activePreset: this.currentPreset,
     };
   }
 

@@ -50,7 +50,27 @@ export interface VisionWorkerInitPayload {
   enableAffect?: boolean;
 }
 
+export interface VisionWorkerCapabilities {
+  hasOffscreenCanvas: boolean;
+  hasTransferable: boolean;
+  hasImageBitmap: boolean;
+  hasWebGL: boolean;
+  activeBackend: VisionModelBackend;
+}
+
+/**
+ * 30-bit safe modular monotonic sequence comparison.
+ * Handles integer wrapping and out-of-order rejections reliably.
+ */
+export function isNewerRequestId(newId: number, lastId: number): boolean {
+  if (lastId === 0) return true;
+  if (newId === lastId) return false;
+  const diff = (newId - lastId + (1 << 30)) % (1 << 30);
+  return diff > 0 && diff < (1 << 29);
+}
+
 export interface VisionWorkerFramePayload {
+  requestId: number;
   frameId: number;
   timestampMs: number;
   // Transferable ImageBitmap or ImageData canvas reference
@@ -101,6 +121,8 @@ export interface ModelReadyResponseMessage {
     activeBackend: VisionModelBackend;
     initLatencyMs: number;
     modelsLoaded: string[];
+    capabilities: VisionWorkerCapabilities;
+    readyTimestampMs: number;
   };
 }
 
@@ -113,6 +135,7 @@ export interface DenseLandmarkPoint {
 
 export interface DenseLandmarksEnvelope {
   version: 1;
+  requestId: number;
   frameId: number;
   timestampMs: number;
   videoWidth: number;

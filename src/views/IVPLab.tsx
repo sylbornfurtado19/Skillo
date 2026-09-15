@@ -23,6 +23,7 @@ import {
   type SmoothedTelemetry,
 } from '../lib/services/onnxInferenceService';
 import { useVisionWorker } from '../hooks/useVisionWorker';
+import type { TrackingPreset } from '../lib/services/temporalSmoothing';
 
 export default function IVPLab() {
   // Active Diagnostic Mode — DEFAULTS IMMEDIATELY TO SOBEL (Unit 4/5) FOR INSTANT VISUAL IMPACT
@@ -38,10 +39,14 @@ export default function IVPLab() {
   const [showLandmarks, setShowLandmarks] = useState<boolean>(true);
   const [showDebugHUD, setShowDebugHUD] = useState<boolean>(false);
   const [mirrored, setMirrored] = useState<boolean>(true);
+  const [trackingPreset, setTrackingPreset] = useState<TrackingPreset>('BALANCED');
 
   // Dedicated Off-Main-Thread Vision Worker
   const {
     lastLandmarks,
+    stats: workerStats,
+    isFallbackMode,
+    fallbackReason,
     processFrame: processWorkerFrame,
   } = useVisionWorker({
     autoStart: true,
@@ -320,6 +325,29 @@ export default function IVPLab() {
                     Mirror: {mirrored ? 'ON' : 'OFF'}
                   </button>
                 )}
+                {/* Tracking Responsiveness Preset Switcher */}
+                <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-md border border-white/10 text-[10px] font-mono">
+                  <span className="text-gray-500 px-1 text-[9px]">PRESET:</span>
+                  {(['BALANCED', 'ULTRA_SMOOTH', 'ULTRA_RESPONSIVE'] as TrackingPreset[]).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setTrackingPreset(p)}
+                      className={`px-1.5 py-0.5 rounded text-[9px] transition cursor-pointer ${
+                        trackingPreset === p
+                          ? 'bg-primary text-white font-bold'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {p === 'BALANCED' ? 'BALANCED' : p === 'ULTRA_SMOOTH' ? 'SMOOTH' : 'RESPONSIVE'}
+                    </button>
+                  ))}
+                </div>
+                {isFallbackMode && fallbackReason && (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    ⚠ FALLBACK: {fallbackReason}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -335,6 +363,8 @@ export default function IVPLab() {
               showDebugHUD={showDebugHUD}
               mirrored={mirrored && inputSource === 'webcam'}
               workerLandmarks={lastLandmarks}
+              trackingPreset={trackingPreset}
+              workerStats={workerStats}
               poseAngles={{
                 yaw: onnxTelemetry.yaw,
                 pitch: onnxTelemetry.pitch,

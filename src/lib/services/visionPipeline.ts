@@ -32,15 +32,58 @@ export class VisionPipeline {
   public static createFramePayload(
     bitmap: ImageBitmap,
     width: number,
-    height: number
+    height: number,
+    requestId?: number
   ): VisionWorkerFramePayload {
     this.frameCounter++;
     return {
+      requestId: requestId ?? this.frameCounter,
       frameId: this.frameCounter,
-      timestampMs: Date.now(),
+      timestampMs: typeof performance !== 'undefined' ? performance.now() : Date.now(),
       imageBitmap: bitmap,
       width,
       height,
+    };
+  }
+
+  /**
+   * Evaluates browser environment for Web Worker, ImageBitmap, and OffscreenCanvas support.
+   */
+  public static checkBrowserCapabilities(): {
+    supported: boolean;
+    hasWorker: boolean;
+    hasImageBitmap: boolean;
+    hasOffscreenCanvas: boolean;
+    hasTransferable: boolean;
+    reason?: string;
+  } {
+    if (typeof window === 'undefined') {
+      return { supported: false, hasWorker: false, hasImageBitmap: false, hasOffscreenCanvas: false, hasTransferable: false, reason: 'SSR environment' };
+    }
+    const hasWorker = typeof Worker !== 'undefined';
+    const hasImageBitmap = 'createImageBitmap' in window;
+    const hasOffscreenCanvas = 'OffscreenCanvas' in window;
+    let hasTransferable = false;
+    try {
+      const ab = new ArrayBuffer(1);
+      hasTransferable = ab.byteLength === 1;
+    } catch {
+      hasTransferable = false;
+    }
+
+    const supported = hasWorker && hasImageBitmap;
+    let reason: string | undefined;
+    if (!hasWorker) reason = 'Web Workers not supported';
+    else if (!hasImageBitmap) reason = 'createImageBitmap not supported';
+    else if (!hasOffscreenCanvas) reason = 'OffscreenCanvas not supported; will use canvas context';
+
+    return {
+      supported,
+      hasWorker,
+      hasImageBitmap,
+      hasOffscreenCanvas,
+      hasTransferable,
+      reason,
     };
   }
 

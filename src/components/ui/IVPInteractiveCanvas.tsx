@@ -27,8 +27,10 @@ import {
 import {
   DenseLandmarksSmoother,
   type SmoothedLandmarksResult,
+  type TrackingPreset,
 } from '../../lib/services/temporalSmoothing';
 import type { DenseLandmarksEnvelope } from '@/types/workerMessages';
+import type { VisionWorkerStats } from '@/hooks/useVisionWorker';
 
 // ---------------------------------------------------------------------------
 // Internal canvas dimensions for the diagnostic processing pipeline.
@@ -68,6 +70,8 @@ export interface IVPInteractiveCanvasProps {
   workerLandmarks?: { envelope: DenseLandmarksEnvelope; buffer: Float32Array } | null;
   poseAngles?: { yaw: number; pitch: number; roll: number };
   gazeCoords?: { x: number; y: number };
+  trackingPreset?: TrackingPreset;
+  workerStats?: VisionWorkerStats;
   onMetricsUpdate?: (metrics: DiagnosticMetrics) => void;
   className?: string;
 }
@@ -93,6 +97,8 @@ export default function IVPInteractiveCanvas({
   workerLandmarks = null,
   poseAngles = { yaw: 0, pitch: 0, roll: 0 },
   gazeCoords = { x: 0, y: 0 },
+  trackingPreset = 'BALANCED',
+  workerStats,
   onMetricsUpdate,
   className = '',
 }: IVPInteractiveCanvasProps) {
@@ -145,9 +151,16 @@ export default function IVPInteractiveCanvas({
   });
 
   // ── High-Fidelity 70-Point Kinematic Landmark Smoother ─────────────────────
-  const denseSmootherRef = useRef<DenseLandmarksSmoother>(new DenseLandmarksSmoother(70));
+  const denseSmootherRef = useRef<DenseLandmarksSmoother>(new DenseLandmarksSmoother(70, trackingPreset));
   const lastSmoothedResRef = useRef<SmoothedLandmarksResult | null>(null);
   const lastRawNormPtsRef = useRef<Array<{ x: number; y: number }> | null>(null);
+
+  // Synchronize tracking preset with dense smoother
+  useEffect(() => {
+    if (denseSmootherRef.current && trackingPreset) {
+      denseSmootherRef.current.setPreset(trackingPreset);
+    }
+  }, [trackingPreset]);
 
   // ── Split-screen state ────────────────────────────────────────────────────
   const splitPercentRef = useRef<number>(50);
@@ -617,8 +630,9 @@ export default function IVPInteractiveCanvas({
     const s = Math.max(0.75, Math.min(1.4, boxW / 200));
 
     // ── 11. Render Dynamic Bounding Box with High-Tech Reticles ────────────
-    if (showBoundingBox && !isTargetLost && (isFaceGenuinelyDetected || denseRes.regionConfidences.overall > 0.2)) {
+    if (showBoundingBox && !isTargetLost && (isFaceGenuinelyDetected || denseRes.regionConfidences.overall > 0.2) && denseRes.visibilityOpacity > 0.02) {
       ctx.save();
+      ctx.globalAlpha = denseRes.visibilityOpacity;
       ctx.strokeStyle = '#06B6D4';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 4]);
@@ -671,8 +685,9 @@ export default function IVPInteractiveCanvas({
     }
 
     // ── 12. Render Active Eye & Lip Landmark Geometric Tracking Contours ───
-    if (showLandmarks && !isTargetLost && (isFaceGenuinelyDetected || denseRes.regionConfidences.overall > 0.2)) {
+    if (showLandmarks && !isTargetLost && (isFaceGenuinelyDetected || denseRes.regionConfidences.overall > 0.2) && denseRes.visibilityOpacity > 0.02) {
       ctx.save();
+      ctx.globalAlpha = denseRes.visibilityOpacity;
 
       // A. Draw Eye Geometric Loops
       const renderEyeContour = (pts: Point2D[], isLeft: boolean) => {
@@ -769,7 +784,9 @@ export default function IVPInteractiveCanvas({
     }
 
     // ── 13. 3D Projected Euler Axis Tripod (Anchored Strictly to Nose Tip) ──
-    if (show3DAxes && !isTargetLost) {
+    if (show3DAxes && !isTargetLost && denseRes.visibilityOpacity > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = denseRes.visibilityOpacity;
       drawProjected3DAxes(
         ctx,
         poseAngles.yaw,
@@ -779,14 +796,16 @@ export default function IVPInteractiveCanvas({
         noseTip.y,
         55 * s
       );
+      ctx.restore();
     }
 
     // ── 14. Gaze Vector Reticle Overlay ─────────────────────────────────────
-    if (gazeCoords && !isTargetLost) {
+    if (gazeCoords && !isTargetLost && denseRes.visibilityOpacity > 0.02) {
       const gazeScreenX = noseTip.x + gazeCoords.x * 120;
       const gazeScreenY = (noseTip.y - 25) + gazeCoords.y * 90;
 
       ctx.save();
+      ctx.globalAlpha = denseRes.visibilityOpacity;
       ctx.strokeStyle = '#06B6D4';
       ctx.lineWidth = 1.8;
       ctx.beginPath();
@@ -945,8 +964,8 @@ export default function IVPInteractiveCanvas({
       }
 
       // C. Render High-Tech Debug Metrics Card (Bottom-Right)
-      const dbgW = 270;
-      const dbgH = 92;
+      const dbgW = 295;
+      const dbgH = 108;
       const dbgX = CSS_W - dbgW - 12;
       const dbgY = CSS_H - dbgH - 12;
 
@@ -964,19 +983,22 @@ export default function IVPInteractiveCanvas({
 
       ctx.font = '8.5px monospace';
       ctx.fillStyle = '#D1D5DB';
-      const modeStr = workerLandmarks ? workerLandmarks.envelope.trackingMode : 'IN_BROWSER_DENSE_KERNEL';
-      ctx.fillText(`MODE: ${modeStr} [70 PTS]`, dbgX + 8, dbgY + 22);
+      const reqIdStr = workerLandmarks ? `#${workerLandmarks.envelope.requestId}` : '-';
+      const droppedStr = workerStats ? `${workerStats.droppedFrames} (${workerStats.dropRatePercent}%)` : '0 (0%)';
+      ctx.fillText(`REQ: ${reqIdStr} | DROPPED: ${droppedStr} | UNLOCKS: ${workerStats?.watchdogUnlocks ?? 0}`, dbgX + 8, dbgY + 22);
 
       const rttStr = workerLandmarks ? `${workerLandmarks.envelope.inferenceTimeMs.toFixed(1)} ms` : '< 1.5 ms';
-      ctx.fillText(`INFER LATENCY: ${rttStr} | DRAW: ${fpsRef.current} FPS`, dbgX + 8, dbgY + 36);
+      const inFlightStr = workerStats ? `${workerStats.inFlightMs} ms` : '-';
+      ctx.fillText(`INFER: ${rttStr} | DRAW: ${fpsRef.current} FPS | IN-FLIGHT: ${inFlightStr}`, dbgX + 8, dbgY + 36);
 
       const rc = denseRes.regionConfidences;
       ctx.fillStyle = '#10B981';
       ctx.fillText(`CONF: EYES ${(rc.eyes * 100).toFixed(0)}% | NOSE ${(rc.nose * 100).toFixed(0)}% | LIP ${(rc.mouth * 100).toFixed(0)}%`, dbgX + 8, dbgY + 50);
 
       ctx.fillStyle = '#FBBF24';
-      ctx.fillText(`ADAPTIVE α: ${denseRes.meanAlpha.toFixed(2)} | FIT: ${mapping.fitMode} | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 64);
-      ctx.fillText(`MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight} (S: ${mapping.scale.toFixed(2)})`, dbgX + 8, dbgY + 76);
+      ctx.fillText(`PRESET: ${denseRes.activePreset} | α: ${denseRes.meanAlpha.toFixed(2)} | OPACITY: ${(denseRes.visibilityOpacity * 100).toFixed(0)}%`, dbgX + 8, dbgY + 64);
+      ctx.fillText(`OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s | FIT: ${mapping.fitMode} | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 78);
+      ctx.fillText(`MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight} (S: ${mapping.scale.toFixed(2)})`, dbgX + 8, dbgY + 92);
 
       ctx.restore();
     }

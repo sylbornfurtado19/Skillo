@@ -434,7 +434,13 @@ ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMe
 
         // Initialize state
         isInitialized = true;
+        isBusy = false;
         const initLatencyMs = Math.round(performance.now() - t0);
+
+        const hasOffscreen = typeof OffscreenCanvas !== 'undefined';
+        const hasTransferable = typeof ArrayBuffer !== 'undefined';
+        const hasImageBitmap = typeof createImageBitmap !== 'undefined';
+        const hasWebGL = typeof WebGLRenderingContext !== 'undefined';
 
         postResponse({
           type: 'MODEL_READY',
@@ -445,6 +451,14 @@ ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMe
               'Sub-Pixel Dense 70-Point Landmark Engine',
               'Temporal Motion Differencing Kernel',
             ],
+            capabilities: {
+              hasOffscreenCanvas: hasOffscreen,
+              hasTransferable,
+              hasImageBitmap,
+              hasWebGL,
+              activeBackend,
+            },
+            readyTimestampMs: performance.now(),
           },
         });
         break;
@@ -470,7 +484,7 @@ ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMe
         }
 
         isBusy = true;
-        const { frameId, timestampMs, imageBitmap } = message.payload;
+        const { requestId = 0, frameId, timestampMs, imageBitmap } = message.payload;
 
         if (!imageBitmap) {
           isBusy = false;
@@ -529,6 +543,7 @@ ctx.addEventListener('message', async (event: MessageEvent<VisionWorkerCommandMe
           // Dispatch Zero-Copy LANDMARKS_PACKET with Transferable ArrayBuffer
           const envelope: DenseLandmarksEnvelope = {
             version: 1,
+            requestId: requestId || frameId,
             frameId,
             timestampMs,
             videoWidth: w,
