@@ -9,6 +9,8 @@ import {
   procToVideoY,
   videoToProcX,
   videoToProcY,
+  procToVideoNormalized,
+  videoNormalizedToProc,
   detectDeviceProfile,
   OnlineCalibrationEstimator,
 } from '../src/lib/services/visionPipeline';
@@ -40,6 +42,47 @@ describe('Coordinate Mapping & Device Profiling Robustness', () => {
       const cornerInProc = procNormalizedToVideoNormalized(0.0, 0.0, roi);
       expect(cornerInProc.x).toBeCloseTo(160 / 640, 5);
       expect(cornerInProc.y).toBeCloseTo(120 / 480, 5);
+    });
+
+    it('strictly preserves 1e-6 roundtrip across resolutions using procToVideoNormalized and videoNormalizedToProc', () => {
+      const resolutions = [
+        { pw: 320, ph: 240, vw: 640, vh: 480 },
+        { pw: 320, ph: 240, vw: 1280, vh: 720 },
+        { pw: 320, ph: 240, vw: 1920, vh: 1080 },
+        { pw: 320, ph: 240, vw: 320, vh: 240 },
+      ];
+      const samples = [0.0, 0.15, 0.333333, 0.5, 0.725, 0.999, 1.0];
+
+      for (const res of resolutions) {
+        for (const sx of samples) {
+          for (const sy of samples) {
+            const vid = procToVideoNormalized(sx, sy, res.pw, res.ph, res.vw, res.vh);
+            const recovered = videoNormalizedToProc(vid.x, vid.y, res.pw, res.ph, res.vw, res.vh);
+            expect(recovered.x).toBeCloseTo(sx, 6);
+            expect(recovered.y).toBeCloseTo(sy, 6);
+          }
+        }
+      }
+    });
+
+    it('handles mirrored mapping paths symmetrically through pixel roundtrip', () => {
+      const procW = 320;
+      const procH = 240;
+      const videoW = 1280;
+      const videoH = 720;
+      const originalX = 0.35;
+      const originalY = 0.45;
+
+      // Mirrored forward mapping
+      const mirroredProcX = 1.0 - originalX;
+      const videoNorm = procToVideoNormalized(mirroredProcX, originalY, procW, procH, videoW, videoH);
+
+      // Unmirrored recovery
+      const recoveredProc = videoNormalizedToProc(videoNorm.x, videoNorm.y, procW, procH, videoW, videoH);
+      const unmirroredX = 1.0 - recoveredProc.x;
+
+      expect(unmirroredX).toBeCloseTo(originalX, 6);
+      expect(recoveredProc.y).toBeCloseTo(originalY, 6);
     });
   });
 

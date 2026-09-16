@@ -269,6 +269,45 @@ export function videoToProcY(videoY: number, procH?: number, videoH?: number): n
   return videoToProcCoord(videoY, procH, videoH);
 }
 
+/**
+ * Canonical proc -> pixel -> video normalized conversion.
+ * Avoids normalization algebra mistakes by explicitly traversing intermediate pixel space.
+ */
+export function procToVideoNormalized(
+  procX: number,
+  procY: number,
+  procW: number,
+  procH: number,
+  videoW: number,
+  videoH: number
+): { x: number; y: number } {
+  const px = procX * procW; // pixel in PROC
+  const py = procY * procH;
+  return {
+    x: px / Math.max(1, videoW),
+    y: py / Math.max(1, videoH),
+  };
+}
+
+/**
+ * Inverts canonical video -> pixel -> proc normalized conversion.
+ */
+export function videoNormalizedToProc(
+  videoX: number,
+  videoY: number,
+  procW: number,
+  procH: number,
+  videoW: number,
+  videoH: number
+): { x: number; y: number } {
+  const px = videoX * videoW; // pixel in video
+  const py = videoY * videoH;
+  return {
+    x: px / Math.max(1, procW),
+    y: py / Math.max(1, procH),
+  };
+}
+
 // ── Device Profiling & Adaptive Thresholds ──────────────────────────────────
 export type CPUTier = 'HIGH' | 'MID' | 'LOW';
 export type DeviceClass = 'desktop' | 'tablet' | 'mobile';
