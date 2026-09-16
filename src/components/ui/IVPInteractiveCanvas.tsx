@@ -209,7 +209,7 @@ export default function IVPInteractiveCanvas({
    * Returns false immediately (non-blocking) if the lock is already held.
    * The caller MUST call the returned `release` function in a `finally` block.
    */
-  const withHandoffLock = useCallback(<T>(fn: () => T): T | false => {
+  const withHandoffLock = useCallback(<T,>(fn: () => T): T | false => {
     if (isHandoffLockRef.current) return false;
     isHandoffLockRef.current = true;
     try {

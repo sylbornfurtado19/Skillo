@@ -246,9 +246,10 @@ describe('Fast Face Bootstrap Detector', () => {
     expect(() => {
       result = detectFastFaceBootstrap(data, W, H, false);
     }).not.toThrow();
+    const checkedResult = result as FastFaceBootstrapResult | null;
     // If detected, all landmarks must be finite
-    if (result && result.detected) {
-      for (const p of result.approxLandmarks) {
+    if (checkedResult && checkedResult.detected) {
+      for (const p of checkedResult.approxLandmarks) {
         expect(Number.isFinite(p.x)).toBe(true);
         expect(Number.isFinite(p.y)).toBe(true);
       }
