@@ -682,4 +682,174 @@ All timestamps are recorded in the monotonic `performance.now()` timebase:
 | **MicroTrack Latency p95** | $\le 5.8\text{ ms}$ | **$0.04\text{ ms}$** | $+5.76\text{ ms}$ | **PASSED** |
 | **Net Heap Growth** | $\le 15\text{ MB}$ | **$0.00\text{ MB}$** | $+15\text{ MB}$ | **PASSED** |
 
+---
+
+## 13. Operational Runbook & Customer Session Telemetry Collection
+
+### 13.1. Key Production Performance Metrics (SLAs)
+Engineers and site reliability teams monitoring IVP face tracking in production should monitor the following key metrics via client telemetry:
+
+| Telemetry Key / Metric | Target Operational SLA | Warning Threshold | Critical Incident Action |
+| :--- | :--- | :--- | :--- |
+| **Time to First Templates** (`timeToTemplatesMs`) | $\le 500\text{ ms}$ (Cold-start) | $> 1200\text{ ms}$ | Inspect bootstrap detector logs & worker spawn delay |
+| **Time to First Smoothed Overlay** (`timeToSmoothedMs`) | $\le 1500\text{ ms}$ | $> 2000\text{ ms}$ | Check webcam permissions, stream dimensions & frame rate |
+| **MicroTrack Latency p95** (`microTrackMs.p95`) | $\le 1.5\text{ ms}$ ($\le 5.8\text{ ms}$ CI budget) | $> 8.0\text{ ms}$ | Force CPU stride 2 or disable LK fallback |
+| **Micro Match Acceptance Rate** (`warmupAcceptance.ratePercent`) | $\ge 40\%$ | $< 15\%$ | Elevate `minApplyNcc`, show lighting warning to user |
+| **Dropped Frame Rate** (`workerStats.dropRatePercent`) | $\le 5\%$ | $> 15\%$ | Engage dynamic cadence down-throttling (15 FPS) |
+| **Heap Memory Drift** (after 500 cycles) | $\le 5\text{ MB}$ | $> 15\text{ MB}$ | Purge orphan ImageBitmaps / check canvas contexts |
+
+### 13.2. How to Collect Telemetry from a Customer Session
+When investigating customer-reported issues (e.g. tracking lag, landmark drift, or unsupported hardware):
+
+1. **Option A: User UI Export (One-Click)**
+   - Instruct the user to click the **`💾 EXPORT TELEMETRY`** button in the IVP lab control bar.
+   - A privacy-safe `ivp_telemetry_<timestamp>.json` file will download directly to their machine.
+   - The export strictly excludes camera video or image data by default. If visual confirmation is required, the user must explicitly confirm a consent dialog to embed a single frame snapshot.
+
+2. **Option B: Headless / Remote Telemetry Extraction via Console**
+   - Open Developer Tools Console (`F12`) on the user's browser.
+   - Run:
+     ```javascript
+     copy(JSON.stringify(window.__IVP_HUD_TELEMETRY__, null, 2));
+     ```
+   - Paste the clipboard JSON into the incident ticket or bug report.
+
+3. **Option C: Automated CI Artifacts**
+   - CI builds generate `test-results/warmup/timeline.json` and visual regression screenshots in `test-results/warmup/`.
+
+### 13.3. Emergency Rollback Procedures
+If a regression is identified in production after a release:
+
+1. **Immediate Circuit Breaker (Zero Deployment Required):**
+   - Append `?ivp_warmup=0&ivp_safe=1` to the application URL:
+     ```
+     https://app.skillo.com/ivp-lab?ivp_warmup=0&ivp_safe=1
+     ```
+   - `ivp_warmup=0`: Instantly disables relaxed warmup thresholds and bootstrap seeding.
+   - `ivp_safe=1`: Bypasses all micro-patch trackers, LK optical flow, and PCA priors, running standard baseline landmarks.
+
+2. **Feature Flag Canary Rollback:**
+   - In `src/lib/services/ivpFeatureFlags.ts`, set `enableWarmup: false` or deploy the rollback flag via server configuration.
+   - Re-deploy to rollback to baseline behavior in $< 2\text{ minutes}$.
+
+---
+
+## 14. Telemetry Export Formal JSON Schema
+
+The following JSON Schema strictly defines the structure and validation constraints of exported IVP telemetry files:
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IVPTelemetryPayload",
+  "type": "object",
+  "required": [
+    "sessionId",
+    "timestamp",
+    "timeline",
+    "trackingState",
+    "isWarmup",
+    "warmupAcceptance",
+    "deviceProfile",
+    "activeFaceId",
+    "envelope",
+    "landmarksRaw",
+    "landmarksSmoothed",
+    "microEvents",
+    "microTrackMs",
+    "featureFlags"
+  ],
+  "properties": {
+    "sessionId": { "type": "string", "pattern": "^session_\\d+$" },
+    "timestamp": { "type": "integer" },
+    "trackingState": { "type": "string", "enum": ["BOOTSTRAPPING", "MODEL_PENDING", "MODEL_READY"] },
+    "isWarmup": { "type": "boolean" },
+    "warmupAcceptance": {
+      "type": "object",
+      "required": ["tried", "accepted", "ratePercent", "isPoorLighting"],
+      "properties": {
+        "tried": { "type": "integer", "minimum": 0 },
+        "accepted": { "type": "integer", "minimum": 0 },
+        "ratePercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "isPoorLighting": { "type": "boolean" }
+      }
+    },
+    "timeline": {
+      "type": "object",
+      "required": [
+        "pageLoadTs",
+        "workerSpawnTs",
+        "modelInitStartTs",
+        "modelInitDoneTs",
+        "firstFrameSentTs",
+        "firstModelPacketTs",
+        "firstTemplatesCreatedTs",
+        "firstMicroAcceptedTs",
+        "firstSmoothedRenderTs"
+      ],
+      "properties": {
+        "pageLoadTs": { "type": "number", "minimum": 0 },
+        "workerSpawnTs": { "type": "number", "minimum": 0 },
+        "modelInitStartTs": { "type": "number", "minimum": 0 },
+        "modelInitDoneTs": { "type": "number", "minimum": 0 },
+        "firstFrameSentTs": { "type": "number", "minimum": 0 },
+        "firstModelPacketTs": { "type": "number", "minimum": 0 },
+        "firstTemplatesCreatedTs": { "type": "number", "minimum": 0 },
+        "firstMicroAcceptedTs": { "type": "number", "minimum": 0 },
+        "firstSmoothedRenderTs": { "type": "number", "minimum": 0 }
+      }
+    },
+    "deviceProfile": {
+      "type": "object",
+      "required": ["deviceClass", "cpuTier", "thresholds"],
+      "properties": {
+        "deviceClass": { "type": "string", "enum": ["desktop", "laptop", "tablet", "mobile"] },
+        "cpuTier": { "type": "string", "enum": ["HIGH", "MID", "LOW"] },
+        "thresholds": { "type": "object" }
+      }
+    },
+    "activeFaceId": { "type": ["string", "null"] },
+    "frameNumber": { "type": "integer" },
+    "envelope": { "type": "object" },
+    "landmarksRaw": { "type": "array", "items": { "type": "object" } },
+    "landmarksSmoothed": { "type": "array", "items": { "type": "object" } },
+    "microEvents": { "type": "array", "items": { "type": "object" } },
+    "microTrackMs": {
+      "type": "object",
+      "required": ["p50", "p95"],
+      "properties": {
+        "p50": { "type": "number" },
+        "p95": { "type": "number" }
+      }
+    },
+    "featureFlags": { "type": "object" },
+    "image": { "type": "string", "description": "Strictly optional; only present when explicit opt-in consent granted" }
+  },
+  "additionalProperties": false
+}
+```
+
+---
+
+## 15. Limitations & Edge Cases
+
+While the IVP face tracking architecture achieves sub-150ms visual lock-in with zero drift, operators and users should be aware of the following physical constraints:
+
+1. **Multi-Face Ambiguity in Crowded Environments:**
+   - *Behavior:* In scenes containing multiple people, the bootstrap heuristic selects the largest connected skin blob. Once the dense model arrives, MediaPipe isolates the primary subject.
+   - *Affordance:* Users can click directly on any detected face bounding box (`[FACE #ID]`) on the canvas to explicitly switch active tracking. Templates and smoother state are atomically reset to the selected subject.
+
+2. **Severe Low-Light / High-Noise Environments:**
+   - *Behavior:* If webcam auto-gain produces heavy sensor noise and the micro-match acceptance rate drops below $5\%$ over $>50$ trials, the HUD triggers a `⚠️ POOR LIGHTING DETECTED` alert and elevates the NCC threshold to $0.68$ to prevent noisy template updates.
+   - *User Guidance:* Ensure frontal light source (desk lamp or facing window). Avoid heavy backlight.
+
+3. **Thick Frames & Heavy Glasses:**
+   - *Behavior:* Thick dark glass frames can produce local intensity minima that pull pupil templates slightly upward onto the frame edge.
+   - *Mitigation:* The Procrustes similarity transform and canonical 70-point anthropometric topology enforce an upper bound on pupil displacement relative to the eye corners. Clicking **`🎯 CALIBRATE`** aligns pupil offsets to the user's specific glasses profile.
+
+4. **Extreme Pose Saccades ($> 45^\circ$ Yaw/Pitch):**
+   - *Behavior:* At extreme profile angles, contralateral eye landmarks are occluded.
+   - *Mitigation:* Region confidence fusion automatically attenuates micro updates when region visibility $< 0.25$, smoothly holding the kinematic extrapolation until the subject re-enters standard frontal angles.
+
+
 
