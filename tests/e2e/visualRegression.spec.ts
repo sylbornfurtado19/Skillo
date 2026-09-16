@@ -73,5 +73,39 @@ test.describe('IVP Interactive Canvas Visual & Functional Regression', () => {
       await microPauseBtn.click();
       await expect(microPauseBtn).toContainText('PAUSE MICRO');
     }
+
+    // 5. Verify Warmup Mode toggle button
+    const warmupBtn = page.locator('#warmup-mode-btn');
+    if (await warmupBtn.count() > 0) {
+      await expect(warmupBtn).toBeVisible();
+      const initialText = await warmupBtn.textContent();
+      expect(initialText).toContain('WARMUP');
+      await warmupBtn.click();
+      await warmupBtn.click();
+    }
+
+    // 6. Assert Warmup Cold-Start Timeline Telemetry (<1.5s KPI)
+    const telemetry = await page.evaluate(() => {
+      return (window as any).__IVP_HUD_TELEMETRY__ || null;
+    });
+
+    if (telemetry && telemetry.firstTemplatesCreatedTs && telemetry.pageLoadTs !== undefined) {
+      const templateLag = telemetry.firstTemplatesCreatedTs - telemetry.pageLoadTs;
+      expect(templateLag).toBeLessThanOrEqual(1500);
+    }
+    if (telemetry && telemetry.firstSmoothedRenderTs && telemetry.pageLoadTs !== undefined) {
+      const smoothedLag = telemetry.firstSmoothedRenderTs - telemetry.pageLoadTs;
+      expect(smoothedLag).toBeLessThanOrEqual(1500);
+    }
+
+    // Save timeline artifact
+    const artifactDir = path.join(process.cwd(), 'test-results', 'warmup');
+    if (!fs.existsSync(artifactDir)) {
+      fs.mkdirSync(artifactDir, { recursive: true });
+    }
+    if (telemetry) {
+      fs.writeFileSync(path.join(artifactDir, 'timeline.json'), JSON.stringify(telemetry, null, 2), 'utf8');
+    }
+    await page.screenshot({ path: path.join(artifactDir, 'warmup_overlay.png') }).catch(() => {});
   });
 });
