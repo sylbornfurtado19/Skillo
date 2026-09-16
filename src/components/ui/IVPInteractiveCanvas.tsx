@@ -262,20 +262,37 @@ export default function IVPInteractiveCanvas({
   };
 
   const handleFreezeAndExport = (includeImage: boolean = false) => {
+    let allowImage = includeImage;
+    if (allowImage && typeof window !== 'undefined') {
+      const confirmed = window.confirm(
+        'Privacy Notice: You requested to include a visual camera screenshot in the exported telemetry JSON. Do you provide explicit consent to export visual data?'
+      );
+      if (!confirmed) {
+        allowImage = false;
+      }
+    }
     const { p50, p95 } = getMicroTrackPercentiles();
     let imageDataUrl: string | undefined;
-    if (includeImage && canvasRef.current) {
+    if (allowImage && canvasRef.current) {
       try {
         imageDataUrl = canvasRef.current.toDataURL('image/png');
       } catch {}
     }
     const currentActiveFace = denseSmootherRef.current?.getFaceId() ?? (workerLandmarks?.envelope?.faceDetected ? 'active_face' : null);
+    const warmupT = microMatchesTriedRef.current;
+    const warmupA = microMatchesAcceptedRef.current;
     const payload = {
       sessionId: `session_${Date.now()}`,
       timestamp: Date.now(),
       timeline: { ...timelineRef.current },
       trackingState: trackingStateRef.current,
       isWarmup: featureFlags.enableWarmup && (performance.now() - appMountTsRef.current < 4000) && (trackingStateRef.current !== 'MODEL_READY'),
+      warmupAcceptance: {
+        tried: warmupT,
+        accepted: warmupA,
+        ratePercent: warmupT > 0 ? (warmupA / warmupT) * 100 : 100,
+        isPoorLighting: featureFlags.enableWarmup && warmupT > 50 && (warmupA / warmupT) < 0.05,
+      },
       deviceProfile: deviceProfileRef.current,
       activeFaceId: currentActiveFace,
       frameNumber: frameCountRef.current,
@@ -320,6 +337,8 @@ export default function IVPInteractiveCanvas({
   const splitPercentRef = useRef<number>(50);
   const [splitPercent, setSplitPercent] = useState<number>(50);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [selectedFaceId, setSelectedFaceId] = useState<string | null>(null);
+  const detectedFacesRef = useRef<Array<{ id: string; x: number; y: number; w: number; h: number }>>([]);
 
   // ── Telemetry state ───────────────────────────────────────────────────────
   const [liveMetrics, setLiveMetrics] = useState<DiagnosticMetrics>({
@@ -396,9 +415,29 @@ export default function IVPInteractiveCanvas({
   // Split slider pointer handling
   // ─────────────────────────────────────────────────────────────────────────
   const handlePointerDown = (e: React.PointerEvent) => {
-    setIsDragging(true);
-    updateSplitPosition(e.clientX);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const clickX = ((e.clientX - rect.left) / rect.width) * 640;
+    const clickY = ((e.clientY - rect.top) / rect.height) * 480;
+    const currentSplitX = (splitPercentRef.current / 100) * 640;
+
+    // Check if clicked inside a detected face bounding box
+    let clickedFace = false;
+    for (const f of detectedFacesRef.current) {
+      if (clickX >= f.x && clickX <= f.x + f.w && clickY >= f.y && clickY <= f.y + f.h) {
+        setSelectedFaceId(f.id);
+        denseSmootherRef.current?.setFaceId(f.id);
+        microTrackerRef.current?.setFaceId(f.id);
+        clickedFace = true;
+        break;
+      }
+    }
+
+    if (!clickedFace || Math.abs(clickX - currentSplitX) <= 18) {
+      setIsDragging(true);
+      updateSplitPosition(e.clientX);
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    }
   };
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
@@ -680,7 +719,13 @@ export default function IVPInteractiveCanvas({
     const appElapsed = now - appMountTsRef.current;
     const isWarmup = featureFlags.enableWarmup && (appElapsed < 4000) && (trackingStateRef.current !== 'MODEL_READY');
     const thresholds = deviceProfileRef.current.thresholds;
-    const effectiveMinNcc = isWarmup ? 0.60 : onlineEstimatorRef.current.getThreshold(thresholds.minApplyNcc);
+    const warmupTries = microMatchesTriedRef.current;
+    const warmupAccepted = microMatchesAcceptedRef.current;
+    const warmupRate = warmupTries > 0 ? (warmupAccepted / warmupTries) * 100 : 100;
+    const isPoorLighting = isWarmup && warmupTries > 50 && warmupRate < 5;
+    const effectiveMinNcc = isPoorLighting
+      ? 0.68
+      : (isWarmup ? 0.60 : onlineEstimatorRef.current.getThreshold(thresholds.minApplyNcc));
 
     const hasWorkerLandmarks = !!(workerLandmarks && workerLandmarks.buffer && workerLandmarks.buffer.length >= 70 * 4);
 
@@ -1169,10 +1214,12 @@ export default function IVPInteractiveCanvas({
       ctx.lineTo(boxX + boxW, boxY + boxH - cLen);
       ctx.stroke();
 
-      // Tracking HUD Badge with authentic live dimensions
-      const roiText = `FACE ROI: ${Math.round(authenticBoxW)}x${Math.round(authenticBoxH)} [ACTIVE]`;
+      // Tracking HUD Badge with authentic live dimensions and active face selector
+      const activeFaceTag = selectedFaceId || denseSmootherRef.current?.getFaceId() || '1';
+      detectedFacesRef.current = [{ id: String(activeFaceTag), x: boxX, y: boxY, w: boxW, h: boxH }];
+      const roiText = `[FACE #${String(activeFaceTag).slice(0, 6)}] ${Math.round(authenticBoxW)}x${Math.round(authenticBoxH)} [ACTIVE]`;
       ctx.font = 'bold 9px monospace';
-      const badgeW = Math.max(148, ctx.measureText(roiText).width + 12);
+      const badgeW = Math.max(154, ctx.measureText(roiText).width + 12);
       ctx.fillStyle = 'rgba(6, 182, 212, 0.9)';
       ctx.fillRect(boxX, boxY - 18, badgeW, 17);
       ctx.fillStyle = '#0B0F17';
@@ -1512,6 +1559,21 @@ export default function IVPInteractiveCanvas({
       const dbgX = CSS_W - dbgW - 12;
       const dbgY = CSS_H - dbgH - 12;
 
+      if (isPoorLighting) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.92)';
+        ctx.strokeStyle = '#DC2626';
+        ctx.lineWidth = 1;
+        ctx.fillRect(dbgX, dbgY - 24, dbgW, 20);
+        ctx.strokeRect(dbgX, dbgY - 24, dbgW, 20);
+        ctx.font = 'bold 8.5px monospace';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚠️ POOR LIGHTING DETECTED (<5% MATCH RATE) — ADAPTING NCC', dbgX + dbgW / 2, dbgY - 14);
+        ctx.restore();
+      }
+
       ctx.fillStyle = 'rgba(3, 7, 18, 0.94)';
       ctx.strokeStyle = isThrottled ? '#F59E0B' : '#06B6D4';
       ctx.lineWidth = 1.2;
@@ -1550,7 +1612,8 @@ export default function IVPInteractiveCanvas({
       const { p50, p95 } = getMicroTrackPercentiles();
       const pausedTag = isMicroPausedRef.current ? ' [PAUSED]' : '';
       const safeTag = featureFlags.enableSafeMode ? ' [SAFE MODE]' : '';
-      ctx.fillText(`ENGINE: ${engineStr} | MICRO: ${accepted}/${tried} acc | EVICT: ${evictions} | p50/p95: ${p50.toFixed(1)}/${p95.toFixed(1)}ms${pausedTag}${safeTag}`, dbgX + 8, dbgY + 64);
+      const warmupTag = isWarmup ? ` [WARMUP: ${warmupRate.toFixed(0)}% acc]` : '';
+      ctx.fillText(`ENGINE: ${engineStr} | MICRO: ${accepted}/${tried} acc | EVICT: ${evictions}${warmupTag}`, dbgX + 8, dbgY + 64);
       ctx.fillText(`PRESET: ${denseRes.activePreset} | α: ${denseRes.meanAlpha.toFixed(2)} | OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s`, dbgX + 8, dbgY + 78);
       ctx.fillText(`DEVICE: ${deviceProfileRef.current.deviceClass.toUpperCase()} (NCC base: ${deviceProfileRef.current.thresholds.minApplyNcc.toFixed(2)}) | MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight}`, dbgX + 8, dbgY + 92);
       ctx.fillText(`PRIVACY: LOCAL-ONLY METRICS | TELEMETRY: ${featureFlags.enableTelemetryOptIn ? 'OPTED-IN' : 'OFF (DEFAULT)'}`, dbgX + 8, dbgY + 106);
