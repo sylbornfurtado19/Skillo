@@ -24,7 +24,10 @@ import {
   mapNormalizedToCanvas,
   procToVideoX,
   procToVideoY,
+  detectDeviceProfile,
+  OnlineCalibrationEstimator,
   type CoordinateMappingMetrics,
+  type DeviceProfile,
 } from '../../lib/services/visionPipeline';
 import {
   DenseLandmarksSmoother,
@@ -34,6 +37,12 @@ import {
 import type { DenseLandmarksEnvelope } from '@/types/workerMessages';
 import type { VisionWorkerStats } from '@/hooks/useVisionWorker';
 import { MicroPatchTracker, type TrackedFeature } from '../../lib/services/microPatchTracker';
+import {
+  getIVPFeatureFlags,
+  setIVPFeatureFlag,
+  subscribeIVPFeatureFlags,
+  type IVPFeatureFlags,
+} from '../../lib/services/ivpFeatureFlags';
 
 // ---------------------------------------------------------------------------
 // Internal canvas dimensions for the diagnostic processing pipeline.
@@ -167,6 +176,47 @@ export default function IVPInteractiveCanvas({
   const isMicroPausedRef = useRef<boolean>(false);
   const [isMicroPaused, setIsMicroPaused] = useState<boolean>(false);
 
+  // ── Device profiling & adaptive calibration ─────────────────────────────
+  const deviceProfileRef = useRef<DeviceProfile>(detectDeviceProfile());
+  const onlineEstimatorRef = useRef<OnlineCalibrationEstimator>(new OnlineCalibrationEstimator(30));
+  const [featureFlags, setFeatureFlags] = useState<IVPFeatureFlags>(getIVPFeatureFlags());
+  const microEventHistoryRef = useRef<Array<{
+    timestamp: number;
+    idx: number;
+    ncc: number;
+    method: 'ZNCC' | 'LK' | 'SOBEL';
+    accepted: boolean;
+    delta: number;
+  }>>([]);
+
+  // ── Calibration modal & personalized user bias ──────────────────────────
+  const [isCalibrating, setIsCalibrating] = useState<boolean>(false);
+  const [calibrationStep, setCalibrationStep] = useState<number>(1);
+  const [calibrationBias, setCalibrationBias] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Subscribe to feature flag updates across sessions
+  useEffect(() => {
+    return subscribeIVPFeatureFlags((flags) => {
+      setFeatureFlags(flags);
+      if (denseSmootherRef.current) {
+        denseSmootherRef.current.setEnablePcaProjection(flags.enablePcaProjection, 0.18);
+      }
+    });
+  }, []);
+
+  // Load user calibration if present
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = window.localStorage.getItem('ivp_user_calibration');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.bias) setCalibrationBias(parsed.bias);
+        }
+      } catch {}
+    }
+  }, []);
+
   const getMicroTrackPercentiles = () => {
     const samples = microTrackMsSamplesRef.current;
     if (samples.length === 0) return { p50: 0, p95: 0 };
@@ -174,6 +224,37 @@ export default function IVPInteractiveCanvas({
     const p50 = sorted[Math.floor(sorted.length * 0.50)];
     const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
     return { p50, p95 };
+  };
+
+  const handleFreezeAndExport = (includeImage: boolean = false) => {
+    const { p50, p95 } = getMicroTrackPercentiles();
+    let imageDataUrl: string | undefined;
+    if (includeImage && canvasRef.current) {
+      try {
+        imageDataUrl = canvasRef.current.toDataURL('image/png');
+      } catch {}
+    }
+    const payload = {
+      sessionId: `session_${Date.now()}`,
+      timestamp: Date.now(),
+      deviceProfile: deviceProfileRef.current,
+      faceBox: workerLandmarks?.envelope?.faceBox ?? null,
+      landmarksRaw: lastRawNormPtsRef.current ?? [],
+      landmarksSmoothed: denseSmootherRef.current?.getCurrentResult()?.points ?? [],
+      microEvents: microEventHistoryRef.current,
+      microTrackMs: { p50, p95 },
+      featureFlags,
+      image: imageDataUrl,
+    };
+    if (typeof window !== 'undefined') {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ivp_telemetry_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
   // Synchronize tracking preset with dense smoother
@@ -548,6 +629,7 @@ export default function IVPInteractiveCanvas({
           70,
           workerLandmarks.envelope.timestampMs || now
         );
+        lastSmoothedResRef.current = denseRes;
 
         const rawPts: Array<{ x: number; y: number }> = [];
         for (let i = 0; i < 70; i++) {
@@ -557,8 +639,12 @@ export default function IVPInteractiveCanvas({
 
         // Initialize / refresh micro-patch templates on new inference packet
         if (isFaceGenuinelyDetected && rawImgData) {
-          const normMicroX = (x: number) => (mirrored ? (1.0 - x) : x);
           const workerEnv = workerLandmarks.envelope;
+          const fb = workerEnv.faceBox;
+          const faceId = fb ? `${Math.round((fb.x || 0) * 10)}_${Math.round((fb.y || 0) * 10)}` : 'active_face';
+          microTrackerRef.current.setFaceId(faceId);
+
+          const normMicroX = (x: number) => (mirrored ? (1.0 - x) : x);
           const fbW = workerEnv.faceBox ? (workerEnv.faceBox.width > 1.0 ? workerEnv.faceBox.width : workerEnv.faceBox.width * PROC_W) : 80;
           const lipRadius = Math.max(8, Math.min(20, Math.ceil(fbW * 0.08)));
 
@@ -570,10 +656,29 @@ export default function IVPInteractiveCanvas({
           ]);
         }
       } else {
-        // Intermediate 60 FPS RAF frame: track micro-features (pupils & lip corners) using NCC
+        // Intermediate 60 FPS RAF frame: track micro-features (pupils & lip corners) using NCC / LK
         if (isFaceGenuinelyDetected && rawImgData && !isMicroPausedRef.current) {
           const t0 = performance.now();
-          const tracked = microTrackerRef.current.track(rawImgData.data, PROC_W, PROC_H, 0.55, 1);
+          const thresholds = deviceProfileRef.current.thresholds;
+          const effectiveMinNcc = onlineEstimatorRef.current.getThreshold(thresholds.minApplyNcc);
+          const fb = workerLandmarks?.envelope?.faceBox;
+          const fbW = fb ? (fb.width > 1.0 ? fb.width : fb.width * PROC_W) : 80;
+          const fbH = fb ? (fb.height > 1.0 ? fb.height : fb.height * PROC_H) : 80;
+          const faceScale = Math.sqrt(fbW * fbH);
+          const baseDeltaPx = faceScale * 0.035;
+          const maxDeltaNormalized = Math.min(0.08, Math.max(0.025, baseDeltaPx / PROC_W));
+
+          const tracked = microTrackerRef.current.track(
+            rawImgData.data,
+            PROC_W,
+            PROC_H,
+            0.50,
+            deviceProfileRef.current.cpuTier === 'LOW' ? 2 : 1,
+            {
+              enableLk: featureFlags.enableLkFallback,
+              lkMinEigenvalue: thresholds.lkMinEigenvalue,
+            }
+          );
           const trackDurationMs = performance.now() - t0;
           lastMicroTrackMsRef.current = trackDurationMs;
           microTrackMsSamplesRef.current.push(trackDurationMs);
@@ -582,35 +687,53 @@ export default function IVPInteractiveCanvas({
           }
 
           const canonicalTracked = new Map<number, TrackedFeature>();
-
-          // Acceptance & Gating Thresholds
-          const MIN_APPLY_NCC = 0.75; // configurable default high confidence threshold
-          const MAX_MAHALANOBIS_DELTA = 0.06;
-
           microMatchesTriedRef.current += tracked.size;
 
           for (const [idx, feat] of tracked.entries()) {
+            if (feat.ncc > 0.35) {
+              onlineEstimatorRef.current.addSample(feat.ncc);
+            }
+
             // feat.x/feat.y are normalized relative to PROC_W/PROC_H in rawImgData
             const procX = mirrored ? (1.0 - feat.x) : feat.x;
             const procY = feat.y;
 
             // rawCanvas draws source directly to PROC_W x PROC_H (full span).
-            // procToVideoX helper maintains exact normalized coordinate
             const videoNormX = procToVideoX(procX, PROC_W, PROC_W);
             const videoNormY = procToVideoY(procY, PROC_H, PROC_H);
 
+            // In-bounds safety check
+            if (videoNormX < 0.01 || videoNormX > 0.99 || videoNormY < 0.01 || videoNormY > 0.99) continue;
+
             // Save canonical tracked in video-normalized space for HUD visual rings
-            canonicalTracked.set(idx, { landmarkIndex: idx, x: videoNormX, y: videoNormY, ncc: feat.ncc });
+            canonicalTracked.set(idx, {
+              landmarkIndex: idx,
+              x: videoNormX,
+              y: videoNormY,
+              ncc: feat.ncc,
+              method: feat.method,
+            });
 
-            // Gate 1: High confidence threshold for applying to smoother & buffer
-            if (feat.ncc >= MIN_APPLY_NCC) {
-              // Gate 2: Mahalanobis / Euclidean consistency check against 1-step predicted position
+            // Gate 0: Region confidence fusion
+            if (featureFlags.enableRegionFusion && lastSmoothedResRef.current?.regionConfidences) {
+              const rc = lastSmoothedResRef.current.regionConfidences;
+              if ((idx === 68 || idx === 69) && rc.eyes < 0.25) continue;
+              if ((idx === 48 || idx === 54) && rc.mouth < 0.25) continue;
+            }
+
+            // Gate 1: Dynamic acceptance threshold (scaled for LK)
+            const requiredNcc = feat.method === 'LK' ? effectiveMinNcc * 0.88 : effectiveMinNcc;
+            let accepted = false;
+            let delta = 0;
+
+            if (feat.ncc >= requiredNcc) {
+              // Gate 2: Consistency check against 1-step predicted position
               const pred = denseSmootherRef.current.predictPoint(idx, 0.016);
-              const delta = pred ? Math.hypot(pred.x - videoNormX, pred.y - videoNormY) : 0;
+              delta = pred ? Math.hypot(pred.x - videoNormX, pred.y - videoNormY) : 0;
 
-              if (delta < MAX_MAHALANOBIS_DELTA || feat.ncc >= 0.92) {
+              if (delta < maxDeltaNormalized || feat.ncc >= 0.92) {
                 const scaledConf = Math.max(0.1, Math.min(1.0, feat.ncc));
-                // Atomic update: call updatePoint first
+                // Gate 3: Atomic smoother update
                 const updatedPos = denseSmootherRef.current.updatePoint(
                   idx,
                   { x: videoNormX, y: videoNormY },
@@ -618,21 +741,35 @@ export default function IVPInteractiveCanvas({
                   now
                 );
 
-                // Gate 3: Mutate buffer ONLY IF smoother accepted the measurement
+                // Gate 4: Mutate worker buffer ONLY IF smoother accepted
                 if (updatedPos && workerLandmarks?.buffer && workerLandmarks.buffer.length >= (idx + 1) * 4) {
                   workerLandmarks.buffer[idx * 4] = videoNormX;
                   workerLandmarks.buffer[idx * 4 + 1] = videoNormY;
                   workerLandmarks.buffer[idx * 4 + 3] = feat.ncc;
                   microMatchesAcceptedRef.current++;
+                  accepted = true;
                 }
               }
             }
+
+            // Log event to rolling micro history
+            if (microEventHistoryRef.current.length >= 60) {
+              microEventHistoryRef.current.shift();
+            }
+            microEventHistoryRef.current.push({
+              timestamp: now,
+              idx,
+              ncc: feat.ncc,
+              method: feat.method || 'ZNCC',
+              accepted,
+              delta,
+            });
           }
           lastMicroTrackedRef.current = canonicalTracked;
         }
         // On intermediate frames: do not re-feed stale static coordinates to updateFromBuffer!
-        // Instead, retrieve the current stable smoothed state:
         denseRes = denseSmootherRef.current.getCurrentResult();
+        lastSmoothedResRef.current = denseRes;
       }
     } else {
       const liveExpr = !isTargetLost
@@ -1231,9 +1368,11 @@ export default function IVPInteractiveCanvas({
       const evictions = microTrackerRef.current.getEvictionCount();
       const { p50, p95 } = getMicroTrackPercentiles();
       const pausedTag = isMicroPausedRef.current ? ' [PAUSED]' : '';
-      ctx.fillText(`ENGINE: ${engineStr} | MICRO: ${accepted}/${tried} acc | EVICT: ${evictions} | p50/p95: ${p50.toFixed(1)}/${p95.toFixed(1)}ms${pausedTag}`, dbgX + 8, dbgY + 64);
+      const safeTag = featureFlags.enableSafeMode ? ' [SAFE MODE]' : '';
+      ctx.fillText(`ENGINE: ${engineStr} | MICRO: ${accepted}/${tried} acc | EVICT: ${evictions} | p50/p95: ${p50.toFixed(1)}/${p95.toFixed(1)}ms${pausedTag}${safeTag}`, dbgX + 8, dbgY + 64);
       ctx.fillText(`PRESET: ${denseRes.activePreset} | α: ${denseRes.meanAlpha.toFixed(2)} | OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s`, dbgX + 8, dbgY + 78);
-      ctx.fillText(`MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight} (S: ${mapping.scale.toFixed(2)}) | MIRROR: ${mapping.mirrored ? 'ON' : 'OFF'}`, dbgX + 8, dbgY + 92);
+      ctx.fillText(`DEVICE: ${deviceProfileRef.current.deviceClass.toUpperCase()} (NCC base: ${deviceProfileRef.current.thresholds.minApplyNcc.toFixed(2)}) | MAP: ${mapping.videoWidth}x${mapping.videoHeight} → ${mapping.canvasWidth}x${mapping.canvasHeight}`, dbgX + 8, dbgY + 92);
+      ctx.fillText(`PRIVACY: LOCAL-ONLY METRICS | TELEMETRY: ${featureFlags.enableTelemetryOptIn ? 'OPTED-IN' : 'OFF (DEFAULT)'}`, dbgX + 8, dbgY + 106);
 
       if (typeof window !== 'undefined') {
         (window as any).__IVP_HUD_TELEMETRY__ = {
@@ -1242,9 +1381,11 @@ export default function IVPInteractiveCanvas({
           microEvictions: evictions,
           microTrackMsP50: p50,
           microTrackMsP95: p95,
-          currentStride: 1,
+          currentStride: deviceProfileRef.current.cpuTier === 'LOW' ? 2 : 1,
           templatesActive: tmplCount,
           isMicroPaused: isMicroPausedRef.current,
+          featureFlags,
+          deviceProfile: deviceProfileRef.current,
           boxW,
           boxH,
           authenticBoxW,
@@ -1358,6 +1499,47 @@ export default function IVPInteractiveCanvas({
             </strong>
           </span>
           <span className="text-gray-500">Split: {Math.round(splitPercent)}%</span>
+
+          {/* Calibrate Face Button */}
+          <button
+            id="calibrate-face-btn"
+            type="button"
+            onClick={() => {
+              setCalibrationStep(1);
+              setIsCalibrating(true);
+            }}
+            className="px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 text-[10px] font-mono transition-colors"
+          >
+            🎯 CALIBRATE
+          </button>
+
+          {/* Freeze & Export Button */}
+          <button
+            id="freeze-export-btn"
+            type="button"
+            onClick={() => handleFreezeAndExport(false)}
+            className="px-2 py-0.5 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 text-[10px] font-mono transition-colors"
+          >
+            💾 EXPORT TELEMETRY
+          </button>
+
+          {/* Safe Mode Toggle */}
+          <button
+            id="safe-mode-btn"
+            type="button"
+            onClick={() => {
+              const next = !featureFlags.enableSafeMode;
+              setIVPFeatureFlag('enableSafeMode', next);
+            }}
+            className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors ${
+              featureFlags.enableSafeMode
+                ? 'bg-red-500/20 border-red-500/40 text-red-300'
+                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+            }`}
+          >
+            {featureFlags.enableSafeMode ? '🛡 SAFE MODE: ON' : '🛡 SAFE MODE: OFF'}
+          </button>
+
           {/* Pause Micro Updates Button */}
           <button
             id="pause-micro-btn"
@@ -1439,6 +1621,113 @@ export default function IVPInteractiveCanvas({
           )}
         </div>
       </div>
+
+      {/* Calibration Modal */}
+      {isCalibrating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <div className="bg-[#0B0F17] border border-cyan-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="text-sm font-mono font-bold text-white flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                Personal Face Calibration
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsCalibrating(false)}
+                className="text-gray-400 hover:text-white text-xs font-mono cursor-pointer"
+              >
+                ✕ CLOSE
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-gray-300">
+              <div className="flex items-center justify-center py-4">
+                <div className="w-24 h-24 rounded-full border-2 border-dashed border-cyan-400/60 flex items-center justify-center animate-pulse">
+                  <span className="text-2xl">👤</span>
+                </div>
+              </div>
+
+              {calibrationStep === 1 && (
+                <div className="text-center space-y-2">
+                  <p className="font-semibold text-cyan-300">Step 1: Neutral Gaze Alignment</p>
+                  <p className="text-gray-400 text-[11px]">
+                    Look straight ahead into the webcam with a relaxed, neutral expression.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setCalibrationStep(2)}
+                    className="w-full mt-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-mono text-xs font-bold transition cursor-pointer"
+                  >
+                    CONTINUE TO STEP 2 ▶
+                  </button>
+                </div>
+              )}
+
+              {calibrationStep === 2 && (
+                <div className="text-center space-y-2">
+                  <p className="font-semibold text-cyan-300">Step 2: Natural Smile & Speech</p>
+                  <p className="text-gray-400 text-[11px]">
+                    Smile gently or speak a short sentence to register your natural lip corner dynamics.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (lastRawNormPtsRef.current && lastRawNormPtsRef.current.length >= 70) {
+                        const lp = lastRawNormPtsRef.current[68];
+                        const rp = lastRawNormPtsRef.current[69];
+                        const midX = (lp.x + rp.x) / 2;
+                        const midY = (lp.y + rp.y) / 2;
+                        const bias = {
+                          x: (midX - 0.5) * 0.05,
+                          y: (midY - 0.45) * 0.05,
+                        };
+                        setCalibrationBias(bias);
+                        try {
+                          window.localStorage.setItem('ivp_user_calibration', JSON.stringify({ bias, calibratedAt: Date.now() }));
+                        } catch {}
+                      }
+                      setCalibrationStep(3);
+                    }}
+                    className="w-full mt-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-mono text-xs font-bold transition cursor-pointer"
+                  >
+                    FINALIZE CALIBRATION ▶
+                  </button>
+                </div>
+              )}
+
+              {calibrationStep === 3 && (
+                <div className="text-center space-y-3">
+                  <div className="text-emerald-400 font-bold text-sm">✓ Calibration Complete!</div>
+                  <p className="text-gray-400 text-[11px]">
+                    Personalized anchor bias saved: ({calibrationBias.x.toFixed(4)}, {calibrationBias.y.toFixed(4)}).
+                    Additive offsets will cling tightly to your unique facial geometry.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCalibrationBias({ x: 0, y: 0 });
+                        try { window.localStorage.removeItem('ivp_user_calibration'); } catch {}
+                        setIsCalibrating(false);
+                      }}
+                      className="flex-1 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg font-mono text-xs transition cursor-pointer"
+                    >
+                      RESET TO DEFAULTS
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsCalibrating(false)}
+                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-mono text-xs font-bold transition cursor-pointer"
+                    >
+                      DONE
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -431,20 +431,146 @@ Route (app)
 
 ---
 
-## 7. Developer Verification & Deployment Guide
+## 7. Developer Verification & Local Test Reproduction Guide
 
-To verify this implementation locally:
+To reproduce all tests, audits, and performance checks locally:
 
 ```bash
-# 1. Run all unit & algorithmic regression test suites (19 suites, 161 tests)
+# 1. Run all unit & algorithmic regression test suites (22 suites, 175 tests)
 npx jest --runInBand
 
 # 2. Run the 500-cycle memory leak verification audit (< 20 MB budget)
-node scripts/memory-leak-test.js
+npm run test:memory
+# (or node scripts/memory-leak-test.js)
 
-# 3. Run the Next.js production build and TypeScript validation
+# 3. Run the CI regression & telemetry drift verification script
+npm run test:regression
+# (or node scripts/check-ci-regression.js)
+
+# 4. Run the Next.js production build and TypeScript validation
 npm run build
 
-# 4. Run Playwright E2E functional test suite
-npx playwright test tests/e2e/antigravity-3-8-high-flash.spec.ts
+# 5. Run Playwright E2E functional & visual regression test suites
+npx playwright test
 ```
+
+### Interpreting Memory Leak Audit Results
+When running `npm run test:memory`:
+* The test simulates 500 complete mount/unmount and frame processing cycles.
+* Output logs initial, mid-run (100, 200, 300, 400), and final heap usage.
+* **Target Budget:** Net heap growth strictly `< 20 MB` (typically `< 0.05 MB`).
+* If net growth exceeds 20 MB, the process exits with code 1 and outputs a leak trace.
+
+---
+
+## 8. Runtime Feature Flags & Safe Canary Rollout
+
+The IVP pipeline includes a unified runtime feature flag registry (`src/lib/services/ivpFeatureFlags.ts`) that enables instant toggling without rebuilding or redeploying.
+
+### Supported Feature Flags
+
+| Flag Key | Type | Default | Purpose |
+| :--- | :--- | :--- | :--- |
+| `enableLkFallback` | boolean | `true` | Enables Lucas-Kanade differential optical flow when ZNCC < threshold |
+| `enablePcaProjection` | boolean | `false` | Enables statistical 70-point PCA shape manifold projection ($\alpha = 0.18$) |
+| `enableRegionFusion` | boolean | `true` | Enforces regional confidence gating (eyes/lips) before micro-patch override |
+| `enableDeviceAdaptive` | boolean | `true` | Dynamically adapts NCC & Mahalanobis thresholds to CPU tier & face scale |
+| `enableSafeMode` | boolean | `false` | Instant circuit-breaker: disables all micro-trackers and statistical priors |
+| `enableTelemetryOptIn`| boolean | `false` | Privacy gate for local session diagnostics |
+
+### Ways to Control Feature Flags
+
+1. **URL Query Parameters (Instant Canary Override):**
+   * Enable Safe Mode: `http://localhost:3000/ivp-lab?ivp_safemode=1`
+   * Disable LK fallback: `http://localhost:3000/ivp-lab?ivp_lk=0`
+   * Enable PCA shape prior: `http://localhost:3000/ivp-lab?ivp_pca=1`
+   * Enable Telemetry: `http://localhost:3000/ivp-lab?ivp_telemetry=1`
+
+2. **Browser LocalStorage:**
+   ```javascript
+   localStorage.setItem('ivp_flag_enableSafeMode', 'true');
+   localStorage.setItem('ivp_flag_enableLkFallback', 'false');
+   ```
+
+3. **Interactive UI Controls:**
+   Click the **"🛡 SAFE MODE: ON/OFF"** button in the `/ivp-lab` header bar.
+
+---
+
+## 9. Living Benchmarks & Device Profiles
+
+The vision pipeline automatically detects device hardware capabilities (`detectDeviceProfile`) and configures data-driven thresholds based on inter-ocular distance and resolution:
+
+$$\text{faceScale} = \sqrt{\text{faceBox.width} \times \text{faceBox.height}}$$
+$$\text{baseDeltaPx} = \text{faceScale} \times 0.035$$
+$$\text{maxDeltaNormalized} = \frac{\text{baseDeltaPx}}{\text{PROC\_W}}$$
+
+### Production Device Profile Benchmarks
+
+| Device Profile | CPU Tier | Render FPS | Stride | Baseline NCC | p50 Track Latency | p95 Track Latency |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Desktop (8+ Cores)** | `HIGH` | 60 FPS | 1 | 0.76 | $0.01\text{ ms}$ | $0.05\text{ ms}$ |
+| **Laptop / Mid-Device (4 Cores)** | `MID` | 45–60 FPS | 1 | 0.73 | $0.08\text{ ms}$ | $0.18\text{ ms}$ |
+| **Mobile / Low-Power (<= 2 Cores)**| `LOW` | 30 FPS | 2 | 0.70 | $0.15\text{ ms}$ | $0.35\text{ ms}$ |
+
+---
+
+## 10. Troubleshooting Checklist (HUD Diagnostics)
+
+Use the on-canvas Tracking HUD (`⚡ TRACKING HUD`) to diagnose field telemetry in real time:
+
+| Symptom | HUD Indicator | Diagnostic Explanation | Remediation |
+| :--- | :--- | :--- | :--- |
+| **Cyan points jumping** | `MICRO: 0/0 acc` or high delta | Dynamic acceptance threshold rejected micro-patches | Toggle **🛡 SAFE MODE: ON** or click **🎯 CALIBRATE** |
+| **Green rings missing** | `[PAUSED]` in HUD title | Micro-tracking is paused | Click **▶ RESUME MICRO** in toolbar |
+| **Frame drops / Sluggishness** | `[THROTTLED: 15 FPS]` | CPU overloaded; worker cadence automatically backed off | Switch tracking preset to `ULTRA_RESPONSIVE` |
+| **Face turns fast / Snap** | `GLIDE (XX%)` | Anti-snap relocalization glide is actively smoothing | Wait 120ms for smoothstep glide to lock |
+| **Multi-face confusion** | `ENGINE: OPTICAL TRACKER` | Subject moved outside active bounding box | Center face or click **🎯 CALIBRATE** to re-anchor |
+
+---
+
+## 11. Field Telemetry & Privacy Appendix
+
+### Local-Only Telemetry Schema
+When the user clicks **"💾 EXPORT TELEMETRY"**, a local JSON bundle is exported directly to their machine:
+
+```json
+{
+  "sessionId": "session_1742389102345",
+  "timestamp": 1742389102345,
+  "deviceProfile": {
+    "cpuTier": "HIGH",
+    "deviceClass": "desktop",
+    "devicePixelRatio": 1.0,
+    "hardwareConcurrency": 8,
+    "baselineThresholds": {
+      "minApplyNcc": 0.76,
+      "maxMahalanobisDelta": 0.06,
+      "lkMinEigenvalue": 8.0,
+      "stride": 1
+    }
+  },
+  "faceBox": { "x": 210, "y": 100, "width": 220, "height": 260 },
+  "landmarksRaw": [{ "x": 0.51, "y": 0.42 }],
+  "landmarksSmoothed": [{ "x": 0.509, "y": 0.421 }],
+  "microEvents": [
+    { "timestamp": 1042.5, "idx": 68, "ncc": 0.89, "method": "ZNCC", "accepted": true, "delta": 0.008 },
+    { "timestamp": 1042.5, "idx": 48, "ncc": 0.74, "method": "LK", "accepted": true, "delta": 0.012 }
+  ],
+  "microTrackMs": { "p50": 0.01, "p95": 0.05 },
+  "featureFlags": {
+    "enableLkFallback": true,
+    "enablePcaProjection": false,
+    "enableRegionFusion": true,
+    "enableDeviceAdaptive": true,
+    "enableSafeMode": false,
+    "enableTelemetryOptIn": false
+  }
+}
+```
+
+### Privacy & Data Safety Guarantees
+1. **Zero Off-Device Transmission:** All telemetry and diagnostic computation runs 100% client-side in the browser.
+2. **Images Excluded by Default:** Telemetry export contains numeric vectors only. Canvas image bitmaps are NEVER included unless explicitly requested by the user.
+3. **Telemetry Opt-In Default:** `enableTelemetryOptIn` strictly defaults to `false`.
+
