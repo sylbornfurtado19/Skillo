@@ -114,6 +114,157 @@ async function setCachedModelBuffer(buffer: ArrayBuffer): Promise<void> {
   } catch {}
 }
 
+let modelRetries = 0;
+const MAX_MODEL_RETRIES = 5;
+
+interface LoadModelResult {
+  success: boolean;
+  source?: 'CACHED' | 'LOCAL' | 'CDN';
+  error?: string;
+  errorCode?: 'IDB_CORRUPT' | 'LOCAL_NOT_FOUND' | 'CDN_FETCH_FAILED' | 'RETRY_LIMIT_EXCEEDED' | 'UNKNOWN';
+}
+
+async function loadModelAttempt(backend: VisionModelBackend): Promise<LoadModelResult> {
+  const baseOrigin = typeof location !== 'undefined' ? location.origin : '';
+  const wasmPath = baseOrigin ? `${baseOrigin}/wasm` : '/wasm';
+  let filesetResolver: any = null;
+
+  // 1. Try IndexedDB Cached Model Buffer (sub-millisecond instant load)
+  try {
+    const cachedBuffer = await getCachedModelBuffer();
+    if (cachedBuffer) {
+      filesetResolver = await FilesetResolver.forVisionTasks(wasmPath);
+      faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+          modelAssetBuffer: new Uint8Array(cachedBuffer),
+          delegate: backend === 'CPU' ? 'CPU' : 'GPU',
+        },
+        outputFaceBlendshapes: false,
+        outputFacialTransformationMatrixes: false,
+        runningMode: 'IMAGE',
+        numFaces: 1,
+      });
+      return { success: true, source: 'CACHED' };
+    }
+  } catch (cachedErr) {
+    console.warn('[VisionWorker] Cached model buffer invalid, falling back to network:', cachedErr);
+  }
+
+  // 2. Try Local Model Asset
+  const modelAssetPath = baseOrigin
+    ? `${baseOrigin}/models/face_landmarker.task`
+    : '/models/face_landmarker.task';
+
+  try {
+    if (!filesetResolver) {
+      filesetResolver = await FilesetResolver.forVisionTasks(wasmPath);
+    }
+    faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+      baseOptions: {
+        modelAssetPath,
+        delegate: backend === 'CPU' ? 'CPU' : 'GPU',
+      },
+      outputFaceBlendshapes: false,
+      outputFacialTransformationMatrixes: false,
+      runningMode: 'IMAGE',
+      numFaces: 1,
+    });
+
+    // Background cache to IndexedDB
+    if (typeof fetch !== 'undefined') {
+      fetch(modelAssetPath)
+        .then(res => res.ok ? res.arrayBuffer() : null)
+        .then(buf => { if (buf) setCachedModelBuffer(buf); })
+        .catch(() => {});
+    }
+
+    return { success: true, source: 'LOCAL' };
+  } catch (localErr) {
+    console.warn('[VisionWorker] Local MediaPipe asset load warning, trying CDN fallback:', localErr);
+  }
+
+  // 3. Try CDN Fallback
+  try {
+    const cdnWasm = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
+    const cdnResolver = await FilesetResolver.forVisionTasks(cdnWasm);
+    const cdnUrl = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+    faceLandmarker = await FaceLandmarker.createFromOptions(cdnResolver, {
+      baseOptions: {
+        modelAssetPath: cdnUrl,
+        delegate: backend === 'CPU' ? 'CPU' : 'GPU',
+      },
+      outputFaceBlendshapes: false,
+      outputFacialTransformationMatrixes: false,
+      runningMode: 'IMAGE',
+      numFaces: 1,
+    });
+
+    // Background cache to IndexedDB
+    if (typeof fetch !== 'undefined') {
+      fetch(cdnUrl)
+        .then(res => res.ok ? res.arrayBuffer() : null)
+        .then(buf => { if (buf) setCachedModelBuffer(buf); })
+        .catch(() => {});
+    }
+
+    return { success: true, source: 'CDN' };
+  } catch (cdnErr) {
+    const errMsg = cdnErr instanceof Error ? cdnErr.message : String(cdnErr);
+    return {
+      success: false,
+      errorCode: 'CDN_FETCH_FAILED',
+      error: errMsg,
+    };
+  }
+}
+
+function scheduleModelRetry(backend: VisionModelBackend, initStartTs: number): void {
+  if (modelRetries >= MAX_MODEL_RETRIES || faceLandmarker) {
+    if (modelRetries >= MAX_MODEL_RETRIES && !faceLandmarker) {
+      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      postResponse({
+        type: 'MODEL_INIT_DONE',
+        payload: {
+          success: false,
+          timestampMs: nowMs,
+          durationMs: nowMs - initStartTs,
+          source: 'HEURISTIC_FALLBACK',
+          errorCode: 'RETRY_LIMIT_EXCEEDED',
+          attemptCount: modelRetries,
+          error: `Model initialization failed after ${MAX_MODEL_RETRIES} attempts. Operating on heuristic fallback.`,
+        },
+      });
+    }
+    return;
+  }
+
+  modelRetries++;
+  const delayMs = Math.min(1000 * Math.pow(2, modelRetries), 30000);
+  setTimeout(async () => {
+    if (faceLandmarker) return;
+    try {
+      const res = await loadModelAttempt(backend);
+      if (res.success && res.source) {
+        const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        postResponse({
+          type: 'MODEL_INIT_DONE',
+          payload: {
+            success: true,
+            timestampMs: nowMs,
+            durationMs: nowMs - initStartTs,
+            source: res.source,
+            attemptCount: modelRetries,
+          },
+        });
+      } else {
+        scheduleModelRetry(backend, initStartTs);
+      }
+    } catch {
+      scheduleModelRetry(backend, initStartTs);
+    }
+  }, delayMs);
+}
+
 async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promise<boolean> {
   if (faceLandmarker) return true;
   if (modelInitPromise) return modelInitPromise;
@@ -128,129 +279,36 @@ async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promis
   });
 
   modelInitPromise = (async () => {
-    try {
-      const baseOrigin = typeof location !== 'undefined' ? location.origin : '';
-      const wasmPath = baseOrigin ? `${baseOrigin}/wasm` : '/wasm';
-      const filesetResolver = await FilesetResolver.forVisionTasks(wasmPath);
+    const initialRes = await loadModelAttempt(backend);
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
-      // 1. Try IndexedDB Cached Model Buffer (sub-millisecond instant load)
-      const cachedBuffer = await getCachedModelBuffer();
-      if (cachedBuffer) {
-        try {
-          faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-              modelAssetBuffer: new Uint8Array(cachedBuffer),
-              delegate: backend === 'CPU' ? 'CPU' : 'GPU',
-            },
-            outputFaceBlendshapes: false,
-            outputFacialTransformationMatrixes: false,
-            runningMode: 'IMAGE',
-            numFaces: 1,
-          });
-
-          const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-          postResponse({
-            type: 'MODEL_INIT_DONE',
-            payload: {
-              success: true,
-              timestampMs: nowMs,
-              durationMs: nowMs - initStartTs,
-              source: 'CACHED',
-            },
-          });
-          return true;
-        } catch (cachedErr) {
-          console.warn('[VisionWorker] Cached model buffer invalid, falling back to network:', cachedErr);
-        }
-      }
-
-      // 2. Try Local Model Asset
-      const modelAssetPath = baseOrigin
-        ? `${baseOrigin}/models/face_landmarker.task`
-        : '/models/face_landmarker.task';
-
-      faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-        baseOptions: {
-          modelAssetPath,
-          delegate: backend === 'CPU' ? 'CPU' : 'GPU',
-        },
-        outputFaceBlendshapes: false,
-        outputFacialTransformationMatrixes: false,
-        runningMode: 'IMAGE',
-        numFaces: 1,
-      });
-
-      // Background cache to IndexedDB
-      if (typeof fetch !== 'undefined') {
-        fetch(modelAssetPath)
-          .then(res => res.ok ? res.arrayBuffer() : null)
-          .then(buf => { if (buf) setCachedModelBuffer(buf); })
-          .catch(() => {});
-      }
-
-      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (initialRes.success && initialRes.source) {
       postResponse({
         type: 'MODEL_INIT_DONE',
         payload: {
           success: true,
           timestampMs: nowMs,
           durationMs: nowMs - initStartTs,
-          source: 'LOCAL',
+          source: initialRes.source,
+          attemptCount: 1,
         },
       });
       return true;
-    } catch (localErr) {
-      console.warn('[VisionWorker] Local MediaPipe asset load warning, trying CDN fallback:', localErr);
-      try {
-        const cdnWasm = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
-        const filesetResolver = await FilesetResolver.forVisionTasks(cdnWasm);
-        const cdnUrl = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
-        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-          baseOptions: {
-            modelAssetPath: cdnUrl,
-            delegate: backend === 'CPU' ? 'CPU' : 'GPU',
-          },
-          outputFaceBlendshapes: false,
-          outputFacialTransformationMatrixes: false,
-          runningMode: 'IMAGE',
-          numFaces: 1,
-        });
-
-        // Background cache to IndexedDB
-        if (typeof fetch !== 'undefined') {
-          fetch(cdnUrl)
-            .then(res => res.ok ? res.arrayBuffer() : null)
-            .then(buf => { if (buf) setCachedModelBuffer(buf); })
-            .catch(() => {});
-        }
-
-        const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        postResponse({
-          type: 'MODEL_INIT_DONE',
-          payload: {
-            success: true,
-            timestampMs: nowMs,
-            durationMs: nowMs - initStartTs,
-            source: 'CDN',
-          },
-        });
-        return true;
-      } catch (cdnErr) {
-        console.warn('[VisionWorker] MediaPipe FaceLandmarker unavailable, retaining hybrid optical tracker fallback:', cdnErr);
-        faceLandmarker = null;
-        const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        postResponse({
-          type: 'MODEL_INIT_DONE',
-          payload: {
-            success: false,
-            timestampMs: nowMs,
-            durationMs: nowMs - initStartTs,
-            source: 'HEURISTIC_FALLBACK',
-            error: cdnErr instanceof Error ? cdnErr.message : String(cdnErr),
-          },
-        });
-        return false;
-      }
+    } else {
+      postResponse({
+        type: 'MODEL_INIT_DONE',
+        payload: {
+          success: false,
+          timestampMs: nowMs,
+          durationMs: nowMs - initStartTs,
+          source: 'HEURISTIC_FALLBACK',
+          errorCode: initialRes.errorCode || 'UNKNOWN',
+          error: initialRes.error,
+          attemptCount: 1,
+        },
+      });
+      scheduleModelRetry(backend, initStartTs);
+      return false;
     }
   })();
 

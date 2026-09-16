@@ -231,6 +231,8 @@ export interface ModelInitDoneResponseMessage {
     durationMs: number;
     source?: 'CACHED' | 'LOCAL' | 'CDN' | 'HEURISTIC_FALLBACK';
     error?: string;
+    errorCode?: 'IDB_CORRUPT' | 'LOCAL_NOT_FOUND' | 'CDN_FETCH_FAILED' | 'RETRY_LIMIT_EXCEEDED' | 'UNKNOWN';
+    attemptCount?: number;
   };
 }
 
