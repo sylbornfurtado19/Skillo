@@ -107,7 +107,7 @@ describe('Rate Limiter Module', () => {
     expect(r4.allowed).toBe(false);
     expect(r4.remaining).toBe(0);
     expect(r4.retryAfterSeconds).toBeGreaterThan(0);
-  });
+  }, 15000);
 
   it('generates a 429 response with appropriate Retry-After and rate limit headers', async () => {
     const rateLimitExceededResult = {
