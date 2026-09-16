@@ -195,21 +195,31 @@ export function applyHistogramEqualization(
  * Transforms RGB -> YCrCb, computes Otsu optimal variance thresholding on Cr channel,
  * bounds chrominance against office lighting, and executes a morphological opening pass.
  */
+export interface FaceRoi {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Transforms RGB -> YCrCb, computes face-guided Otsu variance thresholding on Cr channel,
+ * bounds chrominance to human biological ranges, enforces spatial head/neck envelope gating
+ * to strictly reject clothes and torso, and executes a morphological cleaning pass.
+ */
 export function applyYCrCbOtsuSegmentation(
   srcData: ImageData,
   dstData: ImageData,
   width: number,
-  height: number
+  height: number,
+  faceRoi?: FaceRoi | null
 ): OtsuSegmentationResult {
   const src = srcData.data;
   const dst = dstData.data;
   const numPixels = width * height;
   ensureKernelBuffers(numPixels);
 
-  _crHistBuf.fill(0);
-
-  // 1. RGB -> YCrCb transformation (BT.601)
-  let totalCr = 0;
+  // 1. RGB -> YCrCb transformation (BT.601 integer math)
   for (let i = 0; i < numPixels; i++) {
     const idx = i * 4;
     const r = src[idx];
@@ -218,24 +228,112 @@ export function applyYCrCbOtsuSegmentation(
 
     const cr = Math.min(255, Math.max(0, (32768 + 128 * r - 107 * g - 21 * b) >> 8));
     const cb = Math.min(255, Math.max(0, (32768 - 43 * r - 85 * g + 128 * b) >> 8));
+    const y  = (77 * r + 150 * g + 29 * b) >> 8;
 
     _crBuf[i] = cr;
     _cbBuf[i] = cb;
-    _crHistBuf[cr]++;
-    totalCr += cr;
+    _grayBuf[i] = y;
   }
 
-  // 2. Otsu between-class variance maximization
+  // 2. Resolve Face ROI (from argument or automatic skin cluster detection in upper frame)
+  let fx = 0, fy = 0, fw = 0, fh = 0;
+  let hasRoi = false;
+
+  if (faceRoi && faceRoi.width > 0 && faceRoi.height > 0) {
+    fx = faceRoi.width <= 1.0 ? faceRoi.x * width : faceRoi.x;
+    fy = faceRoi.height <= 1.0 ? faceRoi.y * height : faceRoi.y;
+    fw = faceRoi.width <= 1.0 ? faceRoi.width * width : faceRoi.width;
+    fh = faceRoi.height <= 1.0 ? faceRoi.height * height : faceRoi.height;
+    if (fw >= 15 && fh >= 15 && fx >= -fw && fy >= -fh && fx < width && fy < height) {
+      fx = Math.max(0, Math.min(width - 20, fx));
+      fy = Math.max(0, Math.min(height - 20, fy));
+      fw = Math.max(15, Math.min(width - fx, fw));
+      fh = Math.max(15, Math.min(height - fy, fh));
+      hasRoi = true;
+    }
+  }
+
+  // If no face ROI was supplied, locate primary skin cluster in upper 70% of frame (excluding clothes/torso)
+  if (!hasRoi) {
+    let sumX = 0, sumY = 0, count = 0;
+    let minX = width, maxX = 0, minY = height, maxY = 0;
+    const maxSearchY = Math.round(height * 0.70);
+    for (let py = Math.round(height * 0.05); py < maxSearchY; py++) {
+      const row = py * width;
+      for (let px = Math.round(width * 0.05); px < width * 0.95; px++) {
+        const i = row + px;
+        const cr = _crBuf[i];
+        const cb = _cbBuf[i];
+        if (cr >= 133 && cr <= 175 && cb >= 77 && cb <= 128 && cr >= cb) {
+          sumX += px;
+          sumY += py;
+          count++;
+          if (px < minX) minX = px;
+          if (px > maxX) maxX = px;
+          if (py < minY) minY = py;
+          if (py > maxY) maxY = py;
+        }
+      }
+    }
+    if (count > 50) {
+      const bw = maxX - minX + 1;
+      const bh = maxY - minY + 1;
+      const cx = sumX / count;
+      const cy = sumY / count;
+      const size = Math.max(bw, bh);
+      fx = Math.max(0, Math.min(width - 30, Math.round(cx - size * 0.4)));
+      fy = Math.max(0, Math.min(height - 30, Math.round(cy - size * 0.5)));
+      fw = Math.max(25, Math.min(width - fx, Math.round(size * 0.8)));
+      fh = Math.max(25, Math.min(height - fy, Math.round(size * 0.95)));
+      hasRoi = true;
+    }
+  }
+
+  // 3. Face-guided Otsu between-class variance maximization
+  // Sampling the face region isolates facial skin from darker features (eyes, eyebrows, nostrils, mouth)
+  // without being contaminated or skewed by shirt color / clothes in the lower frame.
+  _crHistBuf.fill(0);
+  let totalCr = 0;
+  let sampleCount = 0;
+
+  if (hasRoi) {
+    const fMinX = Math.round(fx + fw * 0.1);
+    const fMaxX = Math.round(fx + fw * 0.9);
+    const fMinY = Math.round(fy + fh * 0.1);
+    const fMaxY = Math.round(fy + fh * 0.9);
+
+    for (let py = fMinY; py <= fMaxY; py++) {
+      const row = py * width;
+      for (let px = fMinX; px <= fMaxX; px++) {
+        const cr = _crBuf[row + px];
+        _crHistBuf[cr]++;
+        totalCr += cr;
+        sampleCount++;
+      }
+    }
+  }
+
+  if (sampleCount < 40) {
+    totalCr = 0;
+    sampleCount = numPixels;
+    _crHistBuf.fill(0);
+    for (let i = 0; i < numPixels; i++) {
+      const cr = _crBuf[i];
+      _crHistBuf[cr]++;
+      totalCr += cr;
+    }
+  }
+
   let sumB = 0;
   let wB = 0;
   let varMax = 0;
-  let optThresh = 138;
+  let optThresh = 135;
 
   if (totalCr > 0) {
     for (let t = 0; t < 256; t++) {
       wB += _crHistBuf[t];
       if (wB === 0) continue;
-      const wF = numPixels - wB;
+      const wF = sampleCount - wB;
       if (wF === 0) break;
 
       sumB += t * _crHistBuf[t];
@@ -251,39 +349,98 @@ export function applyYCrCbOtsuSegmentation(
     }
   }
 
-  // Clamp Otsu threshold to realistic human skin chrominance bounds
-  optThresh = Math.max(136, Math.min(165, optThresh));
+  // Clamped to realistic human skin chrominance floor [125..139]
+  // This prevents high-Cr shirts from pulling the threshold too high and rejecting valid face skin.
+  optThresh = Math.max(125, Math.min(139, optThresh));
 
-  // 3. Combined Chrominance Envelope + Otsu Binarization (Resistant to fluorescent lighting & warm background walls)
+  // 4. Sample face skin chrominance profile (Cr, Cb center)
+  let sumCrSkin = 0;
+  let sumCbSkin = 0;
+  let countSkin = 0;
+
+  if (hasRoi) {
+    const fMinX = Math.round(fx + fw * 0.15);
+    const fMaxX = Math.round(fx + fw * 0.85);
+    const fMinY = Math.round(fy + fh * 0.15);
+    const fMaxY = Math.round(fy + fh * 0.85);
+
+    for (let py = fMinY; py <= fMaxY; py++) {
+      const row = py * width;
+      for (let px = fMinX; px <= fMaxX; px++) {
+        const i = row + px;
+        const cr = _crBuf[i];
+        const cb = _cbBuf[i];
+        if (cr >= optThresh && cr <= 178 && cb >= 77 && cb <= 130 && cr >= cb) {
+          sumCrSkin += cr;
+          sumCbSkin += cb;
+          countSkin++;
+        }
+      }
+    }
+  }
+
+  const meanCr = countSkin >= 20 ? sumCrSkin / countSkin : 148;
+  const meanCb = countSkin >= 20 ? sumCbSkin / countSkin : 108;
+
+  // 5. Spatial Head & Neck Envelope:
+  // Strictly gates out the clothes, chest, and shoulders
+  const faceCenterX = hasRoi ? fx + fw / 2 : width / 2;
+  const headTop = hasRoi ? Math.max(0, fy - fh * 0.18) : 0;
+  const chinY = hasRoi ? fy + fh : height * 0.70;
+  const neckBottom = hasRoi ? Math.min(height - 1, chinY + fh * 0.28) : height * 0.75;
+
   _rawMaskBuf.fill(0);
   let skinCount = 0;
   let sumX = 0;
   let sumY = 0;
 
   for (let py = 0; py < height; py++) {
+    const row = py * width;
     for (let px = 0; px < width; px++) {
-      const i = py * width + px;
+      const i = row + px;
+
+      // ── Spatial Envelope: Reject clothes, shoulders, and background ──
+      if (hasRoi) {
+        // Below neck: torso/chest/clothes -> reject
+        if (py > neckBottom) continue;
+        // Above head -> reject
+        if (py < headTop) continue;
+
+        const dx = Math.abs(px - faceCenterX);
+        // In neck region: neck is narrow (at most 42% of face width)
+        // Anything wider is on the shoulders / clothing collar!
+        if (py > chinY && dx > fw * 0.42) continue;
+
+        // In head region: lateral boundary (at most 68% of face width)
+        if (py <= chinY && dx > fw * 0.68) continue;
+      }
+
       const idx = i * 4;
       const r = src[idx];
       const g = src[idx + 1];
       const b = src[idx + 2];
       const cr = _crBuf[i];
       const cb = _cbBuf[i];
-      const luma = (77 * r + 150 * g + 29 * b) >> 8;
+      const luma = _grayBuf[i];
 
-      // Robust human skin classification condition:
-      // Human skin has Cr in [136..180], Cb in [75..126], prominent (Cr - Cb) >= 16, (R - B) >= 18, and R > G * 1.04
-      // This strictly rejects desaturated beige/yellowish walls and ceiling panels
+      // Chrominance distance to face skin profile
+      const dCr = cr - meanCr;
+      const dCb = cb - meanCb;
+      const distSq = dCr * dCr + dCb * dCb;
+
+      // Inclusive human skin classification condition:
+      // Accepts Fitzpatrick types I-VI and indoor webcam lighting, while rejecting eyes/mouth/hair
       const isSkin =
-        cr >= Math.max(136, optThresh) &&
+        cr >= optThresh &&
         cr <= 180 &&
-        cb >= 75 &&
-        cb <= 126 &&
-        (cr - cb) >= 16 &&
-        (r - b) >= 18 &&
-        r > g * 1.04 &&
-        luma >= 35 &&
-        luma <= 215;
+        cb >= 77 &&
+        cb <= 130 &&
+        cr >= cb &&
+        r >= g - 6 &&
+        r > b &&
+        luma >= 28 &&
+        luma <= 240 &&
+        (countSkin >= 20 ? distSq <= 1600 : true);
 
       if (isSkin) {
         _rawMaskBuf[i] = 1;
@@ -294,22 +451,24 @@ export function applyYCrCbOtsuSegmentation(
     }
   }
 
-  // 4. 3x3 Morphological Opening (Erosion -> Dilation)
+  // 6. 3x3 Morphological Opening (Erosion -> Dilation) for clean contiguous face mask
   _cleanMaskBuf.fill(0);
   for (let py = 1; py < height - 1; py++) {
     for (let px = 1; px < width - 1; px++) {
       const base = py * width + px;
       if (
-        _rawMaskBuf[base - width - 1] & _rawMaskBuf[base - width] & _rawMaskBuf[base - width + 1] &
-        _rawMaskBuf[base - 1]         & _rawMaskBuf[base]          & _rawMaskBuf[base + 1]         &
-        _rawMaskBuf[base + width - 1] & _rawMaskBuf[base + width] & _rawMaskBuf[base + width + 1]
+        _rawMaskBuf[base] &
+        _rawMaskBuf[base - width] &
+        _rawMaskBuf[base + width] &
+        _rawMaskBuf[base - 1] &
+        _rawMaskBuf[base + 1]
       ) {
         _cleanMaskBuf[base] = 1;
       }
     }
   }
 
-  // 4b. Dilation pass with high-contrast binary mask rendering
+  // 7. Dilation pass with high-contrast neon emerald face rendering
   let finalSkinCount = 0;
   for (let py = 0; py < height; py++) {
     for (let px = 0; px < width; px++) {
@@ -327,19 +486,19 @@ export function applyYCrCbOtsuSegmentation(
 
       const base = i;
       const anyOnes =
-        _cleanMaskBuf[base - width - 1] | _cleanMaskBuf[base - width] | _cleanMaskBuf[base - width + 1] |
-        _cleanMaskBuf[base - 1]         | _cleanMaskBuf[base]          | _cleanMaskBuf[base + 1]         |
-        _cleanMaskBuf[base + width - 1] | _cleanMaskBuf[base + width] | _cleanMaskBuf[base + width + 1];
+        _cleanMaskBuf[base] |
+        _cleanMaskBuf[base - width] | _cleanMaskBuf[base + width] |
+        _cleanMaskBuf[base - 1]     | _cleanMaskBuf[base + 1];
 
       if (anyOnes) {
-        // High-contrast neon emerald/white skin segmentation
+        // High-contrast neon emerald skin segmentation (Face only)
         dst[outIdx] = 16;
         dst[outIdx + 1] = 230;
         dst[outIdx + 2] = 140;
         dst[outIdx + 3] = 255;
         finalSkinCount++;
       } else {
-        // Solid deep midnight navy background (guarantees zero transparency)
+        // Solid deep midnight navy background (Clothes, hair, background)
         dst[outIdx] = 15;
         dst[outIdx + 1] = 23;
         dst[outIdx + 2] = 42;

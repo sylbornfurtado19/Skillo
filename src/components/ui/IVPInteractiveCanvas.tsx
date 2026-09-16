@@ -605,13 +605,51 @@ export default function IVPInteractiveCanvas({
     let madRes: TemporalMADResult | undefined;
 
     if (!isTargetLost) {
+      // Resolve current face ROI in PROC_W x PROC_H space to guide skin thresholding and gate out clothes
+      let currentFaceRoi: { x: number; y: number; width: number; height: number } | null = null;
+      const workerEnv = workerLandmarks?.envelope;
+      if (workerEnv && workerEnv.faceDetected && workerEnv.faceBox && workerEnv.faceBox.width > 0) {
+        const fb = workerEnv.faceBox;
+        const envW = workerEnv.videoWidth || PROC_W;
+        const envH = workerEnv.videoHeight || PROC_H;
+        const normX = fb.width > 1.0 ? fb.x / envW : fb.x;
+        const normY = fb.height > 1.0 ? fb.y / envH : fb.y;
+        const normW = fb.width > 1.0 ? fb.width / envW : fb.width;
+        const normH = fb.height > 1.0 ? fb.height / envH : fb.height;
+        currentFaceRoi = {
+          x: (mirrored ? (1.0 - (normX + normW)) : normX) * PROC_W,
+          y: normY * PROC_H,
+          width: normW * PROC_W,
+          height: normH * PROC_H,
+        };
+      } else if (lastBootstrapResultRef.current && lastBootstrapResultRef.current.detected && lastBootstrapResultRef.current.box) {
+        const bbox = lastBootstrapResultRef.current.box;
+        currentFaceRoi = {
+          x: (mirrored ? (1.0 - (bbox.x + bbox.width)) : bbox.x) * PROC_W,
+          y: bbox.y * PROC_H,
+          width: bbox.width * PROC_W,
+          height: bbox.height * PROC_H,
+        };
+      } else if (frameValid && rawImgData) {
+        const fastFace = detectFastFaceBootstrap(rawImgData.data, PROC_W, PROC_H, mirrored);
+        if (fastFace && fastFace.detected && fastFace.box) {
+          lastBootstrapResultRef.current = fastFace;
+          currentFaceRoi = {
+            x: (mirrored ? (1.0 - (fastFace.box.x + fastFace.box.width)) : fastFace.box.x) * PROC_W,
+            y: fastFace.box.y * PROC_H,
+            width: fastFace.box.width * PROC_W,
+            height: fastFace.box.height * PROC_H,
+          };
+        }
+      }
+
       switch (activeMode) {
         case 'SOBEL_GRADIENTS': {
           sobelRes = applySobelGradientField(rawImgData, procImgData, PROC_W, PROC_H, true);
           break;
         }
         case 'YCRCB_SKIN_OTSU': {
-          otsuRes = applyYCrCbOtsuSegmentation(rawImgData, procImgData, PROC_W, PROC_H);
+          otsuRes = applyYCrCbOtsuSegmentation(rawImgData, procImgData, PROC_W, PROC_H, currentFaceRoi);
           break;
         }
         case 'LUMINANCE_HISTEQ': {
@@ -626,7 +664,7 @@ export default function IVPInteractiveCanvas({
       }
       // Always compute otsuRes on scratch buffer if not already active so skin segmentation is never undefined
       if (!otsuRes && prevImgDataRef.current) {
-        otsuRes = applyYCrCbOtsuSegmentation(rawImgData, prevImgDataRef.current, PROC_W, PROC_H);
+        otsuRes = applyYCrCbOtsuSegmentation(rawImgData, prevImgDataRef.current, PROC_W, PROC_H, currentFaceRoi);
       }
     } else {
       for (let i = 0; i < procImgData.data.length; i += 4) {
