@@ -323,6 +323,11 @@ export interface LandmarkPoint2D {
 }
 export type Point2D = LandmarkPoint2D;
 
+export interface LandmarkUpdateResult extends LandmarkPoint2D {
+  accepted: boolean;
+  pos: LandmarkPoint2D;
+}
+
 export type FilterEngineMode = 'KALMAN_HYBRID' | 'EMA_KINEMATIC';
 
 export interface KinematicFilterConfig {
@@ -1139,10 +1144,15 @@ export class DenseLandmarksSmoother {
       this.initFilters(numPoints);
     }
 
+    let validTimestamp = timestampMs;
+    if (this.lastModelTimestampMs > 0 && validTimestamp <= this.lastModelTimestampMs) {
+      validTimestamp = this.lastModelTimestampMs + 1;
+    }
+
     const dt = this.lastModelTimestampMs > 0
-      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastModelTimestampMs) / 1000))
+      ? Math.max(0.001, Math.min(0.200, (validTimestamp - this.lastModelTimestampMs) / 1000))
       : 0.033;
-    this.lastModelTimestampMs = timestampMs;
+    this.lastModelTimestampMs = validTimestamp;
 
     // 1. Global Anchor Centroid calculation for Re-localization Gating
     const anchorIndices = [30, 33, 36, 39, 42, 45]; // nose base, tip, eye corners
@@ -1329,10 +1339,15 @@ export class DenseLandmarksSmoother {
       this.initFilters(numPoints);
     }
 
+    let validTimestamp = timestampMs;
+    if (this.lastModelTimestampMs > 0 && validTimestamp <= this.lastModelTimestampMs) {
+      validTimestamp = this.lastModelTimestampMs + 1;
+    }
+
     const dt = this.lastModelTimestampMs > 0
-      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastModelTimestampMs) / 1000))
+      ? Math.max(0.001, Math.min(0.200, (validTimestamp - this.lastModelTimestampMs) / 1000))
       : 0.033;
-    this.lastModelTimestampMs = timestampMs;
+    this.lastModelTimestampMs = validTimestamp;
 
     const anchorIndices = [30, 33, 36, 39, 42, 45];
     let anchorSumX = 0, anchorSumY = 0, anchorConfSum = 0, anchorCount = 0;
@@ -1495,14 +1510,31 @@ export class DenseLandmarksSmoother {
     pos: LandmarkPoint2D,
     confidence: number,
     timestampMs: number
-  ): LandmarkPoint2D | null {
+  ): LandmarkUpdateResult | null {
     if (index < 0 || index >= this.filters.length) return null;
+    if (!Number.isFinite(pos.x) || !Number.isFinite(pos.y) || confidence < 0.15) {
+      return { accepted: false, pos: { ...pos }, x: pos.x, y: pos.y };
+    }
+
+    let validTimestamp = timestampMs;
+    if (this.lastMicroTimestampMs > 0 && validTimestamp <= this.lastMicroTimestampMs) {
+      validTimestamp = this.lastMicroTimestampMs + 1;
+    }
+
     const dt = this.lastMicroTimestampMs > 0
-      ? Math.max(0.001, Math.min(0.200, (timestampMs - this.lastMicroTimestampMs) / 1000))
+      ? Math.max(0.001, Math.min(0.200, (validTimestamp - this.lastMicroTimestampMs) / 1000))
       : 0.016;
+
     const res = this.filters[index].update(pos, confidence, dt);
-    this.lastMicroTimestampMs = timestampMs;
-    return res.pos;
+    this.lastMicroTimestampMs = validTimestamp;
+
+    const accepted = Number.isFinite(res.pos.x) && Number.isFinite(res.pos.y);
+    return {
+      accepted,
+      pos: res.pos,
+      x: res.pos.x,
+      y: res.pos.y,
+    };
   }
 
   /**

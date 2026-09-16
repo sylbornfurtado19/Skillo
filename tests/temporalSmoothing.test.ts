@@ -232,5 +232,67 @@ describe('Temporal Smoothing Engine', () => {
       expect(resModel2.points[33].x).toBeGreaterThan(0.50);
       expect(resModel2.points[33].x).toBeLessThan(0.55);
     });
+
+    it('handles monotonic, duplicate, and out-of-order timestamps gracefully without negative dt or NaN', () => {
+      const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+      const buffer = new Float32Array(70 * 4);
+      for (let i = 0; i < 70; i++) {
+        buffer[i * 4] = 0.5;
+        buffer[i * 4 + 1] = 0.5;
+        buffer[i * 4 + 3] = 0.95;
+      }
+
+      smoother.updateFromBuffer(buffer, 70, 1000);
+
+      // Duplicate timestamp (1000ms <= lastModelTs)
+      const resDup = smoother.updateFromBuffer(buffer, 70, 1000);
+      expect(Number.isFinite(resDup.points[0].x)).toBe(true);
+      expect(Number.isNaN(resDup.points[0].x)).toBe(false);
+
+      // Out-of-order timestamp (950ms < 1000ms)
+      const resBack = smoother.updateFromBuffer(buffer, 70, 950);
+      expect(Number.isFinite(resBack.points[0].x)).toBe(true);
+
+      // Out-of-order micro updates
+      smoother.updatePoint(68, { x: 0.51, y: 0.51 }, 0.85, 1020);
+      const resMicroOut = smoother.updatePoint(68, { x: 0.52, y: 0.52 }, 0.85, 1010); // backward timestamp
+      expect(resMicroOut).not.toBeNull();
+      expect(resMicroOut!.accepted).toBe(true);
+      expect(Number.isFinite(resMicroOut!.pos.x)).toBe(true);
+    });
+
+    it('atomic updatePoint rejects low confidence or NaN coordinates, returning accepted: false', () => {
+      const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+      const buffer = new Float32Array(70 * 4);
+      for (let i = 0; i < 70; i++) {
+        buffer[i * 4] = 0.5;
+        buffer[i * 4 + 1] = 0.5;
+        buffer[i * 4 + 3] = 0.95;
+      }
+      smoother.updateFromBuffer(buffer, 70, 1000);
+
+      const targetBuffer = new Float32Array(buffer);
+
+      // Reject low confidence (< 0.15)
+      const lowConfRes = smoother.updatePoint(68, { x: 0.9, y: 0.9 }, 0.05, 1016);
+      expect(lowConfRes).not.toBeNull();
+      expect(lowConfRes!.accepted).toBe(false);
+
+      // Simulate atomic mutation guard: only mutate buffer if accepted
+      if (lowConfRes && lowConfRes.accepted) {
+        targetBuffer[68 * 4] = lowConfRes.pos.x;
+      }
+      // Target buffer remains unchanged
+      expect(targetBuffer[68 * 4]).toBe(0.5);
+
+      // Valid update
+      const validRes = smoother.updatePoint(68, { x: 0.51, y: 0.50 }, 0.90, 1033);
+      expect(validRes).not.toBeNull();
+      expect(validRes!.accepted).toBe(true);
+      if (validRes && validRes.accepted) {
+        targetBuffer[68 * 4] = validRes.pos.x;
+      }
+      expect(targetBuffer[68 * 4]).toBeCloseTo(0.51, 1);
+    });
   });
 });
