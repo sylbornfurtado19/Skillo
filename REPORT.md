@@ -543,19 +543,24 @@ When the user clicks **"💾 EXPORT TELEMETRY"**, a local JSON bundle is exporte
     "deviceClass": "desktop",
     "devicePixelRatio": 1.0,
     "hardwareConcurrency": 8,
-    "baselineThresholds": {
+    "thresholds": {
       "minApplyNcc": 0.76,
       "maxMahalanobisDelta": 0.06,
       "lkMinEigenvalue": 8.0,
       "stride": 1
     }
   },
-  "faceBox": { "x": 210, "y": 100, "width": 220, "height": 260 },
+  "activeFaceId": "210_100",
+  "frameNumber": 420,
+  "envelope": {
+    "faceBox": { "x": 210, "y": 100, "width": 220, "height": 260 },
+    "confidence": 0.94
+  },
   "landmarksRaw": [{ "x": 0.51, "y": 0.42 }],
   "landmarksSmoothed": [{ "x": 0.509, "y": 0.421 }],
   "microEvents": [
-    { "timestamp": 1042.5, "idx": 68, "ncc": 0.89, "method": "ZNCC", "accepted": true, "delta": 0.008 },
-    { "timestamp": 1042.5, "idx": 48, "ncc": 0.74, "method": "LK", "accepted": true, "delta": 0.012 }
+    { "idx": 68, "tried": true, "ncc": 0.89, "method": "ZNCC", "accepted": true, "latencyMs": 0.02, "delta": 0.008 },
+    { "idx": 48, "tried": true, "ncc": 0.74, "method": "LK", "accepted": true, "latencyMs": 0.02, "delta": 0.012 }
   ],
   "microTrackMs": { "p50": 0.01, "p95": 0.05 },
   "featureFlags": {
@@ -571,6 +576,7 @@ When the user clicks **"💾 EXPORT TELEMETRY"**, a local JSON bundle is exporte
 
 ### Privacy & Data Safety Guarantees
 1. **Zero Off-Device Transmission:** All telemetry and diagnostic computation runs 100% client-side in the browser.
-2. **Images Excluded by Default:** Telemetry export contains numeric vectors only. Canvas image bitmaps are NEVER included unless explicitly requested by the user.
+2. **Images Excluded by Default:** Telemetry export contains numeric vectors only. Canvas image bitmaps are NEVER included unless explicitly requested by the user via an opt-in parameter.
 3. **Telemetry Opt-In Default:** `enableTelemetryOptIn` strictly defaults to `false`.
+4. **Multi-Face Isolation:** Tracker state and reference templates are bound strictly to `activeFaceId`. Whenever a user steps away or a new subject enters the frame, all localized templates and smoother states are immediately purged.
 

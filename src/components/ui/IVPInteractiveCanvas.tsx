@@ -234,17 +234,31 @@ export default function IVPInteractiveCanvas({
         imageDataUrl = canvasRef.current.toDataURL('image/png');
       } catch {}
     }
+    const currentActiveFace = denseSmootherRef.current?.getFaceId() ?? (workerLandmarks?.envelope?.faceDetected ? 'active_face' : null);
     const payload = {
       sessionId: `session_${Date.now()}`,
       timestamp: Date.now(),
       deviceProfile: deviceProfileRef.current,
-      faceBox: workerLandmarks?.envelope?.faceBox ?? null,
-      landmarksRaw: lastRawNormPtsRef.current ?? [],
-      landmarksSmoothed: denseSmootherRef.current?.getCurrentResult()?.points ?? [],
-      microEvents: microEventHistoryRef.current,
+      activeFaceId: currentActiveFace,
+      frameNumber: frameCountRef.current,
+      envelope: {
+        faceBox: workerLandmarks?.envelope?.faceBox ?? null,
+        confidence: workerLandmarks?.envelope?.regionConfidences?.overall ?? 0,
+      },
+      landmarksRaw: (lastRawNormPtsRef.current ?? []).slice(0, 70),
+      landmarksSmoothed: (denseSmootherRef.current?.getCurrentResult()?.points ?? []).slice(0, 70),
+      microEvents: microEventHistoryRef.current.map(evt => ({
+        idx: evt.idx,
+        tried: true,
+        ncc: evt.ncc,
+        method: evt.method,
+        accepted: evt.accepted,
+        latencyMs: lastMicroTrackMsRef.current,
+        delta: evt.delta,
+      })),
       microTrackMs: { p50, p95 },
       featureFlags,
-      image: imageDataUrl,
+      ...(includeImage && imageDataUrl ? { image: imageDataUrl } : {}),
     };
     if (typeof window !== 'undefined') {
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -643,6 +657,7 @@ export default function IVPInteractiveCanvas({
           const fb = workerEnv.faceBox;
           const faceId = fb ? `${Math.round((fb.x || 0) * 10)}_${Math.round((fb.y || 0) * 10)}` : 'active_face';
           microTrackerRef.current.setFaceId(faceId);
+          denseSmootherRef.current.setFaceId(faceId);
 
           const normMicroX = (x: number) => (mirrored ? (1.0 - x) : x);
           const fbW = workerEnv.faceBox ? (workerEnv.faceBox.width > 1.0 ? workerEnv.faceBox.width : workerEnv.faceBox.width * PROC_W) : 80;
@@ -654,6 +669,9 @@ export default function IVPInteractiveCanvas({
             { index: 48, x: normMicroX(rawPts[48].x), y: rawPts[48].y, patchRadius: lipRadius }, // Mouth right corner
             { index: 54, x: normMicroX(rawPts[54].x), y: rawPts[54].y, patchRadius: lipRadius }, // Mouth left corner
           ]);
+        } else if (!isFaceGenuinelyDetected) {
+          microTrackerRef.current.setFaceId(null);
+          denseSmootherRef.current.setFaceId(null);
         }
       } else {
         // Intermediate 60 FPS RAF frame: track micro-features (pupils & lip corners) using NCC / LK
@@ -741,11 +759,13 @@ export default function IVPInteractiveCanvas({
                   now
                 );
 
-                // Gate 4: Mutate worker buffer ONLY IF smoother accepted
-                if (updatedPos && workerLandmarks?.buffer && workerLandmarks.buffer.length >= (idx + 1) * 4) {
-                  workerLandmarks.buffer[idx * 4] = videoNormX;
-                  workerLandmarks.buffer[idx * 4 + 1] = videoNormY;
-                  workerLandmarks.buffer[idx * 4 + 3] = feat.ncc;
+                // Gate 4: Mutate worker buffer ONLY IF smoother accepted measurement
+                if (updatedPos && updatedPos.accepted && workerLandmarks?.buffer && workerLandmarks.buffer.length >= (idx + 1) * 4) {
+                  const finalX = updatedPos.pos ? updatedPos.pos.x : updatedPos.x;
+                  const finalY = updatedPos.pos ? updatedPos.pos.y : updatedPos.y;
+                  workerLandmarks.buffer[idx * 4] = finalX;
+                  workerLandmarks.buffer[idx * 4 + 1] = finalY;
+                  workerLandmarks.buffer[idx * 4 + 3] = scaledConf;
                   microMatchesAcceptedRef.current++;
                   accepted = true;
                 }

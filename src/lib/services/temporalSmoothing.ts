@@ -1060,14 +1060,6 @@ export class DenseLandmarksSmoother {
     return this.activeFaceId;
   }
 
-  public reset(): void {
-    this.initFilters(this.filters.length);
-    this.lastModelTimestampMs = 0;
-    this.lastMicroTimestampMs = 0;
-    this.reLocStartPositions = [];
-    this.isRelocalizing = false;
-    this.reLocProgress = 1.0;
-  }
 
   constructor(
     numPoints: number = 68,

@@ -402,7 +402,34 @@ npm run build
 | **Schema Validation** | Zod 4.4 | Safe parsing of all LLM and computer vision JSON payloads |
 | **Backend & API Tier** | Next.js Server Actions & API Routes | Asynchronous engine pipeline processing |
 | **Database & Auth** | Supabase (PostgreSQL, SSR, JSONB) | Persisted candidate skill memory & multi-modal trace logs |
-| **Test Automation** | Jest 30, Ts-Jest | 7 test suites, 76 unit tests (100% Pass Rate) |
+| **Test Automation** | Jest 30, Ts-Jest, Playwright | 22 test suites, 180 unit/integration tests (100% Pass Rate) |
+
+---
+
+## 🔒 IVP Telemetry, Privacy & Security Architecture
+
+The Interactive Video Processing (IVP) suite adheres to strict privacy-by-design standards:
+
+* **100% Local Processing:** Real-time face tracking, 70-point kinematic smoothing, and micro-patch optical flow run entirely inside the client's browser (Web Workers & OffscreenCanvas). Video streams never leave the user's device.
+* **Strict Image Exclusion by Default:** The telemetry export bundle excludes camera images by default. Only numerical vectors (normalized landmark coordinates, tracking latencies, filter confidences) are exported.
+* **Canonical Telemetry Schema:**
+  ```typescript
+  {
+    sessionId: string;
+    timestamp: number;
+    deviceProfile: DeviceProfile;
+    activeFaceId: string | null;
+    frameNumber: number;
+    envelope: { faceBox: BoundingBox; confidence: number };
+    landmarksRaw: Array<{ x: number; y: number }>;      // 70 points
+    landmarksSmoothed: Array<{ x: number; y: number }>; // 70 points
+    microEvents: Array<{ idx: number; tried: boolean; ncc: number; method: string; accepted: boolean; latencyMs: number }>;
+    microTrackMs: { p50: number; p95: number };
+    featureFlags: IVPFeatureFlags;
+  }
+  ```
+* **Explicit User Consent & Opt-In:** Network telemetry dispatch defaults to disabled (`enableTelemetryOptIn: false`). Exporting metrics requires clicking the **"💾 EXPORT TELEMETRY"** button, which generates a local JSON file directly on the user's filesystem.
+* **Data Retention & Multi-Face Isolation:** Tracker state and reference templates are bound strictly to `activeFaceId`. Whenever a user steps away or a new subject enters the frame, all localized templates and smoother states are immediately purged.
 
 ---
 
