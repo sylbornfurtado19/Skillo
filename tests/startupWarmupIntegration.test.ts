@@ -162,9 +162,9 @@ describe('Startup & Warmup Integration (<1.5s visual lock-in)', () => {
 
       // Valid micro movement within delta bounds (0.50 -> 0.505)
       const validUpdate = smoother.updatePoint(68, { x: 0.505, y: 0.503 }, 0.85, 1016);
-      expect(validUpdate.accepted).toBe(true);
+      expect(validUpdate?.accepted).toBe(true);
 
-      if (validUpdate.accepted) {
+      if (validUpdate && validUpdate.accepted) {
         const finalX = validUpdate.pos ? validUpdate.pos.x : validUpdate.x;
         const finalY = validUpdate.pos ? validUpdate.pos.y : validUpdate.y;
         workerBuffer[68 * 4] = finalX;

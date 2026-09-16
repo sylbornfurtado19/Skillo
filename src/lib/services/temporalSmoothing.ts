@@ -1048,10 +1048,16 @@ export class DenseLandmarksSmoother {
   }
 
   private activeFaceId: string | number | null = null;
+  private isBootstrapTransition: boolean = false;
 
   public setFaceId(faceId: string | number | null): void {
     if (faceId !== this.activeFaceId) {
-      this.reset();
+      const wasBootstrap = this.activeFaceId === 'bootstrap_face';
+      if (!wasBootstrap) {
+        this.reset();
+      } else if (faceId !== null) {
+        this.isBootstrapTransition = true;
+      }
       this.activeFaceId = faceId;
     }
   }
@@ -1183,12 +1189,12 @@ export class DenseLandmarksSmoother {
     }
     const incomingAnchorConf = anchorCount > 0 ? anchorConfSum / anchorCount : 0;
 
-    if (
-      !this.isRelocalizing &&
+    const isRelocEligible = !this.isRelocalizing &&
       incomingAnchorConf >= 0.45 &&
-      this.lastMaxOccludedSec >= this.minOcclusionForRelocSec &&
-      this.filters.length === numPoints
-    ) {
+      (this.lastMaxOccludedSec >= this.minOcclusionForRelocSec || this.isBootstrapTransition) &&
+      this.filters.length === numPoints;
+
+    if (isRelocEligible) {
       let prevAnchorSumX = 0, prevAnchorSumY = 0, prevCount = 0;
       for (const idx of anchorIndices) {
         const p = this.filters[idx]?.getPos();
@@ -1204,8 +1210,9 @@ export class DenseLandmarksSmoother {
         const incAnchorX = anchorSumX / anchorCount;
         const incAnchorY = anchorSumY / anchorCount;
         const displacement = Math.hypot(incAnchorX - prevAnchorX, incAnchorY - prevAnchorY);
+        const threshold = this.isBootstrapTransition ? 0.015 : this.reLocThreshold;
 
-        if (displacement >= this.reLocThreshold) {
+        if (displacement >= threshold) {
           // Trigger global smooth re-localization glide across all landmarks via Procrustes similarity transform
           this.isRelocalizing = true;
           this.reLocProgress = 0.0;
@@ -1236,6 +1243,7 @@ export class DenseLandmarksSmoother {
           });
         }
       }
+      this.isBootstrapTransition = false;
     }
 
     const wasRelocalizing = this.isRelocalizing;
@@ -1388,12 +1396,12 @@ export class DenseLandmarksSmoother {
     }
     const incomingAnchorConf = anchorCount > 0 ? anchorConfSum / anchorCount : 0;
 
-    if (
-      !this.isRelocalizing &&
+    const isRelocEligible = !this.isRelocalizing &&
       incomingAnchorConf >= 0.45 &&
-      this.lastMaxOccludedSec >= this.minOcclusionForRelocSec &&
-      this.filters.length === numPoints
-    ) {
+      (this.lastMaxOccludedSec >= this.minOcclusionForRelocSec || this.isBootstrapTransition) &&
+      this.filters.length === numPoints;
+
+    if (isRelocEligible) {
       let prevAnchorSumX = 0, prevAnchorSumY = 0, prevCount = 0;
       for (const idx of anchorIndices) {
         const p = this.filters[idx]?.getPos();
@@ -1409,8 +1417,9 @@ export class DenseLandmarksSmoother {
         const incAnchorX = anchorSumX / anchorCount;
         const incAnchorY = anchorSumY / anchorCount;
         const displacement = Math.hypot(incAnchorX - prevAnchorX, incAnchorY - prevAnchorY);
+        const threshold = this.isBootstrapTransition ? 0.015 : this.reLocThreshold;
 
-        if (displacement >= this.reLocThreshold) {
+        if (displacement >= threshold) {
           this.isRelocalizing = true;
           this.reLocProgress = 0.0;
           const prevAnchors: LandmarkPoint2D[] = [];
@@ -1429,6 +1438,7 @@ export class DenseLandmarksSmoother {
           });
         }
       }
+      this.isBootstrapTransition = false;
     }
 
     const wasRelocalizing = this.isRelocalizing;
@@ -1638,5 +1648,6 @@ export class DenseLandmarksSmoother {
     this.reLocProgress = 1.0;
     this.reLocStartPositions = [];
     this.lastMaxOccludedSec = 0;
+    this.isBootstrapTransition = false;
   }
 }
