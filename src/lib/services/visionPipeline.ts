@@ -217,32 +217,196 @@ export function mapNormalizedPointsToCanvas(
 /**
  * Converts a normalized coordinate relative to the PROC canvas (320x240)
  * into a normalized coordinate relative to the full video frame [0..1].
+ *
+ * When the proc canvas draws the full video frame span:
+ * procPixelX = normProcX * PROC_W
+ * videoPixelX = (procPixelX / PROC_W) * videoW = normProcX * videoW
+ * videoNormX = videoPixelX / videoW = normProcX.
  */
-export function procToVideoCoord(normProc: number, procDim: number, videoDim: number): number {
-  return (normProc * procDim) / Math.max(1, videoDim);
+export function procNormalizedToVideoNormalized(
+  normProcX: number,
+  normProcY: number,
+  cropRoi?: { x: number; y: number; width: number; height: number; videoWidth: number; videoHeight: number }
+): { x: number; y: number } {
+  if (cropRoi && cropRoi.videoWidth > 0 && cropRoi.videoHeight > 0) {
+    const videoPixelX = cropRoi.x + normProcX * cropRoi.width;
+    const videoPixelY = cropRoi.y + normProcY * cropRoi.height;
+    return {
+      x: videoPixelX / cropRoi.videoWidth,
+      y: videoPixelY / cropRoi.videoHeight,
+    };
+  }
+  return { x: normProcX, y: normProcY };
 }
 
-/**
- * Converts a normalized coordinate relative to the full video frame [0..1]
- * into a normalized coordinate relative to the PROC canvas (320x240).
- */
-export function videoToProcCoord(normVid: number, procDim: number, videoDim: number): number {
-  return (normVid * Math.max(1, videoDim)) / Math.max(1, procDim);
+export function procToVideoCoord(normProc: number, procDim?: number, videoDim?: number): number {
+  if (procDim !== undefined && videoDim !== undefined) {
+    return (normProc * procDim) / Math.max(1, videoDim);
+  }
+  return normProc;
 }
 
-export function procToVideoX(procX: number, procW: number, videoW: number): number {
+export function videoToProcCoord(normVid: number, procDim?: number, videoDim?: number): number {
+  if (procDim !== undefined && videoDim !== undefined) {
+    return (normVid * videoDim) / Math.max(1, procDim);
+  }
+  return normVid;
+}
+
+export function procToVideoX(procX: number, procW?: number, videoW?: number): number {
   return procToVideoCoord(procX, procW, videoW);
 }
 
-export function procToVideoY(procY: number, procH: number, videoH: number): number {
+export function procToVideoY(procY: number, procH?: number, videoH?: number): number {
   return procToVideoCoord(procY, procH, videoH);
 }
 
-export function videoToProcX(videoX: number, procW: number, videoW: number): number {
+export function videoToProcX(videoX: number, procW?: number, videoW?: number): number {
   return videoToProcCoord(videoX, procW, videoW);
 }
 
-export function videoToProcY(videoY: number, procH: number, videoH: number): number {
+export function videoToProcY(videoY: number, procH?: number, videoH?: number): number {
   return videoToProcCoord(videoY, procH, videoH);
 }
+
+// ── Device Profiling & Adaptive Thresholds ──────────────────────────────────
+export type CPUTier = 'HIGH' | 'MID' | 'LOW';
+export type DeviceClass = 'desktop' | 'tablet' | 'mobile';
+
+export interface AdaptiveTrackingThresholds {
+  minApplyNcc: number;
+  maxMahalanobisDelta: number;
+  faceScaleFactor: number;
+  lkMinEigenvalue: number;
+  stride: number;
+  maxMisses: number;
+}
+
+export interface DeviceProfile {
+  cpuTier: CPUTier;
+  deviceClass: DeviceClass;
+  devicePixelRatio: number;
+  hardwareConcurrency: number;
+  baselineThresholds: AdaptiveTrackingThresholds;
+  thresholds: AdaptiveTrackingThresholds;
+  computeAdaptiveThresholds: (
+    faceBox?: { width: number; height: number },
+    videoWidth?: number,
+    videoHeight?: number
+  ) => AdaptiveTrackingThresholds;
+}
+
+/**
+ * Online empirical calibration estimator across a rolling window of recent NCC values.
+ * Computes median and IQR to adjust threshold: threshold = median + 0.4 * IQR
+ */
+export class OnlineCalibrationEstimator {
+  private samples: number[] = [];
+  private readonly maxSamples: number;
+
+  constructor(maxSamples: number = 30) {
+    this.maxSamples = maxSamples;
+  }
+
+  public addSample(ncc: number): void {
+    if (Number.isFinite(ncc) && ncc >= 0 && ncc <= 1) {
+      this.samples.push(ncc);
+      if (this.samples.length > this.maxSamples) {
+        this.samples.shift();
+      }
+    }
+  }
+
+  public getEmpiricalThreshold(baseThreshold: number): number {
+    if (this.samples.length < 10) return baseThreshold;
+    const sorted = [...this.samples].sort((a, b) => a - b);
+    const n = sorted.length;
+    const q1 = sorted[Math.floor(n * 0.25)];
+    const median = sorted[Math.floor(n * 0.5)];
+    const q3 = sorted[Math.floor(n * 0.75)];
+    const iqr = q3 - q1;
+    const empirical = median + 0.4 * iqr;
+    return Math.max(0.68, Math.min(0.85, empirical));
+  }
+
+  public getThreshold(baseThreshold: number): number {
+    return this.getEmpiricalThreshold(baseThreshold);
+  }
+
+  public reset(): void {
+    this.samples = [];
+  }
+}
+
+/**
+ * Detects current hardware and browser performance capabilities,
+ * establishing explainable data-driven thresholds for the IVP pipeline.
+ */
+export function detectDeviceProfile(): DeviceProfile {
+  const isBrowser = typeof window !== 'undefined';
+  const dpr = isBrowser ? (window.devicePixelRatio || 1.0) : 1.0;
+  const cores = isBrowser ? (navigator.hardwareConcurrency || 4) : 4;
+
+  let deviceClass: DeviceClass = 'desktop';
+  if (isBrowser) {
+    const ua = navigator.userAgent.toLowerCase();
+    if (/iphone|android(?!.*tablet)|ipod|mobile/i.test(ua)) {
+      deviceClass = 'mobile';
+    } else if (/ipad|tablet/i.test(ua)) {
+      deviceClass = 'tablet';
+    }
+  }
+
+  let cpuTier: CPUTier = 'HIGH';
+  if (cores <= 2 || deviceClass === 'mobile') {
+    cpuTier = cores <= 2 ? 'LOW' : 'MID';
+  } else if (cores <= 4) {
+    cpuTier = 'MID';
+  } else {
+    cpuTier = 'HIGH';
+  }
+
+  const baseNCC = cpuTier === 'HIGH' ? 0.76 : (cpuTier === 'MID' ? 0.73 : 0.70);
+  const baseDelta = cpuTier === 'HIGH' ? 0.06 : (cpuTier === 'MID' ? 0.055 : 0.05);
+  const stride = cpuTier === 'LOW' ? 2 : 1;
+  const maxMisses = cpuTier === 'LOW' ? 4 : 6;
+  const lkMinEigenvalue = cpuTier === 'HIGH' ? 8.0 : 5.0;
+
+  const baselineThresholds: AdaptiveTrackingThresholds = {
+    minApplyNcc: baseNCC,
+    maxMahalanobisDelta: baseDelta,
+    faceScaleFactor: 1.0,
+    lkMinEigenvalue,
+    stride,
+    maxMisses,
+  };
+
+  return {
+    cpuTier,
+    deviceClass,
+    devicePixelRatio: dpr,
+    hardwareConcurrency: cores,
+    baselineThresholds,
+    thresholds: baselineThresholds,
+    computeAdaptiveThresholds: (faceBox, videoWidth = 640, _videoHeight = 480) => {
+      let faceScale = 1.0;
+      let maxMahalanobisDelta = baseDelta;
+      if (faceBox && faceBox.width > 0 && faceBox.height > 0) {
+        const faceDiag = Math.hypot(faceBox.width, faceBox.height);
+        faceScale = faceDiag / Math.hypot(videoWidth * 0.4, videoWidth * 0.5);
+        const baseDeltaPx = faceDiag * 0.035;
+        maxMahalanobisDelta = Math.max(0.03, Math.min(0.10, baseDeltaPx / Math.max(1, videoWidth)));
+      }
+      return {
+        minApplyNcc: baseNCC,
+        maxMahalanobisDelta,
+        faceScaleFactor: faceScale,
+        lkMinEigenvalue,
+        stride,
+        maxMisses,
+      };
+    },
+  };
+}
+
 

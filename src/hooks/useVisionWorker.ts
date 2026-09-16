@@ -20,6 +20,7 @@ interface UseVisionWorkerOptions {
 }
 
 import type { ExecutionMode } from '@/types/gazeEngine';
+import { detectDeviceProfile, type DeviceProfile } from '@/lib/services/visionPipeline';
 
 export interface VisionWorkerStats {
   droppedFrames: number;
@@ -43,6 +44,7 @@ interface UseVisionWorkerReturn {
   activeBackend: VisionModelBackend;
   capabilities: VisionWorkerCapabilities | null;
   stats: VisionWorkerStats;
+  deviceProfile: DeviceProfile;
   isTabPaused: boolean;
   isThrottled: boolean;
   suggestedCadenceFps: number;
@@ -111,6 +113,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   const watchdogUnlocksRef = useRef(0);
   const restartAttemptsRef = useRef(0);
   const restartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deviceProfileRef = useRef<DeviceProfile>(detectDeviceProfile());
 
   // ── Document Visibility & Lifecycle Handler ───────────────────────────────
   useEffect(() => {
@@ -446,6 +449,17 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
           }
         }, adaptiveTimeout);
 
+        // ───────────────────────────────────────────────────────────────────────────
+        // OWNERSHIP & BUFFER NEUTER CONTRACT:
+        // Main thread creates the ImageBitmap and immediately yields exclusive
+        // ownership to the worker via Transferable [bitmap]. Once transferred,
+        // the bitmap is neutered on the main thread. If dispatch fails,
+        // catch block defensively closes the bitmap.
+        // ───────────────────────────────────────────────────────────────────────────
+        if (!bitmap || bitmap.width === 0 || bitmap.height === 0) {
+          throw new Error('[useVisionWorker] Invalid or closed ImageBitmap provided for transfer.');
+        }
+
         // Zero-copy transfer of ImageBitmap to Web Worker thread
         workerRef.current.postMessage(
           { type: 'PROCESS_FRAME', payload },
@@ -493,6 +507,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
     activeBackend,
     capabilities,
     stats,
+    deviceProfile: deviceProfileRef.current,
     isTabPaused,
     isThrottled,
     suggestedCadenceFps,
