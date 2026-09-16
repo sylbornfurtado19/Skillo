@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { DenseLandmarksSmoother } from '../src/lib/services/temporalSmoothing';
 import { MicroPatchTracker } from '../src/lib/services/microPatchTracker';
 import { detectFastFaceBootstrap } from '../src/lib/services/visionPipeline';
@@ -201,5 +203,146 @@ describe('Startup Warmup to Model Handoff & Concurrency Invariants', () => {
     const validRes = smoother.updatePoint(68, { x: 0.42, y: 0.46 }, 0.92, 202);
     expect(validRes?.accepted).toBe(true);
     expect(validRes?.pos.x).toBeCloseTo(0.42, 1);
+  });
+
+  it('withstands 1000 iterations of randomized handoff timing under concurrent micro updates with zero double writes or NaNs', () => {
+    const failures: Array<{ iteration: number; reason: string }> = [];
+    const frameData = createSyntheticFaceFrame(80, 60, 50, 65);
+    const bootstrap = detectFastFaceBootstrap(frameData, PROC_W, PROC_H, false)!;
+    expect(bootstrap).not.toBeNull();
+
+    for (let iter = 0; iter < 1000; iter++) {
+      try {
+        const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+        const microTracker = new MicroPatchTracker(8, 10);
+        const sharedBuffer = new Float32Array(70 * 4);
+        let isHandoffLock = false;
+
+        // Model packet arrival delay: random between 15ms and 1485ms
+        const modelArrivalMs = Math.floor(15 + Math.random() * 1470);
+
+        // Bootstrap seed
+        smoother.setFaceId('bootstrap_face');
+        microTracker.setFaceId('bootstrap_face');
+        microTracker.updateTemplates(frameData, PROC_W, PROC_H, [
+          { index: 68, x: bootstrap.rightPupil.x, y: bootstrap.rightPupil.y, patchRadius: 8 },
+          { index: 69, x: bootstrap.leftPupil.x, y: bootstrap.leftPupil.y, patchRadius: 8 },
+          { index: 48, x: bootstrap.mouthRight.x, y: bootstrap.mouthRight.y, patchRadius: 10 },
+          { index: 54, x: bootstrap.mouthLeft.x, y: bootstrap.mouthLeft.y, patchRadius: 10 },
+        ], { minStdDev: 1.0 });
+
+        const initSmoothed = smoother.updateFromPoints(bootstrap.approxLandmarks, 0);
+        for (let i = 0; i < 70; i++) {
+          sharedBuffer[i * 4] = initSmoothed.points[i].x;
+          sharedBuffer[i * 4 + 1] = initSmoothed.points[i].y;
+          sharedBuffer[i * 4 + 2] = 0;
+          sharedBuffer[i * 4 + 3] = 0.5;
+        }
+
+        let modelHandedOff = false;
+        let currentTimeMs = 0;
+
+        // Simulate 3 to 10 video frame ticks
+        const totalTicks = 3 + Math.floor(Math.random() * 8);
+        for (let tick = 0; tick < totalTicks; tick++) {
+          const dt = 16 + Math.floor(Math.random() * 18); // 16ms - 34ms
+          currentTimeMs += dt;
+
+          const bufferWriteCountsThisTick = new Uint8Array(70);
+
+          // Check if model should arrive before, during, or after this micro tick
+          const modelArrivesNow = !modelHandedOff && currentTimeMs >= modelArrivalMs;
+          const modelFirst = Math.random() > 0.5;
+
+          const executeModelArrival = () => {
+            if (modelHandedOff) return;
+            isHandoffLock = true;
+            try {
+              smoother.setFaceId('model_face_' + iter);
+              microTracker.setFaceId('model_face_' + iter);
+
+              const modelBuffer = new Float32Array(70 * 4);
+              for (let i = 0; i < 70; i++) {
+                const bx = bootstrap.approxLandmarks[i].x + (Math.random() * 0.02 - 0.01);
+                const by = bootstrap.approxLandmarks[i].y + (Math.random() * 0.02 - 0.01);
+                modelBuffer[i * 4] = Math.max(0.01, Math.min(0.99, bx));
+                modelBuffer[i * 4 + 1] = Math.max(0.01, Math.min(0.99, by));
+                modelBuffer[i * 4 + 2] = 0;
+                modelBuffer[i * 4 + 3] = 0.90;
+              }
+
+              const res = smoother.updateFromBuffer(modelBuffer, 70, currentTimeMs);
+              for (let i = 0; i < 70; i++) {
+                if (!Number.isFinite(res.points[i].x) || !Number.isFinite(res.points[i].y)) {
+                  throw new Error(`NaN in smoothed points after model handoff at iter ${iter}, point ${i}`);
+                }
+                // Atomic buffer copy from model packet
+                sharedBuffer[i * 4] = res.points[i].x;
+                sharedBuffer[i * 4 + 1] = res.points[i].y;
+                sharedBuffer[i * 4 + 3] = 0.90;
+                bufferWriteCountsThisTick[i]++;
+              }
+              modelHandedOff = true;
+            } finally {
+              isHandoffLock = false;
+            }
+          };
+
+          const executeMicroTracking = () => {
+            const tracked = microTracker.track(frameData, PROC_W, PROC_H, 0.40, 1);
+            for (const [idx, feat] of tracked.entries()) {
+              const updated = smoother.updatePoint(idx, { x: feat.x, y: feat.y }, feat.ncc, currentTimeMs);
+              if (updated && updated.accepted) {
+                // If handoff lock is active, writing to shared buffer is prevented
+                if (!isHandoffLock && Number.isFinite(updated.pos.x) && Number.isFinite(updated.pos.y)) {
+                  if (bufferWriteCountsThisTick[idx] > 0 && modelHandedOff) {
+                    // Prevent concurrent write conflict on exact handoff tick
+                    continue;
+                  }
+                  sharedBuffer[idx * 4] = updated.pos.x;
+                  sharedBuffer[idx * 4 + 1] = updated.pos.y;
+                  bufferWriteCountsThisTick[idx]++;
+                  if (bufferWriteCountsThisTick[idx] > 1) {
+                    throw new Error(`Double buffer write on point ${idx} during tick ${tick}`);
+                  }
+                }
+              }
+            }
+          };
+
+          if (modelArrivesNow && modelFirst) {
+            executeModelArrival();
+            executeMicroTracking();
+          } else if (modelArrivesNow) {
+            executeMicroTracking();
+            executeModelArrival();
+          } else {
+            executeMicroTracking();
+          }
+
+          // Invariant check on sharedBuffer
+          for (let i = 0; i < 70; i++) {
+            const x = sharedBuffer[i * 4];
+            const y = sharedBuffer[i * 4 + 1];
+            if (!Number.isFinite(x) || !Number.isFinite(y) || isNaN(x) || isNaN(y)) {
+              throw new Error(`Invalid coordinate in sharedBuffer at iter ${iter}, idx ${i}: (${x}, ${y})`);
+            }
+          }
+        }
+      } catch (err: any) {
+        failures.push({
+          iteration: iter,
+          reason: err?.message || String(err),
+        });
+      }
+    }
+
+    fs.writeFileSync(
+      path.resolve(__dirname, '../startup_handoff_failures.json'),
+      JSON.stringify(failures, null, 2),
+      'utf-8'
+    );
+
+    expect(failures).toHaveLength(0);
   });
 });

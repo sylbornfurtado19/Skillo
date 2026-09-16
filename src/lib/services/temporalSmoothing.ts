@@ -1562,9 +1562,10 @@ export class DenseLandmarksSmoother {
       : 0.016;
 
     const res = this.filters[index].update(pos, confidence, dt);
-    this.lastMicroTimestampMs = validTimestamp;
-
     const accepted = Number.isFinite(res.pos.x) && Number.isFinite(res.pos.y);
+    if (accepted) {
+      this.lastMicroTimestampMs = validTimestamp;
+    }
     return {
       accepted,
       pos: res.pos,

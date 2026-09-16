@@ -198,6 +198,7 @@ export default function IVPInteractiveCanvas({
   const appMountTsRef = useRef<number>(typeof performance !== 'undefined' ? performance.now() : Date.now());
   const trackingStateRef = useRef<TrackingLifecycleState>('BOOTSTRAPPING');
   const [trackingState, setTrackingState] = useState<TrackingLifecycleState>('BOOTSTRAPPING');
+  const isHandoffLockRef = useRef<boolean>(false);
 
   const timelineRef = useRef<CanvasTimelineTelemetry>({
     pageLoadTs: typeof performance !== 'undefined' ? 0 : Date.now(),
@@ -731,11 +732,16 @@ export default function IVPInteractiveCanvas({
 
     if (hasWorkerLandmarks && workerLandmarks) {
       // ── Model Packet Available ──
-      if (trackingStateRef.current !== 'MODEL_READY') {
-        trackingStateRef.current = 'MODEL_READY';
-        setTrackingState('MODEL_READY');
-        if (timelineRef.current.firstModelPacketTs === 0) {
-          timelineRef.current.firstModelPacketTs = performance.now();
+      if (trackingStateRef.current !== 'MODEL_READY' && !isHandoffLockRef.current) {
+        isHandoffLockRef.current = true;
+        try {
+          trackingStateRef.current = 'MODEL_READY';
+          setTrackingState('MODEL_READY');
+          if (timelineRef.current.firstModelPacketTs === 0) {
+            timelineRef.current.firstModelPacketTs = performance.now();
+          }
+        } finally {
+          isHandoffLockRef.current = false;
         }
       }
 
@@ -859,13 +865,15 @@ export default function IVPInteractiveCanvas({
                 if (updatedPos && updatedPos.accepted && workerLandmarks?.buffer && workerLandmarks.buffer.length >= (idx + 1) * 4) {
                   const finalX = updatedPos.pos ? updatedPos.pos.x : updatedPos.x;
                   const finalY = updatedPos.pos ? updatedPos.pos.y : updatedPos.y;
-                  workerLandmarks.buffer[idx * 4] = finalX;
-                  workerLandmarks.buffer[idx * 4 + 1] = finalY;
-                  workerLandmarks.buffer[idx * 4 + 3] = scaledConf;
-                  microMatchesAcceptedRef.current++;
-                  accepted = true;
-                  if (timelineRef.current.firstMicroAcceptedTs === 0) {
-                    timelineRef.current.firstMicroAcceptedTs = performance.now();
+                  if (Number.isFinite(finalX) && Number.isFinite(finalY) && !isHandoffLockRef.current) {
+                    workerLandmarks.buffer[idx * 4] = finalX;
+                    workerLandmarks.buffer[idx * 4 + 1] = finalY;
+                    workerLandmarks.buffer[idx * 4 + 3] = scaledConf;
+                    microMatchesAcceptedRef.current++;
+                    accepted = true;
+                    if (timelineRef.current.firstMicroAcceptedTs === 0) {
+                      timelineRef.current.firstMicroAcceptedTs = performance.now();
+                    }
                   }
                 }
               }
