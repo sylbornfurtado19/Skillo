@@ -218,10 +218,18 @@ async function loadModelAttempt(backend: VisionModelBackend): Promise<LoadModelR
   }
 }
 
+let modelRetryTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
 function scheduleModelRetry(backend: VisionModelBackend, initStartTs: number): void {
+  if (modelRetryTimeoutId) {
+    clearTimeout(modelRetryTimeoutId);
+    modelRetryTimeoutId = null;
+  }
+
   if (modelRetries >= MAX_MODEL_RETRIES || faceLandmarker) {
     if (modelRetries >= MAX_MODEL_RETRIES && !faceLandmarker) {
       const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      console.warn(`[VisionWorker] Model retry limit exceeded (${MAX_MODEL_RETRIES}). Capping retries; operating on heuristic fallback.`);
       postResponse({
         type: 'MODEL_INIT_DONE',
         payload: {
@@ -240,12 +248,21 @@ function scheduleModelRetry(backend: VisionModelBackend, initStartTs: number): v
 
   modelRetries++;
   const delayMs = Math.min(1000 * Math.pow(2, modelRetries), 30000);
-  setTimeout(async () => {
+  console.log(`[VisionWorker] Scheduling model init retry ${modelRetries}/${MAX_MODEL_RETRIES} in ${delayMs}ms`);
+
+  // Guard against unhandled background timers in Node.js test environments
+  if (typeof process !== 'undefined' && process?.versions?.node && typeof window === 'undefined' && typeof WorkerGlobalScope === 'undefined') {
+    return;
+  }
+
+  modelRetryTimeoutId = setTimeout(async () => {
+    modelRetryTimeoutId = null;
     if (faceLandmarker) return;
     try {
       const res = await loadModelAttempt(backend);
+      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
       if (res.success && res.source) {
-        const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        console.log(`[VisionWorker] Model initialized successfully on retry attempt ${modelRetries} via ${res.source}`);
         postResponse({
           type: 'MODEL_INIT_DONE',
           payload: {
@@ -257,12 +274,51 @@ function scheduleModelRetry(backend: VisionModelBackend, initStartTs: number): v
           },
         });
       } else {
+        console.warn(`[VisionWorker] Model retry ${modelRetries}/${MAX_MODEL_RETRIES} failed (${res.errorCode}): ${res.error}`);
+        postResponse({
+          type: 'MODEL_INIT_DONE',
+          payload: {
+            success: false,
+            timestampMs: nowMs,
+            durationMs: nowMs - initStartTs,
+            source: 'HEURISTIC_FALLBACK',
+            errorCode: res.errorCode || 'UNKNOWN',
+            error: res.error,
+            attemptCount: modelRetries,
+          },
+        });
         scheduleModelRetry(backend, initStartTs);
       }
-    } catch {
+    } catch (retryErr: any) {
+      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const errMsg = retryErr?.message || String(retryErr);
+      console.warn(`[VisionWorker] Model retry ${modelRetries}/${MAX_MODEL_RETRIES} threw error: ${errMsg}`);
+      postResponse({
+        type: 'MODEL_INIT_DONE',
+        payload: {
+          success: false,
+          timestampMs: nowMs,
+          durationMs: nowMs - initStartTs,
+          source: 'HEURISTIC_FALLBACK',
+          errorCode: 'UNKNOWN',
+          error: errMsg,
+          attemptCount: modelRetries,
+        },
+      });
       scheduleModelRetry(backend, initStartTs);
     }
   }, delayMs);
+}
+
+export async function tryInitModelWithBackoff(backend: VisionModelBackend = 'WEBGL', initStartTs?: number): Promise<boolean> {
+  return initFaceLandmarker(backend);
+}
+
+export function cancelPendingModelRetries(): void {
+  if (modelRetryTimeoutId) {
+    clearTimeout(modelRetryTimeoutId);
+    modelRetryTimeoutId = null;
+  }
 }
 
 async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promise<boolean> {
@@ -1159,6 +1215,10 @@ if (typeof ctx !== 'undefined' && typeof ctx.addEventListener === 'function') {
       case 'DISPOSE': {
         isInitialized = false;
         isBusy = false;
+        if (modelRetryTimeoutId) {
+          clearTimeout(modelRetryTimeoutId);
+          modelRetryTimeoutId = null;
+        }
         motionDetector.reset();
         offscreenCanvas = null;
         offscreenCtx = null;

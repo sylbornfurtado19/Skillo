@@ -124,6 +124,8 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   const processedFramesRef = useRef(0);
   const watchdogUnlocksRef = useRef(0);
   const restartAttemptsRef = useRef(0);
+  const restartTimestampsRef = useRef<number[]>([]);
+  const isSpawningRef = useRef(false);
   const restartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deviceProfileRef = useRef<DeviceProfile>(detectDeviceProfile());
 
@@ -268,6 +270,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   // ── Worker Initialization ──────────────────────────────────────────────────
   const initWorker = useCallback(() => {
     if (typeof window === 'undefined') return;
+    if (isSpawningRef.current) return;
 
     // Feature capability detection
     const browserCaps = VisionPipeline.checkBrowserCapabilities();
@@ -279,7 +282,16 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
       return;
     }
 
+    isSpawningRef.current = true;
     try {
+      if (workerRef.current) {
+        try {
+          workerRef.current.postMessage({ type: 'DISPOSE' });
+          workerRef.current.terminate();
+        } catch {}
+        workerRef.current = null;
+      }
+
       setWorkerState('LOADING');
       setIsFallbackMode(false);
       setFallbackReason(null);
@@ -309,7 +321,11 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
           case 'MODEL_INIT_DONE':
             modelInitDoneTsRef.current = msg.payload.timestampMs;
             modelInitDurationMsRef.current = msg.payload.durationMs;
-            modelSourceRef.current = msg.payload.source || 'LOCAL';
+            modelSourceRef.current = msg.payload.source || (msg.payload.success ? 'LOCAL' : 'HEURISTIC_FALLBACK');
+            if (!msg.payload.success) {
+              setIsFallbackMode(true);
+              setFallbackReason(msg.payload.error || 'Model loading failed, operating on heuristic fallback');
+            }
             break;
 
           case 'MODEL_READY':
@@ -348,25 +364,38 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
           }
 
           case 'FRAME_RESULT': {
+            const payload = msg.payload;
+
             isBusyRef.current = false;
-            setLastResults(msg.payload);
-            setProcessingLatencyMs(msg.payload.processingLatencyMs);
-            onResults?.(msg.payload);
+            processedFramesRef.current++;
+
+            const inFlight = performance.now() - lastSendTimeRef.current;
+
+            setLastResults(payload);
+            setProcessingLatencyMs(payload.processingLatencyMs);
+            onResults?.(payload);
+
+            syncStats(inFlight);
             break;
           }
 
           case 'PERFORMANCE_WARNING':
+            // High latency warning handled via syncStats adaptive cadence
             break;
 
-          case 'WORKER_ERROR':
+          case 'WORKER_ERROR': {
             isBusyRef.current = false;
-            if (msg.payload.fallbackRequired) {
+            if (msg.payload.isFatal) {
+              setWorkerState('FAILED');
               setIsFallbackMode(true);
               setFallbackReason(msg.payload.error);
-              setWorkerState('FAILED');
+              onError?.(msg.payload.error);
+            } else if (msg.payload.fallbackRequired) {
+              setIsFallbackMode(true);
+              setFallbackReason(msg.payload.error);
             }
-            onError?.(msg.payload.error);
             break;
+          }
 
           case 'DISPOSED_CONFIRM':
             setWorkerState('DISPOSED');
@@ -381,9 +410,11 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
         }
         isBusyRef.current = false;
 
-        const maxRestarts = 3;
-        if (restartAttemptsRef.current < maxRestarts) {
-          const attempt = restartAttemptsRef.current + 1;
+        const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        restartTimestampsRef.current = restartTimestampsRef.current.filter(t => now - t < 60000);
+        if (restartTimestampsRef.current.length < 3) {
+          restartTimestampsRef.current.push(now);
+          const attempt = restartTimestampsRef.current.length;
           restartAttemptsRef.current = attempt;
           const backoffDelay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
           setWorkerState('LOADING');
@@ -402,8 +433,8 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
 
         setWorkerState('FAILED');
         setIsFallbackMode(true);
-        setFallbackReason(err.message || 'Worker syntax or runtime error');
-        onError?.(err.message || 'Worker syntax or runtime error');
+        setFallbackReason(err.message || 'Worker syntax or runtime error (retry limit exceeded: 3/min)');
+        onError?.(err.message || 'Worker syntax or runtime error (retry limit exceeded: 3/min)');
       };
 
       // Send INIT_MODELS command
@@ -416,6 +447,8 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
       setIsFallbackMode(true);
       setFallbackReason(err?.message || 'Failed to instantiate Web Worker');
       onError?.(err?.message || 'Failed to instantiate Web Worker');
+    } finally {
+      isSpawningRef.current = false;
     }
   }, [backend, onError, onResults, onLandmarks, syncStats]);
 
