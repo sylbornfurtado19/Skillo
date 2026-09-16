@@ -80,6 +80,10 @@ export class MicroPatchTracker {
     return this.currentFaceId;
   }
 
+  public reset(): void {
+    this.templates.clear();
+  }
+
   /**
    * Returns total number of evicted templates across tracking lifetime.
    */

@@ -1047,6 +1047,28 @@ export class DenseLandmarksSmoother {
     return this.enablePcaProjection;
   }
 
+  private activeFaceId: string | number | null = null;
+
+  public setFaceId(faceId: string | number | null): void {
+    if (faceId !== this.activeFaceId) {
+      this.reset();
+      this.activeFaceId = faceId;
+    }
+  }
+
+  public getFaceId(): string | number | null {
+    return this.activeFaceId;
+  }
+
+  public reset(): void {
+    this.initFilters(this.filters.length);
+    this.lastModelTimestampMs = 0;
+    this.lastMicroTimestampMs = 0;
+    this.reLocStartPositions = [];
+    this.isRelocalizing = false;
+    this.reLocProgress = 1.0;
+  }
+
   constructor(
     numPoints: number = 68,
     preset: TrackingPreset = 'BALANCED',

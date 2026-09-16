@@ -1,4 +1,5 @@
 import { MicroPatchTracker } from '../src/lib/services/microPatchTracker';
+import { DenseLandmarksSmoother } from '../src/lib/services/temporalSmoothing';
 
 describe('Lucas-Kanade Optical Flow Fallback & Multi-Face Isolation', () => {
   const W = 160;
@@ -116,6 +117,50 @@ describe('Lucas-Kanade Optical Flow Fallback & Multi-Face Isolation', () => {
     tracker.setFaceId('face-user-2');
     expect(tracker.getFaceId()).toBe('face-user-2');
     // All templates from face 1 must be flushed
+    expect(tracker.templateCount()).toBe(0);
+  });
+
+  it('prevents cross-contamination when alternating between two distinct face IDs', () => {
+    const tracker = new MicroPatchTracker(8, 8, 5);
+    const smoother = new DenseLandmarksSmoother(70, 'BALANCED');
+
+    const frameA = createSyntheticPatch(30, 30, 8, 0, 50, 30);
+    const frameB = createSyntheticPatch(90, 90, 8, 0, 110, 90);
+
+    // 1. Activate Face A
+    tracker.setFaceId('face_A');
+    smoother.setFaceId('face_A');
+    expect(smoother.getFaceId()).toBe('face_A');
+
+    tracker.updateTemplates(frameA, W, H, [
+      { index: 68, x: 30 / W, y: 30 / H },
+    ]);
+    expect(tracker.templateCount()).toBe(1);
+
+    // Track on frame A
+    const resA = tracker.track(frameA, W, H, 0.60, 1);
+    expect(resA.get(68)).toBeDefined();
+    expect(resA.get(68)!.x * W).toBeCloseTo(30, 1);
+
+    // 2. Switch to Face B: must completely isolate state
+    tracker.setFaceId('face_B');
+    smoother.setFaceId('face_B');
+    expect(smoother.getFaceId()).toBe('face_B');
+    expect(tracker.templateCount()).toBe(0);
+
+    // Register Face B templates at (90, 90)
+    tracker.updateTemplates(frameB, W, H, [
+      { index: 68, x: 90 / W, y: 90 / H },
+    ]);
+    expect(tracker.templateCount()).toBe(1);
+
+    const resB = tracker.track(frameB, W, H, 0.60, 1);
+    expect(resB.get(68)).toBeDefined();
+    expect(resB.get(68)!.x * W).toBeCloseTo(90, 1);
+
+    // 3. Switch back to Face A: templates flushed, no bleed from Face B
+    tracker.setFaceId('face_A');
+    smoother.setFaceId('face_A');
     expect(tracker.templateCount()).toBe(0);
   });
 });
