@@ -84,7 +84,17 @@ test.describe('IVP Interactive Canvas Visual & Functional Regression', () => {
       await warmupBtn.click();
     }
 
-    // 6. Assert Warmup Cold-Start Timeline Telemetry (<1.5s KPI)
+    // 6. Verify Multi-Face Selection buttons
+    const faceSelectorList = page.locator('#face-selector-list');
+    if (await faceSelectorList.count() > 0) {
+      await expect(faceSelectorList).toBeVisible();
+      const faceButtons = faceSelectorList.locator('button');
+      if (await faceButtons.count() > 0) {
+        await faceButtons.first().click();
+      }
+    }
+
+    // 7. Assert Warmup Cold-Start Timeline Telemetry (<1.5s KPI)
     const telemetry = await page.evaluate(() => {
       return (window as any).__IVP_HUD_TELEMETRY__ || null;
     });

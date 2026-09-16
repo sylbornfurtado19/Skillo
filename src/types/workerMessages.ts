@@ -83,6 +83,7 @@ export interface VisionWorkerFramePayload {
   width: number;
   height: number;
   mirrored?: boolean;
+  activeFaceId?: string | number | null;
 }
 
 export interface VisionWorkerConfigPayload {
@@ -131,10 +132,13 @@ export interface ModelReadyResponseMessage {
   };
 }
 
+// ── Shared Mathematical Contracts ───────────────────────────────────────────
+
 export interface DenseLandmarkPoint {
+  index: number;
   x: number;
   y: number;
-  z?: number;
+  z: number;
   confidence: number;
 }
 
@@ -150,6 +154,8 @@ export interface DenseLandmarksEnvelope {
   numPoints: number;
   faceDetected: boolean;
   faceBox: { x: number; y: number; width: number; height: number };
+  activeFaceId?: string | number | null;
+  detectedFaces?: Array<{ id: string; x: number; y: number; width: number; height: number }>;
   ear: number;
   mar: number;
   regionConfidences: {

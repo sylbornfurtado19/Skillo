@@ -65,6 +65,8 @@ interface UseVisionWorkerReturn {
   getTimeline: () => WorkerTimelineTelemetry;
   processFrame: (source: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement, mirrored?: boolean) => Promise<boolean>;
   restartWorker: () => void;
+  activeFaceId: string | number | null;
+  setActiveFaceId: (id: string | number | null) => void;
 }
 
 export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVisionWorkerReturn {
@@ -84,6 +86,13 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   const [lastResults, setLastResults] = useState<ProcessedVisionResults | null>(null);
   const [lastLandmarks, setLastLandmarks] = useState<{ envelope: DenseLandmarksEnvelope; buffer: Float32Array } | null>(null);
   const [processingLatencyMs, setProcessingLatencyMs] = useState(0);
+  const [activeFaceId, setActiveFaceId] = useState<string | number | null>(null);
+  const activeFaceIdRef = useRef<string | number | null>(null);
+
+  const handleSetActiveFaceId = useCallback((id: string | number | null) => {
+    activeFaceIdRef.current = id;
+    setActiveFaceId(id);
+  }, []);
 
   // Tab visibility state
   const [isTabPaused, setIsTabPaused] = useState(false);
@@ -522,6 +531,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
         const h = source instanceof HTMLVideoElement ? (source.videoHeight || 240) : (source.height || 240);
 
         const payload = VisionPipeline.createFramePayload(bitmap, w, h, nextId, mirrored);
+        payload.activeFaceId = activeFaceIdRef.current;
 
         // Arm adaptive watchdog timer (bounded [500ms, 1200ms])
         if (watchdogTimerRef.current) {
@@ -605,5 +615,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
     getTimeline,
     processFrame,
     restartWorker,
+    activeFaceId,
+    setActiveFaceId: handleSetActiveFaceId,
   };
 }

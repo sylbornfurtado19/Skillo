@@ -341,6 +341,7 @@ export default function IVPInteractiveCanvas({
   const [splitPercent, setSplitPercent] = useState<number>(50);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [selectedFaceId, setSelectedFaceId] = useState<string | null>(null);
+  const [faceList, setFaceList] = useState<Array<{ id: string; x: number; y: number; w: number; h: number }>>([]);
   const detectedFacesRef = useRef<Array<{ id: string; x: number; y: number; w: number; h: number }>>([]);
 
   // ── Telemetry state ───────────────────────────────────────────────────────
@@ -1241,7 +1242,21 @@ export default function IVPInteractiveCanvas({
 
       // Tracking HUD Badge with authentic live dimensions and active face selector
       const activeFaceTag = selectedFaceId || denseSmootherRef.current?.getFaceId() || '1';
-      detectedFacesRef.current = [{ id: String(activeFaceTag), x: boxX, y: boxY, w: boxW, h: boxH }];
+      const faces: Array<{ id: string; x: number; y: number; w: number; h: number }> = [
+        { id: String(activeFaceTag), x: boxX, y: boxY, w: boxW, h: boxH },
+      ];
+      if (workerLandmarks?.envelope?.detectedFaces) {
+        for (const df of workerLandmarks.envelope.detectedFaces) {
+          if (df.id !== String(activeFaceTag)) {
+            faces.push({ id: df.id, x: df.x * CSS_W, y: df.y * CSS_H, w: df.width * CSS_W, h: df.height * CSS_H });
+          }
+        }
+      }
+      detectedFacesRef.current = faces;
+      if (faceList.length !== faces.length || faceList[0]?.id !== faces[0]?.id) {
+        setFaceList(faces);
+      }
+
       const roiText = `[FACE #${String(activeFaceTag).slice(0, 6)}] ${Math.round(authenticBoxW)}x${Math.round(authenticBoxH)} [ACTIVE]`;
       ctx.font = 'bold 9px monospace';
       const badgeW = Math.max(154, ctx.measureText(roiText).width + 12);
@@ -1806,6 +1821,33 @@ export default function IVPInteractiveCanvas({
             </strong>
           </span>
           <span className="text-gray-500">Split: {Math.round(splitPercent)}%</span>
+
+          {/* Multi-Face Selector Pills */}
+          <div id="face-selector-list" className="flex items-center gap-1">
+            <span className="text-gray-400 text-[10px]">Face:</span>
+            {(faceList.length > 0 ? faceList : [{ id: String(selectedFaceId || '1'), x: 0, y: 0, w: 0, h: 0 }]).map((f, i) => {
+              const isActive = (selectedFaceId === f.id) || (!selectedFaceId && i === 0);
+              return (
+                <button
+                  key={f.id}
+                  id={`select-face-btn-${f.id}`}
+                  type="button"
+                  onClick={() => {
+                    setSelectedFaceId(f.id);
+                    denseSmootherRef.current?.setFaceId(f.id);
+                    microTrackerRef.current?.setFaceId(f.id);
+                  }}
+                  className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300 font-bold'
+                      : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Face #{i + 1} {f.id.length > 8 ? f.id.slice(0, 6) : f.id} {isActive ? '★' : ''}
+                </button>
+              );
+            })}
+          </div>
 
           {/* Warmup Mode Toggle */}
           <button
