@@ -33,6 +33,8 @@ export type VisionWorkerCommandType =
 
 // ── Response Types (Worker -> Main Thread) ──────────────────────────────────
 export type VisionWorkerResponseType =
+  | 'MODEL_INIT_STARTED'
+  | 'MODEL_INIT_DONE'
   | 'MODEL_READY'
   | 'FRAME_RESULT'
   | 'PERFORMANCE_WARNING'
@@ -213,7 +215,28 @@ export interface DisposedConfirmResponseMessage {
   type: 'DISPOSED_CONFIRM';
 }
 
+export interface ModelInitStartedResponseMessage {
+  type: 'MODEL_INIT_STARTED';
+  payload: {
+    timestampMs: number;
+    backend: VisionModelBackend;
+  };
+}
+
+export interface ModelInitDoneResponseMessage {
+  type: 'MODEL_INIT_DONE';
+  payload: {
+    success: boolean;
+    timestampMs: number;
+    durationMs: number;
+    source?: 'LOCAL' | 'CDN' | 'HEURISTIC_FALLBACK';
+    error?: string;
+  };
+}
+
 export type VisionWorkerResponseMessage =
+  | ModelInitStartedResponseMessage
+  | ModelInitDoneResponseMessage
   | ModelReadyResponseMessage
   | FrameResultResponseMessage
   | DenseLandmarksResponseMessage

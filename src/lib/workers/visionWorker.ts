@@ -72,6 +72,15 @@ async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promis
   if (faceLandmarker) return true;
   if (modelInitPromise) return modelInitPromise;
 
+  const initStartTs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  postResponse({
+    type: 'MODEL_INIT_STARTED',
+    payload: {
+      timestampMs: initStartTs,
+      backend,
+    },
+  });
+
   modelInitPromise = (async () => {
     try {
       const baseOrigin = typeof location !== 'undefined' ? location.origin : '';
@@ -92,6 +101,17 @@ async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promis
         runningMode: 'IMAGE',
         numFaces: 1,
       });
+
+      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      postResponse({
+        type: 'MODEL_INIT_DONE',
+        payload: {
+          success: true,
+          timestampMs: nowMs,
+          durationMs: nowMs - initStartTs,
+          source: 'LOCAL',
+        },
+      });
       return true;
     } catch (localErr) {
       console.warn('[VisionWorker] Local MediaPipe asset load warning, trying CDN fallback:', localErr);
@@ -109,16 +129,43 @@ async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promis
           runningMode: 'IMAGE',
           numFaces: 1,
         });
+
+        const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        postResponse({
+          type: 'MODEL_INIT_DONE',
+          payload: {
+            success: true,
+            timestampMs: nowMs,
+            durationMs: nowMs - initStartTs,
+            source: 'CDN',
+          },
+        });
         return true;
       } catch (cdnErr) {
         console.warn('[VisionWorker] MediaPipe FaceLandmarker unavailable, retaining hybrid optical tracker fallback:', cdnErr);
         faceLandmarker = null;
+        const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        postResponse({
+          type: 'MODEL_INIT_DONE',
+          payload: {
+            success: false,
+            timestampMs: nowMs,
+            durationMs: nowMs - initStartTs,
+            source: 'HEURISTIC_FALLBACK',
+            error: cdnErr instanceof Error ? cdnErr.message : String(cdnErr),
+          },
+        });
         return false;
       }
     }
   })();
 
   return modelInitPromise;
+}
+
+// Eagerly pre-start model loading when running inside a genuine Web Worker thread
+if (typeof self !== 'undefined' && typeof (self as any).postMessage === 'function' && (typeof process === 'undefined' || !process?.versions?.node)) {
+  initFaceLandmarker('WEBGL').catch(() => {});
 }
 
 // Total canonical landmarks (68 standard points + 2 pupil centers)

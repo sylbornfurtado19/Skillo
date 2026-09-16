@@ -35,6 +35,16 @@ export interface VisionWorkerStats {
   rollingLatencyEMA: number;
 }
 
+export interface WorkerTimelineTelemetry {
+  workerSpawnTs: number;
+  modelInitStartTs: number;
+  modelInitDoneTs: number;
+  firstFrameSentTs: number;
+  firstModelPacketTs: number;
+  modelInitDurationMs: number;
+  modelSource: 'LOCAL' | 'CDN' | 'HEURISTIC_FALLBACK' | 'PENDING';
+}
+
 interface UseVisionWorkerReturn {
   workerState: WorkerLifecycleState;
   isReady: boolean;
@@ -51,6 +61,8 @@ interface UseVisionWorkerReturn {
   lastResults: ProcessedVisionResults | null;
   lastLandmarks: { envelope: DenseLandmarksEnvelope; buffer: Float32Array } | null;
   processingLatencyMs: number;
+  timeline: WorkerTimelineTelemetry;
+  getTimeline: () => WorkerTimelineTelemetry;
   processFrame: (source: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement, mirrored?: boolean) => Promise<boolean>;
   restartWorker: () => void;
 }
@@ -115,6 +127,25 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   const restartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deviceProfileRef = useRef<DeviceProfile>(detectDeviceProfile());
 
+  // Timeline Telemetry Milestones (for cold start KPI diagnostics)
+  const spawnTsRef = useRef<number>(typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const modelInitStartTsRef = useRef<number>(0);
+  const modelInitDoneTsRef = useRef<number>(0);
+  const firstFrameSentTsRef = useRef<number>(0);
+  const firstModelPacketTsRef = useRef<number>(0);
+  const modelInitDurationMsRef = useRef<number>(0);
+  const modelSourceRef = useRef<'LOCAL' | 'CDN' | 'HEURISTIC_FALLBACK' | 'PENDING'>('PENDING');
+
+  const getTimeline = useCallback((): WorkerTimelineTelemetry => ({
+    workerSpawnTs: spawnTsRef.current,
+    modelInitStartTs: modelInitStartTsRef.current,
+    modelInitDoneTs: modelInitDoneTsRef.current,
+    firstFrameSentTs: firstFrameSentTsRef.current,
+    firstModelPacketTs: firstModelPacketTsRef.current,
+    modelInitDurationMs: modelInitDurationMsRef.current,
+    modelSource: modelSourceRef.current,
+  }), []);
+
   // ── Document Visibility & Lifecycle Handler ───────────────────────────────
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -174,12 +205,18 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
     let currentFps = suggestedCadenceFps;
     let currentThrottled = isThrottled;
 
+    // Safe startup cadence guard: for first 5000ms from spawn or before first model packet,
+    // guard against premature throttling and preserve startupTargetFps (High:30, Mid:20, Low:15)
+    const cpuTier = deviceProfileRef.current.cpuTier;
+    const startupTargetFps = cpuTier === 'HIGH' ? 30 : (cpuTier === 'MID' ? 20 : 15);
+    const isStartupWarmup = (now - spawnTsRef.current < 5000) || (!firstModelPacketTsRef.current && (now - spawnTsRef.current < 8000));
+
     if (isOverloaded) {
       healthyStartTimeRef.current = null;
       if (!overloadStartTimeRef.current) overloadStartTimeRef.current = now;
 
-      // Degrade hold: 1.5s sustained overload requirement
-      if (now - overloadStartTimeRef.current >= 1500 && now - lastCadenceChangeTsRef.current >= 2000) {
+      // Degrade hold: 1.5s sustained overload requirement (bypassed during startup warmup)
+      if (!isStartupWarmup && now - overloadStartTimeRef.current >= 1500 && now - lastCadenceChangeTsRef.current >= 2000) {
         if (currentFps > 15) {
           currentFps = 15;
           currentThrottled = true;
@@ -265,6 +302,16 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
         }
 
         switch (msg.type) {
+          case 'MODEL_INIT_STARTED':
+            modelInitStartTsRef.current = msg.payload.timestampMs;
+            break;
+
+          case 'MODEL_INIT_DONE':
+            modelInitDoneTsRef.current = msg.payload.timestampMs;
+            modelInitDurationMsRef.current = msg.payload.durationMs;
+            modelSourceRef.current = msg.payload.source || 'LOCAL';
+            break;
+
           case 'MODEL_READY':
             restartAttemptsRef.current = 0;
             setWorkerState('READY');
@@ -274,6 +321,10 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
 
           case 'LANDMARKS_PACKET': {
             const envelope = msg.payload.envelope;
+
+            if (!firstModelPacketTsRef.current) {
+              firstModelPacketTsRef.current = performance.now();
+            }
 
             // Reject out-of-order or stale responses using safe 30-bit comparison
             if (!isNewerRequestId(envelope.requestId, latestCompletedRequestIdRef.current)) {
@@ -426,6 +477,9 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
         isBusyRef.current = true;
         const sendNow = performance.now();
         lastSendTimeRef.current = sendNow;
+        if (!firstFrameSentTsRef.current) {
+          firstFrameSentTsRef.current = sendNow;
+        }
 
         // Monotonic 30-bit request ID counter
         const nextId = (requestIdRef.current + 1) & 0x3fffffff;
@@ -514,6 +568,8 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
     lastResults,
     lastLandmarks,
     processingLatencyMs,
+    timeline: getTimeline(),
+    getTimeline,
     processFrame,
     restartWorker,
   };
