@@ -1,0 +1,15 @@
+{
+  "pageLoadTs": 0,
+  "workerSpawnTs": 25,
+  "modelInitStartTs": 32,
+  "modelInitDoneTs": 410,
+  "firstFrameSentTs": 55,
+  "firstModelPacketTs": 520,
+  "firstTemplatesCreatedTs": 110,
+  "firstMicroAcceptedTs": 126,
+  "firstSmoothedRenderTs": 142,
+  "timeToTemplatesMs": 110,
+  "timeToSmoothedMs": 142,
+  "slaTemplatesMet": true,
+  "slaSmoothedMet": true
+}
