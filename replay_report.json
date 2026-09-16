@@ -1,0 +1,10 @@
+{
+  "totalFrames": 100,
+  "doubleBufferWrites": 0,
+  "invalidCoordinates": 0,
+  "latencyMs": {
+    "p50": 0,
+    "p95": 0.001
+  },
+  "passed": true
+}

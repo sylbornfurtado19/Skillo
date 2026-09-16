@@ -1,0 +1,29 @@
+{
+  "measuredAt": "2026-09-16T07:47:07.166Z",
+  "profiles": {
+    "desktop": {
+      "deviceClass": "Desktop / High-Tier CPU",
+      "iterations": 200,
+      "p50Ms": 0.08,
+      "p95Ms": 0.18,
+      "slaTargetMs": 10,
+      "withinSla": true
+    },
+    "midLaptop": {
+      "deviceClass": "Mid-Tier Laptop / Core i5",
+      "iterations": 200,
+      "p50Ms": 0.13,
+      "p95Ms": 0.13,
+      "slaTargetMs": 10,
+      "withinSla": true
+    },
+    "lowMobile": {
+      "deviceClass": "Constrained Mobile / Low CPU",
+      "iterations": 200,
+      "p50Ms": 0.17,
+      "p95Ms": 0.17,
+      "slaTargetMs": 10,
+      "withinSla": true
+    }
+  }
+}

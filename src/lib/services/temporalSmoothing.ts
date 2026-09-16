@@ -927,7 +927,34 @@ const PCA_SIGMAS = [0.08, 0.06, 0.05, 0.04, 0.03];
   }
 })();
 
+export interface PCAClampStats {
+  totalProjections: number;
+  totalClamps: number;
+  clampCountPerMode: number[];
+  clampRatePerModePercent: number[];
+}
+
 export class PCAShapePrior {
+  private static totalProjections: number = 0;
+  private static totalClamps: number = 0;
+  private static clampCounts: number[] = [0, 0, 0, 0, 0];
+
+  public static getClampStats(): PCAClampStats {
+    const total = PCAShapePrior.totalProjections || 1;
+    return {
+      totalProjections: PCAShapePrior.totalProjections,
+      totalClamps: PCAShapePrior.totalClamps,
+      clampCountPerMode: [...PCAShapePrior.clampCounts],
+      clampRatePerModePercent: PCAShapePrior.clampCounts.map(c => Math.round((c / total) * 1000) / 10),
+    };
+  }
+
+  public static resetClampStats(): void {
+    PCAShapePrior.totalProjections = 0;
+    PCAShapePrior.totalClamps = 0;
+    PCAShapePrior.clampCounts = [0, 0, 0, 0, 0];
+  }
+
   /**
    * Returns a copy of the 70-point canonical anthropometric mean facial shape.
    */
@@ -980,12 +1007,19 @@ export class PCAShapePrior {
     const diff = new Float32Array(140);
     for (let i = 0; i < 140; i++) diff[i] = aligned[i] - CANONICAL_MEAN_SHAPE_70[i];
 
+    PCAShapePrior.totalProjections++;
+
     const recon = new Float32Array(CANONICAL_MEAN_SHAPE_70);
     for (let m = 0; m < 5; m++) {
       let b = 0;
       for (let i = 0; i < 140; i++) b += PCA_MODES_70[m][i] * diff[i];
       // Clamp to +/- maxSigma * sigma_m
       const bound = maxSigma * PCA_SIGMAS[m];
+      const isClamped = Math.abs(b) > bound;
+      if (isClamped) {
+        PCAShapePrior.totalClamps++;
+        PCAShapePrior.clampCounts[m]++;
+      }
       const clampedB = Math.max(-bound, Math.min(bound, b));
       for (let i = 0; i < 140; i++) recon[i] += clampedB * PCA_MODES_70[m][i];
     }
@@ -1637,6 +1671,10 @@ export class DenseLandmarksSmoother {
   public getFilter(index: number): LandmarkKinematicFilter | null {
     if (index < 0 || index >= this.filters.length) return null;
     return this.filters[index];
+  }
+
+  public getPCAClampStats(): PCAClampStats {
+    return PCAShapePrior.getClampStats();
   }
 
   public reset(): void {

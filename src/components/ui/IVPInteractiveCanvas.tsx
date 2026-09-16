@@ -193,6 +193,8 @@ export default function IVPInteractiveCanvas({
   const microTrackMsSamplesRef = useRef<number[]>([]);
   const isMicroPausedRef = useRef<boolean>(false);
   const [isMicroPaused, setIsMicroPaused] = useState<boolean>(false);
+  // Last FastFaceBootstrapResult — used by the debug HUD to show Otsu diagnostics.
+  const lastBootstrapResultRef = useRef<import('../../lib/services/visionPipeline').FastFaceBootstrapResult | null>(null);
 
   // ── Cold-Start Milestones & State Machine ──────────────────────────────────
   const appMountTsRef = useRef<number>(typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -201,6 +203,61 @@ export default function IVPInteractiveCanvas({
   const isHandoffLockRef = useRef<boolean>(false);
   const [warmupWarning, setWarmupWarning] = useState<string | null>(null);
   const warmupAutoRevertedRef = useRef<boolean>(false);
+
+  /**
+   * TryLock for the model-handoff critical section.
+   * Returns false immediately (non-blocking) if the lock is already held.
+   * The caller MUST call the returned `release` function in a `finally` block.
+   */
+  const withHandoffLock = useCallback(<T>(fn: () => T): T | false => {
+    if (isHandoffLockRef.current) return false;
+    isHandoffLockRef.current = true;
+    try {
+      return fn();
+    } finally {
+      isHandoffLockRef.current = false;
+    }
+  }, []);
+
+  /**
+   * Per-RAF-tick double-buffer-write guard.
+   * Allocate once per tick, pass to write sites; in DEV mode any index written
+   * more than once in the same tick throws synchronously so CI catches it.
+   */
+  const bufferWriteGuardRef = useRef<Uint8Array>(new Uint8Array(70));
+
+  const beginBufferWriteTick = useCallback(() => {
+    bufferWriteGuardRef.current.fill(0);
+  }, []);
+
+  const guardedBufferWrite = useCallback((
+    buffer: Float32Array,
+    idx: number,
+    x: number,
+    y: number,
+    conf: number,
+    tickLabel: string,
+  ) => {
+    if (process.env.NODE_ENV === 'development') {
+      if (bufferWriteGuardRef.current[idx] > 0) {
+        throw new Error(
+          `[IVP] Double buffer write on landmark ${idx} during tick "${tickLabel}". ` +
+          `Previous writer already wrote in this RAF frame.`
+        );
+      }
+    }
+    buffer[idx * 4]     = x;
+    buffer[idx * 4 + 1] = y;
+    buffer[idx * 4 + 3] = conf;
+    bufferWriteGuardRef.current[idx]++;
+  }, []);
+
+  // ── CPU / Energy Safety ── p95 micro-track latency adaptive pause ──────────
+  /** Budget: 1 full frame at 60 fps = 16.67 ms; hysteresis floor = 12 ms. */
+  const CPU_P95_PAUSE_THRESHOLD_MS  = 16.0;
+  const CPU_P95_RESUME_THRESHOLD_MS = 12.0;
+  const cpuAdaptivePausedRef = useRef<boolean>(false);
+  const cpuPauseLoggedRef    = useRef<boolean>(false);
 
   const timelineRef = useRef<CanvasTimelineTelemetry>({
     pageLoadTs: typeof performance !== 'undefined' ? 0 : Date.now(),
@@ -748,18 +805,38 @@ export default function IVPInteractiveCanvas({
 
     const hasWorkerLandmarks = !!(workerLandmarks && workerLandmarks.buffer && workerLandmarks.buffer.length >= 70 * 4);
 
+    // ── CPU/Energy adaptive pause: skip micro-tracking when p95 > budget ──────
+    const { p95: currentP95 } = getMicroTrackPercentiles();
+    if (!cpuAdaptivePausedRef.current && currentP95 > CPU_P95_PAUSE_THRESHOLD_MS && microTrackMsSamplesRef.current.length >= 10) {
+      cpuAdaptivePausedRef.current = true;
+      isMicroPausedRef.current = true;
+      setIsMicroPaused(true);
+      if (!cpuPauseLoggedRef.current) {
+        cpuPauseLoggedRef.current = true;
+        console.warn(`[IVP] CPU safety: micro-track p95=${currentP95.toFixed(1)}ms > ${CPU_P95_PAUSE_THRESHOLD_MS}ms budget — auto-pausing micro-tracking.`);
+      }
+    } else if (cpuAdaptivePausedRef.current && currentP95 < CPU_P95_RESUME_THRESHOLD_MS) {
+      cpuAdaptivePausedRef.current = false;
+      isMicroPausedRef.current = false;
+      setIsMicroPaused(false);
+      cpuPauseLoggedRef.current = false;
+    }
+
+    // Reset per-tick buffer write guard
+    beginBufferWriteTick();
+
     if (hasWorkerLandmarks && workerLandmarks) {
       // ── Model Packet Available ──
-      if (trackingStateRef.current !== 'MODEL_READY' && !isHandoffLockRef.current) {
-        isHandoffLockRef.current = true;
-        try {
+      if (trackingStateRef.current !== 'MODEL_READY') {
+        const didLock = withHandoffLock(() => {
           trackingStateRef.current = 'MODEL_READY';
           setTrackingState('MODEL_READY');
           if (timelineRef.current.firstModelPacketTs === 0) {
             timelineRef.current.firstModelPacketTs = performance.now();
           }
-        } finally {
-          isHandoffLockRef.current = false;
+        });
+        if (didLock === false) {
+          // Lock was already held (concurrent handoff); skip this tick's state update
         }
       }
 
@@ -883,10 +960,10 @@ export default function IVPInteractiveCanvas({
                 if (updatedPos && updatedPos.accepted && workerLandmarks?.buffer && workerLandmarks.buffer.length >= (idx + 1) * 4) {
                   const finalX = updatedPos.pos ? updatedPos.pos.x : updatedPos.x;
                   const finalY = updatedPos.pos ? updatedPos.pos.y : updatedPos.y;
+                  // Guard: skip write if handoff lock is held OR values are non-finite.
+                  // guardedBufferWrite also asserts no double-write in DEV mode.
                   if (Number.isFinite(finalX) && Number.isFinite(finalY) && !isHandoffLockRef.current) {
-                    workerLandmarks.buffer[idx * 4] = finalX;
-                    workerLandmarks.buffer[idx * 4 + 1] = finalY;
-                    workerLandmarks.buffer[idx * 4 + 3] = scaledConf;
+                    guardedBufferWrite(workerLandmarks.buffer, idx, finalX, finalY, scaledConf, 'model-ready-micro');
                     microMatchesAcceptedRef.current++;
                     accepted = true;
                     if (timelineRef.current.firstMicroAcceptedTs === 0) {
@@ -921,6 +998,7 @@ export default function IVPInteractiveCanvas({
       if (!isTargetLost && rawImgData) {
         if (trackingStateRef.current === 'BOOTSTRAPPING') {
           const fastFace = detectFastFaceBootstrap(rawImgData.data, PROC_W, PROC_H, mirrored);
+          lastBootstrapResultRef.current = fastFace;
           if (fastFace && fastFace.detected) {
             isFaceGenuinelyDetected = true;
             microTrackerRef.current.setFaceId('bootstrap_face');
@@ -1681,6 +1759,19 @@ export default function IVPInteractiveCanvas({
       if (isThrottled) {
         ctx.fillStyle = '#F87171';
         ctx.fillText(`⚠ Throttled to ${workerStats?.suggestedCadenceFps ?? 15} FPS — switch to RESPONSIVE preset`, dbgX + 8, dbgY + 106);
+      }
+
+      // ── Otsu bootstrap diagnostics (visible in pre-model states) ──────────
+      if (trackingStateRef.current !== 'MODEL_READY') {
+        const br = lastBootstrapResultRef.current;
+        const methodTag = br ? br.detectionMethod : 'N/A';
+        const tcrTag    = br ? String(br.otsuThresholdCr) : '-';
+        const maskTag   = br ? `${(br.maskCoverageFraction * 100).toFixed(1)}%` : '-';
+        const aspectTag = br ? br.selectedBlobAspect.toFixed(2) : '-';
+        const edgeTag   = br ? br.edgeDensity.toFixed(1) : '-';
+        ctx.fillStyle = methodTag === 'OTSU' ? '#34D399' : '#F59E0B';
+        ctx.fillText(`BOOT: ${methodTag} | Otsu T_cr: ${tcrTag} | mask: ${maskTag}`, dbgX + 8, dbgY + 120);
+        ctx.fillText(`BLOB aspect: ${aspectTag} | edge ρ: ${edgeTag} | TMPL: ${microTrackerRef.current.templateCount()}`, dbgX + 8, dbgY + 134);
       }
 
       ctx.restore();
