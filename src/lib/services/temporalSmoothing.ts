@@ -321,6 +321,7 @@ export interface LandmarkPoint2D {
   x: number;
   y: number;
 }
+export type Point2D = LandmarkPoint2D;
 
 export type FilterEngineMode = 'KALMAN_HYBRID' | 'EMA_KINEMATIC';
 
@@ -771,6 +772,243 @@ export function computeSimilarityTransform(
   return { scale, rotation, tx, ty };
 }
 
+export interface RansacSimilarityResult extends SimilarityTransform2D {
+  inlierCount: number;
+  totalCandidates: number;
+  inlierIndices: number[];
+}
+
+/**
+ * Robust RANSAC-based 2D Procrustes similarity transform estimator.
+ * Samples pairs of corresponding points, estimates similarity,
+ * counts consensus inliers within inlierThreshold, and refines
+ * the transform over the maximum inlier set.
+ */
+export function computeRansacSimilarityTransform(
+  sourcePts: LandmarkPoint2D[],
+  targetPts: LandmarkPoint2D[],
+  maxIterations: number = 20,
+  inlierThreshold: number = 0.04
+): RansacSimilarityResult {
+  const k = Math.min(sourcePts.length, targetPts.length);
+  if (k < 2) {
+    return { scale: 1, rotation: 0, tx: 0, ty: 0, inlierCount: k, totalCandidates: k, inlierIndices: [] };
+  }
+
+  if (k === 2) {
+    const t = computeSimilarityTransform(sourcePts, targetPts);
+    return { ...t, inlierCount: 2, totalCandidates: 2, inlierIndices: [0, 1] };
+  }
+
+  let bestInlierIndices: number[] = [];
+  let bestTransform: SimilarityTransform2D = computeSimilarityTransform(sourcePts, targetPts);
+
+  for (let iter = 0; iter < maxIterations; iter++) {
+    const idx1 = Math.floor(Math.random() * k);
+    let idx2 = Math.floor(Math.random() * (k - 1));
+    if (idx2 >= idx1) idx2++;
+
+    const sampleSrc = [sourcePts[idx1], sourcePts[idx2]];
+    const sampleTgt = [targetPts[idx1], targetPts[idx2]];
+
+    if (Math.hypot(sampleSrc[0].x - sampleSrc[1].x, sampleSrc[0].y - sampleSrc[1].y) < 0.01) {
+      continue;
+    }
+
+    const t = computeSimilarityTransform(sampleSrc, sampleTgt);
+    const cosR = Math.cos(t.rotation);
+    const sinR = Math.sin(t.rotation);
+
+    const inliers: number[] = [];
+    for (let i = 0; i < k; i++) {
+      const sx = sourcePts[i].x;
+      const sy = sourcePts[i].y;
+      const predX = t.scale * (cosR * sx - sinR * sy) + t.tx;
+      const predY = t.scale * (sinR * sx + cosR * sy) + t.ty;
+      const err = Math.hypot(predX - targetPts[i].x, predY - targetPts[i].y);
+      if (err <= inlierThreshold) {
+        inliers.push(i);
+      }
+    }
+
+    if (inliers.length > bestInlierIndices.length) {
+      bestInlierIndices = inliers;
+      bestTransform = t;
+      if (inliers.length >= k * 0.85) break;
+    }
+  }
+
+  if (bestInlierIndices.length >= 2) {
+    const inlierSrc = bestInlierIndices.map(i => sourcePts[i]);
+    const inlierTgt = bestInlierIndices.map(i => targetPts[i]);
+    bestTransform = computeSimilarityTransform(inlierSrc, inlierTgt);
+  }
+
+  return {
+    ...bestTransform,
+    inlierCount: bestInlierIndices.length,
+    totalCandidates: k,
+    inlierIndices: bestInlierIndices,
+  };
+}
+
+// ── Statistical PCA Shape Prior Model (70 Canonical Points) ─────────────────
+// Pre-computed canonical mean shape (140 dimensions: x0, y0, ... x69, y69)
+const CANONICAL_MEAN_SHAPE_70 = new Float32Array([
+  // Jawline (0..16)
+  0.22, 0.35, 0.23, 0.43, 0.25, 0.51, 0.27, 0.59, 0.31, 0.67, 0.36, 0.74, 0.42, 0.79, 0.46, 0.81, 0.50, 0.82,
+  0.54, 0.81, 0.58, 0.79, 0.64, 0.74, 0.69, 0.67, 0.73, 0.59, 0.75, 0.51, 0.77, 0.43, 0.78, 0.35,
+  // Right eyebrow (17..21)
+  0.29, 0.32, 0.32, 0.30, 0.36, 0.30, 0.40, 0.31, 0.43, 0.33,
+  // Left eyebrow (22..26)
+  0.57, 0.33, 0.60, 0.31, 0.64, 0.30, 0.68, 0.30, 0.71, 0.32,
+  // Nose bridge & tip (27..35)
+  0.50, 0.36, 0.50, 0.42, 0.50, 0.48, 0.50, 0.54, 0.45, 0.58, 0.47, 0.58, 0.50, 0.59, 0.53, 0.58, 0.55, 0.58,
+  // Right eye (36..41)
+  0.32, 0.38, 0.34, 0.36, 0.38, 0.36, 0.41, 0.39, 0.38, 0.40, 0.34, 0.40,
+  // Left eye (42..47)
+  0.59, 0.39, 0.62, 0.36, 0.66, 0.36, 0.68, 0.38, 0.66, 0.40, 0.62, 0.40,
+  // Outer lips (48..59)
+  0.39, 0.68, 0.43, 0.65, 0.47, 0.64, 0.50, 0.65, 0.53, 0.64, 0.57, 0.65, 0.61, 0.68, 0.57, 0.71, 0.53, 0.73,
+  0.50, 0.73, 0.47, 0.73, 0.43, 0.71,
+  // Inner lips (60..67)
+  0.41, 0.68, 0.47, 0.66, 0.50, 0.67, 0.53, 0.66, 0.59, 0.68, 0.53, 0.70, 0.50, 0.70, 0.47, 0.70,
+  // Pupils (68, 69)
+  0.36, 0.38, 0.64, 0.38,
+]);
+
+// Top 5 orthonormal modes of variation (140 dimensions each)
+const PCA_MODES_70: Float32Array[] = [
+  new Float32Array(140), // Mode 0: Aspect ratio / Face width
+  new Float32Array(140), // Mode 1: Jaw opening / speech
+  new Float32Array(140), // Mode 2: Smile / lip widening
+  new Float32Array(140), // Mode 3: Eyebrow raise
+  new Float32Array(140), // Mode 4: Eye squint / blink
+];
+
+const PCA_SIGMAS = [0.08, 0.06, 0.05, 0.04, 0.03];
+
+// Initialize orthogonal synthetic PCA modes
+(() => {
+  // Mode 0: Lateral expansion relative to midline (x = 0.50)
+  for (let i = 0; i < 70; i++) {
+    const x = CANONICAL_MEAN_SHAPE_70[i * 2];
+    PCA_MODES_70[0][i * 2] = (x - 0.50) * 0.25;
+  }
+  // Mode 1: Lower jaw and lower lip vertical lowering
+  for (let i = 5; i <= 11; i++) PCA_MODES_70[1][i * 2 + 1] = 0.35;
+  for (let i = 48; i <= 67; i++) PCA_MODES_70[1][i * 2 + 1] = 0.40;
+  // Mode 2: Mouth corner widening
+  PCA_MODES_70[2][48 * 2] = -0.35;
+  PCA_MODES_70[2][48 * 2 + 1] = -0.15;
+  PCA_MODES_70[2][54 * 2] = 0.35;
+  PCA_MODES_70[2][54 * 2 + 1] = -0.15;
+  // Mode 3: Eyebrow vertical elevation
+  for (let i = 17; i <= 26; i++) PCA_MODES_70[3][i * 2 + 1] = -0.30;
+  // Mode 4: Eye eyelid convergence
+  PCA_MODES_70[4][37 * 2 + 1] = 0.25; PCA_MODES_70[4][38 * 2 + 1] = 0.25;
+  PCA_MODES_70[4][40 * 2 + 1] = -0.25; PCA_MODES_70[4][41 * 2 + 1] = -0.25;
+  PCA_MODES_70[4][43 * 2 + 1] = 0.25; PCA_MODES_70[4][44 * 2 + 1] = 0.25;
+  PCA_MODES_70[4][46 * 2 + 1] = -0.25; PCA_MODES_70[4][47 * 2 + 1] = -0.25;
+
+  // Normalize each mode to unit L2 norm
+  for (let m = 0; m < 5; m++) {
+    let norm = 0;
+    for (let j = 0; j < 140; j++) norm += PCA_MODES_70[m][j] * PCA_MODES_70[m][j];
+    norm = Math.sqrt(norm);
+    if (norm > 1e-6) {
+      for (let j = 0; j < 140; j++) PCA_MODES_70[m][j] /= norm;
+    }
+  }
+})();
+
+export class PCAShapePrior {
+  /**
+   * Returns a copy of the 70-point canonical anthropometric mean facial shape.
+   */
+  public static getMeanShape(): LandmarkPoint2D[] {
+    const list: LandmarkPoint2D[] = [];
+    for (let i = 0; i < 70; i++) {
+      list.push({
+        x: CANONICAL_MEAN_SHAPE_70[i * 2],
+        y: CANONICAL_MEAN_SHAPE_70[i * 2 + 1],
+      });
+    }
+    return list;
+  }
+
+  /**
+   * Projects a 70-point facial landmark array onto the plausible statistical
+   * facial shape manifold, clamping outliers exceeding maxSigma standard deviations.
+   */
+  public static project(
+    points: LandmarkPoint2D[],
+    maxSigma: number = 3.0,
+    alphaBlend: number = 0.18
+  ): LandmarkPoint2D[] {
+    if (points.length !== 70) return points;
+
+    const canonicalPts: LandmarkPoint2D[] = [];
+    for (let i = 0; i < 70; i++) {
+      canonicalPts.push({
+        x: CANONICAL_MEAN_SHAPE_70[i * 2],
+        y: CANONICAL_MEAN_SHAPE_70[i * 2 + 1],
+      });
+    }
+
+    // Align input points to canonical mean shape
+    const sim = computeSimilarityTransform(points, canonicalPts);
+    if (sim.scale < 0.1) return points;
+
+    const cosR = Math.cos(sim.rotation);
+    const sinR = Math.sin(sim.rotation);
+
+    const aligned = new Float32Array(140);
+    for (let i = 0; i < 70; i++) {
+      const px = points[i].x;
+      const py = points[i].y;
+      aligned[i * 2] = sim.scale * (cosR * px - sinR * py) + sim.tx;
+      aligned[i * 2 + 1] = sim.scale * (sinR * px + cosR * py) + sim.ty;
+    }
+
+    // Subspace projection: b_k = U_k^T * (aligned - mean)
+    const diff = new Float32Array(140);
+    for (let i = 0; i < 140; i++) diff[i] = aligned[i] - CANONICAL_MEAN_SHAPE_70[i];
+
+    const recon = new Float32Array(CANONICAL_MEAN_SHAPE_70);
+    for (let m = 0; m < 5; m++) {
+      let b = 0;
+      for (let i = 0; i < 140; i++) b += PCA_MODES_70[m][i] * diff[i];
+      // Clamp to +/- maxSigma * sigma_m
+      const bound = maxSigma * PCA_SIGMAS[m];
+      const clampedB = Math.max(-bound, Math.min(bound, b));
+      for (let i = 0; i < 140; i++) recon[i] += clampedB * PCA_MODES_70[m][i];
+    }
+
+    // Invert similarity transform: recon -> image coordinates
+    // [x_im, y_im]^T = (1/s) * R(-theta) * ([x_rec, y_rec]^T - [tx, ty]^T)
+    const invScale = 1.0 / sim.scale;
+    const cosNegR = Math.cos(-sim.rotation);
+    const sinNegR = Math.sin(-sim.rotation);
+
+    const result: LandmarkPoint2D[] = [];
+    for (let i = 0; i < 70; i++) {
+      const rx = recon[i * 2] - sim.tx;
+      const ry = recon[i * 2 + 1] - sim.ty;
+      const imX = invScale * (cosNegR * rx - sinNegR * ry);
+      const imY = invScale * (sinNegR * rx + cosNegR * ry);
+
+      // Soft-blend with original observation
+      result.push({
+        x: (1.0 - alphaBlend) * points[i].x + alphaBlend * imX,
+        y: (1.0 - alphaBlend) * points[i].y + alphaBlend * imY,
+      });
+    }
+
+    return result;
+  }
+}
+
 /**
  * Dense Multi-Point Facial Landmark Smoother.
  * Manages per-landmark kinematic filters with per-region specialization,
@@ -780,6 +1018,7 @@ export class DenseLandmarksSmoother {
   private filters: LandmarkKinematicFilter[] = [];
   private lastModelTimestampMs: number = 0;
   private lastMicroTimestampMs: number = 0;
+  private lastMaxOccludedSec: number = 0;
   private currentPreset: TrackingPreset = 'BALANCED';
 
   // Global anti-snap re-localization state
@@ -790,9 +1029,18 @@ export class DenseLandmarksSmoother {
   private reLocTransform: SimilarityTransform2D = { scale: 1, rotation: 0, tx: 0, ty: 0 };
   private reLocThreshold: number = 0.06; // 0.06 normalized distance threshold (~38px at 640x480)
   private minOcclusionForRelocSec: number = 0.30; // 300ms minimum occlusion hold
-  private lastMaxOccludedSec: number = 0;
-
   private filterMode: FilterEngineMode = 'EMA_KINEMATIC';
+  private enablePcaProjection: boolean = false;
+  private pcaAlpha: number = 0.18;
+
+  public setEnablePcaProjection(enable: boolean, alpha: number = 0.18): void {
+    this.enablePcaProjection = enable;
+    this.pcaAlpha = Math.max(0, Math.min(0.5, alpha));
+  }
+
+  public getEnablePcaProjection(): boolean {
+    return this.enablePcaProjection;
+  }
 
   constructor(
     numPoints: number = 68,
@@ -814,10 +1062,12 @@ export class DenseLandmarksSmoother {
   public setRelocalizationConfig(config: {
     threshold?: number;
     durationMs?: number;
+    durationSec?: number;
     minOcclusionSec?: number;
   }) {
     if (config.threshold !== undefined) this.reLocThreshold = config.threshold;
     if (config.durationMs !== undefined) this.reLocDurationSec = Math.max(0.02, config.durationMs / 1000);
+    else if (config.durationSec !== undefined) this.reLocDurationSec = Math.max(0.02, config.durationSec);
     if (config.minOcclusionSec !== undefined) this.minOcclusionForRelocSec = config.minOcclusionSec;
   }
 
@@ -944,7 +1194,7 @@ export class DenseLandmarksSmoother {
               incAnchors.push({ x: buffer[idx * 4], y: buffer[idx * 4 + 1] });
             }
           }
-          this.reLocTransform = computeSimilarityTransform(prevAnchors, incAnchors);
+          this.reLocTransform = computeRansacSimilarityTransform(prevAnchors, incAnchors, 25, 0.04);
           this.reLocStartPositions = this.filters.map((f, i) => {
             const p = f.getPos();
             return p ? { ...p } : { x: buffer[i * 4], y: buffer[i * 4 + 1] };
@@ -959,6 +1209,21 @@ export class DenseLandmarksSmoother {
       if (this.reLocProgress >= 1.0) {
         this.reLocProgress = 1.0;
         this.isRelocalizing = false;
+      }
+    }
+
+    // PCA Shape Prior: project onto statistical manifold if enabled
+    let conditionedPoints: LandmarkPoint2D[] | null = null;
+    if (this.enablePcaProjection && numPoints === 70) {
+      let avgConf = 0;
+      const rawPts: LandmarkPoint2D[] = [];
+      for (let i = 0; i < 70; i++) {
+        rawPts.push({ x: buffer[i * 4], y: buffer[i * 4 + 1] });
+        avgConf += buffer[i * 4 + 3];
+      }
+      avgConf /= 70;
+      if (avgConf >= 0.25) {
+        conditionedPoints = PCAShapePrior.project(rawPts, 3.0, this.pcaAlpha);
       }
     }
 
@@ -978,15 +1243,15 @@ export class DenseLandmarksSmoother {
 
     for (let i = 0; i < numPoints; i++) {
       const offset = i * 4;
-      let x = buffer[offset];
-      let y = buffer[offset + 1];
+      let x = conditionedPoints ? conditionedPoints[i].x : buffer[offset];
+      let y = conditionedPoints ? conditionedPoints[i].y : buffer[offset + 1];
       const conf = buffer[offset + 3];
 
       // If global re-localizing, apply interpolated Procrustes similarity transform + smooth glide
       if (wasRelocalizing && this.reLocStartPositions[i]) {
         const start = this.reLocStartPositions[i];
-        const targetX = buffer[offset];
-        const targetY = buffer[offset + 1];
+        const targetX = x;
+        const targetY = y;
 
         const s = 1.0 + (this.reLocTransform.scale - 1.0) * blend;
         const theta = this.reLocTransform.rotation * blend;
