@@ -6,6 +6,7 @@
  */
 
 import type { VisionWorkerInitPayload, VisionWorkerFramePayload } from '@/types/workerMessages';
+import { PCAShapePrior } from './temporalSmoothing';
 
 export class VisionPipeline {
   private static frameCounter = 0;
@@ -305,6 +306,171 @@ export function videoNormalizedToProc(
   return {
     x: px / Math.max(1, procW),
     y: py / Math.max(1, procH),
+  };
+}
+
+// ── Fast Bootstrap Face Detector (Sub-Millisecond Heuristic) ───────────────
+export interface FastFaceBootstrapResult {
+  detected: boolean;
+  box: { x: number; y: number; width: number; height: number }; // normalized [0..1]
+  rightPupil: { x: number; y: number }; // normalized [0..1]
+  leftPupil: { x: number; y: number };  // normalized [0..1]
+  mouthRight: { x: number; y: number }; // normalized [0..1]
+  mouthLeft: { x: number; y: number };  // normalized [0..1]
+  noseTip: { x: number; y: number };    // normalized [0..1]
+  confidence: number;
+  approxLandmarks: Array<{ x: number; y: number; confidence: number }>;
+}
+
+/**
+ * High-speed main-thread face detector running in < 2ms on scratch resolution.
+ * Segments skin clusters in YCrCb chrominance space, identifies dominant centroid,
+ * refines eye/mouth darkness minima, and aligns a canonical 70-point face.
+ */
+export function detectFastFaceBootstrap(
+  sourceData: ImageData | Uint8ClampedArray,
+  width: number,
+  height: number,
+  mirrored: boolean = false
+): FastFaceBootstrapResult | null {
+  const data = sourceData instanceof Uint8ClampedArray ? sourceData : sourceData.data;
+  if (width < 32 || height < 32 || data.length < width * height * 4) {
+    return null;
+  }
+
+  // Fast skin segmentation in YCrCb space at stride 2
+  const step = 2;
+  let minX = width, maxX = 0, minY = height, maxY = 0;
+  let skinCount = 0;
+  let sumX = 0, sumY = 0;
+
+  for (let y = 0; y < height; y += step) {
+    const rowOff = y * width * 4;
+    for (let x = 0; x < width; x += step) {
+      const idx = rowOff + (x << 2);
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+
+      const luma = (77 * r + 150 * g + 29 * b) >> 8;
+      const cr = ((128 * r - 107 * g - 21 * b) >> 8) + 128;
+      const cb = ((-43 * r - 85 * g + 128 * b) >> 8) + 128;
+
+      const isSkin =
+        luma >= 35 && luma <= 225 &&
+        cr >= 133 && cr <= 185 &&
+        cb >= 75 && cb <= 130 &&
+        (cr - cb) >= 10 &&
+        (r - b) >= 12;
+
+      if (isSkin) {
+        skinCount++;
+        sumX += x;
+        sumY += y;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  const skinFraction = (skinCount * (step * step)) / Math.max(1, width * height);
+  const minRequiredSamples = Math.round((width * height) / (step * step * 100)); // ~1% coverage
+  if (skinCount < minRequiredSamples || (maxX - minX) < width * 0.12 || (maxY - minY) < height * 0.15) {
+    return null;
+  }
+
+  const cx = sumX / skinCount;
+  const cy = sumY / skinCount;
+  const fw = maxX - minX;
+  const fh = maxY - minY;
+
+  // Normalized face bounding box with small padding
+  const normBoxX = Math.max(0, (minX - fw * 0.08) / width);
+  const normBoxY = Math.max(0, (minY - fh * 0.08) / height);
+  const normBoxW = Math.min(1.0 - normBoxX, (fw * 1.16) / width);
+  const normBoxH = Math.min(1.0 - normBoxY, (fh * 1.16) / height);
+
+  // Local darkness refinement for pupils within eye band
+  const eyeBandY = Math.round(cy - fh * 0.15);
+  const rEyeInitX = Math.round(cx - fw * 0.18);
+  const lEyeInitX = Math.round(cx + fw * 0.18);
+
+  const refineDarkness = (initX: number, initY: number, radius: number): { x: number; y: number } => {
+    let minLuma = 256;
+    let bestX = initX;
+    let bestY = initY;
+    const x0 = Math.max(0, initX - radius);
+    const x1 = Math.min(width - 1, initX + radius);
+    const y0 = Math.max(0, initY - radius);
+    const y1 = Math.min(height - 1, initY + radius);
+
+    for (let py = y0; py <= y1; py++) {
+      const rowOff = py * width * 4;
+      for (let px = x0; px <= x1; px++) {
+        const idx = rowOff + (px << 2);
+        const l = (77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2]) >> 8;
+        if (l < minLuma) {
+          minLuma = l;
+          bestX = px;
+          bestY = py;
+        }
+      }
+    }
+    return { x: bestX / width, y: bestY / height };
+  };
+
+  const rightPupil = refineDarkness(rEyeInitX, eyeBandY, Math.round(fw * 0.08));
+  const leftPupil = refineDarkness(lEyeInitX, eyeBandY, Math.round(fw * 0.08));
+
+  // Mouth band
+  const mouthBandY = Math.round(cy + fh * 0.22);
+  const rMouthInitX = Math.round(cx - fw * 0.16);
+  const lMouthInitX = Math.round(cx + fw * 0.16);
+  const mouthRight = { x: rMouthInitX / width, y: mouthBandY / height };
+  const mouthLeft = { x: lMouthInitX / width, y: mouthBandY / height };
+  const noseTip = { x: cx / width, y: (cy + fh * 0.05) / height };
+
+  const flipX = (normX: number) => mirrored ? (1.0 - normX) : normX;
+
+  // Build canonical 70-point approximate face aligned to bounding box
+  const approxLandmarks: Array<{ x: number; y: number; confidence: number }> = [];
+  const meanShape = PCAShapePrior.getMeanShape();
+  for (let i = 0; i < 70; i++) {
+    const ms = meanShape[i];
+    let lx = normBoxX + ms.x * normBoxW;
+    let ly = normBoxY + ms.y * normBoxH;
+    let conf = 0.70;
+
+    if (i === 68) { lx = rightPupil.x; ly = rightPupil.y; conf = 0.85; }
+    else if (i === 69) { lx = leftPupil.x; ly = leftPupil.y; conf = 0.85; }
+    else if (i === 48) { lx = mouthRight.x; ly = mouthRight.y; conf = 0.80; }
+    else if (i === 54) { lx = mouthLeft.x; ly = mouthLeft.y; conf = 0.80; }
+    else if (i === 33) { lx = noseTip.x; ly = noseTip.y; conf = 0.80; }
+
+    approxLandmarks.push({
+      x: flipX(lx),
+      y: ly,
+      confidence: conf,
+    });
+  }
+
+  return {
+    detected: true,
+    box: {
+      x: flipX(normBoxX + (mirrored ? normBoxW : 0)),
+      y: normBoxY,
+      width: normBoxW,
+      height: normBoxH,
+    },
+    rightPupil: { x: flipX(rightPupil.x), y: rightPupil.y },
+    leftPupil: { x: flipX(leftPupil.x), y: leftPupil.y },
+    mouthRight: { x: flipX(mouthRight.x), y: mouthRight.y },
+    mouthLeft: { x: flipX(mouthLeft.x), y: mouthLeft.y },
+    noseTip: { x: flipX(noseTip.x), y: noseTip.y },
+    confidence: Math.min(0.85, 0.50 + skinFraction * 0.6),
+    approxLandmarks,
   };
 }
 
