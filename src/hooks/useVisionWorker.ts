@@ -42,7 +42,7 @@ export interface WorkerTimelineTelemetry {
   firstFrameSentTs: number;
   firstModelPacketTs: number;
   modelInitDurationMs: number;
-  modelSource: 'LOCAL' | 'CDN' | 'HEURISTIC_FALLBACK' | 'PENDING';
+  modelSource: 'CACHED' | 'LOCAL' | 'CDN' | 'HEURISTIC_FALLBACK' | 'PENDING';
 }
 
 interface UseVisionWorkerReturn {
@@ -134,7 +134,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
   const firstFrameSentTsRef = useRef<number>(0);
   const firstModelPacketTsRef = useRef<number>(0);
   const modelInitDurationMsRef = useRef<number>(0);
-  const modelSourceRef = useRef<'LOCAL' | 'CDN' | 'HEURISTIC_FALLBACK' | 'PENDING'>('PENDING');
+  const modelSourceRef = useRef<'CACHED' | 'LOCAL' | 'CDN' | 'HEURISTIC_FALLBACK' | 'PENDING'>('PENDING');
 
   const getTimeline = useCallback((): WorkerTimelineTelemetry => ({
     workerSpawnTs: spawnTsRef.current,

@@ -25,9 +25,11 @@ import {
   procToVideoX,
   procToVideoY,
   detectDeviceProfile,
+  detectFastFaceBootstrap,
   OnlineCalibrationEstimator,
   type CoordinateMappingMetrics,
   type DeviceProfile,
+  type FastFaceBootstrapResult,
 } from '../../lib/services/visionPipeline';
 import {
   DenseLandmarksSmoother,
@@ -35,7 +37,7 @@ import {
   type TrackingPreset,
 } from '../../lib/services/temporalSmoothing';
 import type { DenseLandmarksEnvelope } from '@/types/workerMessages';
-import type { VisionWorkerStats } from '@/hooks/useVisionWorker';
+import type { VisionWorkerStats, WorkerTimelineTelemetry } from '@/hooks/useVisionWorker';
 import { MicroPatchTracker, type TrackedFeature } from '../../lib/services/microPatchTracker';
 import {
   getIVPFeatureFlags,
@@ -69,6 +71,20 @@ export interface DiagnosticMetrics {
   targetLost: boolean;
 }
 
+export type TrackingLifecycleState = 'BOOTSTRAPPING' | 'MODEL_PENDING' | 'MODEL_READY';
+
+export interface CanvasTimelineTelemetry {
+  pageLoadTs: number;
+  workerSpawnTs: number;
+  modelInitStartTs: number;
+  modelInitDoneTs: number;
+  firstFrameSentTs: number;
+  firstModelPacketTs: number;
+  firstTemplatesCreatedTs: number;
+  firstMicroAcceptedTs: number;
+  firstSmoothedRenderTs: number;
+}
+
 export interface IVPInteractiveCanvasProps {
   sourceElement: HTMLVideoElement | HTMLImageElement | null;
   activeMode?: DiagnosticMode;
@@ -80,6 +96,7 @@ export interface IVPInteractiveCanvasProps {
   showDebugHUD?: boolean;
   mirrored?: boolean;
   workerLandmarks?: { envelope: DenseLandmarksEnvelope; buffer: Float32Array } | null;
+  workerTimeline?: WorkerTimelineTelemetry;
   poseAngles?: { yaw: number; pitch: number; roll: number };
   gazeCoords?: { x: number; y: number };
   trackingPreset?: TrackingPreset;
@@ -107,6 +124,7 @@ export default function IVPInteractiveCanvas({
   showDebugHUD = false,
   mirrored = false,
   workerLandmarks = null,
+  workerTimeline,
   poseAngles = { yaw: 0, pitch: 0, roll: 0 },
   gazeCoords = { x: 0, y: 0 },
   trackingPreset = 'BALANCED',
@@ -176,6 +194,23 @@ export default function IVPInteractiveCanvas({
   const isMicroPausedRef = useRef<boolean>(false);
   const [isMicroPaused, setIsMicroPaused] = useState<boolean>(false);
 
+  // ── Cold-Start Milestones & State Machine ──────────────────────────────────
+  const appMountTsRef = useRef<number>(typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const trackingStateRef = useRef<TrackingLifecycleState>('BOOTSTRAPPING');
+  const [trackingState, setTrackingState] = useState<TrackingLifecycleState>('BOOTSTRAPPING');
+
+  const timelineRef = useRef<CanvasTimelineTelemetry>({
+    pageLoadTs: typeof performance !== 'undefined' ? 0 : Date.now(),
+    workerSpawnTs: 0,
+    modelInitStartTs: 0,
+    modelInitDoneTs: 0,
+    firstFrameSentTs: 0,
+    firstModelPacketTs: 0,
+    firstTemplatesCreatedTs: 0,
+    firstMicroAcceptedTs: 0,
+    firstSmoothedRenderTs: 0,
+  });
+
   // ── Device profiling & adaptive calibration ─────────────────────────────
   const deviceProfileRef = useRef<DeviceProfile>(detectDeviceProfile());
   const onlineEstimatorRef = useRef<OnlineCalibrationEstimator>(new OnlineCalibrationEstimator(30));
@@ -238,6 +273,9 @@ export default function IVPInteractiveCanvas({
     const payload = {
       sessionId: `session_${Date.now()}`,
       timestamp: Date.now(),
+      timeline: { ...timelineRef.current },
+      trackingState: trackingStateRef.current,
+      isWarmup: featureFlags.enableWarmup && (performance.now() - appMountTsRef.current < 4000) && (trackingStateRef.current !== 'MODEL_READY'),
       deviceProfile: deviceProfileRef.current,
       activeFaceId: currentActiveFace,
       frameNumber: frameCountRef.current,
@@ -625,12 +663,37 @@ export default function IVPInteractiveCanvas({
     ctx.restore();
 
     // ── 10. DENSE 70-POINT GEOMETRIC FACIAL LANDMARK & KINEMATIC ENGINE ─────
-    let denseRes: SmoothedLandmarksResult;
+    let denseRes: SmoothedLandmarksResult = denseSmootherRef.current.getCurrentResult();
     let isFaceGenuinelyDetected = false;
     let liveEAR = 0.285;
     let liveMAR = 0.145;
 
-    if (workerLandmarks && workerLandmarks.buffer && workerLandmarks.buffer.length >= 70 * 4) {
+    // Sync worker timeline milestones
+    if (workerTimeline) {
+      if (workerTimeline.workerSpawnTs && !timelineRef.current.workerSpawnTs) timelineRef.current.workerSpawnTs = workerTimeline.workerSpawnTs;
+      if (workerTimeline.modelInitStartTs && !timelineRef.current.modelInitStartTs) timelineRef.current.modelInitStartTs = workerTimeline.modelInitStartTs;
+      if (workerTimeline.modelInitDoneTs && !timelineRef.current.modelInitDoneTs) timelineRef.current.modelInitDoneTs = workerTimeline.modelInitDoneTs;
+      if (workerTimeline.firstFrameSentTs && !timelineRef.current.firstFrameSentTs) timelineRef.current.firstFrameSentTs = workerTimeline.firstFrameSentTs;
+      if (workerTimeline.firstModelPacketTs && !timelineRef.current.firstModelPacketTs) timelineRef.current.firstModelPacketTs = workerTimeline.firstModelPacketTs;
+    }
+
+    const appElapsed = now - appMountTsRef.current;
+    const isWarmup = featureFlags.enableWarmup && (appElapsed < 4000) && (trackingStateRef.current !== 'MODEL_READY');
+    const thresholds = deviceProfileRef.current.thresholds;
+    const effectiveMinNcc = isWarmup ? 0.60 : onlineEstimatorRef.current.getThreshold(thresholds.minApplyNcc);
+
+    const hasWorkerLandmarks = !!(workerLandmarks && workerLandmarks.buffer && workerLandmarks.buffer.length >= 70 * 4);
+
+    if (hasWorkerLandmarks && workerLandmarks) {
+      // ── Model Packet Available ──
+      if (trackingStateRef.current !== 'MODEL_READY') {
+        trackingStateRef.current = 'MODEL_READY';
+        setTrackingState('MODEL_READY');
+        if (timelineRef.current.firstModelPacketTs === 0) {
+          timelineRef.current.firstModelPacketTs = performance.now();
+        }
+      }
+
       isFaceGenuinelyDetected = workerLandmarks.envelope.faceDetected;
       liveEAR = workerLandmarks.envelope.ear;
       liveMAR = workerLandmarks.envelope.mar;
@@ -677,8 +740,6 @@ export default function IVPInteractiveCanvas({
         // Intermediate 60 FPS RAF frame: track micro-features (pupils & lip corners) using NCC / LK
         if (isFaceGenuinelyDetected && rawImgData && !isMicroPausedRef.current) {
           const t0 = performance.now();
-          const thresholds = deviceProfileRef.current.thresholds;
-          const effectiveMinNcc = onlineEstimatorRef.current.getThreshold(thresholds.minApplyNcc);
           const fb = workerLandmarks?.envelope?.faceBox;
           const fbW = fb ? (fb.width > 1.0 ? fb.width : fb.width * PROC_W) : 80;
           const fbH = fb ? (fb.height > 1.0 ? fb.height : fb.height * PROC_H) : 80;
@@ -712,18 +773,13 @@ export default function IVPInteractiveCanvas({
               onlineEstimatorRef.current.addSample(feat.ncc);
             }
 
-            // feat.x/feat.y are normalized relative to PROC_W/PROC_H in rawImgData
             const procX = mirrored ? (1.0 - feat.x) : feat.x;
             const procY = feat.y;
-
-            // rawCanvas draws source directly to PROC_W x PROC_H (full span).
             const videoNormX = procToVideoX(procX, PROC_W, PROC_W);
             const videoNormY = procToVideoY(procY, PROC_H, PROC_H);
 
-            // In-bounds safety check
             if (videoNormX < 0.01 || videoNormX > 0.99 || videoNormY < 0.01 || videoNormY > 0.99) continue;
 
-            // Save canonical tracked in video-normalized space for HUD visual rings
             canonicalTracked.set(idx, {
               landmarkIndex: idx,
               x: videoNormX,
@@ -732,26 +788,22 @@ export default function IVPInteractiveCanvas({
               method: feat.method,
             });
 
-            // Gate 0: Region confidence fusion
             if (featureFlags.enableRegionFusion && lastSmoothedResRef.current?.regionConfidences) {
               const rc = lastSmoothedResRef.current.regionConfidences;
               if ((idx === 68 || idx === 69) && rc.eyes < 0.25) continue;
               if ((idx === 48 || idx === 54) && rc.mouth < 0.25) continue;
             }
 
-            // Gate 1: Dynamic acceptance threshold (scaled for LK)
             const requiredNcc = feat.method === 'LK' ? effectiveMinNcc * 0.88 : effectiveMinNcc;
             let accepted = false;
             let delta = 0;
 
             if (feat.ncc >= requiredNcc) {
-              // Gate 2: Consistency check against 1-step predicted position
               const pred = denseSmootherRef.current.predictPoint(idx, 0.016);
               delta = pred ? Math.hypot(pred.x - videoNormX, pred.y - videoNormY) : 0;
 
               if (delta < maxDeltaNormalized || feat.ncc >= 0.92) {
                 const scaledConf = Math.max(0.1, Math.min(1.0, feat.ncc));
-                // Gate 3: Atomic smoother update
                 const updatedPos = denseSmootherRef.current.updatePoint(
                   idx,
                   { x: videoNormX, y: videoNormY },
@@ -759,7 +811,6 @@ export default function IVPInteractiveCanvas({
                   now
                 );
 
-                // Gate 4: Mutate worker buffer ONLY IF smoother accepted measurement
                 if (updatedPos && updatedPos.accepted && workerLandmarks?.buffer && workerLandmarks.buffer.length >= (idx + 1) * 4) {
                   const finalX = updatedPos.pos ? updatedPos.pos.x : updatedPos.x;
                   const finalY = updatedPos.pos ? updatedPos.pos.y : updatedPos.y;
@@ -768,11 +819,13 @@ export default function IVPInteractiveCanvas({
                   workerLandmarks.buffer[idx * 4 + 3] = scaledConf;
                   microMatchesAcceptedRef.current++;
                   accepted = true;
+                  if (timelineRef.current.firstMicroAcceptedTs === 0) {
+                    timelineRef.current.firstMicroAcceptedTs = performance.now();
+                  }
                 }
               }
             }
 
-            // Log event to rolling micro history
             if (microEventHistoryRef.current.length >= 60) {
               microEventHistoryRef.current.shift();
             }
@@ -787,81 +840,189 @@ export default function IVPInteractiveCanvas({
           }
           lastMicroTrackedRef.current = canonicalTracked;
         }
-        // On intermediate frames: do not re-feed stale static coordinates to updateFromBuffer!
         denseRes = denseSmootherRef.current.getCurrentResult();
         lastSmoothedResRef.current = denseRes;
       }
     } else {
-      const liveExpr = !isTargetLost
-        ? extractFacialExpressions(rawImgData.data, PROC_W, PROC_H)
-        : null;
+      // ── Heuristic & Fast Bootstrap Startup Flow ──
+      let bootstrapHandled = false;
 
-      isFaceGenuinelyDetected = !!(liveExpr && liveExpr.faceDetected);
-      liveEAR = liveExpr ? liveExpr.ear : 0.285;
-      liveMAR = liveExpr ? liveExpr.mar : 0.145;
+      if (!isTargetLost && rawImgData) {
+        if (trackingStateRef.current === 'BOOTSTRAPPING') {
+          const fastFace = detectFastFaceBootstrap(rawImgData.data, PROC_W, PROC_H, mirrored);
+          if (fastFace && fastFace.detected) {
+            isFaceGenuinelyDetected = true;
+            microTrackerRef.current.setFaceId('bootstrap_face');
+            denseSmootherRef.current.setFaceId('bootstrap_face');
 
-      const rawPts70: Array<{ x: number; y: number; confidence?: number }> = [];
-      if (liveExpr && liveExpr.faceDetected && liveExpr.landmarks) {
-        const lm = liveExpr.landmarks;
-        const fb = liveExpr.faceBox;
-        // 0..16: Jawline
-        for (let i = 0; i < 17; i++) {
-          const theta = Math.PI + (i / 16) * Math.PI;
-          rawPts70.push({
-            x: ((fb.x + fb.width / 2) + Math.cos(theta) * (fb.width * 0.48)) / PROC_W,
-            y: ((fb.y + fb.height * 0.45) + Math.sin(theta) * (fb.height * 0.45)) / PROC_H,
-            confidence: 0.85,
-          });
-        }
-        // 17..26: Brows
-        for (let i = 0; i < 5; i++) {
-          rawPts70.push({ x: (lm.leftPupil.x - 18 + i * 8) / PROC_W, y: (lm.leftPupil.y - 14) / PROC_H, confidence: 0.88 });
-        }
-        for (let i = 0; i < 5; i++) {
-          rawPts70.push({ x: (lm.rightPupil.x - 14 + i * 8) / PROC_W, y: (lm.rightPupil.y - 14) / PROC_H, confidence: 0.88 });
-        }
-        // 27..30: Nose bridge
-        for (let i = 0; i < 4; i++) {
-          const p = lm.noseBridge[Math.min(lm.noseBridge.length - 1, i)];
-          rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.90 });
-        }
-        // 31..35: Nose bottom & tip
-        rawPts70.push({ x: (lm.noseTip.x - 10) / PROC_W, y: (lm.noseTip.y + 4) / PROC_H, confidence: 0.90 });
-        rawPts70.push({ x: (lm.noseTip.x - 5) / PROC_W, y: (lm.noseTip.y + 5) / PROC_H, confidence: 0.90 });
-        rawPts70.push({ x: lm.noseTip.x / PROC_W, y: lm.noseTip.y / PROC_H, confidence: 0.95 });
-        rawPts70.push({ x: (lm.noseTip.x + 5) / PROC_W, y: (lm.noseTip.y + 5) / PROC_H, confidence: 0.90 });
-        rawPts70.push({ x: (lm.noseTip.x + 10) / PROC_W, y: (lm.noseTip.y + 4) / PROC_H, confidence: 0.90 });
+            const normMicroX = (x: number) => (mirrored ? (1.0 - x) : x);
+            microTrackerRef.current.updateTemplates(rawImgData.data, PROC_W, PROC_H, [
+              { index: 68, x: normMicroX(fastFace.rightPupil.x), y: fastFace.rightPupil.y, patchRadius: 8 },
+              { index: 69, x: normMicroX(fastFace.leftPupil.x), y: fastFace.leftPupil.y, patchRadius: 8 },
+              { index: 48, x: normMicroX(fastFace.mouthRight.x), y: fastFace.mouthRight.y, patchRadius: 10 },
+              { index: 54, x: normMicroX(fastFace.mouthLeft.x), y: fastFace.mouthLeft.y, patchRadius: 10 },
+            ], { minStdDev: 1.0 });
 
-        // 36..41: Left eye
-        for (const p of lm.leftEyePts) rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.94 });
-        // 42..47: Right eye
-        for (const p of lm.rightEyePts) rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.94 });
+            if (timelineRef.current.firstTemplatesCreatedTs === 0) {
+              timelineRef.current.firstTemplatesCreatedTs = performance.now();
+            }
 
-        // 48..59: Outer mouth (12 points)
-        for (let i = 0; i < 12; i++) {
-          const p = lm.mouthPts[i % lm.mouthPts.length];
-          rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.92 });
-        }
-        // 60..67: Inner mouth (8 points)
-        for (let i = 0; i < 8; i++) {
-          const p = lm.mouthPts[i % lm.mouthPts.length];
-          rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.90 });
-        }
-        // 68: Left pupil
-        rawPts70.push({ x: lm.leftPupil.x / PROC_W, y: lm.leftPupil.y / PROC_H, confidence: 0.95 });
-        // 69: Right pupil
-        rawPts70.push({ x: lm.rightPupil.x / PROC_W, y: lm.rightPupil.y / PROC_H, confidence: 0.95 });
+            denseRes = denseSmootherRef.current.updateFromPoints(fastFace.approxLandmarks, now);
+            lastSmoothedResRef.current = denseRes;
+            lastRawNormPtsRef.current = fastFace.approxLandmarks.map(p => ({ x: p.x, y: p.y }));
 
-        lastRawNormPtsRef.current = rawPts70.map(p => ({ x: p.x, y: p.y }));
-        denseRes = denseSmootherRef.current.updateFromPoints(rawPts70, now);
-      } else {
-        denseRes = denseSmootherRef.current.updateFromPoints(
-          (lastRawNormPtsRef.current || []).map(p => ({ x: p.x, y: p.y, confidence: 0.1 })),
-          now
-        );
+            trackingStateRef.current = 'MODEL_PENDING';
+            setTrackingState('MODEL_PENDING');
+            bootstrapHandled = true;
+          }
+        } else if (trackingStateRef.current === 'MODEL_PENDING') {
+          // Track micro templates during MODEL_PENDING state
+          isFaceGenuinelyDetected = true;
+          const t0 = performance.now();
+          const tracked = microTrackerRef.current.track(
+            rawImgData.data,
+            PROC_W,
+            PROC_H,
+            0.50,
+            deviceProfileRef.current.cpuTier === 'LOW' ? 2 : 1,
+            {
+              enableLk: featureFlags.enableLkFallback,
+              lkMinEigenvalue: thresholds.lkMinEigenvalue,
+            }
+          );
+          const trackDurationMs = performance.now() - t0;
+          lastMicroTrackMsRef.current = trackDurationMs;
+          microTrackMsSamplesRef.current.push(trackDurationMs);
+          if (microTrackMsSamplesRef.current.length > 200) {
+            microTrackMsSamplesRef.current.shift();
+          }
+
+          const canonicalTracked = new Map<number, TrackedFeature>();
+          microMatchesTriedRef.current += tracked.size;
+
+          for (const [idx, feat] of tracked.entries()) {
+            const procX = mirrored ? (1.0 - feat.x) : feat.x;
+            const procY = feat.y;
+            const videoNormX = procToVideoX(procX, PROC_W, PROC_W);
+            const videoNormY = procToVideoY(procY, PROC_H, PROC_H);
+
+            if (videoNormX < 0.01 || videoNormX > 0.99 || videoNormY < 0.01 || videoNormY > 0.99) continue;
+
+            canonicalTracked.set(idx, {
+              landmarkIndex: idx,
+              x: videoNormX,
+              y: videoNormY,
+              ncc: feat.ncc,
+              method: feat.method,
+            });
+
+            const requiredNcc = feat.method === 'LK' ? effectiveMinNcc * 0.88 : effectiveMinNcc;
+            let accepted = false;
+            let delta = 0;
+
+            if (feat.ncc >= requiredNcc) {
+              const pred = denseSmootherRef.current.predictPoint(idx, 0.016);
+              delta = pred ? Math.hypot(pred.x - videoNormX, pred.y - videoNormY) : 0;
+
+              if (delta < 0.08 || feat.ncc >= 0.88) {
+                const scaledConf = Math.max(0.1, Math.min(1.0, feat.ncc));
+                const updatedPos = denseSmootherRef.current.updatePoint(
+                  idx,
+                  { x: videoNormX, y: videoNormY },
+                  scaledConf,
+                  now
+                );
+                if (updatedPos && updatedPos.accepted) {
+                  microMatchesAcceptedRef.current++;
+                  accepted = true;
+                  if (timelineRef.current.firstMicroAcceptedTs === 0) {
+                    timelineRef.current.firstMicroAcceptedTs = performance.now();
+                  }
+                }
+              }
+            }
+
+            if (microEventHistoryRef.current.length >= 60) microEventHistoryRef.current.shift();
+            microEventHistoryRef.current.push({
+              timestamp: now,
+              idx,
+              ncc: feat.ncc,
+              method: feat.method || 'ZNCC',
+              accepted,
+              delta,
+            });
+          }
+          lastMicroTrackedRef.current = canonicalTracked;
+          denseRes = denseSmootherRef.current.getCurrentResult();
+          lastSmoothedResRef.current = denseRes;
+          bootstrapHandled = true;
+        }
+      }
+
+      if (!bootstrapHandled) {
+        const liveExpr = !isTargetLost
+          ? extractFacialExpressions(rawImgData.data, PROC_W, PROC_H)
+          : null;
+
+        isFaceGenuinelyDetected = !!(liveExpr && liveExpr.faceDetected);
+        liveEAR = liveExpr ? liveExpr.ear : 0.285;
+        liveMAR = liveExpr ? liveExpr.mar : 0.145;
+
+        const rawPts70: Array<{ x: number; y: number; confidence?: number }> = [];
+        if (liveExpr && liveExpr.faceDetected && liveExpr.landmarks) {
+          const lm = liveExpr.landmarks;
+          const fb = liveExpr.faceBox;
+          for (let i = 0; i < 17; i++) {
+            const theta = Math.PI + (i / 16) * Math.PI;
+            rawPts70.push({
+              x: ((fb.x + fb.width / 2) + Math.cos(theta) * (fb.width * 0.48)) / PROC_W,
+              y: ((fb.y + fb.height * 0.45) + Math.sin(theta) * (fb.height * 0.45)) / PROC_H,
+              confidence: 0.85,
+            });
+          }
+          for (let i = 0; i < 5; i++) rawPts70.push({ x: (lm.leftPupil.x - 18 + i * 8) / PROC_W, y: (lm.leftPupil.y - 14) / PROC_H, confidence: 0.88 });
+          for (let i = 0; i < 5; i++) rawPts70.push({ x: (lm.rightPupil.x - 14 + i * 8) / PROC_W, y: (lm.rightPupil.y - 14) / PROC_H, confidence: 0.88 });
+          for (let i = 0; i < 4; i++) {
+            const p = lm.noseBridge[Math.min(lm.noseBridge.length - 1, i)];
+            rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.90 });
+          }
+          rawPts70.push({ x: (lm.noseTip.x - 10) / PROC_W, y: (lm.noseTip.y + 4) / PROC_H, confidence: 0.90 });
+          rawPts70.push({ x: (lm.noseTip.x - 5) / PROC_W, y: (lm.noseTip.y + 5) / PROC_H, confidence: 0.90 });
+          rawPts70.push({ x: lm.noseTip.x / PROC_W, y: lm.noseTip.y / PROC_H, confidence: 0.95 });
+          rawPts70.push({ x: (lm.noseTip.x + 5) / PROC_W, y: (lm.noseTip.y + 5) / PROC_H, confidence: 0.90 });
+          rawPts70.push({ x: (lm.noseTip.x + 10) / PROC_W, y: (lm.noseTip.y + 4) / PROC_H, confidence: 0.90 });
+          for (const p of lm.leftEyePts) rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.94 });
+          for (const p of lm.rightEyePts) rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.94 });
+          for (let i = 0; i < 12; i++) {
+            const p = lm.mouthPts[i % lm.mouthPts.length];
+            rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.92 });
+          }
+          for (let i = 0; i < 8; i++) {
+            const p = lm.mouthPts[i % lm.mouthPts.length];
+            rawPts70.push({ x: p.x / PROC_W, y: p.y / PROC_H, confidence: 0.90 });
+          }
+          rawPts70.push({ x: lm.leftPupil.x / PROC_W, y: lm.leftPupil.y / PROC_H, confidence: 0.95 });
+          rawPts70.push({ x: lm.rightPupil.x / PROC_W, y: lm.rightPupil.y / PROC_H, confidence: 0.95 });
+
+          lastRawNormPtsRef.current = rawPts70.map(p => ({ x: p.x, y: p.y }));
+          denseRes = denseSmootherRef.current.updateFromPoints(rawPts70, now);
+        } else {
+          denseRes = denseSmootherRef.current.updateFromPoints(
+            (lastRawNormPtsRef.current || []).map(p => ({ x: p.x, y: p.y, confidence: 0.1 })),
+            now
+          );
+        }
+        lastSmoothedResRef.current = denseRes;
       }
     }
-    lastSmoothedResRef.current = denseRes;
+
+    if (isWarmup) {
+      denseRes.visibilityOpacity = Math.max(0.65, denseRes.visibilityOpacity);
+    }
+
+    if (timelineRef.current.firstSmoothedRenderTs === 0 && (isFaceGenuinelyDetected || denseRes.regionConfidences.overall > 0.2)) {
+      timelineRef.current.firstSmoothedRenderTs = performance.now();
+    }
 
     // Convert smoothed normalized points [0..1] to display canvas pixel space!
     const canvasPts: Point2D[] = denseRes.points.map(p => mapNormalizedToCanvas(p, mapping));
@@ -1451,6 +1612,39 @@ export default function IVPInteractiveCanvas({
       if (onMetricsUpdate) onMetricsUpdate(metrics);
     }
 
+    if (typeof window !== 'undefined') {
+      const { p50, p95 } = getMicroTrackPercentiles();
+      (window as any).__IVP_HUD_TELEMETRY__ = {
+        pageLoadTs: timelineRef.current.pageLoadTs,
+        workerSpawnTs: timelineRef.current.workerSpawnTs,
+        modelInitStartTs: timelineRef.current.modelInitStartTs,
+        modelInitDoneTs: timelineRef.current.modelInitDoneTs,
+        firstFrameSentTs: timelineRef.current.firstFrameSentTs,
+        firstModelPacketTs: timelineRef.current.firstModelPacketTs,
+        firstTemplatesCreatedTs: timelineRef.current.firstTemplatesCreatedTs,
+        firstMicroAcceptedTs: timelineRef.current.firstMicroAcceptedTs,
+        firstSmoothedRenderTs: timelineRef.current.firstSmoothedRenderTs,
+        timeline: { ...timelineRef.current },
+        trackingState: trackingStateRef.current,
+        isWarmup,
+        microMatchesTried: microMatchesTriedRef.current,
+        microMatchesAccepted: microMatchesAcceptedRef.current,
+        microEvictions: microTrackerRef.current.getEvictionCount(),
+        microTrackMsP50: p50,
+        microTrackMsP95: p95,
+        currentStride: deviceProfileRef.current.cpuTier === 'LOW' ? 2 : 1,
+        templatesActive: microTrackerRef.current.templateCount(),
+        isMicroPaused: isMicroPausedRef.current,
+        featureFlags,
+        deviceProfile: deviceProfileRef.current,
+        boxW,
+        boxH,
+        authenticBoxW,
+        authenticBoxH,
+        fps: fpsRef.current,
+      };
+    }
+
     animFrameIdRef.current = requestAnimationFrame(processAndRenderFrame);
   }, [
     sourceElement,
@@ -1509,6 +1703,11 @@ export default function IVPInteractiveCanvas({
 
         {/* FPS & Target Status */}
         <div className="flex items-center gap-3 text-[11px] font-mono">
+          {trackingState !== 'MODEL_READY' && (
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+              ⚡ WARMING UP ({trackingState})
+            </span>
+          )}
           {liveMetrics.targetLost && (
             <span className="text-red-400 font-bold animate-pulse">⚠ TARGET LOST</span>
           )}
@@ -1519,6 +1718,23 @@ export default function IVPInteractiveCanvas({
             </strong>
           </span>
           <span className="text-gray-500">Split: {Math.round(splitPercent)}%</span>
+
+          {/* Warmup Mode Toggle */}
+          <button
+            id="warmup-mode-btn"
+            type="button"
+            onClick={() => {
+              const next = !featureFlags.enableWarmup;
+              setIVPFeatureFlag('enableWarmup', next);
+            }}
+            className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors ${
+              featureFlags.enableWarmup
+                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+            }`}
+          >
+            {featureFlags.enableWarmup ? '⚡ WARMUP: ON' : '⚡ WARMUP: OFF'}
+          </button>
 
           {/* Calibrate Face Button */}
           <button

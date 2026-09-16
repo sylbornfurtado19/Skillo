@@ -229,7 +229,7 @@ export interface ModelInitDoneResponseMessage {
     success: boolean;
     timestampMs: number;
     durationMs: number;
-    source?: 'LOCAL' | 'CDN' | 'HEURISTIC_FALLBACK';
+    source?: 'CACHED' | 'LOCAL' | 'CDN' | 'HEURISTIC_FALLBACK';
     error?: string;
   };
 }

@@ -51,6 +51,7 @@ export default function IVPLab() {
     isTabPaused,
     isThrottled,
     suggestedCadenceFps,
+    timeline: workerTimeline,
   } = useVisionWorker({
     autoStart: true,
     backend: 'WEBGL',
@@ -382,6 +383,7 @@ export default function IVPLab() {
               showDebugHUD={showDebugHUD}
               mirrored={mirrored && inputSource === 'webcam'}
               workerLandmarks={lastLandmarks}
+              workerTimeline={workerTimeline}
               trackingPreset={trackingPreset}
               workerStats={workerStats}
               poseAngles={{

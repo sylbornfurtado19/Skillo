@@ -68,6 +68,52 @@ let offscreenCtx: OffscreenCanvasRenderingContext2D | null = null;
 let faceLandmarker: FaceLandmarker | null = null;
 let modelInitPromise: Promise<boolean> | null = null;
 
+async function getCachedModelBuffer(): Promise<ArrayBuffer | null> {
+  if (typeof indexedDB === 'undefined') return null;
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open('ivp_model_cache', 1);
+      req.onupgradeneeded = () => {
+        try { req.result.createObjectStore('models'); } catch {}
+      };
+      req.onsuccess = () => {
+        try {
+          const db = req.result;
+          const tx = db.transaction('models', 'readonly');
+          const store = tx.objectStore('models');
+          const getReq = store.get('face_landmarker.task');
+          getReq.onsuccess = () => {
+            resolve(getReq.result instanceof ArrayBuffer ? getReq.result : null);
+          };
+          getReq.onerror = () => resolve(null);
+        } catch {
+          resolve(null);
+        }
+      };
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function setCachedModelBuffer(buffer: ArrayBuffer): Promise<void> {
+  if (typeof indexedDB === 'undefined' || !buffer || buffer.byteLength === 0) return;
+  try {
+    const req = indexedDB.open('ivp_model_cache', 1);
+    req.onupgradeneeded = () => {
+      try { req.result.createObjectStore('models'); } catch {}
+    };
+    req.onsuccess = () => {
+      try {
+        const db = req.result;
+        const tx = db.transaction('models', 'readwrite');
+        tx.objectStore('models').put(buffer, 'face_landmarker.task');
+      } catch {}
+    };
+  } catch {}
+}
+
 async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promise<boolean> {
   if (faceLandmarker) return true;
   if (modelInitPromise) return modelInitPromise;
@@ -87,6 +133,38 @@ async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promis
       const wasmPath = baseOrigin ? `${baseOrigin}/wasm` : '/wasm';
       const filesetResolver = await FilesetResolver.forVisionTasks(wasmPath);
 
+      // 1. Try IndexedDB Cached Model Buffer (sub-millisecond instant load)
+      const cachedBuffer = await getCachedModelBuffer();
+      if (cachedBuffer) {
+        try {
+          faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+              modelAssetBuffer: new Uint8Array(cachedBuffer),
+              delegate: backend === 'CPU' ? 'CPU' : 'GPU',
+            },
+            outputFaceBlendshapes: false,
+            outputFacialTransformationMatrixes: false,
+            runningMode: 'IMAGE',
+            numFaces: 1,
+          });
+
+          const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+          postResponse({
+            type: 'MODEL_INIT_DONE',
+            payload: {
+              success: true,
+              timestampMs: nowMs,
+              durationMs: nowMs - initStartTs,
+              source: 'CACHED',
+            },
+          });
+          return true;
+        } catch (cachedErr) {
+          console.warn('[VisionWorker] Cached model buffer invalid, falling back to network:', cachedErr);
+        }
+      }
+
+      // 2. Try Local Model Asset
       const modelAssetPath = baseOrigin
         ? `${baseOrigin}/models/face_landmarker.task`
         : '/models/face_landmarker.task';
@@ -101,6 +179,14 @@ async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promis
         runningMode: 'IMAGE',
         numFaces: 1,
       });
+
+      // Background cache to IndexedDB
+      if (typeof fetch !== 'undefined') {
+        fetch(modelAssetPath)
+          .then(res => res.ok ? res.arrayBuffer() : null)
+          .then(buf => { if (buf) setCachedModelBuffer(buf); })
+          .catch(() => {});
+      }
 
       const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
       postResponse({
@@ -118,10 +204,10 @@ async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promis
       try {
         const cdnWasm = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
         const filesetResolver = await FilesetResolver.forVisionTasks(cdnWasm);
+        const cdnUrl = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
         faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
           baseOptions: {
-            modelAssetPath:
-              'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+            modelAssetPath: cdnUrl,
             delegate: backend === 'CPU' ? 'CPU' : 'GPU',
           },
           outputFaceBlendshapes: false,
@@ -129,6 +215,14 @@ async function initFaceLandmarker(backend: VisionModelBackend = 'WEBGL'): Promis
           runningMode: 'IMAGE',
           numFaces: 1,
         });
+
+        // Background cache to IndexedDB
+        if (typeof fetch !== 'undefined') {
+          fetch(cdnUrl)
+            .then(res => res.ok ? res.arrayBuffer() : null)
+            .then(buf => { if (buf) setCachedModelBuffer(buf); })
+            .catch(() => {});
+        }
 
         const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
         postResponse({
