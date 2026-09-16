@@ -22,6 +22,7 @@ export interface IVPFeatureFlags {
   enableDeviceAdaptive: boolean;
   enableSafeMode: boolean;
   enableTelemetryOptIn: boolean;
+  enableWarmup: boolean;
 }
 
 export const DEFAULT_IVP_FEATURE_FLAGS: IVPFeatureFlags = {
@@ -31,6 +32,7 @@ export const DEFAULT_IVP_FEATURE_FLAGS: IVPFeatureFlags = {
   enableDeviceAdaptive: true,
   enableSafeMode: false,
   enableTelemetryOptIn: false,
+  enableWarmup: true,
 };
 
 const STORAGE_KEY = 'ivp_feature_flags';
@@ -62,6 +64,9 @@ function parseQueryFlags(): Partial<IVPFeatureFlags> {
   }
   if (params.has('ivp_telemetry')) {
     overrides.enableTelemetryOptIn = params.get('ivp_telemetry') === '1' || params.get('ivp_telemetry') === 'true';
+  }
+  if (params.has('ivp_warmup')) {
+    overrides.enableWarmup = params.get('ivp_warmup') === '1' || params.get('ivp_warmup') === 'true';
   }
   return overrides;
 }

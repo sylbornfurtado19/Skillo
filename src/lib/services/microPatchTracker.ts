@@ -140,9 +140,11 @@ export class MicroPatchTracker {
     rgbaPixels: Uint8ClampedArray,
     width: number,
     height: number,
-    targetLandmarks: Array<{ index: number; x: number; y: number; patchRadius?: number }>
+    targetLandmarks: Array<{ index: number; x: number; y: number; patchRadius?: number }>,
+    options?: { minStdDev?: number }
   ): void {
     this.templates.clear();
+    const minStdDevThreshold = options?.minStdDev ?? 1.5;
 
     for (const lm of targetLandmarks) {
       const px = Math.round(lm.x * width);
@@ -188,7 +190,7 @@ export class MicroPatchTracker {
       }
 
       const stdDev = Math.sqrt(varSum / totalPixels);
-      if (stdDev < 1.5) {
+      if (stdDev < minStdDevThreshold) {
         // Flat/homogeneous region (low contrast) - unsuitable for NCC tracking
         continue;
       }
