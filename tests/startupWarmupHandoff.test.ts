@@ -4,6 +4,23 @@ import { DenseLandmarksSmoother } from '../src/lib/services/temporalSmoothing';
 import { MicroPatchTracker } from '../src/lib/services/microPatchTracker';
 import { detectFastFaceBootstrap } from '../src/lib/services/visionPipeline';
 
+// ---------------------------------------------------------------------------
+// Deterministic PRNG — mulberry32 (fast, seedable, no external dependency).
+// Using a fixed seed makes the 1000-iteration stress test fully reproducible
+// in CI; any failure replays identically by re-running with the same seed.
+// ---------------------------------------------------------------------------
+const STRESS_TEST_SEED = 0xDEADBEEF;
+function makeMulberry32(seed: number) {
+  let s = seed >>> 0;
+  return function rand(): number {
+    s += 0x6D2B79F5;
+    let z = s;
+    z = Math.imul(z ^ (z >>> 15), z | 1);
+    z ^= z + Math.imul(z ^ (z >>> 7), z | 61);
+    return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 describe('Startup Warmup to Model Handoff & Concurrency Invariants', () => {
   const PROC_W = 160;
   const PROC_H = 120;
@@ -205,7 +222,9 @@ describe('Startup Warmup to Model Handoff & Concurrency Invariants', () => {
     expect(validRes?.pos.x).toBeCloseTo(0.42, 1);
   });
 
-  it('withstands 1000 iterations of randomized handoff timing under concurrent micro updates with zero double writes or NaNs', () => {
+  it('withstands 1000 iterations of deterministic handoff timing under concurrent micro updates with zero double writes or NaNs', () => {
+    // Fixed seed: every CI run is identical; paste seed into makeMulberry32 to replay locally.
+    const rand = makeMulberry32(STRESS_TEST_SEED);
     const failures: Array<{ iteration: number; reason: string }> = [];
     const frameData = createSyntheticFaceFrame(80, 60, 50, 65);
     const bootstrap = detectFastFaceBootstrap(frameData, PROC_W, PROC_H, false)!;
@@ -219,7 +238,7 @@ describe('Startup Warmup to Model Handoff & Concurrency Invariants', () => {
         let isHandoffLock = false;
 
         // Model packet arrival delay: random between 15ms and 1485ms
-        const modelArrivalMs = Math.floor(15 + Math.random() * 1470);
+        const modelArrivalMs = Math.floor(15 + rand() * 1470);
 
         // Bootstrap seed
         smoother.setFaceId('bootstrap_face');
@@ -243,16 +262,16 @@ describe('Startup Warmup to Model Handoff & Concurrency Invariants', () => {
         let currentTimeMs = 0;
 
         // Simulate 3 to 10 video frame ticks
-        const totalTicks = 3 + Math.floor(Math.random() * 8);
+        const totalTicks = 3 + Math.floor(rand() * 8);
         for (let tick = 0; tick < totalTicks; tick++) {
-          const dt = 16 + Math.floor(Math.random() * 18); // 16ms - 34ms
+          const dt = 16 + Math.floor(rand() * 18); // 16ms - 34ms
           currentTimeMs += dt;
 
           const bufferWriteCountsThisTick = new Uint8Array(70);
 
           // Check if model should arrive before, during, or after this micro tick
           const modelArrivesNow = !modelHandedOff && currentTimeMs >= modelArrivalMs;
-          const modelFirst = Math.random() > 0.5;
+          const modelFirst = rand() > 0.5;
 
           const executeModelArrival = () => {
             if (modelHandedOff) return;
@@ -263,8 +282,8 @@ describe('Startup Warmup to Model Handoff & Concurrency Invariants', () => {
 
               const modelBuffer = new Float32Array(70 * 4);
               for (let i = 0; i < 70; i++) {
-                const bx = bootstrap.approxLandmarks[i].x + (Math.random() * 0.02 - 0.01);
-                const by = bootstrap.approxLandmarks[i].y + (Math.random() * 0.02 - 0.01);
+                const bx = bootstrap.approxLandmarks[i].x + (rand() * 0.02 - 0.01);
+                const by = bootstrap.approxLandmarks[i].y + (rand() * 0.02 - 0.01);
                 modelBuffer[i * 4] = Math.max(0.01, Math.min(0.99, bx));
                 modelBuffer[i * 4 + 1] = Math.max(0.01, Math.min(0.99, by));
                 modelBuffer[i * 4 + 2] = 0;
@@ -339,7 +358,7 @@ describe('Startup Warmup to Model Handoff & Concurrency Invariants', () => {
 
     fs.writeFileSync(
       path.resolve(__dirname, '../startup_handoff_failures.json'),
-      JSON.stringify(failures, null, 2),
+      JSON.stringify({ seed: STRESS_TEST_SEED, failures }, null, 2),
       'utf-8'
     );
 
