@@ -80,9 +80,6 @@ export class MicroPatchTracker {
     return this.currentFaceId;
   }
 
-  public reset(): void {
-    this.templates.clear();
-  }
 
   /**
    * Returns total number of evicted templates across tracking lifetime.
@@ -268,6 +265,9 @@ export class MicroPatchTracker {
     let curDy = initDy;
     const r = tmpl.patchRadius;
     const totalPixels = tmpl.patchWidth * tmpl.patchHeight;
+    // For localized patches (<=33px), cap iterations to 1-2 to preserve low CPU overhead on constrained devices
+    const maxIters = tmpl.patchWidth <= 33 ? Math.min(2, iterations) : iterations;
+    const minEigThreshold = Math.max(1e-3, minEigenvalue);
 
     const sampleBilinear = (px: number, py: number): number => {
       const x0 = Math.floor(px);
@@ -293,7 +293,7 @@ export class MicroPatchTracker {
     let finalConfidence = 0;
     let converged = false;
 
-    for (let iter = 0; iter < iterations; iter++) {
+    for (let iter = 0; iter < maxIters; iter++) {
       const cx = tmpl.centerX + curDx;
       const cy = tmpl.centerY + curDy;
 
@@ -332,7 +332,7 @@ export class MicroPatchTracker {
       const lambdaMin = (tr - Math.sqrt(disc)) * 0.5;
       const normLambdaMin = lambdaMin / totalPixels;
 
-      if (det < 1e-4 || normLambdaMin < minEigenvalue) {
+      if (det < 1e-4 || normLambdaMin < minEigThreshold) {
         break;
       }
 

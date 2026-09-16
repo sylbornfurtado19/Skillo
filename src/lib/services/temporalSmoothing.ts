@@ -1226,7 +1226,18 @@ export class DenseLandmarksSmoother {
               incAnchors.push({ x: buffer[idx * 4], y: buffer[idx * 4 + 1] });
             }
           }
-          this.reLocTransform = computeRansacSimilarityTransform(prevAnchors, incAnchors, 25, 0.04);
+          const numSamples = prevAnchors.length;
+          const ransacIters = Math.min(50, 5 + 3 * numSamples);
+          let minX = 1, maxX = 0, minY = 1, maxY = 0;
+          for (const p of prevAnchors) {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+          }
+          const faceScale = Math.max(0.1, Math.hypot(maxX - minX, maxY - minY));
+          const inlierThreshold = Math.max(0.015, Math.min(0.06, 0.02 * faceScale));
+          this.reLocTransform = computeRansacSimilarityTransform(prevAnchors, incAnchors, ransacIters, inlierThreshold);
           this.reLocStartPositions = this.filters.map((f, i) => {
             const p = f.getPos();
             return p ? { ...p } : { x: buffer[i * 4], y: buffer[i * 4 + 1] };
@@ -1244,7 +1255,7 @@ export class DenseLandmarksSmoother {
       }
     }
 
-    // PCA Shape Prior: project onto statistical manifold if enabled
+    // PCA Shape Prior: project onto statistical manifold if enabled and confidence >= 0.60
     let conditionedPoints: LandmarkPoint2D[] | null = null;
     if (this.enablePcaProjection && numPoints === 70) {
       let avgConf = 0;
@@ -1254,7 +1265,8 @@ export class DenseLandmarksSmoother {
         avgConf += buffer[i * 4 + 3];
       }
       avgConf /= 70;
-      if (avgConf >= 0.25) {
+      // Gated by overall confidence > 0.60 to avoid bias on ambiguous/occluded poses
+      if (avgConf >= 0.60) {
         conditionedPoints = PCAShapePrior.project(rawPts, 3.0, this.pcaAlpha);
       }
     }
