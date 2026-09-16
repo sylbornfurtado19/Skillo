@@ -24,9 +24,10 @@ export interface TemplateDiagnostic {
   searchRadius: number;
   missCount: number;
   stdDev: number;
+  source?: 'bootstrap' | 'model';
 }
 
-interface TemplatePatch {
+export interface TemplatePatch {
   landmarkIndex: number;
   centerX: number; // Pixel coordinate
   centerY: number; // Pixel coordinate
@@ -41,6 +42,7 @@ interface TemplatePatch {
   stdDev: number;
   sobelStdDev?: number;
   missCount: number;
+  source?: 'bootstrap' | 'model';
 }
 
 export class MicroPatchTracker {
@@ -116,6 +118,7 @@ export class MicroPatchTracker {
         searchRadius: this.searchRadius,
         missCount: tmpl.missCount,
         stdDev: tmpl.stdDev,
+        source: tmpl.source,
       });
     }
     return list;
@@ -134,16 +137,27 @@ export class MicroPatchTracker {
    * @param rgbaPixels Frame pixel buffer (320x240)
    * @param width Frame width
    * @param height Frame height
-   * @param targetLandmarks Array of points { index, x, y, patchRadius? } in normalized [0..1] space
+   * @param targetLandmarks Array of points { index, x, y, patchRadius?, source? } in normalized [0..1] space
+   * @param options Optional configuration including minStdDev and source
    */
   public updateTemplates(
     rgbaPixels: Uint8ClampedArray,
     width: number,
     height: number,
-    targetLandmarks: Array<{ index: number; x: number; y: number; patchRadius?: number }>,
-    options?: { minStdDev?: number }
+    targetLandmarks: Array<{ index: number; x: number; y: number; patchRadius?: number; source?: 'bootstrap' | 'model' }>,
+    options?: { minStdDev?: number; source?: 'bootstrap' | 'model' }
   ): void {
-    this.templates.clear();
+    const defaultSource = options?.source ?? 'model';
+    // If incoming batch is from model, cleanly evict any bootstrap templates
+    if (defaultSource === 'model') {
+      for (const [idx, tmpl] of this.templates.entries()) {
+        if (tmpl.source === 'bootstrap') {
+          this.templates.delete(idx);
+        }
+      }
+    } else {
+      this.templates.clear();
+    }
     const minStdDevThreshold = options?.minStdDev ?? 1.5;
 
     for (const lm of targetLandmarks) {
@@ -245,6 +259,7 @@ export class MicroPatchTracker {
         stdDev,
         sobelStdDev,
         missCount: 0,
+        source: lm.source ?? defaultSource,
       });
     }
   }

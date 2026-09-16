@@ -251,7 +251,7 @@ function scheduleModelRetry(backend: VisionModelBackend, initStartTs: number): v
   console.log(`[VisionWorker] Scheduling model init retry ${modelRetries}/${MAX_MODEL_RETRIES} in ${delayMs}ms`);
 
   // Guard against unhandled background timers in Node.js test environments
-  if (typeof process !== 'undefined' && process?.versions?.node && typeof window === 'undefined' && typeof WorkerGlobalScope === 'undefined') {
+  if (typeof process !== 'undefined' && process?.versions?.node && typeof window === 'undefined' && typeof (globalThis as any).WorkerGlobalScope === 'undefined') {
     return;
   }
 

@@ -199,6 +199,8 @@ export default function IVPInteractiveCanvas({
   const trackingStateRef = useRef<TrackingLifecycleState>('BOOTSTRAPPING');
   const [trackingState, setTrackingState] = useState<TrackingLifecycleState>('BOOTSTRAPPING');
   const isHandoffLockRef = useRef<boolean>(false);
+  const [warmupWarning, setWarmupWarning] = useState<string | null>(null);
+  const warmupAutoRevertedRef = useRef<boolean>(false);
 
   const timelineRef = useRef<CanvasTimelineTelemetry>({
     pageLoadTs: typeof performance !== 'undefined' ? 0 : Date.now(),
@@ -718,14 +720,29 @@ export default function IVPInteractiveCanvas({
     }
 
     const appElapsed = now - appMountTsRef.current;
-    const isWarmup = featureFlags.enableWarmup && (appElapsed < 4000) && (trackingStateRef.current !== 'MODEL_READY');
+    let isWarmup = featureFlags.enableWarmup && (appElapsed < 4000) && (trackingStateRef.current !== 'MODEL_READY') && !warmupAutoRevertedRef.current;
     const thresholds = deviceProfileRef.current.thresholds;
     const warmupTries = microMatchesTriedRef.current;
     const warmupAccepted = microMatchesAcceptedRef.current;
     const warmupRate = warmupTries > 0 ? (warmupAccepted / warmupTries) * 100 : 100;
-    const isPoorLighting = isWarmup && warmupTries > 50 && warmupRate < 5;
+
+    // Auto-revert relaxed warmup if acceptanceRate < 2% after 2s (indicating poor SNR or false-positive flood)
+    if (isWarmup && appElapsed >= 2000 && warmupTries >= 20 && warmupRate < 2.0) {
+      warmupAutoRevertedRef.current = true;
+      isWarmup = false;
+      setWarmupWarning('Low SNR / poor contrast detected during warmup: auto-reverted to verified model mode.');
+    }
+
+    // False-positive auto-protection: if acceptanceRate < 5% after 50 tries, auto-increase minApplyNcc
+    const isPoorLighting = isWarmup && warmupTries >= 50 && warmupRate < 5.0;
+    if (isPoorLighting && !warmupWarning) {
+      setWarmupWarning('Low feature acceptance (< 5%): relaxed thresholds throttled to prevent false-positives. Ensure adequate lighting.');
+    } else if (!isPoorLighting && !warmupAutoRevertedRef.current && warmupWarning && trackingStateRef.current === 'MODEL_READY') {
+      setWarmupWarning(null);
+    }
+
     const effectiveMinNcc = isPoorLighting
-      ? 0.68
+      ? 0.72
       : (isWarmup ? 0.60 : onlineEstimatorRef.current.getThreshold(thresholds.minApplyNcc));
 
     const hasWorkerLandmarks = !!(workerLandmarks && workerLandmarks.buffer && workerLandmarks.buffer.length >= 70 * 4);
@@ -778,11 +795,11 @@ export default function IVPInteractiveCanvas({
           const lipRadius = Math.max(8, Math.min(20, Math.ceil(fbW * 0.08)));
 
           microTrackerRef.current.updateTemplates(rawImgData.data, PROC_W, PROC_H, [
-            { index: 68, x: normMicroX(rawPts[68].x), y: rawPts[68].y, patchRadius: 8 }, // Right pupil
-            { index: 69, x: normMicroX(rawPts[69].x), y: rawPts[69].y, patchRadius: 8 }, // Left pupil
-            { index: 48, x: normMicroX(rawPts[48].x), y: rawPts[48].y, patchRadius: lipRadius }, // Mouth right corner
-            { index: 54, x: normMicroX(rawPts[54].x), y: rawPts[54].y, patchRadius: lipRadius }, // Mouth left corner
-          ]);
+            { index: 68, x: normMicroX(rawPts[68].x), y: rawPts[68].y, patchRadius: 8, source: 'model' }, // Right pupil
+            { index: 69, x: normMicroX(rawPts[69].x), y: rawPts[69].y, patchRadius: 8, source: 'model' }, // Left pupil
+            { index: 48, x: normMicroX(rawPts[48].x), y: rawPts[48].y, patchRadius: lipRadius, source: 'model' }, // Mouth right corner
+            { index: 54, x: normMicroX(rawPts[54].x), y: rawPts[54].y, patchRadius: lipRadius, source: 'model' }, // Mouth left corner
+          ], { source: 'model' });
         } else if (!isFaceGenuinelyDetected) {
           microTrackerRef.current.setFaceId(null);
           denseSmootherRef.current.setFaceId(null);
@@ -910,11 +927,11 @@ export default function IVPInteractiveCanvas({
 
             const normMicroX = (x: number) => (mirrored ? (1.0 - x) : x);
             microTrackerRef.current.updateTemplates(rawImgData.data, PROC_W, PROC_H, [
-              { index: 68, x: normMicroX(fastFace.rightPupil.x), y: fastFace.rightPupil.y, patchRadius: 8 },
-              { index: 69, x: normMicroX(fastFace.leftPupil.x), y: fastFace.leftPupil.y, patchRadius: 8 },
-              { index: 48, x: normMicroX(fastFace.mouthRight.x), y: fastFace.mouthRight.y, patchRadius: 10 },
-              { index: 54, x: normMicroX(fastFace.mouthLeft.x), y: fastFace.mouthLeft.y, patchRadius: 10 },
-            ], { minStdDev: 1.0 });
+              { index: 68, x: normMicroX(fastFace.rightPupil.x), y: fastFace.rightPupil.y, patchRadius: 8, source: 'bootstrap' },
+              { index: 69, x: normMicroX(fastFace.leftPupil.x), y: fastFace.leftPupil.y, patchRadius: 8, source: 'bootstrap' },
+              { index: 48, x: normMicroX(fastFace.mouthRight.x), y: fastFace.mouthRight.y, patchRadius: 10, source: 'bootstrap' },
+              { index: 54, x: normMicroX(fastFace.mouthLeft.x), y: fastFace.mouthLeft.y, patchRadius: 10, source: 'bootstrap' },
+            ], { minStdDev: 1.0, source: 'bootstrap' });
 
             if (timelineRef.current.firstTemplatesCreatedTs === 0) {
               timelineRef.current.firstTemplatesCreatedTs = performance.now();
@@ -1880,6 +1897,24 @@ export default function IVPInteractiveCanvas({
           className="w-full h-auto block"
           style={{ width: '640px', height: '480px' }}
         />
+
+        {/* Warmup Protection & Low SNR HUD Warning Banner */}
+        {warmupWarning && (
+          <div
+            id="warmup-warning-banner"
+            className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-amber-950/90 border border-amber-500/50 text-amber-200 text-xs font-mono px-4 py-2 rounded-xl shadow-lg backdrop-blur-md flex items-center gap-2 animate-bounce max-w-[90%]"
+          >
+            <span className="text-amber-400 font-bold">⚠</span>
+            <span>{warmupWarning}</span>
+            <button
+              type="button"
+              onClick={() => setWarmupWarning(null)}
+              className="ml-2 text-amber-400/80 hover:text-white text-[10px] cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Dynamic Metric HUD Pill */}
         <div className="absolute bottom-3 right-3 bg-[#0B0F17]/90 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-xl text-[10px] font-mono flex items-center gap-3">
