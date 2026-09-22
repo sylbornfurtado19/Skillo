@@ -56,9 +56,9 @@ const ZONE_RAY_COLORS: Record<GazeFrameResult['screenFocusZone'], { ray: string;
 
 // ── Public Handle (via ref) ───────────────────────────────────────────────────
 export interface IVPGazeTrackerHandle {
-  /** Start webcam capture and gaze sampling */
-  start(): Promise<void>;
-  /** Stop sampling and release MediaStream */
+  /** Start gaze sampling using the provided or bound MediaStream */
+  start(providedStream?: MediaStream | null): Promise<void>;
+  /** Stop sampling */
   stop(): void;
   /** Snapshot of all collected gaze frames */
   getFrames(): GazeFrameInput[];
@@ -74,6 +74,8 @@ interface IVPGazeTrackerProps {
   visible?: boolean;
   /** CSS class applied to the outer container */
   className?: string;
+  /** Authoritative MediaStream provided by parent InterviewSession */
+  mediaStream?: MediaStream | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -157,7 +159,7 @@ function estimateFaceCentroid(
 // ─────────────────────────────────────────────────────────────────────────────
 
 const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
-  function IVPGazeTracker({ onFrame, visible = true, className = '' }, ref) {
+  function IVPGazeTracker({ onFrame, visible = true, className = '', mediaStream = null }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const samplerCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -345,21 +347,33 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
       rafIdRef.current = requestAnimationFrame(runSamplingLoop);
     }, [drawGazeRay, onFrame]);
 
+    // Synchronize video element with parent MediaStream prop
+    useEffect(() => {
+      if (mediaStream) {
+        streamRef.current = mediaStream;
+        if (videoRef.current && videoRef.current.srcObject !== mediaStream) {
+          videoRef.current.srcObject = mediaStream;
+          videoRef.current.play().catch(() => {});
+        }
+      }
+    }, [mediaStream]);
+
     // ── Public handle ─────────────────────────────────────────────────────────
     useImperativeHandle(
       ref,
       () => ({
-        async start() {
+        async start(providedStream?: MediaStream | null) {
           if (isRunningRef.current) return;
+          const activeStream = providedStream || mediaStream || streamRef.current;
+          if (!activeStream) {
+            setCameraError('No camera stream available. Camera must be initialized by the parent session.');
+            return;
+          }
+          streamRef.current = activeStream;
           try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-              video: { width: 320, height: 240, facingMode: 'user' },
-              audio: false,
-            });
-            streamRef.current = stream;
             if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-              await videoRef.current.play();
+              videoRef.current.srcObject = activeStream;
+              await videoRef.current.play().catch(() => {});
             }
             // Create offscreen sampler canvas
             samplerCanvasRef.current = document.createElement('canvas');
@@ -370,25 +384,18 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
             setCameraError(null);
             runSamplingLoop();
           } catch (err: unknown) {
-            const msg =
-              err instanceof Error && err.name === 'NotAllowedError'
-                ? 'Camera access denied. Grant permission in browser settings.'
-                : 'Camera unavailable. Gaze tracking disabled.';
-            setCameraError(msg);
+            setCameraError('Failed to start gaze tracker on active camera stream.');
           }
         },
         stop() {
           isRunningRef.current = false;
           cancelAnimationFrame(rafIdRef.current);
           gazeEmaRef.current.reset();
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach(t => t.stop());
-            streamRef.current = null;
-          }
           if (videoRef.current) {
             videoRef.current.srcObject = null;
           }
           setIsStarted(false);
+          // Shared MediaStream tracks are owned and stopped by the parent session
         },
         getFrames() {
           return [...framesRef.current];
@@ -398,7 +405,7 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
           gazeEmaRef.current.reset();
         },
       }),
-      [runSamplingLoop]
+      [runSamplingLoop, mediaStream]
     );
 
     // Cleanup on unmount
@@ -406,14 +413,16 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
       return () => {
         isRunningRef.current = false;
         cancelAnimationFrame(rafIdRef.current);
-        streamRef.current?.getTracks().forEach(t => t.stop());
+        // Shared MediaStream tracks are owned and stopped by the parent session
       };
     }, []);
 
-    if (!visible) return null;
-
     return (
-      <div className={`relative rounded-xl overflow-hidden bg-[#060b14] border border-white/8 ${className}`}>
+      <div
+        className={`relative rounded-xl overflow-hidden bg-[#060b14] border border-white/8 ${className} ${
+          !visible ? 'hidden' : ''
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5">
           <span className="text-[9px] text-gray-500 font-mono uppercase tracking-widest">

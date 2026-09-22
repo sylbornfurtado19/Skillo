@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -38,7 +38,7 @@ import GazeAnalyticsCard from '../components/ui/GazeAnalyticsCard';
 import PostureComposureCard from '../components/ui/PostureComposureCard';
 import FacialComposureCard from '../components/ui/FacialComposureCard';
 import LipSyncVerificationCard from '../components/ui/LipSyncVerificationCard';
-import IVPTelemetryTimeline from '../components/ui/IVPTelemetryTimeline';
+import IVPTelemetryTimeline, { extractTelemetryTimelineEvents } from '../components/ui/IVPTelemetryTimeline';
 import type { EyeContactSessionMetrics, HeadPoseSessionMetrics, AffectiveSessionMetrics, LipSyncSessionMetrics } from '../types/index';
 
 function isEyeContactMetrics(obj: any): obj is EyeContactSessionMetrics {
@@ -89,6 +89,10 @@ export default function Results() {
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'confidence' | 'contrastive' | 'gaze' | 'pose' | 'affect' | 'sync' | 'responses'>('overview');
+
+  const timelineEvents = useMemo(() => {
+    return extractTelemetryTimelineEvents(results);
+  }, [results]);
 
 
 
@@ -753,10 +757,11 @@ export default function Results() {
       {/* SECTION 3a: SYNCHRONIZED IVP MULTI-MODAL TIMELINE */}
       <div id="sec-timeline" className="scroll-mt-32">
         <IVPTelemetryTimeline
-          durationSeconds={240}
-          overallEyeContactPct={isEyeContactMetrics(results.eyeContactMetrics) ? results.eyeContactMetrics.eyeContactPercentage : 84}
-          overallComposureScore={isAffectiveMetrics(results.affectiveMetrics) ? results.affectiveMetrics.overallComposureScore : 88}
-          overallStabilityScore={isHeadPoseMetrics(results.headPoseMetrics) ? results.headPoseMetrics.postureComposureScore : 90}
+          durationSeconds={isEyeContactMetrics(results?.eyeContactMetrics) ? results.eyeContactMetrics.totalVideoDurationSeconds : 240}
+          events={timelineEvents}
+          overallEyeContactPct={isEyeContactMetrics(results?.eyeContactMetrics) ? results.eyeContactMetrics.eyeContactPercentage : 84}
+          overallComposureScore={isAffectiveMetrics(results?.affectiveMetrics) ? results.affectiveMetrics.overallComposureScore : 88}
+          overallStabilityScore={isHeadPoseMetrics(results?.headPoseMetrics) ? results.headPoseMetrics.postureComposureScore : 90}
         />
       </div>
 

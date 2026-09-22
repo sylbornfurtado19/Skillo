@@ -30,7 +30,7 @@ const SAMPLE_FPS = 10;
 const RAF_SKIP = Math.round(60 / SAMPLE_FPS);
 
 export interface IVPPoseTrackerHandle {
-  start(): Promise<void>;
+  start(providedStream?: MediaStream | null): Promise<void>;
   stop(): void;
   getFrames(): HeadPoseFrameInput[];
   clearFrames(): void;
@@ -40,6 +40,7 @@ interface IVPPoseTrackerProps {
   onFrame?: (frame: HeadPoseFrameResult) => void;
   visible?: boolean;
   className?: string;
+  mediaStream?: MediaStream | null;
 }
 
 // ── 3D Projection & Wireframe Math ─────────────────────────────────────────────
@@ -129,7 +130,7 @@ function estimateHeadCentroid(
 // ─────────────────────────────────────────────────────────────────────────────
 
 const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
-  function IVPPoseTracker({ onFrame, visible = true, className = '' }, ref) {
+  function IVPPoseTracker({ onFrame, visible = true, className = '', mediaStream = null }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const samplerCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -322,21 +323,33 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
       rafIdRef.current = requestAnimationFrame(runSamplingLoop);
     }, [drawPoseOverlay, onFrame]);
 
+    // Synchronize video element with parent MediaStream prop
+    useEffect(() => {
+      if (mediaStream) {
+        streamRef.current = mediaStream;
+        if (videoRef.current && videoRef.current.srcObject !== mediaStream) {
+          videoRef.current.srcObject = mediaStream;
+          videoRef.current.play().catch(() => {});
+        }
+      }
+    }, [mediaStream]);
+
     // ── Public Handle ─────────────────────────────────────────────────────────
     useImperativeHandle(
       ref,
       () => ({
-        async start() {
+        async start(providedStream?: MediaStream | null) {
           if (isRunningRef.current) return;
+          const activeStream = providedStream || mediaStream || streamRef.current;
+          if (!activeStream) {
+            setCameraError('No camera stream available. Camera must be initialized by the parent session.');
+            return;
+          }
+          streamRef.current = activeStream;
           try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-              video: { width: 320, height: 240, facingMode: 'user' },
-              audio: false,
-            });
-            streamRef.current = stream;
             if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-              await videoRef.current.play();
+              videoRef.current.srcObject = activeStream;
+              await videoRef.current.play().catch(() => {});
             }
             samplerCanvasRef.current = document.createElement('canvas');
             sessionStartRef.current = Date.now();
@@ -346,11 +359,7 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
             setCameraError(null);
             runSamplingLoop();
           } catch (err: unknown) {
-            const msg =
-              err instanceof Error && err.name === 'NotAllowedError'
-                ? 'Camera access denied. Grant permission in browser settings.'
-                : 'Camera unavailable. Head pose tracking disabled.';
-            setCameraError(msg);
+            setCameraError('Failed to start head pose tracker on active camera stream.');
           }
         },
         stop() {
@@ -358,14 +367,11 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
           cancelAnimationFrame(rafIdRef.current);
           motionDetectorRef.current.reset();
           poseEmaRef.current.reset();
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach(t => t.stop());
-            streamRef.current = null;
-          }
           if (videoRef.current) {
             videoRef.current.srcObject = null;
           }
           setIsStarted(false);
+          // Shared MediaStream tracks are owned and stopped by the parent session
         },
         getFrames() {
           return [...framesRef.current];
@@ -376,21 +382,23 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
           poseEmaRef.current.reset();
         },
       }),
-      [runSamplingLoop]
+      [runSamplingLoop, mediaStream]
     );
 
     useEffect(() => {
       return () => {
         isRunningRef.current = false;
         cancelAnimationFrame(rafIdRef.current);
-        streamRef.current?.getTracks().forEach(t => t.stop());
+        // Shared MediaStream tracks are owned and stopped by the parent session
       };
     }, []);
 
-    if (!visible) return null;
-
     return (
-      <div className={`relative rounded-xl overflow-hidden bg-[#060b14] border border-white/8 ${className}`}>
+      <div
+        className={`relative rounded-xl overflow-hidden bg-[#060b14] border border-white/8 ${className} ${
+          !visible ? 'hidden' : ''
+        }`}
+      >
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5">
           <span className="text-[9px] text-gray-500 font-mono uppercase tracking-widest">
             Head Movement & Posture Tracker

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FaEye,
   FaHeartbeat,
@@ -12,6 +12,9 @@ import {
 } from 'react-icons/fa';
 import Card from './Card';
 import Badge from './Badge';
+import { extractTelemetryTimelineEvents } from '@/lib/services/ivpTimelineTransformer';
+
+export { extractTelemetryTimelineEvents };
 
 export interface TelemetryEvent {
   timestampSec: number;
@@ -21,15 +24,16 @@ export interface TelemetryEvent {
   severity: 'low' | 'medium' | 'high';
 }
 
-interface IVPTelemetryTimelineProps {
+export interface IVPTelemetryTimelineProps {
   durationSeconds?: number;
   events?: TelemetryEvent[];
   overallEyeContactPct?: number;
   overallComposureScore?: number;
   overallStabilityScore?: number;
+  isDemo?: boolean;
 }
 
-const DEFAULT_EVENTS: TelemetryEvent[] = [
+export const DEFAULT_EVENTS: TelemetryEvent[] = [
   {
     timestampSec: 24,
     type: 'gaze_distraction',
@@ -69,14 +73,30 @@ const DEFAULT_EVENTS: TelemetryEvent[] = [
 
 export default function IVPTelemetryTimeline({
   durationSeconds = 240,
-  events = DEFAULT_EVENTS,
+  events,
   overallEyeContactPct = 82,
   overallComposureScore = 88,
   overallStabilityScore = 91,
+  isDemo = false,
 }: IVPTelemetryTimelineProps) {
-  const [selectedSec, setSelectedSec] = useState<number>(112);
+  // If events is explicitly provided (even an empty array []), use it.
+  // When events is undefined, only fall back to DEFAULT_EVENTS if isDemo is explicitly true.
+  const resolvedEvents = events !== undefined ? events : isDemo ? DEFAULT_EVENTS : [];
 
-  const activeEvent = events.find((e) => Math.abs(e.timestampSec - selectedSec) <= 8);
+  const [selectedSec, setSelectedSec] = useState<number>(() => resolvedEvents[0]?.timestampSec ?? 0);
+
+  useEffect(() => {
+    if (resolvedEvents.length > 0) {
+      setSelectedSec((prev) => {
+        const hasNear = resolvedEvents.some((e) => Math.abs(e.timestampSec - prev) <= 8);
+        return hasNear ? prev : resolvedEvents[0].timestampSec;
+      });
+    } else {
+      setSelectedSec(0);
+    }
+  }, [resolvedEvents]);
+
+  const activeEvent = resolvedEvents.find((e) => Math.abs(e.timestampSec - selectedSec) <= 8);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -115,6 +135,19 @@ export default function IVPTelemetryTimeline({
         </div>
       </div>
 
+      {/* Empty State Banner (No Anomalous Events) */}
+      {resolvedEvents.length === 0 && (
+        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3 text-emerald-400 text-xs">
+          <FaCheckCircle className="text-base shrink-0" />
+          <div className="space-y-0.5">
+            <p className="font-semibold text-emerald-300">Optimal Behavioral Telemetry</p>
+            <p className="text-emerald-400/90 text-[11px]">
+              No anomalous distraction or stress spikes detected during this session. Candidate maintained steady focal contact and high physical composure.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Interactive Timeline Tracks */}
       <div className="space-y-4">
         {/* Track 1: Affect & Composure */}
@@ -134,7 +167,7 @@ export default function IVPTelemetryTimeline({
               }}
             />
             {/* Event Markers */}
-            {events
+            {resolvedEvents
               .filter((e) => e.type === 'stress_spike')
               .map((e, idx) => (
                 <button
@@ -164,7 +197,7 @@ export default function IVPTelemetryTimeline({
                   'linear-gradient(90deg, #3b82f6 0%, #3b82f6 9%, #f59e0b 12%, #3b82f6 20%, #3b82f6 75%, #f59e0b 83%, #3b82f6 100%)',
               }}
             />
-            {events
+            {resolvedEvents
               .filter((e) => e.type === 'gaze_distraction')
               .map((e, idx) => (
                 <button
@@ -194,7 +227,7 @@ export default function IVPTelemetryTimeline({
                   'linear-gradient(90deg, #06b6d4 0%, #06b6d4 25%, #8b5cf6 30%, #06b6d4 40%, #8b5cf6 62%, #06b6d4 100%)',
               }}
             />
-            {events
+            {resolvedEvents
               .filter((e) => e.type === 'nodding' || e.type === 'head_shake')
               .map((e, idx) => (
                 <button
@@ -250,6 +283,8 @@ export default function IVPTelemetryTimeline({
           <p className="text-xs text-slate-300">
             {activeEvent
               ? activeEvent.detail
+              : resolvedEvents.length === 0
+              ? 'No anomalous distraction or stress spikes detected during this session. Candidate demonstrated calm baseline composure, centered pitch/yaw gaze angles, and nominal body language.'
               : 'Candidate demonstrated calm baseline composure, centered pitch/yaw gaze angles, and nominal body language.'}
           </p>
         </div>

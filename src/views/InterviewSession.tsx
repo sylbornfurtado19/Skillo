@@ -36,6 +36,7 @@ import IVPAffectTracker, { type IVPAffectTrackerHandle } from '../components/ui/
 import AffectiveHUD from '../components/ui/AffectiveHUD';
 import IVPSyncTracker, { type IVPSyncTrackerHandle } from '../components/ui/IVPSyncTracker';
 import LipSyncHUD from '../components/ui/LipSyncHUD';
+import { useInterviewCamera } from '../hooks/useInterviewCamera';
 import type { GazeFrameResult, HeadPoseFrameResult, AffectFrameResult, SyncWindowResult } from '@/types/index';
 
 
@@ -253,16 +254,38 @@ export default function InterviewSession() {
     }
   }, []);
 
-  // Start gaze tracker when interviewer finishes speaking and question is shown
+  // ── Authoritative Centralized Camera Management (REM-2) ──────────────
+  const {
+    stream: cameraStream,
+    isCameraActive,
+    cameraError,
+    startCamera,
+    stopCamera,
+  } = useInterviewCamera({ autoStart: true, enableAudio: true });
+
   useEffect(() => {
-    if (!interviewerSpeaking && gazeTrackerRef.current) {
-      gazeTrackerRef.current.start().catch(() => { /* camera denied — silent */ });
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
+
+  // Unified tracker lifecycle effect tied to authoritative cameraStream and narration state
+  useEffect(() => {
+    if (!interviewerSpeaking && cameraStream) {
+      gazeTrackerRef.current?.start(cameraStream).catch(() => {});
+      poseTrackerRef.current?.start(cameraStream).catch(() => {});
+      affectTrackerRef.current?.start(cameraStream).catch(() => {});
+      syncTrackerRef.current?.start(cameraStream).catch(() => {});
+    } else if (interviewerSpeaking) {
+      gazeTrackerRef.current?.stop();
+      poseTrackerRef.current?.stop();
+      affectTrackerRef.current?.stop();
+      syncTrackerRef.current?.stop();
     }
     return () => {
       if (gazeWarningTimerRef.current) clearTimeout(gazeWarningTimerRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interviewerSpeaking]);
+  }, [interviewerSpeaking, cameraStream]);
 
   // Reset per-question gaze counts on question change
   useEffect(() => {
@@ -291,14 +314,6 @@ export default function InterviewSession() {
     }
   }, []);
 
-  // Start pose tracker when question active
-  useEffect(() => {
-    if (!interviewerSpeaking && poseTrackerRef.current) {
-      poseTrackerRef.current.start().catch(() => { /* camera denied — silent */ });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interviewerSpeaking]);
-
   // ── AffectNet Facial Expression & Composure Tracker state ──────────
   const affectTrackerRef = useRef<IVPAffectTrackerHandle | null>(null);
   const [liveAffectFrame, setLiveAffectFrame] = useState<AffectFrameResult | null>(null);
@@ -307,14 +322,6 @@ export default function InterviewSession() {
     setLiveAffectFrame(frame);
   }, []);
 
-  // Start affect tracker when question active
-  useEffect(() => {
-    if (!interviewerSpeaking && affectTrackerRef.current) {
-      affectTrackerRef.current.start().catch(() => { /* silent */ });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interviewerSpeaking]);
-
   // ── SyncNet Audio-Visual Lip-Sync Tracker state ─────────────────────
   const syncTrackerRef = useRef<IVPSyncTrackerHandle | null>(null);
   const [liveSyncWindow, setLiveSyncWindow] = useState<SyncWindowResult | null>(null);
@@ -322,14 +329,6 @@ export default function InterviewSession() {
   const handleSyncWindow = useCallback((result: SyncWindowResult) => {
     setLiveSyncWindow(result);
   }, []);
-
-  // Start sync tracker when question active
-  useEffect(() => {
-    if (!interviewerSpeaking && syncTrackerRef.current) {
-      syncTrackerRef.current.start().catch(() => { /* silent */ });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interviewerSpeaking]);
 
 
 
@@ -551,6 +550,7 @@ export default function InterviewSession() {
         poseTrackerRef.current?.stop();
         affectTrackerRef.current?.stop();
         syncTrackerRef.current?.stop();
+        stopCamera();
         submitInterviewAnswers(
           setupData,
           updatedQuestions.map((q, idx) => ({ id: `q_${idx + 1}`, question: q })),
@@ -594,6 +594,7 @@ export default function InterviewSession() {
       poseTrackerRef.current?.stop();
       affectTrackerRef.current?.stop();
       syncTrackerRef.current?.stop();
+      stopCamera();
       submitInterviewAnswers(
         setupData,
         [{ id: 'q_1', question: currentQuestionText }],
@@ -792,6 +793,7 @@ export default function InterviewSession() {
       poseTrackerRef.current?.stop();
       affectTrackerRef.current?.stop();
       syncTrackerRef.current?.stop();
+      stopCamera();
       submitInterviewAnswers(
         setupData,
         questions.map((q, idx) => ({ id: `q_${idx + 1}`, question: q })),
@@ -1096,27 +1098,29 @@ export default function InterviewSession() {
               {/* Hidden keyframe affect tracker for ref handle */}
               <IVPAffectTracker
                 ref={affectTrackerRef}
+                mediaStream={cameraStream}
                 onFrame={handleAffectFrame}
                 visible={!interviewerSpeaking}
               />
               <IVPSyncTracker
                 ref={syncTrackerRef}
+                mediaStream={cameraStream}
                 onWindow={handleSyncWindow}
                 visible={!interviewerSpeaking}
               />
-
-
 
               {/* Camera overlays grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                 <IVPGazeTracker
                   ref={gazeTrackerRef}
+                  mediaStream={cameraStream}
                   onFrame={handleGazeFrame}
                   visible={!interviewerSpeaking}
                   className="max-h-[160px]"
                 />
                 <IVPPoseTracker
                   ref={poseTrackerRef}
+                  mediaStream={cameraStream}
                   onFrame={handlePoseFrame}
                   visible={!interviewerSpeaking}
                   className="max-h-[160px]"

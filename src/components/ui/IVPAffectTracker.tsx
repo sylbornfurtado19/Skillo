@@ -25,7 +25,7 @@ const SAMPLE_FPS = 4;
 const RAF_SKIP = Math.round(60 / SAMPLE_FPS);
 
 export interface IVPAffectTrackerHandle {
-  start(): Promise<void>;
+  start(providedStream?: MediaStream | null): Promise<void>;
   stop(): void;
   getFrames(): AffectFrameInput[];
   clearFrames(): void;
@@ -35,10 +35,11 @@ interface IVPAffectTrackerProps {
   onFrame?: (frame: AffectFrameResult) => void;
   visible?: boolean;
   className?: string;
+  mediaStream?: MediaStream | null;
 }
 
 const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProps>(
-  function IVPAffectTracker({ onFrame, visible = true, className = '' }, ref) {
+  function IVPAffectTracker({ onFrame, visible = true, className = '', mediaStream = null }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const samplerCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -110,33 +111,42 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
       rafIdRef.current = requestAnimationFrame(runSamplingLoop);
     }, [onFrame]);
 
+    // Synchronize video element with parent MediaStream prop
+    useEffect(() => {
+      if (mediaStream) {
+        streamRef.current = mediaStream;
+        if (videoRef.current && videoRef.current.srcObject !== mediaStream) {
+          videoRef.current.srcObject = mediaStream;
+          videoRef.current.play().catch(() => {});
+        }
+      }
+    }, [mediaStream]);
+
     useImperativeHandle(
       ref,
       () => ({
-        async start() {
+        async start(providedStream?: MediaStream | null) {
           if (isRunningRef.current) return;
+          const activeStream = providedStream || mediaStream || streamRef.current;
+          if (!activeStream) {
+            setCameraError('No camera stream available. Camera must be initialized by the parent session.');
+            return;
+          }
+          streamRef.current = activeStream;
           try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-              video: { width: 320, height: 240, facingMode: 'user' },
-              audio: false,
-            });
-            streamRef.current = stream;
             if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-              await videoRef.current.play();
+              videoRef.current.srcObject = activeStream;
+              await videoRef.current.play().catch(() => {});
             }
             samplerCanvasRef.current = document.createElement('canvas');
             sessionStartRef.current = Date.now();
             framesRef.current = [];
             isRunningRef.current = true;
             setIsStarted(true);
+            setCameraError(null);
             runSamplingLoop();
           } catch (err: unknown) {
-            const msg =
-              err instanceof Error && err.name === 'NotAllowedError'
-                ? 'Camera access denied. Grant permission in browser settings.'
-                : 'Camera unavailable. Visual composure tracking disabled.';
-            setCameraError(msg);
+            setCameraError('Failed to start affect tracker on active camera stream.');
             setIsStarted(false);
           }
         },
@@ -145,14 +155,11 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
           cancelAnimationFrame(rafIdRef.current);
           affectEmaRef.current.reset();
           emotionConsensusRef.current.reset();
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach(t => t.stop());
-            streamRef.current = null;
-          }
           if (videoRef.current) {
             videoRef.current.srcObject = null;
           }
           setIsStarted(false);
+          // Shared MediaStream tracks are owned and stopped by the parent session
         },
         getFrames() {
           return [...framesRef.current];
@@ -163,22 +170,20 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
           emotionConsensusRef.current.reset();
         },
       }),
-      [runSamplingLoop]
+      [runSamplingLoop, mediaStream]
     );
 
     useEffect(() => {
       return () => {
         isRunningRef.current = false;
         cancelAnimationFrame(rafIdRef.current);
-        streamRef.current?.getTracks().forEach(t => t.stop());
+        // Shared MediaStream tracks are owned and stopped by the parent session
       };
     }, []);
 
-    if (!visible) return null;
-
     return (
       <div
-        className={`hidden ${className}`}
+        className={`hidden ${className} ${!visible ? 'pointer-events-none' : ''}`}
         data-camera-error={cameraError ?? undefined}
         aria-hidden="true"
       >

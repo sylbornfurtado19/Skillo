@@ -23,7 +23,7 @@ const SAMPLE_FPS = 1;
 const RAF_SKIP = Math.round(60 / SAMPLE_FPS);
 
 export interface IVPSyncTrackerHandle {
-  start(): Promise<void>;
+  start(providedStream?: MediaStream | null): Promise<void>;
   stop(): void;
   getFrames(): SyncWindowInput[];
   clearFrames(): void;
@@ -33,10 +33,11 @@ interface IVPSyncTrackerProps {
   onWindow?: (windowResult: SyncWindowResult) => void;
   visible?: boolean;
   className?: string;
+  mediaStream?: MediaStream | null;
 }
 
 const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
-  function IVPSyncTracker({ onWindow, visible = true, className = '' }, ref) {
+  function IVPSyncTracker({ onWindow, visible = true, className = '', mediaStream = null }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const samplerCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -108,33 +109,46 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
       rafIdRef.current = requestAnimationFrame(runSamplingLoop);
     }, [onWindow]);
 
+    // Synchronize video element with parent MediaStream prop
+    useEffect(() => {
+      if (mediaStream) {
+        streamRef.current = mediaStream;
+        if (videoRef.current && videoRef.current.srcObject !== mediaStream) {
+          videoRef.current.srcObject = mediaStream;
+          videoRef.current.play().catch(() => {});
+        }
+      }
+    }, [mediaStream]);
+
     useImperativeHandle(
       ref,
       () => ({
-        async start() {
+        async start(providedStream?: MediaStream | null) {
           if (isRunningRef.current) return;
+          const activeStream = providedStream || mediaStream || streamRef.current;
+          if (!activeStream) {
+            console.warn('[IVPSyncTracker] start() failed: No camera/audio stream available.');
+            return;
+          }
+          streamRef.current = activeStream;
           try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-              video: { width: 320, height: 240, facingMode: 'user' },
-              audio: true,
-            });
-            streamRef.current = stream;
-
             if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-              await videoRef.current.play();
+              videoRef.current.srcObject = activeStream;
+              await videoRef.current.play().catch(() => {});
             }
 
-            // Web Audio API setup for audio energy tracking
-            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-            if (AudioCtx) {
-              const audioCtx = new AudioCtx();
-              audioCtxRef.current = audioCtx;
-              const source = audioCtx.createMediaStreamSource(stream);
-              const analyser = audioCtx.createAnalyser();
-              analyser.fftSize = 64;
-              source.connect(analyser);
-              analyserRef.current = analyser;
+            // Web Audio API setup for audio energy tracking (if audio track present)
+            if (activeStream.getAudioTracks().length > 0) {
+              const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+              if (AudioCtx) {
+                const audioCtx = new AudioCtx();
+                audioCtxRef.current = audioCtx;
+                const source = audioCtx.createMediaStreamSource(activeStream);
+                const analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 64;
+                source.connect(analyser);
+                analyserRef.current = analyser;
+              }
             }
 
             samplerCanvasRef.current = document.createElement('canvas');
@@ -143,8 +157,6 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
             isRunningRef.current = true;
             runSamplingLoop();
           } catch (err: unknown) {
-            // Mic/camera permission denied — audio tracking unavailable for this session.
-            // Log for debugging; the session continues without sync metrics.
             console.warn('[IVPSyncTracker] start() failed:', err instanceof Error ? err.message : err);
           }
         },
@@ -154,13 +166,10 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
           if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
             audioCtxRef.current.close().catch(() => {});
           }
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach(t => t.stop());
-            streamRef.current = null;
-          }
           if (videoRef.current) {
             videoRef.current.srcObject = null;
           }
+          // Shared MediaStream tracks are owned and stopped by the parent session
         },
         getFrames() {
           return [...windowsRef.current];
@@ -169,7 +178,7 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
           windowsRef.current = [];
         },
       }),
-      [runSamplingLoop]
+      [runSamplingLoop, mediaStream]
     );
 
     useEffect(() => {
@@ -177,14 +186,12 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
         isRunningRef.current = false;
         cancelAnimationFrame(rafIdRef.current);
         audioCtxRef.current?.close().catch(() => {});
-        streamRef.current?.getTracks().forEach(t => t.stop());
+        // Shared MediaStream tracks are owned and stopped by the parent session
       };
     }, []);
 
-    if (!visible) return null;
-
     return (
-      <div className={`hidden ${className}`}>
+      <div className={`hidden ${className} ${!visible ? 'pointer-events-none' : ''}`}>
         <video ref={videoRef} muted playsInline />
       </div>
     );
