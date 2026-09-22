@@ -1,3 +1,55 @@
+var mockFakeStore: Record<string, any> = {};
+
+var mockFrom = jest.fn((table: string) => ({
+  upsert: jest.fn(async (data: any) => {
+    if (Array.isArray(data)) {
+      data.forEach((item) => {
+        mockFakeStore[`${table}_${item.user_id || item.id}`] = item;
+      });
+    } else {
+      mockFakeStore[`${table}_${data.id || data.user_id}`] = data;
+    }
+    return { data: null, error: null };
+  }),
+  select: jest.fn(() => ({
+    eq: jest.fn((field: string, val: string) => ({
+      single: jest.fn(async () => {
+        const key = `${table}_${val}`;
+        return { data: mockFakeStore[key] || null, error: null };
+      }),
+    })),
+  })),
+}));
+
+var mockAdminClient = {
+  from: mockFrom,
+  auth: { getUser: jest.fn(), getSession: jest.fn() },
+};
+
+jest.mock('@/lib/supabase', () => ({
+  __esModule: true,
+  isSupabaseConfigured: true,
+  supabase: mockAdminClient,
+}));
+
+jest.mock('../src/lib/supabase', () => ({
+  __esModule: true,
+  isSupabaseConfigured: true,
+  supabase: mockAdminClient,
+}));
+
+jest.mock('@/lib/server/supabaseAdmin', () => ({
+  __esModule: true,
+  getSupabaseAdmin: jest.fn(() => mockAdminClient),
+  supabaseAdmin: mockAdminClient,
+}));
+
+jest.mock('../src/lib/server/supabaseAdmin', () => ({
+  __esModule: true,
+  getSupabaseAdmin: jest.fn(() => mockAdminClient),
+  supabaseAdmin: mockAdminClient,
+}));
+
 import {
   verbalReflectionSchema,
   generateVerbalSelfReflection,
@@ -9,37 +61,6 @@ import {
   dispatchReflexionWorker,
 } from '../src/lib/services/reflexionService';
 import type { CandidateSkillMemoryStore, VerbalReflection } from '../src/types/index';
-
-// Mock Supabase
-jest.mock('../src/lib/supabase', () => {
-  const fakeStore: Record<string, any> = {};
-
-  const mockFrom = jest.fn((table: string) => ({
-    upsert: jest.fn(async (data: any) => {
-      if (Array.isArray(data)) {
-        data.forEach((item) => {
-          fakeStore[`${table}_${item.user_id || item.id}`] = item;
-        });
-      } else {
-        fakeStore[`${table}_${data.id || data.user_id}`] = data;
-      }
-      return { data: null, error: null };
-    }),
-    select: jest.fn(() => ({
-      eq: jest.fn((field: string, val: string) => ({
-        single: jest.fn(async () => {
-          const key = `${table}_${val}`;
-          return { data: fakeStore[key] || null, error: null };
-        }),
-      })),
-    })),
-  }));
-
-  return {
-    supabase: { from: mockFrom, auth: { getUser: jest.fn(), getSession: jest.fn() } },
-    supabaseAdmin: { from: mockFrom, auth: { getUser: jest.fn(), getSession: jest.fn() } },
-  };
-});
 
 describe('Closed-Loop Reflexion & Memory Integration (Part 3)', () => {
   describe('1. Verbal Self-Reflection (SR_t) Generation', () => {
