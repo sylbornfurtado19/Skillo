@@ -82,19 +82,29 @@ export interface GenerateSimPOInput {
  * Length-Normalized Implicit Reward (SimPO surrogate)
  * r(x,y) = (beta * qualityScore) / max(1, |y|)
  * True SimPO uses log π_θ(y|x)/|y|. Since LLM log-probs are unavailable via API,
- * we substitute an LLM-judged quality score ∈ [0,1] as the surrogate for log-probability.
+ * we substitute an LLM-judged quality score as the surrogate for log-probability.
  * beta = 2.0 controls the reward scale.
  */
 export function calculateLengthNormalizedReward(
   text: string,
-  qualityScore: number = 0.5, // surrogate for log P(y|x), range [0,1]
+  qualityScore: number = 0.5,
   beta: number = 2.0
 ): { tokenLength: number; implicitReward: number } {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const tokenLength = Math.max(1, Math.round(words.length * 1.3)); // ~1.3 tokens per word
 
+  // Empty or whitespace answers trigger empty-answer floor (r <= 0.1)
+  if (words.length === 0) {
+    return { tokenLength: 1, implicitReward: 0.1 };
+  }
+
+  // Ensure qualityScore is anchored: support [1.0, 5.0] scale normalized or [0.0, 1.0]
+  const q = qualityScore > 1.0
+    ? Math.max(1.0, Math.min(5.0, qualityScore)) / 5.0
+    : Math.max(0, Math.min(1.0, qualityScore));
+
   // r = (beta * qualityScore) / |y|
-  const implicitReward = Math.round((beta * qualityScore) / tokenLength * 1000) / 1000;
+  const implicitReward = Math.round(((beta * q) / tokenLength) * 1000) / 1000;
 
   return { tokenLength, implicitReward };
 }
@@ -112,9 +122,18 @@ export async function generateSimPOContrastiveEvaluation(
   const beta = 2.0;
   const gamma = 0.5; // Target reward margin constant
 
-  const dispQualityInit = Math.max(0.05, Math.min(0.95, score / 100));
+  const isEmptyAnswer = !candidateAnswer || candidateAnswer.trim().length === 0;
+  let effectiveScore = score;
+  let dispQualityInit = Math.max(0.05, Math.min(0.95, score / 100));
+
+  if (isEmptyAnswer) {
+    // Empty-answer floor: <= 2.0 / 5.0, score <= 35%, r <= 0.1
+    effectiveScore = Math.min(effectiveScore, 35);
+    dispQualityInit = Math.min(dispQualityInit, 2.0 / 5.0);
+  }
+
   const dispreferredTokenInfo = calculateLengthNormalizedReward(candidateAnswer, dispQualityInit, beta);
-  let dispreferredReward = dispreferredTokenInfo.implicitReward;
+  let dispreferredReward = isEmptyAnswer ? Math.min(0.1, dispreferredTokenInfo.implicitReward) : dispreferredTokenInfo.implicitReward;
 
   if (anthropicApiKey) {
     try {
@@ -215,12 +234,12 @@ REQUIRED JSON OUTPUT FORMAT:
   const dispreferredText = candidateAnswer.trim().length > 10 ? candidateAnswer : 'Candidate provided a high-level explanation without concrete Big-O bounds or failure circuit specifications.';
 
   const prefQuality = 0.85;
-  const dispQuality = Math.max(0.05, Math.min(0.95, score / 100));
+  const dispQuality = isEmptyAnswer ? Math.min(0.4, effectiveScore / 100) : Math.max(0.05, Math.min(0.95, effectiveScore / 100));
   const prefTokenInfo = calculateLengthNormalizedReward(preferredText, prefQuality, beta);
   const dispTokenInfo = calculateLengthNormalizedReward(dispreferredText, dispQuality, beta);
 
   const preferredReward = prefTokenInfo.implicitReward;
-  const dispreferredRewardFinal = dispTokenInfo.implicitReward;
+  const dispreferredRewardFinal = isEmptyAnswer ? Math.min(0.1, dispTokenInfo.implicitReward) : dispTokenInfo.implicitReward;
   const rewardMargin = Math.round((preferredReward - dispreferredRewardFinal) * 100) / 100;
   const marginSatisfied = rewardMargin >= gamma;
 
