@@ -133,12 +133,19 @@ export interface GraphRAGAnalysisResult {
     nodes: GraphEntity[];
     relationships: GraphRelationship[];
     communities: CommunitySummary[];
+    edges?: GraphRelationship[];
+    blockedPrerequisites?: PrerequisiteGapChain[];
+    macroDomain?: string;
   };
   missingPrerequisiteChains: PrerequisiteGapChain[];
   extractedEntityCount: number;
   synthesizedSummary: string;
   providerStatus?: 'available' | 'fallback_heuristic' | 'unconfigured' | 'error';
   analysisMethod?: string;
+  nodes?: GraphEntity[];
+  edges?: GraphRelationship[];
+  blockedPrerequisites?: PrerequisiteGapChain[];
+  macroDomain?: string;
 }
 
 // ── Reflexion Types (Shinn et al., NeurIPS 2023) ────────────────────────────
@@ -340,6 +347,7 @@ export interface LATSTreeState {
   activeActionType: LATSActionType;
   currentPRMScore: number; // 0..1 or 0..100%
   currentGaps: string[];
+  fallback?: boolean;
 }
 
 export interface ProcessRewardResult {

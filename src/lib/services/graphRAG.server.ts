@@ -247,18 +247,43 @@ export function synthesizePrerequisiteGapChains(
     const severity: 'CRITICAL' | 'MODERATE' | 'MINOR' =
       idx === 0 ? 'CRITICAL' : idx === 1 ? 'MODERATE' : 'MINOR';
 
-    // Walk graph edges upward: leaf -> pillar -> macro domain
-    // prerequisites array contains incoming dependency names
-    const prerequisiteChain: string[] = [node.name];
-    let currentPrereqs = node.prerequisites ?? [];
-    let depth = 0;
-    while (currentPrereqs.length > 0 && depth < 3) {
-      const parentName = currentPrereqs[0];
-      const parentNode = nodeByName.get(parentName);
-      if (!parentNode || prerequisiteChain.includes(parentName)) break;
-      prerequisiteChain.push(parentName);
-      currentPrereqs = parentNode.prerequisites ?? [];
-      depth++;
+    // BFS upward traversal with DAG cycle protection: Leaf -> Pillar -> Macro Domain
+    const visited = new Set<string>([node.name]);
+    const queue: Array<{ name: string; chain: string[]; depth: number }> = [
+      { name: node.name, chain: [node.name], depth: 0 }
+    ];
+    let bestChain: string[] = [node.name];
+    let macroAncestorName: string | undefined;
+
+    while (queue.length > 0) {
+      const { name, chain, depth } = queue.shift()!;
+      if (chain.length > bestChain.length) {
+        bestChain = chain;
+      }
+      const currentNode = nodeByName.get(name);
+      if (currentNode && currentNode.level === 0 && name !== node.name) {
+        macroAncestorName = currentNode.name;
+        break; // Reached Macro Domain root
+      }
+      if (depth >= 5) continue;
+
+      const prereqs = currentNode?.prerequisites ?? [];
+      for (const parentName of prereqs) {
+        if (!visited.has(parentName)) {
+          visited.add(parentName);
+          const parentNode = nodeByName.get(parentName);
+          if (parentNode) {
+            queue.push({ name: parentName, chain: [...chain, parentName], depth: depth + 1 });
+          }
+        }
+      }
+    }
+
+    if (!macroAncestorName) {
+      macroAncestorName = bestChain.find(name => {
+        const n = nodeByName.get(name);
+        return n && n.level === 0;
+      }) ?? `${jobTitle} Architecture`;
     }
 
     // Determine blocked capability: the node's downstream impact (if any)
@@ -267,16 +292,10 @@ export function synthesizePrerequisiteGapChains(
         ? node.downstreamImpacts[0]
         : `Advanced ${node.name} Integration`;
 
-    // Find the macro domain (L0) ancestor for the impact statement
-    const macroAncestorName = prerequisiteChain.find(name => {
-      const n = nodeByName.get(name);
-      return n && n.level === 0;
-    }) ?? `${jobTitle} Architecture`;
-
     return {
       id: `gap_${idx + 1}_${node.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
       missingSkill: node.name,
-      missingFoundation: prerequisiteChain.length > 1 ? prerequisiteChain.slice(1).join(' → ') : node.name,
+      missingFoundation: bestChain.length > 1 ? bestChain.slice(1).join(' → ') : node.name,
       blockedCapability,
       macroDomainImpact: macroAncestorName,
       downstreamImpact: `${jobTitle} Architecture Resilience`,
@@ -324,6 +343,7 @@ export async function executeGraphRAGAnalysis(
       [],
       jobTitle
     );
+    const macroDomain = `${jobTitle} Architecture`;
     return {
       overallDomainCoverage: 0,
       candidateGraph: {
@@ -331,12 +351,19 @@ export async function executeGraphRAGAnalysis(
         nodes,
         relationships: graphRelationships,
         communities,
+        edges: graphRelationships,
+        blockedPrerequisites: [],
+        macroDomain,
       },
       missingPrerequisiteChains: [],
       extractedEntityCount: 0,
       synthesizedSummary: `No resume text was provided for ${jobTitle} evaluation. Graph analysis returned 0 extracted entities.`,
       providerStatus: 'unconfigured',
       analysisMethod: 'Empty resume baseline',
+      nodes,
+      edges: graphRelationships,
+      blockedPrerequisites: [],
+      macroDomain,
     };
   }
 
@@ -429,6 +456,8 @@ ${resumeText.slice(0, 15000)}
 
   const synthesizedSummary = `GraphRAG analysis extracted ${nodes.length} technical entities across ${communities.length} community levels for ${jobTitle}. Overall domain coverage measured at ${overallDomainCoverage}%. Identified ${missingPrerequisiteChains.length} prerequisite gap chain(s).`;
 
+  const macroDomain = communities.find(c => c.level === 0)?.name ?? `${jobTitle} Architecture`;
+
   return {
     overallDomainCoverage,
     candidateGraph: {
@@ -436,11 +465,19 @@ ${resumeText.slice(0, 15000)}
       nodes,
       relationships: graphRelationships,
       communities,
+      edges: graphRelationships,
+      blockedPrerequisites: missingPrerequisiteChains,
+      macroDomain,
     },
     missingPrerequisiteChains,
     extractedEntityCount: nodes.length,
     synthesizedSummary,
     providerStatus,
     analysisMethod,
+    // Visualizer schema direct fields
+    nodes,
+    edges: graphRelationships,
+    blockedPrerequisites: missingPrerequisiteChains,
+    macroDomain,
   };
 }

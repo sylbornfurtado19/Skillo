@@ -5,8 +5,8 @@
  */
 
 import { normalizeEntityName, ENTITY_ALIAS_MAP, validateEntityAliasMap } from '../src/lib/schemas/graphSchema';
-import { executeLeidenHierarchicalClustering } from '../src/lib/services/graphRAG.server';
-import { computeUCT } from '../src/lib/services/latsEngine.server';
+import { executeLeidenHierarchicalClustering, synthesizePrerequisiteGapChains, executeGraphRAGAnalysis } from '../src/lib/services/graphRAG.server';
+import { computeUCT, runLATSMCTS } from '../src/lib/services/latsEngine.server';
 
 // === Entity Normalization ===
 
@@ -65,6 +65,13 @@ describe('Entity Normalization — normalizeEntityName', () => {
 
   it('normalizes "ts" to "TypeScript"', () => {
     expect(normalizeEntityName('ts')).toBe('TypeScript');
+  });
+
+  it('normalizes "node.js 20" and variants to "Node.js"', () => {
+    expect(normalizeEntityName('Node.js 20')).toBe('Node.js');
+    expect(normalizeEntityName('Node 20')).toBe('Node.js');
+    expect(normalizeEntityName('NodeJS')).toBe('Node.js');
+    expect(normalizeEntityName('Node')).toBe('Node.js');
   });
 });
 
@@ -206,5 +213,80 @@ describe('LATS UCT formula — computeUCT', () => {
     const ucts = branches.map(b => ({ id: b.id, uct: computeUCT(b.prmScore, b.prmScore, b.nParent, b.nChild) }));
     const selected = ucts.reduce((best, b) => b.uct > best.uct ? b : best);
     expect(selected.id).toBe('b1'); // highest prmScore wins
+  });
+});
+
+// === DAG Cycle Protection & Visualizer Schema ===
+
+describe('DAG Cycle Protection & Visualizer Schema', () => {
+  it('protects against infinite loops on circular prerequisite annotations via visited Set', () => {
+    const cyclicNodes = [
+      {
+        id: 'node_a',
+        name: 'ServiceA',
+        level: 2 as const,
+        status: 'MISSING' as const,
+        description: 'Leaf A',
+        prerequisites: ['ServiceB'],
+        downstreamImpacts: ['ServiceB'],
+      },
+      {
+        id: 'node_b',
+        name: 'ServiceB',
+        level: 1 as const,
+        status: 'MISSING' as const,
+        description: 'Pillar B',
+        prerequisites: ['ServiceA'],
+        downstreamImpacts: ['ServiceA'],
+      },
+    ];
+
+    const gapChains = synthesizePrerequisiteGapChains(cyclicNodes as any, 'Backend Engineer');
+    expect(gapChains).toBeDefined();
+    expect(gapChains.length).toBe(2);
+    expect(gapChains[0].missingSkill).toBe('ServiceA');
+  });
+
+  it('executeGraphRAGAnalysis returns valid visualizer schema (nodes, edges, blockedPrerequisites, macroDomain)', async () => {
+    const result = await executeGraphRAGAnalysis({
+      jobTitle: 'Distributed Systems Architect',
+      jobDescription: 'Build scalable architectures with Kubernetes and Kafka.',
+      fileName: 'resume.txt',
+      resumeText: 'Senior engineer experienced in Go, Kubernetes, and Kafka streaming pipelines.',
+    });
+
+    expect(result.nodes).toBeDefined();
+    expect(result.edges).toBeDefined();
+    expect(result.blockedPrerequisites).toBeDefined();
+    expect(result.macroDomain).toBeDefined();
+    expect(Array.isArray(result.nodes)).toBe(true);
+    expect(Array.isArray(result.edges)).toBe(true);
+    expect(Array.isArray(result.blockedPrerequisites)).toBe(true);
+  });
+});
+
+// === LATS Branch Expansion & Deterministic Fallback ===
+
+describe('LATS Branch Expansion & Deterministic Fallback', () => {
+  it('generates 3 distinct action candidates and marks fallback: true when API key is missing', async () => {
+    const state = await runLATSMCTS({
+      sessionId: 'test_mcts_sess',
+      role: 'Backend Engineer',
+      currentQuestion: 'How would you mitigate a cascading cache failure?',
+      candidateAnswer: 'I would use circuit breakers and rate limiting.',
+      priorGaps: ['Concurrency locks'],
+    });
+
+    expect(state.fallback).toBe(true);
+    expect(state.simulatedBranches).toHaveLength(3);
+    const actionTypes = state.simulatedBranches.map(b => b.actionType);
+    expect(actionTypes).toContain('DEEP_DIVE');
+    expect(actionTypes).toContain('PIVOT');
+    expect(actionTypes).toContain('EDGE_CASE_CHALLENGE');
+
+    const selected = state.simulatedBranches.find(b => b.isSelectedTrajectory);
+    expect(selected).toBeDefined();
+    expect(selected?.uctValue).toBeGreaterThan(0);
+    expect(selected?.prmScore).toBeGreaterThan(0);
   });
 });

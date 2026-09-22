@@ -44,6 +44,14 @@ export const ENTITY_ALIAS_MAP: Record<string, string> = {
   "nodejs": "Node.js",
   "node.js": "Node.js",
   "node js": "Node.js",
+  "node.js 20": "Node.js",
+  "node 20": "Node.js",
+  "node.js 18": "Node.js",
+  "node 18": "Node.js",
+  "node.js 22": "Node.js",
+  "node 22": "Node.js",
+  "node.js 16": "Node.js",
+  "node 16": "Node.js",
 
   // TypeScript variants
   "ts": "TypeScript",
