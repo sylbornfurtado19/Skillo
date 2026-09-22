@@ -278,12 +278,25 @@ export function getRelevantReflexionContext(
  * Adaptively probe these specific weak points during this session.`
  */
 export function formatHistoricalMemoryPrompt(
-  pastCritiques: Array<{ summary: string }>
+  pastCritiques: Array<{ summary: string; proficiencyLevel?: string }>
 ): string {
   if (!pastCritiques || pastCritiques.length === 0) {
     return '';
   }
-  return `Candidate Historical Memory: ${pastCritiques.map((c) => c.summary).join('; ')}. \nAdaptively probe these specific weak points during this session.`;
+  const weaknessLines = pastCritiques
+    .map(
+      (c) =>
+        `- Prior Weakness: ${c.summary} (Proficiency: ${c.proficiencyLevel || 'DEVELOPING'})`
+    )
+    .join('\n');
+  const summaries = pastCritiques.map((c) => c.summary).join('; ');
+
+  return `<candidate_historical_memory>
+${weaknessLines}
+- Core Instruction: Actively probe edge cases and challenge assumptions around these specific weak points.
+Candidate Historical Memory: ${summaries}.
+Adaptively probe these specific weak points during this session.
+</candidate_historical_memory>`;
 }
 
 /**

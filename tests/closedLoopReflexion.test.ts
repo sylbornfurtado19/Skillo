@@ -182,6 +182,17 @@ describe('Closed-Loop Reflexion & Memory Integration (Part 3)', () => {
     it('returns empty string when past critiques array is empty', () => {
       expect(formatHistoricalMemoryPrompt([])).toBe('');
     });
+
+    it('wraps historical prompt with strict candidate_historical_memory delimiter tags', () => {
+      const pastCritiques = [
+        { summary: 'Under-explained concurrency locks', proficiencyLevel: 'DEVELOPING' as const },
+      ];
+      const prompt = formatHistoricalMemoryPrompt(pastCritiques);
+      expect(prompt).toContain('<candidate_historical_memory>');
+      expect(prompt).toContain('- Prior Weakness: Under-explained concurrency locks (Proficiency: DEVELOPING)');
+      expect(prompt).toContain('- Core Instruction: Actively probe edge cases and challenge assumptions around these specific weak points.');
+      expect(prompt).toContain('</candidate_historical_memory>');
+    });
   });
 
   describe('4. Supabase SkillMemoryNodes JSONB Persistence & Retrieval', () => {

@@ -25,6 +25,7 @@ const setupDataSchema = z.object({
 
 const setupRequestSchema = z.object({
   setupData: setupDataSchema,
+  userId: z.string().optional(),
 });
 
 export interface GeneratedQuestionItem {
@@ -72,8 +73,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { setupData } = parseResult.data;
+    const { setupData, userId: bodyUserId } = parseResult.data;
     const count = setupData.questionCount || 5;
+    const activeUserId = user?.id || bodyUserId;
 
     // 3. Retrieve Candidate Historical Memory from Supabase SkillMemoryNodes
     let pastCritiques: Array<{
@@ -84,9 +86,9 @@ export async function POST(request: Request) {
       remediation?: string;
     }> = [];
 
-    if (user?.id) {
+    if (activeUserId) {
       try {
-        pastCritiques = await retrievePastCritiques(user.id);
+        pastCritiques = await retrievePastCritiques(activeUserId);
       } catch (err) {
         console.warn('[Setup API] Failed to retrieve past critiques:', err);
       }
