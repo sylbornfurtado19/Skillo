@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
+import { dispatchReflexionWorker } from '@/lib/services/reflexionService';
 import { performInterviewEvaluation } from '@/lib/services/interviewEvaluation.server';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
 
@@ -148,10 +149,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Perform Prometheus-2 & SUQ server-side evaluation (N=5 CoT Sampling Passes)
+    // 4. Perform Prometheus-2 & SUQ server-side evaluation (N=3 CoT Sampling Passes, T=0.7)
     const evaluationResult = await performInterviewEvaluation(parseResult.data, user.id);
 
-    // 5. Return computed evaluation result (no body echo)
+    // 5. Asynchronous Non-Blocking Self-Critique (SR_t) Worker
+    // Dispatched post-evaluation to upsert candidate SkillMemoryNodes JSONB without delaying HTTP response
+    const firstQuestion = parseResult.data.questionsList[0]?.question || 'Technical Assessment Question';
+    const firstAns = typeof parseResult.data.answersList[0] === 'string'
+      ? parseResult.data.answersList[0]
+      : parseResult.data.answersList[0]?.answerText ?? '';
+
+    dispatchReflexionWorker({
+      userId: user.id,
+      sessionId: `sess_${Date.now()}`,
+      question: firstQuestion,
+      candidateAnswer: firstAns,
+      overallScore: evaluationResult.overallScore,
+      role: parseResult.data.setupData.role,
+    });
+
+    // 6. Return computed evaluation result (no body echo)
     return NextResponse.json({
       status: 'success',
       data: evaluationResult,
