@@ -11,7 +11,7 @@ const analyzeSchema = z.object({
   fileName: z.string().min(1, 'fileName is required').max(255),
   jobTitle: z.string().min(1, 'jobTitle is required').max(150),
   jobDescription: z.string().min(1, 'jobDescription is required').max(10000),
-  resumeText: z.string().optional(),
+  resumeText: z.string().max(30000, 'Resume text exceeds 30,000 characters limit').optional(),
 });
 
 export async function POST(request: Request) {

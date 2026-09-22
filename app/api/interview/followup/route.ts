@@ -8,15 +8,15 @@ export const dynamic = "force-dynamic";
 
 // ── Request Schema ────────────────────────────────────────────────────────────
 const followupRequestSchema = z.object({
-  question: z.string().min(1),
-  answerText: z.string(),
-  role: z.string().optional().default("Software Engineer"),
-  difficulty: z.string().optional().default("Medium"),
-  type: z.string().optional().default("Technical"),
+  question: z.string().min(1, "Question cannot be empty").max(1000, "Question exceeds 1000 characters limit"),
+  answerText: z.string().max(10000, "Answer exceeds 10,000 characters limit"),
+  role: z.string().max(100).optional().default("Software Engineer"),
+  difficulty: z.string().max(50).optional().default("Medium"),
+  type: z.string().max(50).optional().default("Technical"),
   /** Optional: stable session identifier for LATS tree continuity */
-  sessionId: z.string().optional(),
+  sessionId: z.string().max(64).optional(),
   /** Optional: prior gap labels detected in earlier turns */
-  priorGaps: z.array(z.string()).optional().default([]),
+  priorGaps: z.array(z.string().max(100)).max(20).optional().default([]),
 });
 
 // ── Response Schema (for documentation) ──────────────────────────────────────

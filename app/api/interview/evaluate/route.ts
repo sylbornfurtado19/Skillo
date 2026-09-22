@@ -4,89 +4,91 @@ import { supabase } from '@/lib/supabase';
 import { dispatchReflexionWorker } from '@/lib/services/reflexionService';
 import { performInterviewEvaluation } from '@/lib/services/interviewEvaluation.server';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
+import { systemDesignDiagramStateSchema } from '@/lib/schemas/diagramSchema';
 
 export const dynamic = 'force-dynamic';
 
-
 const questionSchema = z.object({
-  id: z.string().optional(),
-  question: z.string().min(1),
-  duration: z.number().optional(),
-  hint: z.string().optional(),
+  id: z.string().max(64).optional(),
+  question: z.string().min(1, 'Question text cannot be empty').max(1000, 'Question text exceeds 1000 characters limit'),
+  duration: z.number().finite().positive().max(7200).optional(),
+  hint: z.string().max(500, 'Hint exceeds 500 characters limit').optional(),
 });
 
 const answerSchema = z.object({
-  questionId: z.string().optional(),
-  answerText: z.string(),
-  timeSpent: z.number().optional(),
+  questionId: z.string().max(64).optional(),
+  answerText: z.string().max(10000, 'Answer text exceeds 10,000 characters limit'),
+  timeSpent: z.number().finite().nonnegative().max(7200).optional(),
   speakMode: z.boolean().optional(),
-  diagramState: z.any().optional(),
+  diagramState: systemDesignDiagramStateSchema.optional(),
 });
 
 const setupDataSchema = z.object({
-  company: z.string().default('Generic'),
-  domain: z.string().default('Computer Science'),
-  role: z.string().default('Software Engineer'),
-  experienceLevel: z.string().default('Mid-Level'),
-  type: z.string().default('Technical'),
-  difficulty: z.string().default('Medium'),
-  duration: z.number().default(45),
-  questionCount: z.number().default(5),
-  focusAreas: z.array(z.string()).default([]),
-  persona: z.string().default('sarah'),
-  interviewModeId: z.string().optional(),
+  company: z.string().max(100).default('Generic'),
+  domain: z.string().max(100).default('Computer Science'),
+  role: z.string().max(100).default('Software Engineer'),
+  experienceLevel: z.string().max(50).default('Mid-Level'),
+  type: z.string().max(50).default('Technical'),
+  difficulty: z.string().max(50).default('Medium'),
+  duration: z.number().finite().positive().max(300).default(45),
+  questionCount: z.number().int().min(1).max(10).default(5),
+  focusAreas: z.array(z.string().max(100)).max(10).default([]),
+  persona: z.string().max(50).default('sarah'),
+  interviewModeId: z.string().max(50).optional(),
 });
 
 const gazeFrameSchema = z.object({
-  timestampMs: z.number().nonnegative(),
-  pitchLogits: z.array(z.number()).optional(),
-  yawLogits: z.array(z.number()).optional(),
-  pitchDegrees: z.number().min(-90).max(90).optional(),
-  yawDegrees: z.number().min(-90).max(90).optional(),
-  confidence: z.number().min(0).max(1).optional(),
+  timestampMs: z.number().finite().nonnegative(),
+  pitchLogits: z.array(z.number().finite()).max(10).optional(),
+  yawLogits: z.array(z.number().finite()).max(10).optional(),
+  pitchDegrees: z.number().finite().min(-90).max(90).optional(),
+  yawDegrees: z.number().finite().min(-90).max(90).optional(),
+  confidence: z.number().finite().min(0).max(1).optional(),
 });
 
 const headPoseFrameSchema = z.object({
-  timestampMs: z.number().nonnegative(),
-  yawLogits: z.array(z.number()).optional(),
-  pitchLogits: z.array(z.number()).optional(),
-  rollLogits: z.array(z.number()).optional(),
-  yawDegrees: z.number().min(-90).max(90).optional(),
-  pitchDegrees: z.number().min(-90).max(90).optional(),
-  rollDegrees: z.number().min(-90).max(90).optional(),
-  confidence: z.number().min(0).max(1).optional(),
+  timestampMs: z.number().finite().nonnegative(),
+  yawLogits: z.array(z.number().finite()).max(10).optional(),
+  pitchLogits: z.array(z.number().finite()).max(10).optional(),
+  rollLogits: z.array(z.number().finite()).max(10).optional(),
+  yawDegrees: z.number().finite().min(-90).max(90).optional(),
+  pitchDegrees: z.number().finite().min(-90).max(90).optional(),
+  rollDegrees: z.number().finite().min(-90).max(90).optional(),
+  confidence: z.number().finite().min(0).max(1).optional(),
 });
 
 const affectFrameSchema = z.object({
-  timestampMs: z.number().nonnegative(),
-  valence: z.number().min(-1).max(1).optional(),
-  arousal: z.number().min(-1).max(1).optional(),
-  valenceLogits: z.array(z.number()).optional(),
-  arousalLogits: z.array(z.number()).optional(),
-  confidence: z.number().min(0).max(1).optional(),
+  timestampMs: z.number().finite().nonnegative(),
+  valence: z.number().finite().min(-1).max(1).optional(),
+  arousal: z.number().finite().min(-1).max(1).optional(),
+  valenceLogits: z.array(z.number().finite()).max(10).optional(),
+  arousalLogits: z.array(z.number().finite()).max(10).optional(),
+  confidence: z.number().finite().min(0).max(1).optional(),
 });
 
 const syncWindowSchema = z.object({
-  timestampMs: z.number().nonnegative(),
-  visualDistance: z.number().optional(),
-  offsetMs: z.number().optional(),
-  audioEnergy: z.number().optional(),
-  confidence: z.number().min(0).max(1).optional(),
+  timestampMs: z.number().finite().nonnegative(),
+  visualDistance: z.number().finite().optional(),
+  offsetMs: z.number().finite().optional(),
+  audioEnergy: z.number().finite().optional(),
+  confidence: z.number().finite().min(0).max(1).optional(),
 });
 
-const evaluateSchema = z.object({
-  setupData: setupDataSchema,
-  questionsList: z.array(questionSchema).min(1, 'questionsList must contain at least one question'),
-  answersList: z.array(z.union([z.string(), answerSchema])),
-  /** Optional L2CS-Net gaze frames captured during the session */
-  gazeFrames: z.array(gazeFrameSchema).max(3600).optional(), // cap at 3600 frames (1hr @ 1fps)
-  /** Optional HopeNet 3D head pose frames captured during the session */
-  headPoseFrames: z.array(headPoseFrameSchema).max(3600).optional(),
-  /** Optional AffectNet facial expression frames captured during the session */
-  affectFrames: z.array(affectFrameSchema).max(3600).optional(),
-  /** Optional SyncNet audio-visual lip sync windows captured during the session */
-  syncWindows: z.array(syncWindowSchema).max(3600).optional(),
-});
+const evaluateSchema = z
+  .object({
+    setupData: setupDataSchema,
+    questionsList: z.array(questionSchema).min(1, 'questionsList must contain at least one question').max(10, 'Cannot exceed 10 questions'),
+    answersList: z.array(z.union([z.string().max(10000, 'Answer exceeds 10,000 characters limit'), answerSchema])).min(1).max(10, 'Cannot exceed 10 answers'),
+    deepAnalysisMode: z.boolean().optional(),
+    gazeFrames: z.array(gazeFrameSchema).max(1000).optional(),
+    headPoseFrames: z.array(headPoseFrameSchema).max(1000).optional(),
+    affectFrames: z.array(affectFrameSchema).max(1000).optional(),
+    syncWindows: z.array(syncWindowSchema).max(1000).optional(),
+  })
+  .refine((data) => data.questionsList.length === data.answersList.length, {
+    message: 'questionsList and answersList must have exactly equal lengths to prevent evaluation misalignment',
+    path: ['answersList'],
+  });
 
 
 
@@ -149,21 +151,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Perform Prometheus-2 & SUQ server-side evaluation (N=3 CoT Sampling Passes, T=0.7)
+    // 4. Perform Prometheus-2 & SUQ server-side evaluation (configurable N passes, default N=3)
     const evaluationResult = await performInterviewEvaluation(parseResult.data, user.id);
 
     // 5. Asynchronous Non-Blocking Self-Critique (SR_t) Worker
     // Dispatched post-evaluation to upsert candidate SkillMemoryNodes JSONB without delaying HTTP response
-    const firstQuestion = parseResult.data.questionsList[0]?.question || 'Technical Assessment Question';
-    const firstAns = typeof parseResult.data.answersList[0] === 'string'
-      ? parseResult.data.answersList[0]
-      : parseResult.data.answersList[0]?.answerText ?? '';
+    const targetIdx = evaluationResult.selectedQuestionIndex ?? 0;
+    const targetQuestion = parseResult.data.questionsList[targetIdx]?.question || 'Technical Assessment Question';
+    const targetAns = typeof parseResult.data.answersList[targetIdx] === 'string'
+      ? (parseResult.data.answersList[targetIdx] as string)
+      : (parseResult.data.answersList[targetIdx] as any)?.answerText ?? '';
 
     dispatchReflexionWorker({
       userId: user.id,
       sessionId: `sess_${Date.now()}`,
-      question: firstQuestion,
-      candidateAnswer: firstAns,
+      question: targetQuestion,
+      candidateAnswer: targetAns,
       overallScore: evaluationResult.overallScore,
       role: parseResult.data.setupData.role,
     });
