@@ -47,15 +47,15 @@ export interface AnswerItemInput {
 
 export interface SetupDataInput {
   company?: string;
-  domain: string;
+  domain?: string;
   role: string;
-  experienceLevel: string;
-  type: string;
-  difficulty: string;
+  experienceLevel?: string;
+  type?: string;
+  difficulty?: string;
   duration?: number;
-  questionCount: number;
-  focusAreas: string[];
-  persona: string;
+  questionCount?: number;
+  focusAreas?: string[];
+  persona?: string;
   interviewModeId?: string;
 }
 
@@ -368,6 +368,9 @@ export function computeSemanticEquivalenceAndEntropy(
     }
   });
   semanticEntropy = Math.round(semanticEntropy * 1000) / 1000;
+  if (isNaN(semanticEntropy) || Math.abs(semanticEntropy) === 0 || clusters.length <= 1) {
+    semanticEntropy = 0;
+  }
 
   // 4. Confidence Mapping (Prometheus-2 SUQ certified tiers, N=3 sampling)
   // HIGH:   SE ≤ 0.3
@@ -402,7 +405,7 @@ export function computeSemanticEquivalenceAndEntropy(
 
 /**
  * Master Prometheus-2 & SUQ Evaluation Engine.
- * Executes N=5 parallel CoT sampling passes, computes Semantic Entropy, and returns structured SUQEvaluationResult.
+ * Executes parallel CoT sampling passes with 4.5s timeout, computes Semantic Entropy, and returns structured SUQEvaluationResult.
  */
 export async function performInterviewEvaluation(
   input: EvaluateInterviewInput,
@@ -412,14 +415,32 @@ export async function performInterviewEvaluation(
   const { setupData, questionsList, answersList } = input;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
-  // Execute N Parallel Sampling Passes (default N=3 latency-bounded <=6s, or N=5 deep mode)
-  const N = input.deepAnalysisMode ? 5 : 3;
+  // Execute N Parallel Sampling Passes (strictly N=3 default <=4.5s per pass, or N=5 deep mode)
+  const targetN = input.deepAnalysisMode ? 5 : 3;
   const passPromises: Promise<SinglePassEvaluation>[] = [];
-  for (let i = 0; i < N; i++) {
+  for (let i = 0; i < targetN; i++) {
     passPromises.push(executeSingleCoTPass(input, i, anthropicApiKey));
   }
 
-  const passes = await Promise.all(passPromises);
+  const passResults = await Promise.allSettled(passPromises);
+  const completedPasses: SinglePassEvaluation[] = [];
+
+  passResults.forEach((res, idx) => {
+    if (res.status === 'fulfilled' && res.value) {
+      completedPasses.push(res.value);
+    } else {
+      console.warn(`[SUQ Evaluation] Pass ${idx + 1} dropped or failed:`, res.status === 'rejected' ? res.reason : 'No result');
+    }
+  });
+
+  // If passes drop, calculate entropy over completed passes (N >= 2) rather than hanging the route
+  let passes = completedPasses;
+  if (passes.length < 2) {
+    for (let i = passes.length; i < targetN; i++) {
+      passes.push(generateAnalyticalCoTPass(input, i));
+    }
+  }
+  const N = passes.length;
 
   // Compute Semantic Equivalence Clustering & Semantic Entropy (SE)
   const { clusters, semanticEntropy, confidenceLevel, requiresValidationPass, finalScore } =

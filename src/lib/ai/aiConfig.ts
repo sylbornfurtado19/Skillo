@@ -11,7 +11,7 @@ export const AI_CONFIG = {
   apiVersion: '2023-06-01',
   endpoint: 'https://api.anthropic.com/v1/messages',
   timeouts: {
-    singlePassMs: 12000,
+    singlePassMs: 4500,
     simpoMs: 12000,
     latsBranchMs: 15000,
     reflexionMs: 12000,

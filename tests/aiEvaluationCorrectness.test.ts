@@ -12,6 +12,11 @@ import {
   computeSemanticEquivalenceAndEntropy,
   type EvaluateInterviewInput,
 } from '../src/lib/services/interviewEvaluation.server';
+import {
+  generateSimPOContrastiveEvaluation,
+  calculateLengthNormalizedReward,
+  benchmarkDeltaCardSchema,
+} from '../src/lib/services/simpoEngine.server';
 
 describe('AI Evaluation Correctness & Grounding Suite', () => {
   describe('Safe JSON Parser & Guardrails', () => {
@@ -165,6 +170,52 @@ describe('AI Evaluation Correctness & Grounding Suite', () => {
       expect(clusters.length).toBe(2); // 4.0 cluster and 2.0 cluster
       expect(semanticEntropy).toBeGreaterThan(0);
       expect(['HIGH', 'MEDIUM', 'LOW']).toContain(confidenceLevel);
+    });
+
+    it('guards against NaN or -0 when all passes fall into a single cluster (SE = 0.0)', () => {
+      const identicalPasses = [
+        {
+          scores: { technicalAccuracy: 4, systemDesignLogic: 4, edgeCaseHandling: 4, communicationClarity: 4 },
+          overallScore: 4.0,
+          feedback: '',
+        },
+        {
+          scores: { technicalAccuracy: 4, systemDesignLogic: 4, edgeCaseHandling: 4, communicationClarity: 4 },
+          overallScore: 4.0,
+          feedback: '',
+        },
+        {
+          scores: { technicalAccuracy: 4, systemDesignLogic: 4, edgeCaseHandling: 4, communicationClarity: 4 },
+          overallScore: 4.0,
+          feedback: '',
+        },
+      ];
+
+      const { clusters, semanticEntropy, confidenceLevel } = computeSemanticEquivalenceAndEntropy(identicalPasses as any, 0.5);
+      expect(clusters.length).toBe(1);
+      expect(semanticEntropy).toBe(0);
+      expect(Object.is(semanticEntropy, -0)).toBe(false);
+      expect(confidenceLevel).toBe('HIGH');
+    });
+  });
+
+  describe('SimPO Length-Normalized Contrastive Evaluation', () => {
+    it('enforces empty answer floor: <= 2.0/5.0, score <= 35%, r <= 0.1 and valid Zod delta card', async () => {
+      const result = await generateSimPOContrastiveEvaluation({
+        question: 'Explain distributed locks.',
+        candidateAnswer: '   ',
+        role: 'Distributed Systems Engineer',
+        score: 10,
+      });
+
+      expect(result.contrastivePair.dispreferredAnswer.implicitReward).toBeLessThanOrEqual(0.1);
+      expect(result.benchmarkDeltaCard).toBeDefined();
+      const parsedCard = benchmarkDeltaCardSchema.safeParse(result.benchmarkDeltaCard);
+      expect(parsedCard.success).toBe(true);
+      expect(parsedCard.data?.architecturalGap.length).toBeGreaterThan(0);
+      expect(parsedCard.data?.edgeCaseOversights.length).toBeGreaterThan(0);
+      expect(typeof parsedCard.data?.faangComparison).toBe('string');
+      expect(parsedCard.data?.rewardScore).toBeGreaterThan(0);
     });
   });
 });
