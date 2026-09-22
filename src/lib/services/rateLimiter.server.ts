@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 /**
  * ARCHITECTURAL NOTE:
@@ -40,50 +40,57 @@ export async function checkRateLimit(options: RateLimitOptions): Promise<RateLim
   const windowMs = windowSeconds * 1000;
   const cutoffTime = new Date(nowMs - windowMs).toISOString();
 
-  // 1. Try Supabase request_logs table first (persistent across serverless instances)
-  try {
-    const { count, error } = await supabase
-      .from('request_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('action', action)
-      .gte('created_at', cutoffTime);
+  // 1. Try Supabase request_logs table first only if Supabase is authentically configured
+  if (isSupabaseConfigured && process.env.NODE_ENV !== 'test') {
+    try {
+      const { count, error } = await supabase
+        .from('request_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('action', action)
+        .gte('created_at', cutoffTime);
 
-    if (!error && typeof count === 'number') {
-      if (count >= maxRequests) {
+      if (!error && typeof count === 'number') {
+        if (count >= maxRequests) {
+          return {
+            allowed: false,
+            limit: maxRequests,
+            remaining: 0,
+            resetSeconds: windowSeconds,
+            retryAfterSeconds: windowSeconds,
+            store: 'supabase',
+          };
+        }
+
+        // Log the incoming request asynchronously
+        void supabase.from('request_logs').insert({
+          user_id: userId,
+          action,
+          created_at: new Date(nowMs).toISOString(),
+        });
+
         return {
-          allowed: false,
+          allowed: true,
           limit: maxRequests,
-          remaining: 0,
+          remaining: Math.max(0, maxRequests - (count + 1)),
           resetSeconds: windowSeconds,
-          retryAfterSeconds: windowSeconds,
           store: 'supabase',
         };
       }
-
-      // Log the incoming request asynchronously
-      void supabase.from('request_logs').insert({
-        user_id: userId,
-        action,
-        created_at: new Date(nowMs).toISOString(),
-      });
-
-      return {
-        allowed: true,
-        limit: maxRequests,
-        remaining: Math.max(0, maxRequests - (count + 1)),
-        resetSeconds: windowSeconds,
-        store: 'supabase',
-      };
+    } catch (err) {
+      // Supabase unavailable or table not created; proceed to in-memory fallback below
     }
-  } catch (err) {
-    // Supabase unavailable or table not created; proceed to in-memory fallback below
   }
 
-  // 2. In-memory sliding window fallback
-  if (!hasLoggedInMemoryWarning) {
+  // 2. In-memory sliding window fallback (strictly for development and unit testing)
+  if (process.env.NODE_ENV === 'production' && !hasLoggedInMemoryWarning) {
+    console.error(
+      '[CRITICAL PRODUCTION WARNING] RateLimiter is running in in-memory fallback mode in PRODUCTION! In-memory rate limits do NOT synchronize across distributed serverless instances. Configure Supabase or Upstash Redis to prevent abuse.'
+    );
+    hasLoggedInMemoryWarning = true;
+  } else if (!hasLoggedInMemoryWarning) {
     console.warn(
-      '[RateLimiter] Notice: Using in-memory rate limiting fallback. In-memory state does not synchronize across distributed serverless instances. To enable cross-instance synchronization, create the `request_logs` table in Supabase or connect Upstash Redis.'
+      '[RateLimiter] Notice: Using in-memory rate limiting fallback. In-memory state does not synchronize across distributed serverless instances.'
     );
     hasLoggedInMemoryWarning = true;
   }
@@ -140,4 +147,12 @@ export function createRateLimitResponse(result: RateLimitResult, actionName: str
       },
     }
   );
+}
+
+/**
+ * Resets the in-memory fallback state and warning flag (useful for testing).
+ */
+export function resetRateLimiterMemoryState(): void {
+  inMemoryStore.clear();
+  hasLoggedInMemoryWarning = false;
 }

@@ -1,19 +1,64 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseUrl =
-  rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))
-    ? rawUrl
-    : 'https://rszgkhoqniicksgtllqp.supabase.co';
+const rawAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzemdraG9xbmlpY2tzZ3RsbHFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyNTE1ODAsImV4cCI6MjEwMDgyNzU4MH0.xBZNXKP7K9Fn8aFU1N8N6O4VO2yfuLH8qP5hNnihMAM';
+const isValidUrl = Boolean(
+  rawUrl &&
+  (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) &&
+  !rawUrl.includes('your-project') &&
+  !rawUrl.includes('example.supabase.co')
+);
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const isValidKey = Boolean(
+  rawAnonKey &&
+  rawAnonKey.trim().length > 20 &&
+  !rawAnonKey.includes('your-anon-key')
+);
 
-// Server-side admin client using service role key if available (bypasses RLS for server-side persistence)
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-export const supabaseAdmin = serviceRoleKey
-  ? createClient(supabaseUrl, serviceRoleKey)
-  : supabase;
+export const isSupabaseConfigured: boolean = Boolean(isValidUrl && isValidKey);
+
+/**
+ * Creates an unconfigured client proxy that throws an actionable error when any operation is attempted.
+ * Prevents silent data dropping while allowing static client bundle imports without crashes.
+ */
+function createUnconfiguredClient(errorMessage: string): SupabaseClient {
+  const handler: ProxyHandler<any> = {
+    get(_target, prop) {
+      if (prop === 'then') return undefined; // Avoid treating proxy as a thenable/Promise
+      if (prop === 'isConfigured') return false;
+      return new Proxy(() => {}, {
+        apply() {
+          throw new Error(errorMessage);
+        },
+        get(_t, subProp) {
+          if (subProp === 'then') return undefined;
+          return () => {
+            throw new Error(errorMessage);
+          };
+        },
+      });
+    },
+  };
+  return new Proxy({}, handler) as SupabaseClient;
+}
+
+let clientInstance: SupabaseClient;
+
+if (isSupabaseConfigured) {
+  clientInstance = createClient(rawUrl!, rawAnonKey!, {
+    auth: {
+      persistSession: typeof window !== 'undefined',
+      autoRefreshToken: typeof window !== 'undefined',
+    },
+  });
+} else {
+  const unconfiguredMessage =
+    '[Supabase Configuration Notice] Supabase is not configured. ' +
+    'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file. ' +
+    'Database and authentication operations cannot proceed without valid credentials.';
+
+  clientInstance = createUnconfiguredClient(unconfiguredMessage);
+}
+
+export const supabase = clientInstance;
