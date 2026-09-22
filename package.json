@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "oxlint src app",
     "test": "jest",
     "test:e2e": "playwright test tests/e2e/antigravity-3-8-high-flash.spec.ts",
     "test:memory": "node scripts/memory-leak-test.js",
