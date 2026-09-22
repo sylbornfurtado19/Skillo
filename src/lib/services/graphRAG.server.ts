@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeEntityName } from '@/lib/schemas/graphSchema';
 import type {
   GraphEntity,
   GraphRelationship,
@@ -355,9 +356,15 @@ REQUIRED JSON OUTPUT FORMAT:
           const parsed = JSON.parse(jsonMatch[0]);
           const parseResult = graphRAGOutputSchema.safeParse(parsed);
           if (parseResult.success) {
-            rawEntities = parseResult.data.entities;
-            rawRelationships = parseResult.data.relationships;
-
+            rawEntities = parseResult.data.entities.map(e => ({
+              ...e,
+              name: normalizeEntityName(e.name),
+            }));
+            rawRelationships = parseResult.data.relationships.map(r => ({
+              ...r,
+              source: normalizeEntityName(r.source),
+              target: normalizeEntityName(r.target),
+            }));
           }
         }
       }
@@ -365,6 +372,14 @@ REQUIRED JSON OUTPUT FORMAT:
       console.warn('[GraphRAG Extraction] LLM extraction fallback triggered:', err);
     }
   }
+
+  // Apply entity normalization to fallback static entities before clustering
+  rawEntities = rawEntities.map(e => ({ ...e, name: normalizeEntityName(e.name) }));
+  rawRelationships = rawRelationships.map(r => ({
+    ...r,
+    source: normalizeEntityName(r.source),
+    target: normalizeEntityName(r.target),
+  }));
 
   // Execute Leiden Hierarchical Clustering
   const { nodes, graphRelationships, communities } = executeLeidenHierarchicalClustering(
