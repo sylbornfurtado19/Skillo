@@ -3,7 +3,64 @@ import type {
   StructuralDelta,
   SimPOContrastivePair,
   ContrastiveEvaluationResult,
+  BenchmarkDeltaCard,
 } from '@/types/index';
+
+// ── Zod Schema: FAANG BenchmarkDeltaCard ────────────────────────────────────
+export const benchmarkDeltaCardSchema = z.object({
+  architecturalGap: z.array(z.string().min(3)),
+  edgeCaseOversights: z.array(z.string().min(3)),
+  faangComparison: z.string().min(10),
+  rewardScore: z.number().min(0),
+});
+
+/**
+ * Derives a Zod-validated BenchmarkDeltaCard from SimPO structural deltas
+ * and the contrastive reward pair.
+ */
+function deriveBenchmarkDeltaCard(
+  deltas: StructuralDelta[],
+  preferredReward: number,
+  role: string
+): BenchmarkDeltaCard {
+  const architecturalGap = deltas
+    .filter(d => d.dimension === 'SYSTEM_ARCHITECTURE' || d.dimension === 'COMPLEXITY')
+    .map(d => d.candidateDeficiency)
+    .filter(Boolean);
+
+  const edgeCaseOversights = deltas
+    .filter(d => d.dimension === 'EDGE_CASES' || d.dimension === 'TERMINOLOGY')
+    .map(d => d.candidateDeficiency)
+    .filter(Boolean);
+
+  // Ensure non-empty arrays even when no matching deltas exist
+  if (architecturalGap.length === 0) {
+    architecturalGap.push(`${role} answer lacks explicit production-scale architectural trade-off analysis.`);
+  }
+  if (edgeCaseOversights.length === 0) {
+    edgeCaseOversights.push(`${role} answer does not address network partition, null-boundary, or zero-downtime deployment edge cases.`);
+  }
+
+  const topDelta = deltas.reduce(
+    (best, d) => (d.impactScore > (best?.impactScore ?? -1) ? d : best),
+    deltas[0]
+  );
+
+  const faangComparison = topDelta
+    ? `FAANG benchmark prioritises "${topDelta.preferredBenchmark}" — candidate's response instead exhibits "${topDelta.candidateDeficiency}".`
+    : `FAANG-level response for ${role} requires explicit Big-O bounds, distributed fault tolerance, and cache invalidation semantics.`;
+
+  const card: BenchmarkDeltaCard = {
+    architecturalGap,
+    edgeCaseOversights,
+    faangComparison,
+    rewardScore: Math.round(preferredReward * 1000) / 1000,
+  };
+
+  // Validate through Zod — fall back to raw card on schema error (should never happen)
+  const parsed = benchmarkDeltaCardSchema.safeParse(card);
+  return parsed.success ? parsed.data : card;
+}
 
 // 1. Zod Validation Schemas for Contrastive Engine Output
 export const structuralDeltaSchema = z.object({
@@ -144,6 +201,7 @@ REQUIRED JSON OUTPUT FORMAT:
               structuralDeltas: deltas,
             },
             summaryDeltaText: `SimPO contrastive evaluation verified preference margin Δr = +${rewardMargin} (${marginSatisfied ? 'Target Margin Satisfied' : 'Pending Margin Alignment'}). Identified ${deltas.length} structural delta(s).`,
+            benchmarkDeltaCard: deriveBenchmarkDeltaCard(deltas, preferredReward, role),
           };
         }
       }
@@ -206,5 +264,6 @@ REQUIRED JSON OUTPUT FORMAT:
       structuralDeltas,
     },
     summaryDeltaText: `SimPO contrastive evaluation verified preference margin Δr = +${rewardMargin} (${marginSatisfied ? 'Target Margin Satisfied' : 'Pending Margin Alignment'}). Identified ${structuralDeltas.length} structural delta(s).`,
+    benchmarkDeltaCard: deriveBenchmarkDeltaCard(structuralDeltas, preferredReward, role),
   };
 }

@@ -1,0 +1,251 @@
+{
+  "version": "1.0.0",
+  "description": "Skillo AI Evaluation Benchmark Corpus — 30 standardised technical interview response pairs",
+  "splits": {
+    "calibration": "70%",
+    "validation": "15%",
+    "test": "15%"
+  },
+  "entries": [
+    {
+      "id": "ds_001",
+      "domain": "Distributed Systems",
+      "split": "calibration",
+      "question": "How would you design a distributed rate limiter for a high-traffic API gateway serving 1M req/s?",
+      "preferred": "Use a sliding window counter backed by Redis Sorted Sets with atomic Lua scripts. Store each request timestamp as a ZSET member scored by epoch-ms. ZREMRANGEBYSCORE cleans expired entries; ZCARD returns window cardinality. For cross-region consistency apply Redlock distributed mutex (5 Redis instances, quorum=3). Circuit breaker (50% error threshold, 10s open window) prevents cascade. O(log N) per operation. Fallback: token bucket in local memory with eventual-consistency Gossip sync.",
+      "dispreferred": "Use Redis to count requests and reset every minute. If the count exceeds the limit, reject the request."
+    },
+    {
+      "id": "ds_002",
+      "domain": "Distributed Systems",
+      "split": "calibration",
+      "question": "Explain the CAP theorem and how it applies to a real-time chat application.",
+      "preferred": "CAP states a distributed system guarantees only 2 of: Consistency, Availability, Partition Tolerance. Network partitions are inevitable so we choose CP or AP. For real-time chat choose AP (e.g. Cassandra): messages delivered with potential brief reordering resolved by vector clocks or CRDT ORSets. Use read-repair and hinted handoff for convergence. Conflict resolution: last-write-wins with Lamport timestamps. Tradeoff: user may briefly see stale message order but system stays available.",
+      "dispreferred": "CAP stands for Consistency, Availability and Partition Tolerance. You can only pick two. For chat I would pick Consistency and Availability."
+    },
+    {
+      "id": "ds_003",
+      "domain": "Distributed Systems",
+      "split": "calibration",
+      "question": "Design a consensus protocol for a distributed key-value store tolerating up to f Byzantine faults.",
+      "preferred": "Use PBFT requiring 3f+1 nodes. Phases: pre-prepare, prepare, commit. Leader proposes; replicas broadcast prepare messages; commit when 2f+1 prepares received; execute after 2f+1 commits. View-change protocol replaces faulty primary after timeout. For higher throughput use Tendermint BFT (locked-value optimisation, O(n^2) messages). Add BLS threshold signatures to batch validator votes into single constant-size proof.",
+      "dispreferred": "Use Raft consensus algorithm. It elects a leader and replicates logs to followers. If the leader fails a new election happens."
+    },
+    {
+      "id": "ds_004",
+      "domain": "Distributed Systems",
+      "split": "calibration",
+      "question": "How do you handle exactly-once delivery semantics in a distributed message queue?",
+      "preferred": "Exactly-once requires idempotent producers and transactional consumers. Kafka: enable idempotent producer (PID + sequence numbers deduplicate retries), use transactions spanning multiple partitions. Consumer: read-process-commit in a single atomic transaction via outbox pattern. Deduplication window: bounded LRU set of message IDs (TTL = max retry window). Dead letter queue for poison messages after N retries.",
+      "dispreferred": "Use at-least-once delivery and make your consumers idempotent by checking if the message was already processed."
+    },
+    {
+      "id": "ds_005",
+      "domain": "Distributed Systems",
+      "split": "calibration",
+      "question": "Describe how you would implement a distributed transaction spanning multiple microservices.",
+      "preferred": "Use the Saga pattern. Orchestration: Temporal workflow drives each step and issues compensations on rollback; provides full audit trail. Each step is idempotent (unique idempotency key). Use outbox pattern + CDC (Debezium) for reliable event publishing without XA transactions. 2PC avoided: blocking, prone to coordinator failure in async microservices.",
+      "dispreferred": "Use two-phase commit (2PC) where a coordinator asks each service to prepare and then commit the transaction."
+    },
+    {
+      "id": "ds_006",
+      "domain": "Distributed Systems",
+      "split": "calibration",
+      "question": "How does consistent hashing work and when would you use virtual nodes?",
+      "preferred": "Consistent hashing maps both nodes and keys onto a ring (mod 2^32). A key is owned by the first node clockwise. When a node joins or leaves only O(K/N) keys remapped vs O(K) for modular hashing. Virtual nodes: each physical node owns V random ring positions (V=100-150). Benefits: smoother load distribution when capacities differ, faster rebalancing, heterogeneous cluster support. Used in Cassandra and DynamoDB.",
+      "dispreferred": "Consistent hashing puts servers on a ring and maps each key to the closest server. It reduces the keys that need to move when servers are added or removed."
+    },
+    {
+      "id": "ds_007",
+      "domain": "Distributed Systems",
+      "split": "calibration",
+      "question": "Design a leader election algorithm for a cluster of 7 nodes without a centralized coordinator.",
+      "preferred": "Use Raft leader election: each node starts as follower with random election timeout (150-300ms). On timeout transitions to candidate, increments term, votes for self, sends RequestVote RPCs. Wins if majority (4/7) grant votes in same term. Heartbeat interval less than election timeout prevents spurious elections. Handles split-vote via randomised backoff. Edge case: network partition causes split-brain prevented by requiring majority quorum for any commit.",
+      "dispreferred": "Use ZooKeeper for leader election. Nodes register and ZooKeeper picks the leader. If the leader dies, a new one is elected."
+    },
+    {
+      "id": "ds_008",
+      "domain": "Distributed Systems",
+      "split": "calibration",
+      "question": "Explain vector clocks and their role in conflict resolution in eventually consistent systems.",
+      "preferred": "A vector clock is a list of (nodeId, counter) pairs. On each send, sender increments own counter and attaches full vector. Receiver takes element-wise max and increments own counter. Causality: event A happened-before B iff A vector <= B vector component-wise. Concurrent events are conflicts. Resolution: LWW with wall-clock risk, application-level merge via CRDT, or surface to user. DynamoDB uses vector clocks; Riak uses siblings for concurrent writes.",
+      "dispreferred": "Vector clocks track the order of events across nodes. Each node has a counter that increments on each event. They help detect conflicts in distributed systems."
+    },
+    {
+      "id": "ds_009",
+      "domain": "Distributed Systems",
+      "split": "calibration",
+      "question": "How would you design a distributed cache with cache invalidation and consistency guarantees?",
+      "preferred": "Write-through cache: DB and cache updated atomically. Invalidation: CDC (Debezium on Postgres WAL) publishes cache-key invalidation events to Kafka; consumers delete stale keys. Cross-region: cache-aside with TTL as safety net (grace = max replication lag). Thundering herd: probabilistic early expiration with jitter, Redlock on cache miss. Stale-while-revalidate pattern for background refresh. Metrics: cache hit ratio, miss rate, p99 DB fallback latency.",
+      "dispreferred": "Use Redis as a cache and set a TTL on each key. When the data changes, delete the key from the cache so the next request fetches from the database."
+    },
+    {
+      "id": "ds_010",
+      "domain": "Distributed Systems",
+      "split": "calibration",
+      "question": "Describe the Phi Accrual Failure Detector and how it improves on heartbeat-based failure detection.",
+      "preferred": "Traditional heartbeat: binary alive/dead at fixed timeout. Phi Accrual uses continuous suspicion level phi derived from inter-arrival time distribution (Gaussian/Exponential). phi = -log10(P_late) where P_late is probability next heartbeat is still outstanding. Callers set own threshold (phi > 8 = 99.99% confidence). Self-adapts to network jitter. Used in Akka Cluster and Cassandra gossip. Edge case: GC pause inflates variance — adaptive window of last N=1000 heartbeats.",
+      "dispreferred": "Phi Accrual is a failure detector that uses statistics instead of a fixed timeout. It calculates a suspicion level that increases when heartbeats are late."
+    },
+    {
+      "id": "sd_001",
+      "domain": "System Design",
+      "split": "calibration",
+      "question": "Design a URL shortener service handling 100K writes/day and 10M reads/day.",
+      "preferred": "Write: hash long URL with MurmurHash3, take 7-char Base62 prefix, check collision via Postgres unique constraint. Store (short_id PK, long_url, user_id, created_at, expires_at). Read: Redis cache (short_id to long_url, TTL=24h), 99% hit rate. Cache-aside on miss. CDN edge caching for popular URLs. Scale: read replicas, Redis cluster (16 shards). Analytics: Kafka event stream to ClickHouse for time-series click data. Expiry: pg_cron deletes expired rows nightly.",
+      "dispreferred": "Use a database to store the long URL and a short code. Generate a random 6-character code and check for duplicates. Use Redis to cache popular URLs."
+    },
+    {
+      "id": "sd_002",
+      "domain": "System Design",
+      "split": "calibration",
+      "question": "Design a notification system capable of delivering 1M notifications per minute via push, email, and SMS.",
+      "preferred": "Decouple ingestion from delivery. Ingestion: REST API to Kafka partitioned by user_id. Worker pool consumes and fans-out per channel to separate queues. Push: FCM batch API (500 tokens/call). Email: SES SendBulkTemplatedEmail. SMS: Twilio. Retry: exponential backoff with DLQ after 3 attempts. Idempotency: store notification_id + status in DynamoDB (TTL=7d). Priority lanes: critical notifications via high-priority Kafka partition.",
+      "dispreferred": "Build an API that sends notifications. Use a queue like SQS to handle bursts. Integrate with Firebase for push, SendGrid for email and Twilio for SMS."
+    },
+    {
+      "id": "sd_003",
+      "domain": "System Design",
+      "split": "calibration",
+      "question": "Design a search autocomplete system for an e-commerce platform with 50M products.",
+      "preferred": "Offline: Spark job on product catalog to Elasticsearch with edge n-gram tokenizer (min=1, max=15). Boost by purchase frequency, freshness, inventory status. Online: Nginx to autocomplete service to Redis L1 cache (prefix to top-10, TTL=5min) to Elasticsearch on L1 miss. Debounce 200ms, prefix >= 2 chars. Personalisation: purchase history re-ranks results via BM25 personalised layer. A/B test suggestion diversity. p99 < 50ms target.",
+      "dispreferred": "Store product names in Elasticsearch and use prefix queries. Cache frequently searched prefixes in Redis. Return the top 10 results sorted by popularity."
+    },
+    {
+      "id": "sd_004",
+      "domain": "System Design",
+      "split": "calibration",
+      "question": "Design a distributed file storage system similar to Google Drive for 50M users.",
+      "preferred": "Chunking: files split into 4MB chunks identified by SHA-256 (content-addressing). Deduplication: if chunk hash exists skip upload. Metadata: Postgres stores (file_id, user_id, version, chunk_ids, path). Chunk store: S3 with AES-256 encryption. Upload: parallel chunk upload via pre-signed S3 URLs. CDN for reads. Delta sync: only upload changed chunks. Versioning: retain last 30 versions; soft delete with 30-day trash. Conflict resolution: operational transform or LWW with conflict copy.",
+      "dispreferred": "Store files in S3 and metadata in a database. Use pre-signed URLs for uploads. Support versioning by keeping old file versions in S3."
+    },
+    {
+      "id": "sd_005",
+      "domain": "System Design",
+      "split": "calibration",
+      "question": "Design a real-time collaborative text editor for concurrent users.",
+      "preferred": "Use CRDTs specifically RGA (Replicated Growable Array) for character-level ordering without OT complexity. Each character has unique (siteId, clock) identifier. Insertions and deletions commute regardless of delivery order. Transport: WebSocket server via Elixir Phoenix channels for fan-out. Persistence: append-only operation log in Postgres; periodic snapshots to S3. Awareness: broadcast cursor positions via ephemeral state. Scalability: room-based sharding, one WebSocket server per document with sticky sessions.",
+      "dispreferred": "Use Operational Transformation like Google Docs. Each operation is transformed against concurrent operations before being applied. Use WebSockets for real-time updates."
+    },
+    {
+      "id": "sd_006",
+      "domain": "System Design",
+      "split": "calibration",
+      "question": "Design a payment processing system that guarantees exactly-once transaction processing.",
+      "preferred": "Idempotency key: client generates UUID per payment attempt; server stores (idempotency_key, status, response) in Postgres with unique constraint. State machine: PENDING to PROCESSING to SUCCEEDED or FAILED. Use DB transactions to atomically update status and debit balance (SELECT FOR UPDATE). Saga for multi-step flows with compensating transactions. PCI-DSS scope reduction via card tokenization. Reconciliation: nightly batch compares ledger with processor settlement report.",
+      "dispreferred": "Use a unique transaction ID to prevent duplicate payments. Store payment status in the database and update it atomically. Use a payment gateway like Stripe."
+    },
+    {
+      "id": "sd_007",
+      "domain": "System Design",
+      "split": "calibration",
+      "question": "Design a video streaming platform supporting 4K content delivery to 10M concurrent viewers.",
+      "preferred": "Ingest: transcode via FFmpeg pipeline (H.265, multiple bitrates: 360p/720p/1080p/2160p) to HLS manifests and segments in S3. CDN: CloudFront edge PoPs with geo-routing. ABR: player adjusts quality based on bandwidth (BOLA or Pensieve ML). Manifest server generates personalised manifests (DRM tokens, ad-insertion). Origin shield reduces S3 GET load by 80%. DRM: Widevine and FairPlay via key server. Metrics: rebuffer rate, startup time < 2s, TTFB < 100ms.",
+      "dispreferred": "Store videos in S3 and use CloudFront CDN for delivery. Transcode videos to multiple resolutions. Use HLS for adaptive bitrate streaming."
+    },
+    {
+      "id": "sd_008",
+      "domain": "System Design",
+      "split": "calibration",
+      "question": "Design a global leaderboard for an online game with 100M players updated in real time.",
+      "preferred": "Use Redis Sorted Sets (ZADD O(log N), ZREVRANK O(log N)). Partition by region and game mode to keep each ZSET under 10M members. Real-time: game server to Kafka to leaderboard consumer to Redis ZADD. Persistence: async UPSERT to Postgres every 10s. Read: ZREVRANGE for top-N, ZREVRANK for rank, all O(log N). Pagination: cursor-based via ZREVRANGEBYSCORE. Seasonal reset: RENAME then flush. Tie-breaking: encode score as float (score * 1e9 + MAX_TS - timestamp).",
+      "dispreferred": "Use Redis Sorted Sets to store player scores. Use ZADD to update scores and ZREVRANK to get the rank. Persist scores to a database periodically."
+    },
+    {
+      "id": "sd_009",
+      "domain": "System Design",
+      "split": "calibration",
+      "question": "Design a content moderation system that can process 1M images per day using ML.",
+      "preferred": "Pipeline: upload to S3 event to SQS to moderation worker fleet. Workers call Rekognition or fine-tuned CLIP/ViT to classify (safe/NSFW/violence/spam) with confidence score. Threshold routing: >= 0.95 auto-action; 0.70-0.95 human review; < 0.70 specialist review. Active learning: human decisions feed weekly Sagemaker retraining. PhotoDNA perceptual hash blocks known CSAM. Appeal: rejected content stored 30 days. Metrics: false positive rate < 0.1%, p99 classification latency < 500ms.",
+      "dispreferred": "Use AWS Rekognition to classify images. Queue images in SQS and process them with Lambda. Send flagged images to human reviewers."
+    },
+    {
+      "id": "sd_010",
+      "domain": "System Design",
+      "split": "calibration",
+      "question": "Design a ride-sharing dispatch system matching riders to drivers in under 500ms.",
+      "preferred": "Geospatial: driver locations in Redis GEO (O(log N) radius query). On ride request: GEORADIUS for drivers within 1km ranked by ETA (haversine + traffic factor from cached Distance Matrix API). Match: greedy nearest-available-driver for latency. Lock selected driver atomically (SETNX, 5s TTL). Surge pricing: supply/demand ratio triggers multiplier. Routing: self-hosted OSRM with Contraction Hierarchies for O(1) ETA. SLA: rider-driver match < 500ms p99.",
+      "dispreferred": "Store driver locations in a database with geospatial indexing. Query nearby drivers when a rider requests a ride. Use Google Maps API for ETA calculation."
+    },
+    {
+      "id": "fe_001",
+      "domain": "Frontend Architecture",
+      "split": "validation",
+      "question": "Explain React reconciliation and how the Fiber architecture improved it.",
+      "preferred": "Reconciliation: compares virtual DOM trees, applies minimal DOM patches. Key assumptions: different element types trigger full subtree replace; same type updates props; keys identify stable list elements. Fiber (React 16+) replaces recursive stack reconciler with interruptible incremental units of work. Scheduler assigns priority lanes. High-priority updates (user input) interrupt low-priority renders via MessageChannel. useTransition marks updates as non-urgent (transition lane). Time-slicing splits render into <= 5ms chunks preventing jank.",
+      "dispreferred": "React creates a virtual DOM and compares it with the previous one. Fiber made reconciliation interruptible so high-priority updates can interrupt low-priority ones."
+    },
+    {
+      "id": "fe_002",
+      "domain": "Frontend Architecture",
+      "split": "validation",
+      "question": "How do you architect a micro-frontend system for a large-scale enterprise application?",
+      "preferred": "Decompose by business domain. Each MFE: own CI/CD, own Webpack/Vite build, own package.json. Integration: Module Federation (Webpack 5) for runtime sharing of React and vendor chunks via dynamic import; or iframes for strongest isolation; or Web Components for framework-agnostic integration. Shell: routing (single-spa), auth token propagation, shared design system via npm. Cross-cutting: shared event bus (BroadcastChannel) for inter-MFE communication. Performance: lazy-loaded on route entry. CSS isolation via Shadow DOM or BEM namespacing.",
+      "dispreferred": "Use Module Federation to share code between micro-frontends. Each team owns their own MFE and deploys independently. Use a shell app to compose them together."
+    },
+    {
+      "id": "fe_003",
+      "domain": "Frontend Architecture",
+      "split": "validation",
+      "question": "Describe techniques for optimising Core Web Vitals (LCP, CLS, INP) in a Next.js application.",
+      "preferred": "LCP: next/image with priority prop on hero images, serve AVIF/WebP, CDN with correct Cache-Control. SSR/ISR for pre-rendered HTML. CLS: reserve space for dynamic content (explicit width/height, aspect-ratio CSS), avoid inserting DOM above existing content, font-display optional with preloaded font. INP: break long tasks (> 50ms) with scheduler.yield, move heavy computation to Web Workers, startTransition for non-urgent updates, avoid synchronous layout thrashing. Lighthouse CI in GitHub Actions enforces budgets.",
+      "dispreferred": "Use lazy loading for images, avoid large JavaScript bundles, and preload fonts. Use Next.js Image component and ISR for better performance."
+    },
+    {
+      "id": "fe_004",
+      "domain": "Frontend Architecture",
+      "split": "validation",
+      "question": "Explain the differences between SSR, SSG, ISR, and CSR and when to use each in Next.js.",
+      "preferred": "CSR: shell HTML hydrated in browser — best for authenticated dashboards; poor SEO, slow LCP. SSR: async Server Components — fresh data per request, good SEO, higher TTFB; use for personalised real-time pages. SSG: generateStaticParams at build time — fastest TTFB via CDN; best for marketing and docs. ISR: stale-while-revalidate with revalidate interval or on-demand revalidateTag; serves cached page while background regeneration runs. Streaming SSR with Suspense: stream HTML chunks for good TTFB with deferred non-critical content.",
+      "dispreferred": "SSR renders on the server for each request. SSG pre-renders at build time. ISR is SSG with background revalidation. CSR renders in the browser."
+    },
+    {
+      "id": "fe_005",
+      "domain": "Frontend Architecture",
+      "split": "calibration",
+      "question": "How do you implement efficient state management at scale with React, avoiding prop drilling and unnecessary re-renders?",
+      "preferred": "Stratify state: server state (React Query — cache, deduplicate, background refetch), client global state (Zustand or Jotai atoms — fine-grained subscriptions), local UI state (useState co-located). Avoid prop drilling: React Context for cross-cutting concerns in small contexts to limit re-render scope. Performance: memo and useCallback for referential stability; useMemo for derived computations; React.lazy for code-splitting. Concurrent: useTransition for non-urgent updates keeps UI responsive. XState for complex async flows prevents impossible states.",
+      "dispreferred": "Use Redux for global state and React Context for lighter shared state. Use React.memo and useCallback to prevent unnecessary re-renders."
+    },
+    {
+      "id": "fe_006",
+      "domain": "Frontend Architecture",
+      "split": "test",
+      "question": "How would you design a design system that scales across multiple products and teams?",
+      "preferred": "Token-driven: design tokens (color, spacing, typography, elevation) in Style Dictionary compiled to CSS custom properties and JS/TS exports. Component library: React + TypeScript, Storybook for isolated development, Chromatic for visual regression on every PR. Versioning: semver with Conventional Commits and semantic-release. Distribution: private npm registry. Governance: RFC process for new components, design-dev a11y review pairing. Testing: jest + testing-library, axe-core for accessibility, Percy for visual snapshots. Adoption: track package version distribution across consuming apps.",
+      "dispreferred": "Create a component library with reusable React components. Use Storybook to document them. Publish to npm and version with semver."
+    },
+    {
+      "id": "fe_007",
+      "domain": "Frontend Architecture",
+      "split": "test",
+      "question": "Describe how you would architect the caching strategy for a React SPA fetching data from multiple REST APIs.",
+      "preferred": "React Query as server-state cache. Configure staleTime (30s for reference data, 0 for real-time) and cacheTime (5min for inactive entries). React Query coalesces concurrent requests for same key. Optimistic updates: useMutation with onMutate/onError/onSettled for instant feedback and rollback. Prefetching: queryClient.prefetchQuery on hover. Background refetch: refetchOnWindowFocus. HTTP layer: axios interceptors for auth headers, retry with exponential backoff. Service Worker (Workbox): stale-while-revalidate for static assets, network-first for API calls.",
+      "dispreferred": "Use React Query to cache API calls with staleTime and cacheTime. Implement optimistic updates for mutations. Add retry logic for failed requests."
+    },
+    {
+      "id": "fe_008",
+      "domain": "Frontend Architecture",
+      "split": "test",
+      "question": "How do you implement accessibility (a11y) at scale in a component library?",
+      "preferred": "Follow WCAG 2.1 AA. ARIA: use semantic HTML first, add aria-label when native label insufficient, aria-live regions for dynamic content. Keyboard: all interactive elements Tab-reachable, Enter/Space activates, Escape dismisses modals. Focus management: useRef + focus() after modal open, focus trap inside dialogs (focus-trap-react). Colour contrast: 4.5:1 normal text verified via axe-core. Motion: prefers-reduced-motion disables animations. Testing: @testing-library/user-event for keyboard, jest-axe for violations, manual screen reader testing (NVDA + Firefox). Include a11y in PR checklist.",
+      "dispreferred": "Add aria labels to all interactive elements. Test with a screen reader. Ensure colour contrast meets WCAG standards. Make all components keyboard navigable."
+    },
+    {
+      "id": "fe_009",
+      "domain": "Frontend Architecture",
+      "split": "test",
+      "question": "Explain how the browser event loop, microtask queue, and macrotask queue work and how they affect React rendering.",
+      "preferred": "Call stack executes synchronous JS. Macrotask queue: setTimeout, setInterval, I/O, MessageChannel. Microtask queue: Promise.then, queueMicrotask — drained completely after each macrotask before next render. React 18 Concurrent: uses MessageChannel for Scheduler to yield between render chunks. useTransition defers state update to low-priority scheduler lane. setState inside event handlers is batched in same macrotask. async setState also batched in React 18 (flushSync forces synchronous flush). Long sync tasks block rendering — split with scheduler.yield.",
+      "dispreferred": "The event loop processes tasks from the task queue one at a time. Promises use the microtask queue which runs before the next task. React batches setState calls inside event handlers."
+    },
+    {
+      "id": "fe_010",
+      "domain": "Frontend Architecture",
+      "split": "test",
+      "question": "How do you prevent and detect memory leaks in a long-running React single-page application?",
+      "preferred": "Common causes: uncleared event listeners, uncleared timers, stale closures retaining large objects, abandoned async operations setting state on unmounted components. Prevention: useEffect cleanup removes subscriptions, timers, and fetch calls (AbortController on unmount). Detection: Chrome DevTools Memory tab — Heap Snapshot before/after suspect action, compare retained size; Allocation Timeline for growing allocation sites. React DevTools Profiler for unnecessary re-renders. Automated: puppeteer-based memory test (heap before/after 50 navigation cycles). Budget alert if JS heap > 200MB via RUM.",
+      "dispreferred": "Clean up event listeners and timers in useEffect return functions. Use AbortController to cancel fetch requests when a component unmounts. Profile with Chrome DevTools to find memory leaks."
+    }
+  ]
+}

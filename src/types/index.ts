@@ -195,10 +195,27 @@ export interface SimPOContrastivePair {
   structuralDeltas: StructuralDelta[];
 }
 
+/**
+ * FAANG Structural Delta Card (SimPO-inspired, Zod-validated)
+ * Emitted alongside each SimPO contrastive evaluation result.
+ */
+export interface BenchmarkDeltaCard {
+  /** Gaps in architectural design vs FAANG reference */
+  architecturalGap: string[];
+  /** Edge-case conditions the candidate omitted */
+  edgeCaseOversights: string[];
+  /** One-sentence FAANG-level comparison summary */
+  faangComparison: string;
+  /** Length-normalized implicit reward score r(x,y) = β·q / |y| */
+  rewardScore: number;
+}
+
 export interface ContrastiveEvaluationResult {
   evaluationId: string;
   contrastivePair: SimPOContrastivePair;
   summaryDeltaText: string;
+  /** Zod-validated FAANG structural delta card */
+  benchmarkDeltaCard: BenchmarkDeltaCard;
 }
 
 export interface ResumeAnalysis {
@@ -331,6 +348,8 @@ export interface EvaluationReport {
   latsTreeState?: LATSTreeState;
   skillMemoryStore?: CandidateSkillMemoryStore;
   simpoContrastiveResult?: ContrastiveEvaluationResult;
+  /** Zod-validated FAANG structural delta card derived from SimPO contrastive evaluation */
+  benchmarkDeltaCard?: BenchmarkDeltaCard;
   eyeContactMetrics?: EyeContactSessionMetrics;
   headPoseMetrics?: HeadPoseSessionMetrics;
   affectiveMetrics?: AffectiveSessionMetrics;

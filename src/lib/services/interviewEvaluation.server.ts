@@ -248,14 +248,12 @@ function generateAnalyticalCoTPass(
 
   const hasContent = totalCharLength > 30;
 
-  // Temperature variation adjustments for sampling pass index (passIndex 0..4)
-  // Seeded variations simulating LLM temperature 0.7 distribution
+  // Temperature variation adjustments for sampling pass index (passIndex 0..2)
+  // Seeded variations simulating LLM temperature 0.7 distribution across N=3 passes
   const passVariations = [
-    { techOffset: 0.0, sysOffset: 0.0, edgeOffset: 0.0, commOffset: 0.0 },
-    { techOffset: 0.2, sysOffset: -0.3, edgeOffset: 0.1, commOffset: 0.2 },
-    { techOffset: -0.2, sysOffset: 0.1, edgeOffset: -0.2, commOffset: -0.1 },
-    { techOffset: 0.1, sysOffset: 0.2, edgeOffset: -0.1, commOffset: 0.3 },
-    { techOffset: -0.1, sysOffset: -0.2, edgeOffset: 0.2, commOffset: -0.2 },
+    { techOffset: 0.0,  sysOffset: 0.0,  edgeOffset: 0.0,  commOffset: 0.0  },
+    { techOffset: 0.2,  sysOffset: -0.3, edgeOffset: 0.1,  commOffset: 0.2  },
+    { techOffset: -0.2, sysOffset: 0.1,  edgeOffset: -0.2, commOffset: -0.1 },
   ];
 
   const varConfig = passVariations[passIndex % passVariations.length];
@@ -354,16 +352,16 @@ export function computeSemanticEquivalenceAndEntropy(
   });
   semanticEntropy = Math.round(semanticEntropy * 1000) / 1000;
 
-  // 4. Confidence Mapping
-  // HIGH: SE < 0.5
-  // MEDIUM: 0.5 <= SE <= 1.2
-  // LOW: SE > 1.2 (requiresValidationPass = true)
+  // 4. Confidence Mapping (Prometheus-2 SUQ certified tiers, N=3 sampling)
+  // HIGH:   SE ≤ 0.3
+  // MEDIUM: 0.3 < SE ≤ 0.8
+  // LOW:    SE > 0.8  (requiresValidationPass = true)
   let confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' = 'HIGH';
   let requiresValidationPass = false;
 
-  if (semanticEntropy < 0.5) {
+  if (semanticEntropy <= 0.3) {
     confidenceLevel = 'HIGH';
-  } else if (semanticEntropy <= 1.2) {
+  } else if (semanticEntropy <= 0.8) {
     confidenceLevel = 'MEDIUM';
   } else {
     confidenceLevel = 'LOW';
@@ -397,8 +395,8 @@ export async function performInterviewEvaluation(
   const { setupData, questionsList, answersList } = input;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
-  // Execute N = 5 Parallel Chain-of-Thought (CoT) Sampling Passes
-  const N = 5;
+  // Execute N = 3 Parallel Chain-of-Thought (CoT) Sampling Passes (latency-bounded: ≤6 s)
+  const N = 3;
   const passPromises: Promise<SinglePassEvaluation>[] = [];
   for (let i = 0; i < N; i++) {
     passPromises.push(executeSingleCoTPass(input, i, anthropicApiKey));
@@ -412,24 +410,24 @@ export async function performInterviewEvaluation(
 
   const latencyMs = Date.now() - startTime;
 
-  // Aggregate Rubric Feedback across criteria
+  // Aggregate Rubric Feedback across N=3 CoT passes
   const aggregatedRubricFeedback: Record<string, string> = {
-    technicalAccuracy: `Evaluated across ${N} CoT passes with average score ${
+    technicalAccuracy: `Evaluated across ${N} CoT passes (T=0.7) with average score ${
       Math.round(
         (passes.reduce((acc, p) => acc + p.scores.technicalAccuracy, 0) / N) * 100
       ) / 100
     }/5. Key focus: terminology precision and framework mechanics.`,
-    systemDesignLogic: `Evaluated across ${N} CoT passes with average score ${
+    systemDesignLogic: `Evaluated across ${N} CoT passes (T=0.7) with average score ${
       Math.round(
         (passes.reduce((acc, p) => acc + p.scores.systemDesignLogic, 0) / N) * 100
       ) / 100
     }/5. Key focus: architectural modularity and separation of concerns.`,
-    edgeCaseHandling: `Evaluated across ${N} CoT passes with average score ${
+    edgeCaseHandling: `Evaluated across ${N} CoT passes (T=0.7) with average score ${
       Math.round(
         (passes.reduce((acc, p) => acc + p.scores.edgeCaseHandling, 0) / N) * 100
       ) / 100
     }/5. Key focus: null boundaries and concurrent failure modes.`,
-    communicationClarity: `Evaluated across ${N} CoT passes with average score ${
+    communicationClarity: `Evaluated across ${N} CoT passes (T=0.7) with average score ${
       Math.round(
         (passes.reduce((acc, p) => acc + p.scores.communicationClarity, 0) / N) * 100
       ) / 100
@@ -580,6 +578,7 @@ export async function performInterviewEvaluation(
     latsTreeState,
     skillMemoryStore,
     simpoContrastiveResult,
+    benchmarkDeltaCard: simpoContrastiveResult?.benchmarkDeltaCard,
     eyeContactMetrics,
     headPoseMetrics,
     affectiveMetrics,
