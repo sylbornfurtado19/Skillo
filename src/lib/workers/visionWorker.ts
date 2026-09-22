@@ -984,7 +984,10 @@ if (typeof ctx !== 'undefined' && typeof ctx.addEventListener === 'function') {
       }
 
       case 'PROCESS_FRAME': {
+        const { requestId = 0, frameId, timestampMs, imageBitmap, mirrored = false } = message.payload || {};
+
         if (!isInitialized) {
+          try { imageBitmap?.close(); } catch {}
           postResponse({
             type: 'WORKER_ERROR',
             payload: {
@@ -998,12 +1001,12 @@ if (typeof ctx !== 'undefined' && typeof ctx.addEventListener === 'function') {
         }
 
         if (isBusy) {
-          // Drop frame under backpressure
+          // Drop frame under backpressure and close ImageBitmap immediately
+          try { imageBitmap?.close(); } catch {}
           return;
         }
 
         isBusy = true;
-        const { requestId = 0, frameId, timestampMs, imageBitmap, mirrored = false } = message.payload;
 
         if (!imageBitmap) {
           isBusy = false;

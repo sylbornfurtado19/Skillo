@@ -333,6 +333,103 @@ function softArgmax(logits: Float32Array | number[]): number {
 }
 
 /**
+ * Decodes Gaze model output tensor:
+ * - Direct regression format: [pitch, yaw] in degrees
+ * - Multi-bin classification format: softArgmax over angular bins
+ */
+export function decodeGazeOutput(data: Float32Array): { pitchDegrees: number; yawDegrees: number } {
+  if (!data || data.length === 0) {
+    return { pitchDegrees: 0, yawDegrees: 0 };
+  }
+  let pitch = 0;
+  let yaw = 0;
+  if (data.length === 2) {
+    pitch = Number.isFinite(data[0]) ? data[0] : 0;
+    yaw = Number.isFinite(data[1]) ? data[1] : 0;
+  } else if (data.length >= 66) {
+    const half = Math.floor(data.length / 2);
+    pitch = softArgmax(data.slice(0, half));
+    yaw = softArgmax(data.slice(half));
+  } else {
+    pitch = Number.isFinite(data[0]) ? data[0] : 0;
+    yaw = data.length > 1 && Number.isFinite(data[1]) ? data[1] : 0;
+  }
+  pitch = Math.max(-90, Math.min(90, pitch));
+  yaw = Math.max(-90, Math.min(90, yaw));
+  return { pitchDegrees: pitch, yawDegrees: yaw };
+}
+
+/**
+ * Decodes Pose model output tensor:
+ * [yaw, pitch, roll] in degrees
+ */
+export function decodePoseOutput(data: Float32Array): { yawDegrees: number; pitchDegrees: number; rollDegrees: number } {
+  if (!data || data.length === 0) {
+    return { yawDegrees: 0, pitchDegrees: 0, rollDegrees: 0 };
+  }
+  const yaw = Number.isFinite(data[0]) ? Math.max(-90, Math.min(90, data[0])) : 0;
+  const pitch = data.length > 1 && Number.isFinite(data[1]) ? Math.max(-90, Math.min(90, data[1])) : 0;
+  const roll = data.length > 2 && Number.isFinite(data[2]) ? Math.max(-90, Math.min(90, data[2])) : 0;
+  return { yawDegrees: yaw, pitchDegrees: pitch, rollDegrees: roll };
+}
+
+/**
+ * Decodes AffectNet / FER 7-class emotion logits via numerical stable Softmax:
+ * 0: Neutral, 1: Happy, 2: Sad, 3: Surprise, 4: Fear, 5: Disgust, 6: Anger
+ */
+export function decodeAffectLogits(logits: Float32Array): {
+  dominantEmotion: string;
+  emotionProbabilities: Record<string, number>;
+  valence: number;
+  arousal: number;
+} {
+  if (!logits || logits.length < 7) {
+    return {
+      dominantEmotion: 'Neutral',
+      emotionProbabilities: { Neutral: 70, Happy: 10, Surprised: 10, Stressed: 10 },
+      valence: 0.1,
+      arousal: 0.1,
+    };
+  }
+
+  let maxLogit = -Infinity;
+  for (let i = 0; i < 7; i++) {
+    if (logits[i] > maxLogit) maxLogit = logits[i];
+  }
+
+  let sumExp = 0;
+  const probs7: number[] = [];
+  for (let i = 0; i < 7; i++) {
+    const e = Math.exp(logits[i] - maxLogit);
+    probs7.push(e);
+    sumExp += e;
+  }
+
+  const pNeutral = sumExp > 0 ? probs7[0] / sumExp : 0.4;
+  const pHappy = sumExp > 0 ? probs7[1] / sumExp : 0.1;
+  const pSad = sumExp > 0 ? probs7[2] / sumExp : 0.1;
+  const pSurprise = sumExp > 0 ? probs7[3] / sumExp : 0.1;
+  const pNegative = sumExp > 0 ? (probs7[4] + probs7[5] + probs7[6]) / sumExp : 0.1;
+
+  let dominant = 'Neutral';
+  if (pHappy > pNeutral && pHappy > pSurprise && pHappy > pNegative) dominant = 'Happy';
+  else if (pSurprise > pNeutral && pSurprise > pNegative) dominant = 'Surprised';
+  else if (pNegative > pNeutral || pSad > pNeutral) dominant = 'Stressed';
+
+  const emotionProbabilities: Record<string, number> = {
+    Neutral: Math.round(pNeutral * 100),
+    Happy: Math.round(pHappy * 100),
+    Surprised: Math.round(pSurprise * 100),
+    Stressed: Math.round((pNegative + pSad) * 100),
+  };
+
+  const valence = dominant === 'Happy' ? 0.65 : dominant === 'Stressed' ? -0.4 : 0.1;
+  const arousal = dominant === 'Surprised' ? 0.6 : dominant === 'Stressed' ? 0.5 : 0.15;
+
+  return { dominantEmotion: dominant, emotionProbabilities, valence, arousal };
+}
+
+/**
  * Executes continuous Gaze Estimation via L2CS-Net ONNX model.
  */
 export async function runGazeONNX(
@@ -350,14 +447,9 @@ export async function runGazeONNX(
   const results = await session.run(feeds);
   const outputNames = session.outputNames;
 
-  const pitchTensor = results[outputNames[0]];
-  const yawTensor = results[outputNames[1] || outputNames[0]];
-
-  const pitchData = pitchTensor.data as Float32Array;
-  const yawData = (yawTensor ? yawTensor.data : pitchData) as Float32Array;
-
-  const pitchDegrees = softArgmax(pitchData.slice(0, Math.min(90, pitchData.length)));
-  const yawDegrees = softArgmax(yawData.slice(0, Math.min(90, yawData.length)));
+  const outTensor = results[outputNames[0]];
+  const outData = outTensor.data as Float32Array;
+  const { pitchDegrees, yawDegrees } = decodeGazeOutput(outData);
 
   const isEyeContact = Math.abs(pitchDegrees) <= 12.0 && Math.abs(yawDegrees) <= 15.0;
 
@@ -397,9 +489,7 @@ export async function runPoseONNX(
   const outputNames = session.outputNames;
 
   const outData = results[outputNames[0]].data as Float32Array;
-  const yawDegrees = outData[0] !== undefined ? outData[0] : 0;
-  const pitchDegrees = outData[1] !== undefined ? outData[1] : 0;
-  const rollDegrees = outData[2] !== undefined ? outData[2] : 0;
+  const { yawDegrees, pitchDegrees, rollDegrees } = decodePoseOutput(outData);
 
   const angVel = Math.sqrt(yawDegrees * yawDegrees + pitchDegrees * pitchDegrees + rollDegrees * rollDegrees);
   const postureComposureScore = Math.max(0, Math.min(100, Math.round(100 - angVel * 0.8)));

@@ -18,10 +18,7 @@ import IVPInteractiveCanvas, {
   type DiagnosticMetrics,
 } from '../components/ui/IVPInteractiveCanvas';
 import IVPSignalOscilloscope from '../components/ui/IVPSignalOscilloscope';
-import {
-  runContinuousUnifiedONNX,
-  type SmoothedTelemetry,
-} from '../lib/services/onnxInferenceService';
+import { useONNXWorker } from '../hooks/useONNXWorker';
 import { useVisionWorker } from '../hooks/useVisionWorker';
 import type { TrackingPreset } from '../lib/services/temporalSmoothing';
 
@@ -57,24 +54,21 @@ export default function IVPLab() {
     backend: 'WEBGL',
   });
 
+  // Dedicated Off-Main-Thread ONNX Worker
+  const {
+    submitFrame: submitONNXFrame,
+    telemetry: onnxTelemetry,
+    isWorkerActive: isONNXWorkerActive,
+  } = useONNXWorker({
+    autoStart: true,
+  });
+
   // Live Physiological Signals (EAR & MAR)
   const [currentEAR, setCurrentEAR] = useState<number>(0.285);
   const [currentMAR, setCurrentMAR] = useState<number>(0.145);
   const [blinkCount, setBlinkCount] = useState<number>(0);
   const [blinkRatePerMin, setBlinkRatePerMin] = useState<number>(14.5);
   const [speechActivePct, setSpeechActivePct] = useState<number>(32);
-
-  // Continuous ONNX Model Telemetry
-  const [onnxTelemetry, setOnnxTelemetry] = useState<SmoothedTelemetry>({
-    yaw: 2.4,
-    pitch: -1.2,
-    roll: 0.8,
-    gazeX: 0.05,
-    gazeY: -0.02,
-    composure: 88,
-    dominantEmotion: 'Neutral',
-    totalInferenceTimeMs: 4.2,
-  });
 
   // Diagnostic Canvas Metrics
   const [canvasMetrics, setCanvasMetrics] = useState<DiagnosticMetrics>({
@@ -191,9 +185,8 @@ export default function IVPLab() {
         // Continuous off-main-thread landmark extraction
         processWorkerFrame(source);
 
-        // Run continuous inference over all 3 models in background
-        const res = await runContinuousUnifiedONNX(inferCanvas, 0.35);
-        setOnnxTelemetry(res);
+        // Continuous off-main-thread ONNX inference via Web Worker
+        submitONNXFrame(inferCanvas);
       } catch (err) {
         console.warn('Continuous ONNX pipeline tick warning:', err);
       }
@@ -202,7 +195,7 @@ export default function IVPLab() {
     return () => {
       if (inferIntervalRef.current) clearInterval(inferIntervalRef.current);
     };
-  }, [inputSource, processWorkerFrame, isTabPaused, isThrottled]);
+  }, [inputSource, processWorkerFrame, submitONNXFrame, isTabPaused, isThrottled]);
 
   return (
     <div className="space-y-6 text-left max-w-7xl mx-auto pb-16">
