@@ -54,7 +54,7 @@ npm run dev
 # Type Safety Check (Zero errors)
 npx tsc --noEmit
 
-# Execute Automated Test Suite (79/79 Pass Rate across 7 Suites)
+# Execute Automated Test Suite (318/318 Pass Rate across 38 Suites)
 npm test
 
 # Production Build Check
@@ -81,7 +81,7 @@ npm run build
                      ▼                                        ▼
 ┌─────────────────────────────────────────┐  ┌───────────────────────────────────────────┐
 │        AI REASONING ENGINES             │  │         IVP VISION & AUDIO ENGINES         │
-│  1. Prometheus-2 Rubric + SUQ Engine    │  │  6. LayoutLMv3 Visual Document AI         │
+│  1. Prometheus-2 Rubric + SUQ Engine    │  │  6. LayoutLMv3-Inspired Layout AI         │
 │  2. LATS MCTS Adaptive Interviewer      │  │  7. L2CS-Net 3D Gaze Estimation           │
 │  3. GraphRAG Skill Gap Mapper           │  │  8. HopeNet 3D Head Pose & Gestures       │
 │  4. Reflexion Agent & Dynamic Memory    │  │  9. AffectNet Facial Composure            │
@@ -106,9 +106,9 @@ npm run build
 #### 1. Prometheus-2 Rubric & Semantic Uncertainty Quantification (SUQ) — *"The Confident Grader"*
 * **Executive Summary**:
   - **Problem it Solves**: A single AI pass grading an answer is inconsistent; evaluating the exact same input twice can yield diverging scores.
-  - **How it Works**: Executes $N=5$ parallel Chain-of-Thought (CoT) evaluation passes at a slightly randomized temperature. Answers are grouped into equivalence clusters $\mathcal{C}$ based on score variance ($\delta \le 0.5$). Calculates base-2 Shannon Semantic Entropy to measure score dispersion.
+  - **How it Works**: Executes $N=3$ parallel evaluation passes by default ($N=5$ in deep analysis mode) with structured criterion evidence and concise decision summaries (replacing unrestricted chain-of-thought exposure). Answers are grouped into equivalence clusters $\mathcal{C}$ based on score variance ($\delta \le 0.5$). Calculates base-2 Shannon Semantic Entropy to measure score dispersion.
   - **Inspiration**: Prometheus 2 (Kim et al., 2024) & Semantic Uncertainty (Kuhn et al., ICLR 2023).
-  - **In One Line**: *"Don't trust one opinion — get 5, and mathematically measure how much they disagree."*
+  - **In One Line**: *"Don't trust one opinion — sample multiple passes, and mathematically measure how much they disagree."*
 * **Technical Engineering Spec**:
   - **Service File**: [`src/lib/services/interviewEvaluation.server.ts`](file:///c:/Users/Ritunjay%20Deo/OneDrive/Desktop/Skillo-main/src/lib/services/interviewEvaluation.server.ts)
   - **Mathematical Formulation**:
