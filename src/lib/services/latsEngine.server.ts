@@ -149,16 +149,18 @@ async function evaluatePRM(
   role: string,
   question: string,
   candidateAnswer: string,
-  anthropicApiKey?: string
-): Promise<ProcessRewardResult> {
+  anthropicApiKey?: string,
+  actionType?: LATSActionType
+): Promise<{ result: ProcessRewardResult; isFallback: boolean }> {
+  const defaultScore = actionType === 'DEEP_DIVE' ? 0.78 : actionType === 'EDGE_CASE_CHALLENGE' ? 0.72 : 0.65;
   const defaultResult: ProcessRewardResult = {
     nodeId,
-    score: 0.65,
-    reasoning: 'Baseline PRM estimate. API key not configured for live scoring.',
+    score: defaultScore,
+    reasoning: 'Baseline PRM estimate. API key not configured or offline for live scoring.',
     detectedGaps: ['Depth of technical explanation', 'Edge case coverage'],
   };
 
-  if (!anthropicApiKey) return defaultResult;
+  if (!anthropicApiKey) return { result: defaultResult, isFallback: true };
 
   try {
     const systemPrompt = `You are a Process Reward Model (PRM) evaluator for ${role} interview questions.
@@ -204,7 +206,7 @@ REQUIRED JSON OUTPUT:
         const parsed = JSON.parse(match[0]);
         const result = prmResponseSchema.safeParse(parsed);
         if (result.success) {
-          return { nodeId, ...result.data };
+          return { result: { nodeId, ...result.data }, isFallback: false };
         }
       }
     }
@@ -212,7 +214,7 @@ REQUIRED JSON OUTPUT:
     console.warn('[LATS PRM] Evaluation fallback:', err);
   }
 
-  return defaultResult;
+  return { result: defaultResult, isFallback: true };
 }
 
 // Backpropagation: update visitCount and value along the path to root
@@ -251,6 +253,7 @@ function backpropagate(root: LATSTreeNode, targetId: string, value: number): LAT
 export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState> {
   const { sessionId, role, currentQuestion, candidateAnswer, priorGaps, anthropicApiKey } = input;
   const NUM_SIMULATIONS = 3;
+  let isFallback = !anthropicApiKey;
 
   // Initialize root node
   const rootNodeId = `node_${sessionId}_root`;
@@ -292,15 +295,19 @@ export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState
   rootNode = { ...rootNode, children: childNodes };
 
   // Phase 2: Simulation — PRM evaluation of each child (3 simulations)
-  const prmResults: ProcessRewardResult[] = await Promise.all(
+  const prmEvals = await Promise.all(
     childNodes.map(child =>
-      evaluatePRM(child.id, role, child.questionText, candidateAnswer, anthropicApiKey)
+      evaluatePRM(child.id, role, child.questionText, candidateAnswer, anthropicApiKey, child.actionType)
     )
   );
 
-  // Phase 3: Update PRM scores on children
+  if (prmEvals.some(e => e.isFallback)) {
+    isFallback = true;
+  }
+
+  // Phase 3: Update PRM scores and UCT indices on children
   const evaluatedChildren: LATSTreeNode[] = childNodes.map((child, idx) => {
-    const prm = prmResults[idx];
+    const prm = prmEvals[idx].result;
     const nParent = rootNode.visitCount;
     const nChild = 1;
     const uctValue = computeUCT(prm.score, prm.score, nParent, nChild);
@@ -314,11 +321,14 @@ export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState
     };
   });
 
-  // Phase 4: Backpropagation — select best child and propagate
-  // Pick the child with max PRM score as the selected trajectory
+  // Phase 4: Backpropagation — select best child by UCT index and propagate
   let bestChild = evaluatedChildren[0];
   for (const child of evaluatedChildren) {
-    if (child.prmScore > bestChild.prmScore) bestChild = child;
+    if (child.uctValue > bestChild.uctValue) {
+      bestChild = child;
+    } else if (child.uctValue === bestChild.uctValue && child.prmScore > bestChild.prmScore) {
+      bestChild = child;
+    }
   }
 
   const finalChildren = evaluatedChildren.map(child => ({
@@ -345,5 +355,6 @@ export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState
     activeActionType: bestChild.actionType,
     currentPRMScore: Math.round(bestChild.prmScore * 100),
     currentGaps: bestChild.gapsDetected,
+    fallback: isFallback,
   };
 }

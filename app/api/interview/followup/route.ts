@@ -93,13 +93,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0 });
     }
 
-    // 5. Short-circuit: no API key configured
+    // 5. Run LATS MCTS engine — generates 3 branches, scores via PRM, selects via UCT
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicApiKey) {
-      return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0 });
-    }
-
-    // 6. Run LATS MCTS engine — generates 3 branches, scores via PRM, selects via UCT
     const resolvedSessionId = sessionId ?? `followup_${Date.now()}`;
 
     const latsState = await runLATSMCTS({
@@ -111,17 +106,20 @@ export async function POST(request: Request) {
       anthropicApiKey,
     });
 
-    // 7. Identify the UCT-selected branch (isSelectedTrajectory === true)
+    const isFallback = !anthropicApiKey || latsState.fallback === true;
+
+    // 6. Identify the UCT-selected branch (isSelectedTrajectory === true)
     const selectedNode = latsState.simulatedBranches.find(b => b.isSelectedTrajectory)
       ?? latsState.simulatedBranches[0];
 
     if (!selectedNode) {
-      return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0 });
+      return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0, fallback: isFallback });
     }
 
-    // 8. Build response
+    // 7. Build response payload with explicit fallback flag
     return NextResponse.json({
       needsFollowUp: true,
+      fallback: isFallback,
       selectedBranch: {
         actionType: selectedNode.actionType,
         questionText: selectedNode.questionText,
@@ -142,7 +140,39 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("[FollowUp API Error]:", err);
-    // Fail-safe default — never surface errors to the interview UI
-    return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0 });
+    try {
+      const fallbackState = await runLATSMCTS({
+        sessionId: `fallback_${Date.now()}`,
+        role: "Software Engineer",
+        currentQuestion: "Technical System Design Question",
+        candidateAnswer: "Standard technical candidate answer",
+        priorGaps: [],
+      });
+      const selectedNode = fallbackState.simulatedBranches.find(b => b.isSelectedTrajectory)
+        ?? fallbackState.simulatedBranches[0];
+      return NextResponse.json({
+        needsFollowUp: true,
+        fallback: true,
+        selectedBranch: {
+          actionType: selectedNode.actionType,
+          questionText: selectedNode.questionText,
+          rationale: selectedNode.rationale,
+          prmScore: Math.round(selectedNode.prmScore * 1000) / 1000,
+          uctValue: Math.round(selectedNode.uctValue * 1000) / 1000,
+        },
+        allBranches: fallbackState.simulatedBranches.map(b => ({
+          actionType: b.actionType,
+          questionText: b.questionText,
+          rationale: b.rationale,
+          prmScore: Math.round(b.prmScore * 1000) / 1000,
+          uctValue: Math.round(b.uctValue * 1000) / 1000,
+          isSelected: b.isSelectedTrajectory,
+        })),
+        currentGaps: fallbackState.currentGaps,
+        trajectoryDepth: fallbackState.trajectoryHistory.length,
+      });
+    } catch {
+      return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0, fallback: true });
+    }
   }
 }
