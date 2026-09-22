@@ -76,13 +76,18 @@ export default function PostureHUD({
     );
   }
 
-  if (!currentFrame) {
+  if (!currentFrame || !currentFrame.angles) {
     return null;
   }
 
   const isExcessive = currentFrame.detectedGesture === 'EXCESSIVE_MOTION';
   const isNod = currentFrame.detectedGesture === 'NODDING';
   const isShake = currentFrame.detectedGesture === 'HEAD_SHAKING';
+
+  const yaw = Number.isFinite(currentFrame.angles?.yawDegrees) ? currentFrame.angles.yawDegrees.toFixed(0) : '0';
+  const pitch = Number.isFinite(currentFrame.angles?.pitchDegrees) ? currentFrame.angles.pitchDegrees.toFixed(0) : '0';
+  const roll = Number.isFinite(currentFrame.angles?.rollDegrees) ? currentFrame.angles.rollDegrees.toFixed(0) : '0';
+  const me = Number.isFinite(currentFrame.motionEnergy) ? currentFrame.motionEnergy!.toFixed(1) : undefined;
 
   return (
     <div className="flex flex-col gap-2 transition-all duration-300">
@@ -101,12 +106,12 @@ export default function PostureHUD({
           </span>
         </div>
         <div className="flex items-center gap-2 text-gray-500 text-[9px]">
-          {currentFrame.motionEnergy !== undefined && (
-            <span className="text-gray-400">ME: {currentFrame.motionEnergy.toFixed(1)}</span>
+          {me !== undefined && (
+            <span className="text-gray-400">ME: {me}</span>
           )}
-          <span>Y: {currentFrame.angles.yawDegrees.toFixed(0)}°</span>
-          <span>P: {currentFrame.angles.pitchDegrees.toFixed(0)}°</span>
-          <span>R: {currentFrame.angles.rollDegrees.toFixed(0)}°</span>
+          <span>Y: {yaw}°</span>
+          <span>P: {pitch}°</span>
+          <span>R: {roll}°</span>
         </div>
       </div>
 

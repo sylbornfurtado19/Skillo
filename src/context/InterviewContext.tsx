@@ -94,6 +94,23 @@ export interface InterviewContextValue {
   setRetryQuestionIndex: (index: number | null) => void;
   updateQuestionScore: (questionIndex: number, newAnswerText: string, newScore: number, feedback: string) => void;
   resetSession: () => void;
+  // Reflexion historical memory
+  pastCritiques: Array<{
+    skillId: string;
+    skillName: string;
+    summary: string;
+    proficiencyLevel: string;
+    remediation?: string;
+  }>;
+  setPastCritiques: (critiques: Array<{
+    skillId: string;
+    skillName: string;
+    summary: string;
+    proficiencyLevel: string;
+    remediation?: string;
+  }>) => void;
+  recalledMemoryNotice: string;
+  setRecalledMemoryNotice: (notice: string) => void;
   // Theme
   theme: string;
   setTheme: (theme: string) => void;
@@ -320,6 +337,18 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
   };
 
 
+  // Reflexion historical memory
+  const [pastCritiques, setPastCritiques] = useState<
+    Array<{
+      skillId: string;
+      skillName: string;
+      summary: string;
+      proficiencyLevel: string;
+      remediation?: string;
+    }>
+  >([]);
+  const [recalledMemoryNotice, setRecalledMemoryNotice] = useState<string>('');
+
   const resetSession = () => {
     setResumeData(null);
     setJobTitle('');
@@ -330,6 +359,8 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
     setCurrentQuestionIndex(0);
     setAnswers([]);
     _setResults(null);
+    setPastCritiques([]);
+    setRecalledMemoryNotice('');
     if (typeof window !== 'undefined') {
       try {
         sessionStorage.removeItem('iq_resume_data');
@@ -398,6 +429,10 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
     setRetryQuestionIndex,
     updateQuestionScore,
     resetSession,
+    pastCritiques,
+    setPastCritiques,
+    recalledMemoryNotice,
+    setRecalledMemoryNotice,
     theme,
     setTheme,
   };

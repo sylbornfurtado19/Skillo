@@ -124,6 +124,61 @@ export default function SimPOContrastiveCard({
         <div className="bg-[#030712]/60 p-3.5 rounded-xl border border-white/5 text-xs text-gray-300 font-mono">
           {summaryDeltaText}
         </div>
+
+        {/* FAANG Benchmark Delta Card */}
+        {data.benchmarkDeltaCard && (
+          <div className="p-4 rounded-xl bg-gradient-to-r from-accent/10 via-primary/10 to-transparent border border-accent/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FaChartLine className="text-accent text-sm" />
+                <span className="text-xs font-heading font-bold text-white uppercase tracking-wider">
+                  FAANG Benchmark Delta Card
+                </span>
+              </div>
+              <span className="text-accent font-mono text-xs font-extrabold px-2.5 py-0.5 rounded-lg bg-accent/20 border border-accent/30">
+                Reward Score: {data.benchmarkDeltaCard.rewardScore.toFixed(2)}
+              </span>
+            </div>
+
+            <p className="text-xs text-gray-200 italic leading-relaxed">
+              &ldquo;{data.benchmarkDeltaCard.faangComparison}&rdquo;
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] font-mono pt-1">
+              {data.benchmarkDeltaCard.architecturalGap.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-yellow-400 font-bold uppercase tracking-wider text-[10px] block">
+                    Architectural Gaps:
+                  </span>
+                  <ul className="space-y-1 text-gray-300">
+                    {data.benchmarkDeltaCard.architecturalGap.map((gap, i) => (
+                      <li key={i} className="flex gap-1.5 items-start">
+                        <span className="text-yellow-400">&bull;</span>
+                        <span>{gap}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {data.benchmarkDeltaCard.edgeCaseOversights.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-amber-400 font-bold uppercase tracking-wider text-[10px] block">
+                    Edge-Case Oversights:
+                  </span>
+                  <ul className="space-y-1 text-gray-300">
+                    {data.benchmarkDeltaCard.edgeCaseOversights.map((ec, i) => (
+                      <li key={i} className="flex gap-1.5 items-start">
+                        <span className="text-amber-400">&bull;</span>
+                        <span>{ec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Structural Delta Viewer */}

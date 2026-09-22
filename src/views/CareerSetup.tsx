@@ -23,6 +23,7 @@ import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import { Progress } from '../components/ui/Loader';
 import { InterviewModePreviewCard } from '../components/interview/InterviewModePreviewCard';
 import { resolveInterviewMode } from '../types/interviewModes';
+import { supabase } from '../lib/supabase';
 
 const SETUP_STORAGE_KEY = 'skillo_career_setup_state';
 
@@ -45,7 +46,20 @@ const DURATIONS = [15, 30, 45, 60];
 export default function CareerSetup() {
   const router = useRouter();
   const { user } = useAuth();
-  const { resumeData, setupData, setSetupData, setQuestions, setCurrentQuestionIndex, setAnswers } = useInterview();
+  const {
+    resumeData,
+    setupData,
+    setSetupData,
+    setQuestions,
+    setCurrentQuestionIndex,
+    setAnswers,
+    setPastCritiques,
+    setRecalledMemoryNotice,
+    pastCritiques,
+    recalledMemoryNotice,
+  } = useInterview();
+
+  const [startingSession, setStartingSession] = useState(false);
 
   // Wizard Step State & Persistence
   const [currentStep, setCurrentStep] = useState(1);
@@ -197,7 +211,8 @@ export default function CareerSetup() {
     };
   }, [stream]);
 
-  const handleStartInterview = () => {
+  const handleStartInterview = async () => {
+    setStartingSession(true);
     // Clear persisted wizard progress upon starting session
     if (typeof window !== 'undefined') {
       try {
@@ -207,6 +222,41 @@ export default function CareerSetup() {
       }
     }
 
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const res = await fetch('/api/interview/setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ setupData }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && Array.isArray(json.data.questions) && json.data.questions.length > 0) {
+          setQuestions(json.data.questions.map((q: any) => q.question));
+          if (Array.isArray(json.data.pastCritiques)) {
+            setPastCritiques(json.data.pastCritiques);
+          }
+          if (json.data.recalledMemoryNotice) {
+            setRecalledMemoryNotice(json.data.recalledMemoryNotice);
+          }
+          setCurrentQuestionIndex(0);
+          setAnswers([]);
+          if (stream) stream.getTracks().forEach((track) => track.stop());
+          router.push('/interview');
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('[CareerSetup] Setup API fallback to local preset pool:', err);
+    }
+
+    // Fallback Question Pool Selection if API call is skipped or fails
     const questList = getQuestionsForSetup(setupData);
     const limitedQuestions = questList.slice(0, setupData.questionCount);
     setQuestions(limitedQuestions.map((q) => q.question));
@@ -695,14 +745,22 @@ export default function CareerSetup() {
                 </div>
               )}
 
+              {recalledMemoryNotice && (
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-mono">
+                  <span>🧠</span>
+                  <span>{recalledMemoryNotice}</span>
+                </div>
+              )}
+
               <Button
                 onClick={handleStartInterview}
+                disabled={startingSession}
                 variant="primary"
                 size="lg"
                 className="w-full bg-gradient-to-r from-primary via-secondary to-accent text-white shadow-xl hover:shadow-primary/20"
                 icon={FaPlay}
               >
-                Begin Assessment
+                {startingSession ? 'Conditioning Interview Memory...' : 'Begin Assessment'}
               </Button>
             </div>
           </Card>

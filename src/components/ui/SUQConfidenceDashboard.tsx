@@ -38,7 +38,7 @@ export default function SUQConfidenceDashboard({
           <FaBrain className="text-4xl text-white/20" />
           <h3 className="text-sm font-heading font-bold text-white">Prometheus-2 Evaluation</h3>
           <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
-            N=5 multi-pass Chain-of-Thought results will appear here after your interview evaluation is complete.
+            N=3 multi-pass Chain-of-Thought results will appear here after your interview evaluation is complete.
           </p>
         </div>
       </div>
@@ -107,7 +107,7 @@ export default function SUQConfidenceDashboard({
               Prometheus-2 Rubric &amp; Semantic Uncertainty Engine
             </h3>
             <p className="text-[11px] text-gray-400">
-              N = 5 Multi-Pass CoT Evaluation &bull; Latency: {suq.latencyMs}ms
+              N = 3 Multi-Pass CoT Evaluation &bull; Latency: {suq.latencyMs}ms
             </p>
           </div>
         </div>

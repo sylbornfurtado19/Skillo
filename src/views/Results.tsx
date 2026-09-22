@@ -26,7 +26,7 @@ const Radar = dynamic(() => import('react-chartjs-2').then((m) => m.Radar), { ss
 
 import { INTERVIEWER_PERSONAS } from '../services/constants';
 import { useInterview } from '../context/InterviewContext';
-import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult, ContrastiveEvaluationResult } from '../types/index';
+import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult, ContrastiveEvaluationResult, BenchmarkDeltaCard } from '../types/index';
 import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -214,12 +214,14 @@ export default function Results() {
   const persona = INTERVIEWER_PERSONAS[results.personaId as keyof typeof INTERVIEWER_PERSONAS] || INTERVIEWER_PERSONAS.sarah;
 
   const categories = (results.categories || {}) as EvaluationCategories;
+  const suq = results.suqEvaluation as SUQEvaluationResult | undefined;
+  const deltaCard = results.benchmarkDeltaCard as BenchmarkDeltaCard | undefined;
 
   const scores = {
-    techKnowledge: categories.technicalAccuracy ?? 80,
+    techAccuracy: categories.technicalAccuracy ?? 80,
+    systemDesignLogic: categories.systemDesignLogic ?? categories.depth ?? 75,
+    edgeCaseHandling: categories.edgeCaseHandling ?? categories.timeManagement ?? 80,
     communication: categories.communication ?? 85,
-    confidence: categories.depth ?? 75,
-    problemSolving: categories.timeManagement ?? 90,
   };
 
   // Find previous session for comparison (if any)
@@ -232,19 +234,27 @@ export default function Results() {
   const prevScores =
     previousSession && previousSession.categories
       ? {
-          techKnowledge: previousSession.categories.techKnowledge ?? previousSession.categories.technicalAccuracy ?? previousSession.score,
+          techAccuracy:
+            previousSession.categories.technicalAccuracy ??
+            previousSession.categories.techKnowledge ??
+            previousSession.score,
+          systemDesignLogic:
+            previousSession.categories.depth ??
+            previousSession.categories.confidence ??
+            previousSession.score,
+          edgeCaseHandling:
+            previousSession.categories.timeManagement ??
+            previousSession.categories.problemSolving ??
+            previousSession.score,
           communication: previousSession.categories.communication ?? previousSession.score,
-          confidence: previousSession.categories.confidence ?? previousSession.categories.depth ?? previousSession.score,
-          problemSolving: previousSession.categories.problemSolving ?? previousSession.categories.timeManagement ?? previousSession.score,
         }
       : null;
 
-
-  // Datasets for Radar chart
+  // Datasets for Radar chart (4 Prometheus criteria)
   const radarDatasets = [
     {
       label: 'Current Session',
-      data: [scores.techKnowledge, scores.communication, scores.confidence, scores.problemSolving],
+      data: [scores.techAccuracy, scores.systemDesignLogic, scores.edgeCaseHandling, scores.communication],
       backgroundColor: 'rgba(99, 102, 241, 0.25)',
       borderColor: '#6366F1',
       borderWidth: 2.5,
@@ -257,7 +267,7 @@ export default function Results() {
   if (prevScores) {
     radarDatasets.push({
       label: `Previous Session (${previousSession?.date || 'Prior'})`,
-      data: [prevScores.techKnowledge, prevScores.communication, prevScores.confidence, prevScores.problemSolving],
+      data: [prevScores.techAccuracy, prevScores.systemDesignLogic, prevScores.edgeCaseHandling, prevScores.communication],
       backgroundColor: 'rgba(148, 163, 184, 0.08)',
       borderColor: '#94A3B8',
       borderWidth: 1.5,
@@ -268,7 +278,12 @@ export default function Results() {
   }
 
   const radarData: any = {
-    labels: ['Technical Knowledge', 'Communication', 'Confidence', 'Problem Solving'],
+    labels: [
+      'Technical Accuracy',
+      'System Architecture & Logic',
+      'Edge-Case Awareness',
+      'Communication & Tone',
+    ],
     datasets: radarDatasets,
   };
 
@@ -587,6 +602,28 @@ export default function Results() {
               <p className="text-[10px] text-gray-500 uppercase font-mono tracking-wide">
                 Target seniority: {results.setupData?.experienceLevel ?? 'Mid-Level'}
               </p>
+              {suq?.confidenceLevel && (
+                <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
+                  <Badge
+                    variant={
+                      suq.confidenceLevel === 'HIGH'
+                        ? 'success'
+                        : suq.confidenceLevel === 'MEDIUM'
+                        ? 'warning'
+                        : 'danger'
+                    }
+                    size="sm"
+                    className="font-mono text-[10px]"
+                  >
+                    SUQ Confidence: {suq.confidenceLevel}
+                  </Badge>
+                  {deltaCard?.rewardScore !== undefined && (
+                    <span className="px-2 py-0.5 rounded-lg bg-accent/15 border border-accent/30 text-accent font-mono text-[10px] font-bold">
+                      SimPO: +{deltaCard.rewardScore.toFixed(2)} pts
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
 
@@ -601,20 +638,20 @@ export default function Results() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full text-[10px] text-gray-400 font-mono border-t border-white/5 pt-4">
               <div className="space-y-0.5">
-                <span>Technical Knowledge</span>
-                <p className="text-white font-bold text-xs">{scores.techKnowledge}%</p>
+                <span>Technical Accuracy</span>
+                <p className="text-white font-bold text-xs">{scores.techAccuracy}%</p>
               </div>
               <div className="space-y-0.5">
-                <span>Communication</span>
+                <span>System Architecture &amp; Logic</span>
+                <p className="text-white font-bold text-xs">{scores.systemDesignLogic}%</p>
+              </div>
+              <div className="space-y-0.5">
+                <span>Edge-Case Awareness</span>
+                <p className="text-white font-bold text-xs">{scores.edgeCaseHandling}%</p>
+              </div>
+              <div className="space-y-0.5">
+                <span>Communication &amp; Tone</span>
                 <p className="text-white font-bold text-xs">{scores.communication}%</p>
-              </div>
-              <div className="space-y-0.5">
-                <span>Confidence</span>
-                <p className="text-white font-bold text-xs">{scores.confidence}%</p>
-              </div>
-              <div className="space-y-0.5">
-                <span>Problem Solving</span>
-                <p className="text-white font-bold text-xs">{scores.problemSolving}%</p>
               </div>
             </div>
           </Card>
@@ -813,6 +850,28 @@ export default function Results() {
                         <span>Retry this question</span>
                       </button>
 
+                      {suq?.confidenceLevel && (
+                        <Badge
+                          variant={
+                            suq.confidenceLevel === 'HIGH'
+                              ? 'success'
+                              : suq.confidenceLevel === 'MEDIUM'
+                              ? 'warning'
+                              : 'danger'
+                          }
+                          size="sm"
+                          className="font-mono text-[10px]"
+                        >
+                          SUQ: {suq.confidenceLevel}
+                        </Badge>
+                      )}
+
+                      {deltaCard?.rewardScore !== undefined && (
+                        <span className="hidden sm:inline-block px-2 py-0.5 rounded-lg bg-accent/15 border border-accent/30 text-accent font-mono text-[10px] font-bold">
+                          +{deltaCard.rewardScore.toFixed(2)} pts
+                        </span>
+                      )}
+
                       <Badge variant="success">Score: {item.score}</Badge>
                       {isExpanded ? <FaChevronUp className="text-gray-500 text-xs" /> : <FaChevronDown className="text-gray-500 text-xs" />}
                     </div>
@@ -827,6 +886,22 @@ export default function Results() {
                           {answerText}
                         </p>
                       </div>
+
+                      {deltaCard ? (
+                        <div className="bg-accent/5 rounded-xl p-4 border border-accent/20 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-accent font-bold uppercase tracking-wider font-mono">
+                              SimPO Benchmark Delta Target
+                            </span>
+                            <span className="text-accent font-mono text-[10px] font-bold">
+                              Reward: +{deltaCard.rewardScore.toFixed(2)} pts
+                            </span>
+                          </div>
+                          <p className="text-gray-300 leading-relaxed italic text-xs">
+                            &ldquo;{deltaCard.faangComparison}&rdquo;
+                          </p>
+                        </div>
+                      ) : null}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-primary/5 rounded-xl p-4 border border-primary/15 space-y-2">
