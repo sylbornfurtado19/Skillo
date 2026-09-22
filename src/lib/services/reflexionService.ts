@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/server/supabaseAdmin';
 import type {
   VerbalReflection,
   SkillMemoryNode,

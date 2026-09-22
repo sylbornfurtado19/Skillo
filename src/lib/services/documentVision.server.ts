@@ -329,6 +329,7 @@ export function analyzeVisualDocumentLayout(
       elements: [],
       penalties: [],
       detectedLayoutType: 'SINGLE_COLUMN',
+      analysisMethod: 'LayoutLMv3-inspired heuristic analysis',
     };
   }
 
@@ -367,6 +368,7 @@ export function analyzeVisualDocumentLayout(
   const detectedLayoutType = detectLayoutType(elements);
 
   return {
+    analysisMethod: 'LayoutLMv3-inspired heuristic analysis',
     pageCount,
     layoutIntegrityScore,
     elements: elements.slice(0, 60),

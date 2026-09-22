@@ -27,6 +27,7 @@ export interface LayoutFormattingPenalty {
 }
 
 export interface VisualLayoutAnalysisResult {
+  analysisMethod: 'LayoutLMv3-inspired heuristic analysis';
   pageCount: number;
   layoutIntegrityScore: number; // 0.0 to 100.0%
   elements: VisualLayoutElement[];

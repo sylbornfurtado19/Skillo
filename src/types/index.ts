@@ -137,6 +137,8 @@ export interface GraphRAGAnalysisResult {
   missingPrerequisiteChains: PrerequisiteGapChain[];
   extractedEntityCount: number;
   synthesizedSummary: string;
+  providerStatus?: 'available' | 'fallback_heuristic' | 'unconfigured' | 'error';
+  analysisMethod?: string;
 }
 
 // ── Reflexion Types (Shinn et al., NeurIPS 2023) ────────────────────────────
@@ -266,8 +268,19 @@ export interface RubricCriterion {
   scoreDescriptors: Record<1 | 2 | 3 | 4 | 5, string>;
 }
 
+export interface CriterionEvidence {
+  technicalAccuracy: string;
+  systemDesignLogic: string;
+  edgeCaseHandling: string;
+  communicationClarity: string;
+}
+
 export interface SinglePassEvaluation {
-  cotReasoning: string;
+  /** Concise structured evidence replacing unrestricted chain-of-thought */
+  criterionEvidence?: CriterionEvidence;
+  decisionSummary?: string;
+  /** Deprecated optional alias preserved for test compatibility */
+  cotReasoning?: string;
   scores: {
     technicalAccuracy: number;
     systemDesignLogic: number;
@@ -294,6 +307,10 @@ export interface SUQEvaluationResult {
   aggregatedRubricFeedback: Record<string, string>;
   requiresValidationPass: boolean;
   latencyMs: number;
+  passCount: number;
+  evaluationMode: 'live' | 'fallback' | 'partial';
+  providerStatus: 'available' | 'timeout' | 'rate_limited' | 'unconfigured' | 'error';
+  modelId: string;
 }
 
 // ── LATS Types (Language Agent Tree Search - Zhou et al., ICML 2024) ──────────
@@ -354,6 +371,9 @@ export interface EvaluationReport {
   headPoseMetrics?: HeadPoseSessionMetrics;
   affectiveMetrics?: AffectiveSessionMetrics;
   lipSyncMetrics?: LipSyncSessionMetrics;
+  evaluationMode?: 'live' | 'fallback' | 'partial';
+  selectedQuestionIndex?: number;
+  selectedQuestionId?: string;
 }
 
 export interface MockInterview {
