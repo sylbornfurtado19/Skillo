@@ -39,6 +39,8 @@ const setupDataSchema = z.object({
 
 const gazeFrameSchema = z.object({
   timestampMs: z.number().finite().nonnegative(),
+  questionId: z.string().max(64).optional(),
+  questionIndex: z.number().int().nonnegative().optional(),
   pitchLogits: z.array(z.number().finite()).max(10).optional(),
   yawLogits: z.array(z.number().finite()).max(10).optional(),
   pitchDegrees: z.number().finite().min(-90).max(90).optional(),
@@ -48,6 +50,8 @@ const gazeFrameSchema = z.object({
 
 const headPoseFrameSchema = z.object({
   timestampMs: z.number().finite().nonnegative(),
+  questionId: z.string().max(64).optional(),
+  questionIndex: z.number().int().nonnegative().optional(),
   yawLogits: z.array(z.number().finite()).max(10).optional(),
   pitchLogits: z.array(z.number().finite()).max(10).optional(),
   rollLogits: z.array(z.number().finite()).max(10).optional(),
@@ -59,6 +63,8 @@ const headPoseFrameSchema = z.object({
 
 const affectFrameSchema = z.object({
   timestampMs: z.number().finite().nonnegative(),
+  questionId: z.string().max(64).optional(),
+  questionIndex: z.number().int().nonnegative().optional(),
   valence: z.number().finite().min(-1).max(1).optional(),
   arousal: z.number().finite().min(-1).max(1).optional(),
   valenceLogits: z.array(z.number().finite()).max(10).optional(),
@@ -68,6 +74,8 @@ const affectFrameSchema = z.object({
 
 const syncWindowSchema = z.object({
   timestampMs: z.number().finite().nonnegative(),
+  questionId: z.string().max(64).optional(),
+  questionIndex: z.number().int().nonnegative().optional(),
   visualDistance: z.number().finite().optional(),
   offsetMs: z.number().finite().optional(),
   audioEnergy: z.number().finite().optional(),

@@ -41,6 +41,10 @@ interface IVPPoseTrackerProps {
   visible?: boolean;
   className?: string;
   mediaStream?: MediaStream | null;
+  /** Explicit per-question attribution identifier (REM-4) */
+  questionId?: string;
+  /** Explicit 0-based question index (REM-4) */
+  questionIndex?: number;
 }
 
 // ── 3D Projection & Wireframe Math ─────────────────────────────────────────────
@@ -130,7 +134,10 @@ function estimateHeadCentroid(
 // ─────────────────────────────────────────────────────────────────────────────
 
 const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
-  function IVPPoseTracker({ onFrame, visible = true, className = '', mediaStream = null }, ref) {
+  function IVPPoseTracker(
+    { onFrame, visible = true, className = '', mediaStream = null, questionId, questionIndex },
+    ref
+  ) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const samplerCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -144,6 +151,13 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
     const isRunningRef = useRef(false);
     const motionDetectorRef = useRef(new TemporalMotionDetector());
     const poseEmaRef = useRef(new HeadPoseEMA(0.35));
+    const questionIdRef = useRef<string | undefined>(questionId);
+    const questionIndexRef = useRef<number | undefined>(questionIndex);
+
+    useEffect(() => {
+      questionIdRef.current = questionId;
+      questionIndexRef.current = questionIndex;
+    }, [questionId, questionIndex]);
 
     const [cameraError, setCameraError] = useState<string | null>(null);
     const [isStarted, setIsStarted] = useState(false);
@@ -301,6 +315,8 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
               confidence: centroid && motionRes.isSubjectPresent ? 0.8 : 0.0,
               motionEnergy: motionRes.motionEnergy,
               isSubjectPresent: motionRes.isSubjectPresent,
+              questionId: questionIdRef.current,
+              questionIndex: questionIndexRef.current,
             };
 
             framesRef.current.push(input);

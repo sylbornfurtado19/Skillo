@@ -36,10 +36,17 @@ interface IVPAffectTrackerProps {
   visible?: boolean;
   className?: string;
   mediaStream?: MediaStream | null;
+  /** Explicit per-question attribution identifier (REM-4) */
+  questionId?: string;
+  /** Explicit 0-based question index (REM-4) */
+  questionIndex?: number;
 }
 
 const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProps>(
-  function IVPAffectTracker({ onFrame, visible = true, className = '', mediaStream = null }, ref) {
+  function IVPAffectTracker(
+    { onFrame, visible = true, className = '', mediaStream = null, questionId, questionIndex },
+    ref
+  ) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const samplerCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -51,6 +58,13 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
     const isRunningRef = useRef(false);
     const affectEmaRef = useRef(new AffectiveEMA(0.25, 0.20));
     const emotionConsensusRef = useRef(new CategoricalConsensusSmoother(5, 0.30));
+    const questionIdRef = useRef<string | undefined>(questionId);
+    const questionIndexRef = useRef<number | undefined>(questionIndex);
+
+    useEffect(() => {
+      questionIdRef.current = questionId;
+      questionIndexRef.current = questionIndex;
+    }, [questionId, questionIndex]);
 
     const [isStarted, setIsStarted] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -84,6 +98,8 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
               confidence: expression.confidence,
               smileScore: expression.smileScore,
               dominantEmotion: expression.dominantEmotion,
+              questionId: questionIdRef.current,
+              questionIndex: questionIndexRef.current,
             };
 
             framesRef.current.push(input);

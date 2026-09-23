@@ -309,6 +309,8 @@ export const submitInterviewAnswers = async (
     pitchDegrees?: number;
     yawDegrees?: number;
     confidence?: number;
+    questionId?: string;
+    questionIndex?: number;
   }>,
   headPoseFrames?: Array<{
     timestampMs: number;
@@ -316,12 +318,16 @@ export const submitInterviewAnswers = async (
     pitchDegrees?: number;
     rollDegrees?: number;
     confidence?: number;
+    questionId?: string;
+    questionIndex?: number;
   }>,
   affectFrames?: Array<{
     timestampMs: number;
     valence?: number;
     arousal?: number;
     confidence?: number;
+    questionId?: string;
+    questionIndex?: number;
   }>,
   syncWindows?: Array<{
     timestampMs: number;
@@ -329,6 +335,8 @@ export const submitInterviewAnswers = async (
     offsetMs?: number;
     audioEnergy?: number;
     confidence?: number;
+    questionId?: string;
+    questionIndex?: number;
   }>
 ) => {
   const { data: sessionData } = await supabase.auth.getSession();

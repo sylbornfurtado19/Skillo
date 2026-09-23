@@ -76,6 +76,10 @@ interface IVPGazeTrackerProps {
   className?: string;
   /** Authoritative MediaStream provided by parent InterviewSession */
   mediaStream?: MediaStream | null;
+  /** Explicit per-question attribution identifier (REM-4) */
+  questionId?: string;
+  /** Explicit 0-based question index (REM-4) */
+  questionIndex?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -159,7 +163,10 @@ function estimateFaceCentroid(
 // ─────────────────────────────────────────────────────────────────────────────
 
 const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
-  function IVPGazeTracker({ onFrame, visible = true, className = '', mediaStream = null }, ref) {
+  function IVPGazeTracker(
+    { onFrame, visible = true, className = '', mediaStream = null, questionId, questionIndex },
+    ref
+  ) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const samplerCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -169,6 +176,13 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
     const rafCountRef = useRef<number>(0);
     const framesRef = useRef<GazeFrameInput[]>([]);
     const sessionStartRef = useRef<number>(Date.now());
+    const questionIdRef = useRef<string | undefined>(questionId);
+    const questionIndexRef = useRef<number | undefined>(questionIndex);
+
+    useEffect(() => {
+      questionIdRef.current = questionId;
+      questionIndexRef.current = questionIndex;
+    }, [questionId, questionIndex]);
     const isRunningRef = useRef(false);
     const gazeEmaRef = useRef(new GazeAngleEMA(0.45));
 
@@ -310,6 +324,8 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
               pitchDegrees: Math.round(pitchDeg * 100) / 100,
               yawDegrees: Math.round(yawDeg * 100) / 100,
               confidence: centroid ? 0.75 : 0.3,
+              questionId: questionIdRef.current,
+              questionIndex: questionIndexRef.current,
             };
             framesRef.current.push(frameInput);
 

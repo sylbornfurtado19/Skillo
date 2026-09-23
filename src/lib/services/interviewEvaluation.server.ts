@@ -23,6 +23,7 @@ import type {
   SemanticCluster,
   SUQEvaluationResult,
   EvaluationReport,
+  AnswerBreakdown,
   LATSTreeState,
   GazeFrameInput,
   HeadPoseFrameInput,
@@ -515,15 +516,37 @@ export async function performInterviewEvaluation(
     edgeCaseHandling: avgEdge,
   };
 
-  // Breakdown for individual questions
-  const questionFeedbacks = questionsList.map((q, index) => {
+  // Breakdown for individual questions with explicit per-question telemetry scoping (REM-4)
+  const questionFeedbacks: AnswerBreakdown[] = questionsList.map((q, index) => {
     const rawAns = answersList[index];
     const answerStr = typeof rawAns === 'string' ? rawAns : rawAns?.answerText ?? 'No answer provided.';
     const sanitizedAns = answerStr.trim().replace(/[<>]/g, '').slice(0, 5000);
     const sanitizedQuestion = q.question.trim().replace(/[<>]/g, '');
+    const qId = q.id ?? `q_${index + 1}`;
+
+    // Isolate telemetry strictly attributed to this question
+    // Match by explicit questionId or matching 0-based questionIndex
+    const qGaze = (input.gazeFrames ?? []).filter(
+      (f) => f.questionId === qId || (f.questionId === undefined && f.questionIndex === index)
+    );
+    const qPose = (input.headPoseFrames ?? []).filter(
+      (f) => f.questionId === qId || (f.questionId === undefined && f.questionIndex === index)
+    );
+    const qAffect = (input.affectFrames ?? []).filter(
+      (f) => f.questionId === qId || (f.questionId === undefined && f.questionIndex === index)
+    );
+    const qSync = (input.syncWindows ?? []).filter(
+      (f) => f.questionId === qId || (f.questionId === undefined && f.questionIndex === index)
+    );
+
+    const qEyeContact = qGaze.length > 0 ? processGazeFrames(qGaze) : undefined;
+    const qHeadPose = qPose.length > 0 ? analyzeHeadPoseAndGestures(qPose) : undefined;
+    const qAffective = qAffect.length > 0 ? processAffectFrames(qAffect) : undefined;
+    const qLipSync = qSync.length > 0 ? processLipSyncWindows(qSync) : undefined;
 
     return {
-      id: q.id ?? `q_${index + 1}`,
+      id: qId,
+      questionId: qId,
       question: sanitizedQuestion,
       userAnswer: sanitizedAns || 'No answer provided.',
       score: sanitizedAns ? Math.min(100, Math.round(finalScore * 20)) : 0,
@@ -535,6 +558,10 @@ export async function performInterviewEvaluation(
         'Include concrete quantitative examples of production impact to push score higher.',
       ],
       strengths: ['Solid structural delivery', 'Accurate domain terminology'],
+      eyeContactMetrics: qEyeContact,
+      headPoseMetrics: qHeadPose,
+      affectiveMetrics: qAffective,
+      lipSyncMetrics: qLipSync,
     };
   });
 
@@ -651,4 +678,29 @@ export async function performInterviewEvaluation(
     selectedQuestionIndex,
     selectedQuestionId,
   };
+}
+
+/**
+ * Helper to group arbitrary telemetry frames by questionId or questionIndex.
+ * Guarantees zero cross-question bleeding and handles unscoped frames safely.
+ */
+export function groupTelemetryByQuestion<T extends { questionId?: string; questionIndex?: number }>(
+  items: T[],
+  questionIds: string[]
+): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  questionIds.forEach((id) => map.set(id, []));
+
+  for (const item of items) {
+    if (item.questionId && map.has(item.questionId)) {
+      map.get(item.questionId)!.push(item);
+    } else if (item.questionIndex !== undefined && item.questionIndex < questionIds.length) {
+      const id = questionIds[item.questionIndex];
+      if (id && map.has(id)) {
+        map.get(id)!.push(item);
+      }
+    }
+  }
+
+  return map;
 }

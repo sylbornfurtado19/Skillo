@@ -28,16 +28,15 @@ import Badge from '../components/ui/Badge';
 import AdaptiveHUDHeader from '../components/ui/AdaptiveHUDHeader';
 import { SystemDesignCanvas } from '../components/interview/SystemDesignCanvas';
 import { SystemDesignDiagramState, createInitialDiagramState, deserializeDiagram, serializeDiagram } from '../types/systemDesign';
-import IVPGazeTracker, { type IVPGazeTrackerHandle } from '../components/ui/IVPGazeTracker';
 import EyeContactHUD from '../components/ui/EyeContactHUD';
-import IVPPoseTracker, { type IVPPoseTrackerHandle } from '../components/ui/IVPPoseTracker';
 import PostureHUD from '../components/ui/PostureHUD';
-import IVPAffectTracker, { type IVPAffectTrackerHandle } from '../components/ui/IVPAffectTracker';
 import AffectiveHUD from '../components/ui/AffectiveHUD';
 import IVPSyncTracker, { type IVPSyncTrackerHandle } from '../components/ui/IVPSyncTracker';
 import LipSyncHUD from '../components/ui/LipSyncHUD';
 import { useInterviewCamera } from '../hooks/useInterviewCamera';
-import type { GazeFrameResult, HeadPoseFrameResult, AffectFrameResult, SyncWindowResult } from '@/types/index';
+import { useIVPSessionPipeline } from '../hooks/useIVPSessionPipeline';
+import IVPCameraPreview from '../components/ui/IVPCameraPreview';
+import type { SyncWindowResult } from '@/types/index';
 
 
 
@@ -222,38 +221,6 @@ export default function InterviewSession() {
 
 
 
-  // ── L2CS-Net Gaze Tracker state ─────────────────────────────────────
-  const gazeTrackerRef = useRef<IVPGazeTrackerHandle | null>(null);
-  const [liveGazeFrame, setLiveGazeFrame] = useState<GazeFrameResult | null>(null);
-  const [gazeEyeContactPct, setGazeEyeContactPct] = useState(0);
-  const [gazeFrameCount, setGazeFrameCount] = useState(0);
-  const [gazeContactCount, setGazeContactCount] = useState(0);
-  const [showGazeWarning, setShowGazeWarning] = useState(false);
-  const gazeWarningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Handle each sampled gaze frame — updates live HUD running metrics
-  const handleGazeFrame = useCallback((frame: GazeFrameResult) => {
-    setLiveGazeFrame(frame);
-    setGazeFrameCount(prev => {
-      const nextCount = prev + 1;
-      setGazeContactCount(prevContact => {
-        const nextContact = prevContact + (frame.isEyeContact ? 1 : 0);
-        setGazeEyeContactPct(Math.round((nextContact / nextCount) * 100));
-        return nextContact;
-      });
-      return nextCount;
-    });
-
-    // Distraction warning: show when off-screen, dismiss after 3s of eye contact
-    if (!frame.isEyeContact && frame.screenFocusZone !== 'LOOKING_UP') {
-      if (gazeWarningTimerRef.current) clearTimeout(gazeWarningTimerRef.current);
-      setShowGazeWarning(true);
-    } else if (frame.isEyeContact) {
-      if (gazeWarningTimerRef.current) clearTimeout(gazeWarningTimerRef.current);
-      gazeWarningTimerRef.current = setTimeout(() => setShowGazeWarning(false), 3000);
-    }
-  }, []);
-
   // ── Authoritative Centralized Camera Management (REM-2) ──────────────
   const {
     stream: cameraStream,
@@ -269,58 +236,38 @@ export default function InterviewSession() {
     };
   }, [stopCamera]);
 
-  // Unified tracker lifecycle effect tied to authoritative cameraStream and narration state
+  // Active question attribution context (REM-4)
+  const activeQuestionId = isRetry && retryQuestionIndex !== null
+    ? `q_${retryQuestionIndex + 1}`
+    : `q_${currentQuestionIndex + 1}`;
+  const activeQuestionIndex = isRetry && retryQuestionIndex !== null
+    ? retryQuestionIndex
+    : currentQuestionIndex;
+
+  // ── Unified Worker + ONNX Vision Pipeline (REM-3 / REM-4) ─────────────
+  const {
+    videoRef,
+    liveGazeFrame,
+    livePoseFrame,
+    liveAffectFrame,
+    gazeEyeContactPct,
+    showGazeWarning,
+    latestGestureToast,
+    isVisionReady,
+    isONNXReady,
+    clearPerQuestionFrames,
+    getCapturedTelemetry,
+  } = useIVPSessionPipeline({
+    mediaStream: cameraStream,
+    isSpeaking: interviewerSpeaking,
+    questionId: activeQuestionId,
+    questionIndex: activeQuestionIndex,
+  });
+
+  // Reset per-question vision metrics on question change
   useEffect(() => {
-    if (!interviewerSpeaking && cameraStream) {
-      gazeTrackerRef.current?.start(cameraStream).catch(() => {});
-      poseTrackerRef.current?.start(cameraStream).catch(() => {});
-      affectTrackerRef.current?.start(cameraStream).catch(() => {});
-      syncTrackerRef.current?.start(cameraStream).catch(() => {});
-    } else if (interviewerSpeaking) {
-      gazeTrackerRef.current?.stop();
-      poseTrackerRef.current?.stop();
-      affectTrackerRef.current?.stop();
-      syncTrackerRef.current?.stop();
-    }
-    return () => {
-      if (gazeWarningTimerRef.current) clearTimeout(gazeWarningTimerRef.current);
-    };
-  }, [interviewerSpeaking, cameraStream]);
-
-  // Reset per-question gaze counts on question change
-  useEffect(() => {
-    setGazeFrameCount(0);
-    setGazeContactCount(0);
-    setGazeEyeContactPct(0);
-    setLiveGazeFrame(null);
-    setShowGazeWarning(false);
-  }, [currentQuestionIndex]);
-
-  // ── HopeNet Head Pose Tracker state ──────────────────────────────────
-  const poseTrackerRef = useRef<IVPPoseTrackerHandle | null>(null);
-  const [livePoseFrame, setLivePoseFrame] = useState<HeadPoseFrameResult | null>(null);
-  const [latestGestureToast, setLatestGestureToast] = useState<{
-    type: 'NODDING' | 'HEAD_SHAKING' | 'POSTURE_SLUMP';
-    timestampMs: number;
-  } | null>(null);
-
-  const handlePoseFrame = useCallback((frame: HeadPoseFrameResult) => {
-    setLivePoseFrame(frame);
-    if (frame.detectedGesture === 'NODDING' || frame.detectedGesture === 'HEAD_SHAKING') {
-      setLatestGestureToast({
-        type: frame.detectedGesture,
-        timestampMs: frame.frameTimestampMs,
-      });
-    }
-  }, []);
-
-  // ── AffectNet Facial Expression & Composure Tracker state ──────────
-  const affectTrackerRef = useRef<IVPAffectTrackerHandle | null>(null);
-  const [liveAffectFrame, setLiveAffectFrame] = useState<AffectFrameResult | null>(null);
-
-  const handleAffectFrame = useCallback((frame: AffectFrameResult) => {
-    setLiveAffectFrame(frame);
-  }, []);
+    clearPerQuestionFrames();
+  }, [currentQuestionIndex, clearPerQuestionFrames]);
 
   // ── SyncNet Audio-Visual Lip-Sync Tracker state ─────────────────────
   const syncTrackerRef = useRef<IVPSyncTrackerHandle | null>(null);
@@ -329,6 +276,15 @@ export default function InterviewSession() {
   const handleSyncWindow = useCallback((result: SyncWindowResult) => {
     setLiveSyncWindow(result);
   }, []);
+
+  // SyncTracker lifecycle tied to authoritative cameraStream and narration state
+  useEffect(() => {
+    if (!interviewerSpeaking && cameraStream) {
+      syncTrackerRef.current?.start(cameraStream).catch(() => {});
+    } else if (interviewerSpeaking) {
+      syncTrackerRef.current?.stop();
+    }
+  }, [interviewerSpeaking, cameraStream]);
 
 
 
@@ -542,13 +498,8 @@ export default function InterviewSession() {
         setCurrentQuestionIndex(nextIndex);
       } else {
         setGrading(true);
-        const capturedGazeFrames = gazeTrackerRef.current?.getFrames() ?? [];
-        const capturedPoseFrames = poseTrackerRef.current?.getFrames() ?? [];
-        const capturedAffectFrames = affectTrackerRef.current?.getFrames() ?? [];
+        const { capturedGazeFrames, capturedPoseFrames, capturedAffectFrames } = getCapturedTelemetry();
         const capturedSyncWindows = syncTrackerRef.current?.getFrames() ?? [];
-        gazeTrackerRef.current?.stop();
-        poseTrackerRef.current?.stop();
-        affectTrackerRef.current?.stop();
         syncTrackerRef.current?.stop();
         stopCamera();
         submitInterviewAnswers(
@@ -586,18 +537,13 @@ export default function InterviewSession() {
 
     if (isRetry && retryQuestionIndex !== null) {
       setGrading(true);
-      const capturedGazeFrames = gazeTrackerRef.current?.getFrames() ?? [];
-      const capturedPoseFrames = poseTrackerRef.current?.getFrames() ?? [];
-      const capturedAffectFrames = affectTrackerRef.current?.getFrames() ?? [];
+      const { capturedGazeFrames, capturedPoseFrames, capturedAffectFrames } = getCapturedTelemetry();
       const capturedSyncWindows = syncTrackerRef.current?.getFrames() ?? [];
-      gazeTrackerRef.current?.stop();
-      poseTrackerRef.current?.stop();
-      affectTrackerRef.current?.stop();
       syncTrackerRef.current?.stop();
       stopCamera();
       submitInterviewAnswers(
         setupData,
-        [{ id: 'q_1', question: currentQuestionText }],
+        [{ id: activeQuestionId, question: currentQuestionText }],
         [{ answerText: finalAnswer || 'No response provided.' }],
         undefined,
         capturedGazeFrames,
@@ -785,13 +731,8 @@ export default function InterviewSession() {
       setCurrentQuestionIndex(nextIndex);
     } else {
       setGrading(true);
-      const capturedGazeFrames = gazeTrackerRef.current?.getFrames() ?? [];
-      const capturedPoseFrames = poseTrackerRef.current?.getFrames() ?? [];
-      const capturedAffectFrames = affectTrackerRef.current?.getFrames() ?? [];
+      const { capturedGazeFrames, capturedPoseFrames, capturedAffectFrames } = getCapturedTelemetry();
       const capturedSyncWindows = syncTrackerRef.current?.getFrames() ?? [];
-      gazeTrackerRef.current?.stop();
-      poseTrackerRef.current?.stop();
-      affectTrackerRef.current?.stop();
       syncTrackerRef.current?.stop();
       stopCamera();
       submitInterviewAnswers(
@@ -1095,37 +1036,28 @@ export default function InterviewSession() {
                 <LipSyncHUD currentWindow={liveSyncWindow} />
               </div>
 
-              {/* Hidden keyframe affect tracker for ref handle */}
-              <IVPAffectTracker
-                ref={affectTrackerRef}
-                mediaStream={cameraStream}
-                onFrame={handleAffectFrame}
-                visible={!interviewerSpeaking}
-              />
+              {/* Audio Sync Tracker for AV latency & speech energy */}
               <IVPSyncTracker
                 ref={syncTrackerRef}
                 mediaStream={cameraStream}
+                videoSource={videoRef.current}
+                questionId={activeQuestionId}
+                questionIndex={activeQuestionIndex}
                 onWindow={handleSyncWindow}
                 visible={!interviewerSpeaking}
               />
 
-              {/* Camera overlays grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                <IVPGazeTracker
-                  ref={gazeTrackerRef}
-                  mediaStream={cameraStream}
-                  onFrame={handleGazeFrame}
-                  visible={!interviewerSpeaking}
-                  className="max-h-[160px]"
-                />
-                <IVPPoseTracker
-                  ref={poseTrackerRef}
-                  mediaStream={cameraStream}
-                  onFrame={handlePoseFrame}
-                  visible={!interviewerSpeaking}
-                  className="max-h-[160px]"
-                />
-              </div>
+              {/* Modern Unified Vision Worker + ONNX Camera HUD (REM-3) */}
+              <IVPCameraPreview
+                videoRef={videoRef}
+                mediaStream={cameraStream}
+                gazeResult={liveGazeFrame}
+                poseResult={livePoseFrame}
+                isVisionReady={isVisionReady}
+                isONNXReady={isONNXReady}
+                visible={!interviewerSpeaking}
+                className="mt-3"
+              />
 
 
               <div className="bg-[#030712]/60 rounded-xl p-5 border border-white/5 mt-4 min-h-[120px] flex flex-col justify-center">

@@ -38,4 +38,8 @@ export interface SyncWindowInput {
   offsetMs?: number;
   audioEnergy?: number;
   confidence?: number;
+  /** Explicit per-question attribution identifier (REM-4) */
+  questionId?: string;
+  /** Explicit per-question 0-based index in session (REM-4) */
+  questionIndex?: number;
 }

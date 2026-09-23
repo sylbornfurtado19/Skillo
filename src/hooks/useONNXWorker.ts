@@ -11,14 +11,23 @@ import {
   runContinuousUnifiedONNX,
 } from '@/lib/services/onnxInferenceService';
 
+export interface FrameMetadata {
+  questionId?: string;
+  questionIndex?: number;
+  timestampMs?: number;
+}
+
 export interface UseONNXWorkerOptions {
   autoStart?: boolean;
-  onTelemetry?: (telemetry: SmoothedTelemetry) => void;
+  onTelemetry?: (telemetry: SmoothedTelemetry, frameId?: number, metadata?: FrameMetadata) => void;
   disabled?: boolean;
 }
 
 export interface UseONNXWorkerReturn {
-  submitFrame: (source: HTMLCanvasElement | HTMLVideoElement | HTMLImageElement) => Promise<boolean>;
+  submitFrame: (
+    source: HTMLCanvasElement | HTMLVideoElement | HTMLImageElement,
+    metadata?: FrameMetadata
+  ) => Promise<boolean>;
   telemetry: SmoothedTelemetry;
   isReady: boolean;
   isWorkerActive: boolean;
@@ -59,6 +68,7 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
   const workerRef = useRef<Worker | null>(null);
   const inFlightRef = useRef(false);
   const frameIdCounterRef = useRef(0);
+  const frameMetadataMapRef = useRef<Map<number, FrameMetadata>>(new Map());
   const onTelemetryRef = useRef(onTelemetry);
   onTelemetryRef.current = onTelemetry;
 
@@ -109,20 +119,26 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
         case 'INFER_RESULT': {
           inFlightRef.current = false;
           setTelemetry(msg.payload.telemetry);
+          const meta = frameMetadataMapRef.current.get(msg.payload.frameId);
+          frameMetadataMapRef.current.delete(msg.payload.frameId);
           if (onTelemetryRef.current) {
-            onTelemetryRef.current(msg.payload.telemetry);
+            onTelemetryRef.current(msg.payload.telemetry, msg.payload.frameId, meta);
           }
           break;
         }
 
         case 'INFER_DROPPED': {
           inFlightRef.current = false;
+          frameMetadataMapRef.current.delete(msg.payload.frameId);
           setDroppedFramesCount((prev) => prev + 1);
           break;
         }
 
         case 'WORKER_ERROR': {
           inFlightRef.current = false;
+          if (msg.payload.frameId) {
+            frameMetadataMapRef.current.delete(msg.payload.frameId);
+          }
           console.warn('[useONNXWorker] Worker reported error:', msg.payload.error);
           break;
         }
@@ -159,7 +175,10 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
 
   // Frame submission with strict backpressure and ImageBitmap transfer
   const submitFrame = useCallback(
-    async (source: HTMLCanvasElement | HTMLVideoElement | HTMLImageElement): Promise<boolean> => {
+    async (
+      source: HTMLCanvasElement | HTMLVideoElement | HTMLImageElement,
+      metadata?: FrameMetadata
+    ): Promise<boolean> => {
       if (disabled) return false;
 
       // 1. Direct geometric fallback if worker not active
@@ -170,7 +189,7 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
           if (source instanceof HTMLCanvasElement) {
             const res = await runContinuousUnifiedONNX(source, 0.35);
             setTelemetry(res);
-            if (onTelemetryRef.current) onTelemetryRef.current(res);
+            if (onTelemetryRef.current) onTelemetryRef.current(res, undefined, metadata);
             return true;
           }
         } catch (err) {
@@ -190,6 +209,9 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
       // 3. Create transferable ImageBitmap
       frameIdCounterRef.current += 1;
       const frameId = frameIdCounterRef.current;
+      if (metadata) {
+        frameMetadataMapRef.current.set(frameId, metadata);
+      }
       inFlightRef.current = true;
 
       try {
@@ -201,6 +223,7 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
             resizeQuality: 'low',
           });
         } else {
+          frameMetadataMapRef.current.delete(frameId);
           inFlightRef.current = false;
           return false;
         }
@@ -217,6 +240,7 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
         workerRef.current.postMessage(inferCmd, [bitmap]);
         return true;
       } catch (err) {
+        frameMetadataMapRef.current.delete(frameId);
         inFlightRef.current = false;
         return false;
       }

@@ -34,15 +34,26 @@ interface IVPSyncTrackerProps {
   visible?: boolean;
   className?: string;
   mediaStream?: MediaStream | null;
+  videoSource?: HTMLVideoElement | null;
+  questionId?: string;
+  questionIndex?: number;
 }
 
 const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
-  function IVPSyncTracker({ onWindow, visible = true, className = '', mediaStream = null }, ref) {
+  function IVPSyncTracker({ onWindow, visible = true, className = '', mediaStream = null, videoSource = null, questionId, questionIndex }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const samplerCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const audioCtxRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
+
+    const questionIdRef = useRef<string | undefined>(questionId);
+    const questionIndexRef = useRef<number | undefined>(questionIndex);
+
+    useEffect(() => {
+      questionIdRef.current = questionId;
+      questionIndexRef.current = questionIndex;
+    }, [questionId, questionIndex]);
 
     const rafIdRef = useRef<number>(0);
     const rafCountRef = useRef<number>(0);
@@ -55,7 +66,7 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
       rafCountRef.current++;
 
       if (rafCountRef.current % RAF_SKIP === 0) {
-        const video = videoRef.current;
+        const video = videoSource || videoRef.current;
         const samplerCanvas = samplerCanvasRef.current;
 
         if (video && samplerCanvas && video.readyState >= 2 && !video.paused && !video.ended) {
@@ -98,6 +109,8 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
             offsetMs,
             audioEnergy: Math.round(audioEnergy * 100) / 100,
             confidence: 0.88,
+            questionId: questionIdRef.current,
+            questionIndex: questionIndexRef.current,
           };
 
           windowsRef.current.push(input);

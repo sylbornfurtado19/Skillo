@@ -68,4 +68,8 @@ export interface GazeFrameInput {
   yawDegrees?: number;
   /** Model confidence for this frame (0.0–1.0). Defaults to 0.8 if omitted. */
   confidence?: number;
+  /** Explicit per-question attribution identifier (REM-4) */
+  questionId?: string;
+  /** Explicit per-question 0-based index in session (REM-4) */
+  questionIndex?: number;
 }

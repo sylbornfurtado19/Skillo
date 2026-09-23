@@ -256,6 +256,10 @@ export interface AnswerBreakdown {
   feedback: string;
   suggestions?: string[];
   strengths?: string | string[];
+  eyeContactMetrics?: EyeContactSessionMetrics;
+  headPoseMetrics?: HeadPoseSessionMetrics;
+  affectiveMetrics?: AffectiveSessionMetrics;
+  lipSyncMetrics?: LipSyncSessionMetrics;
 }
 
 export interface EvaluationCategories {
