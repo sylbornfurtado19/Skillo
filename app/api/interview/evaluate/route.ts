@@ -13,6 +13,8 @@ const questionSchema = z.object({
   question: z.string().min(1, 'Question text cannot be empty').max(1000, 'Question text exceeds 1000 characters limit'),
   duration: z.number().finite().positive().max(7200).optional(),
   hint: z.string().max(500, 'Hint exceeds 500 characters limit').optional(),
+  idealConcepts: z.string().max(1000).optional(),
+  targetedWeakness: z.string().max(500).optional(),
 });
 
 const answerSchema = z.object({

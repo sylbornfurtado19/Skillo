@@ -110,6 +110,8 @@ interface QuestionItem {
   question: string;
   duration: number;
   hint: string;
+  idealConcepts?: string;
+  targetedWeakness?: string;
 }
 
 const QUESTION_DATABASE: Record<string, Record<string, QuestionItem[]>> = {
@@ -293,6 +295,8 @@ export const getQuestionsForSetup = (setupData: {
       question: item.question,
       duration: item.duration,
       hint: item.hint,
+      idealConcepts: item.idealConcepts,
+      targetedWeakness: item.targetedWeakness,
     });
   }
 
@@ -301,7 +305,14 @@ export const getQuestionsForSetup = (setupData: {
 
 export const submitInterviewAnswers = async (
   setupData: Record<string, any>,
-  questionsList: Array<{ id: string; question: string; hint?: string }>,
+  questionsList: Array<{
+    id: string;
+    question: string;
+    hint?: string;
+    duration?: number;
+    idealConcepts?: string;
+    targetedWeakness?: string;
+  }>,
   answersList: Array<string | { answerText?: string }>,
   showToast?: (message: string, variant?: 'info' | 'success' | 'error') => void,
   gazeFrames?: Array<{

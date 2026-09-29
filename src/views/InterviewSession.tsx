@@ -36,7 +36,7 @@ import LipSyncHUD from '../components/ui/LipSyncHUD';
 import { useInterviewCamera } from '../hooks/useInterviewCamera';
 import { useIVPSessionPipeline } from '../hooks/useIVPSessionPipeline';
 import IVPCameraPreview from '../components/ui/IVPCameraPreview';
-import type { SyncWindowResult } from '@/types/index';
+import type { SyncWindowResult, InterviewQuestion } from '@/types/index';
 
 
 
@@ -46,7 +46,7 @@ const AUTOSAVE_STORAGE_KEY_PREFIX = 'skillo_draft_ans_';
 
 function generateFallbackEvaluationReport(
   setup: any,
-  questList: Array<{ id: string; question: string }>,
+  questList: Array<{ id: string; question: string; hint?: string; idealConcepts?: string }>,
   ansList: Array<any>
 ) {
   const avgScore = 78;
@@ -68,7 +68,7 @@ function generateFallbackEvaluationReport(
         question: q.question,
         userAnswer: ansStr || 'Answer recorded.',
         score: ansStr.trim().length > 30 ? 80 : 55,
-        idealConcepts: 'Standard domain principles & practices.',
+        idealConcepts: q.idealConcepts || (q.hint ? q.hint.trim() : 'Standard domain principles & practices.'),
         feedback: 'Evaluated with resilient client-side assessment fallback.',
         strengths: ['Structured response organization', 'Clear communication'],
         suggestions: ['Incorporate concrete system design trade-offs and quantitative metrics.'],
@@ -184,12 +184,27 @@ export default function InterviewSession() {
   }, [questions, router]);
 
   const persona = INTERVIEWER_PERSONAS[setupData.persona as keyof typeof INTERVIEWER_PERSONAS] || INTERVIEWER_PERSONAS.sarah;
-  const currentQuestionText = questions[currentQuestionIndex] || '';
+  const currentQuestionRaw = questions[currentQuestionIndex];
+  const currentQuestionText =
+    typeof currentQuestionRaw === 'string'
+      ? currentQuestionRaw
+      : currentQuestionRaw?.question || '';
   const currentQuestion = {
     question: currentQuestionText,
-    duration: 120,
-    id: `q_${currentQuestionIndex + 1}`,
-    hint: '',
+    duration:
+      typeof currentQuestionRaw === 'object' && typeof currentQuestionRaw?.duration === 'number'
+        ? currentQuestionRaw.duration
+        : 120,
+    id:
+      typeof currentQuestionRaw === 'object' && currentQuestionRaw?.id
+        ? currentQuestionRaw.id
+        : `q_${currentQuestionIndex + 1}`,
+    hint:
+      typeof currentQuestionRaw === 'object' && currentQuestionRaw?.hint
+        ? currentQuestionRaw.hint
+        : '',
+    targetedWeakness: typeof currentQuestionRaw === 'object' ? currentQuestionRaw?.targetedWeakness : undefined,
+    idealConcepts: typeof currentQuestionRaw === 'object' ? currentQuestionRaw?.idealConcepts : undefined,
   };
 
   // Local States
@@ -198,7 +213,9 @@ export default function InterviewSession() {
   const [transcriptText, setTranscriptText] = useState('');
   const [recording, setRecording] = useState(false);
   const [timeLeft, setTimeLeft] = useState(currentQuestion.duration);
-  const [interviewerSpeaking, setInterviewerSpeaking] = useState(true);
+  const [interviewerSpeaking, setInterviewerSpeaking] = useState(() => {
+    return typeof window !== 'undefined' && 'speechSynthesis' in window;
+  });
   const [grading, setGrading] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [confirmSkip, setConfirmSkip] = useState(false);
@@ -484,7 +501,7 @@ export default function InterviewSession() {
     setShowHint(false);
 
     // Helper to perform normal question progression
-    const proceedToNext = (updatedQuestions: string[], updatedAnswers: any[]) => {
+    const proceedToNext = (updatedQuestions: (string | InterviewQuestion)[], updatedAnswers: any[]) => {
       setCheckingFollowUp(false);
       if (currentQuestionIndex + 1 < updatedQuestions.length) {
         const nextIndex = currentQuestionIndex + 1;
@@ -504,7 +521,19 @@ export default function InterviewSession() {
         stopCamera();
         submitInterviewAnswers(
           setupData,
-          updatedQuestions.map((q, idx) => ({ id: `q_${idx + 1}`, question: q })),
+          updatedQuestions.map((q, idx) => {
+            if (typeof q === 'object' && q !== null) {
+              return {
+                id: q.id || `q_${idx + 1}`,
+                question: q.question,
+                hint: q.hint,
+                duration: q.duration,
+                idealConcepts: q.idealConcepts,
+                targetedWeakness: q.targetedWeakness,
+              };
+            }
+            return { id: `q_${idx + 1}`, question: q };
+          }),
           updatedAnswers,
           undefined,
           capturedGazeFrames,
@@ -525,7 +554,17 @@ export default function InterviewSession() {
             showToast('Network timeout. Generated resilient assessment fallback.', 'info');
             const fallback = generateFallbackEvaluationReport(
               setupData,
-              updatedQuestions.map((q, idx) => ({ id: `q_${idx + 1}`, question: q })),
+              updatedQuestions.map((q, idx) => {
+                if (typeof q === 'object' && q !== null) {
+                  return {
+                    id: q.id || `q_${idx + 1}`,
+                    question: q.question,
+                    hint: q.hint,
+                    idealConcepts: q.idealConcepts,
+                  };
+                }
+                return { id: `q_${idx + 1}`, question: q };
+              }),
               updatedAnswers
             );
             setResults(fallback);
@@ -543,7 +582,14 @@ export default function InterviewSession() {
       stopCamera();
       submitInterviewAnswers(
         setupData,
-        [{ id: activeQuestionId, question: currentQuestionText }],
+        [{
+          id: currentQuestion.id || activeQuestionId,
+          question: currentQuestion.question,
+          hint: currentQuestion.hint,
+          duration: currentQuestion.duration,
+          idealConcepts: currentQuestion.idealConcepts,
+          targetedWeakness: currentQuestion.targetedWeakness,
+        }],
         [{ answerText: finalAnswer || 'No response provided.' }],
         undefined,
         capturedGazeFrames,
@@ -738,7 +784,19 @@ export default function InterviewSession() {
       stopCamera();
       submitInterviewAnswers(
         setupData,
-        questions.map((q, idx) => ({ id: `q_${idx + 1}`, question: q })),
+        questions.map((q, idx) => {
+          if (typeof q === 'object' && q !== null) {
+            return {
+              id: q.id || `q_${idx + 1}`,
+              question: q.question,
+              hint: q.hint,
+              duration: q.duration,
+              idealConcepts: q.idealConcepts,
+              targetedWeakness: q.targetedWeakness,
+            };
+          }
+          return { id: `q_${idx + 1}`, question: q };
+        }),
         newAnswers,
         undefined,
         capturedGazeFrames,
@@ -759,7 +817,17 @@ export default function InterviewSession() {
           showToast('Network timeout. Generated resilient assessment fallback.', 'info');
           const fallback = generateFallbackEvaluationReport(
             setupData,
-            questions.map((q, idx) => ({ id: `q_${idx + 1}`, question: q })),
+            questions.map((q, idx) => {
+              if (typeof q === 'object' && q !== null) {
+                return {
+                  id: q.id || `q_${idx + 1}`,
+                  question: q.question,
+                  hint: q.hint,
+                  idealConcepts: q.idealConcepts,
+                };
+              }
+              return { id: `q_${idx + 1}`, question: q };
+            }),
             newAnswers
           );
           setResults(fallback);

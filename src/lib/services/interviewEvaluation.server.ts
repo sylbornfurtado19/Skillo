@@ -34,6 +34,8 @@ export interface QuestionItemInput {
   question: string;
   duration?: number;
   hint?: string;
+  targetedWeakness?: string;
+  idealConcepts?: string;
 }
 
 export interface AnswerItemInput {
@@ -548,7 +550,7 @@ export async function performInterviewEvaluation(
       question: sanitizedQuestion,
       userAnswer: sanitizedAns || 'No answer provided.',
       score: sanitizedAns ? Math.min(100, Math.round(finalScore * 20)) : 0,
-      idealConcepts: q.hint ? q.hint.trim() : 'Core concepts related to the topic.',
+      idealConcepts: q.idealConcepts ? q.idealConcepts.trim() : (q.hint ? q.hint.trim() : 'Core concepts related to the topic.'),
       feedback: sanitizedAns
         ? `Evaluated using Prometheus-2 rubric (${confidenceLevel} confidence, SE: ${semanticEntropy}).`
         : 'No answer was recorded for this question.',

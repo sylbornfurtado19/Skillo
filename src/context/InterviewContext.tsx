@@ -1,6 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { InterviewQuestion } from '../types/index';
+
+export type { InterviewQuestion };
+export type QuestionItem = string | InterviewQuestion;
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -78,8 +82,8 @@ export interface InterviewContextValue {
   setAnalysisResult: (result: unknown) => void;
   setupData: SetupData;
   setSetupData: (data: SetupData) => void;
-  questions: string[];
-  setQuestions: (questions: string[]) => void;
+  questions: (string | InterviewQuestion)[];
+  setQuestions: (questions: (string | InterviewQuestion)[]) => void;
   currentQuestionIndex: number;
   setCurrentQuestionIndex: (index: number) => void;
   answers: AnswerRecord[];
@@ -275,7 +279,7 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
   const [setupData, setSetupData] = useState<SetupData>(DEFAULT_SETUP);
 
   // Interview session
-  const [questions, setQuestions] = useState<string[]>([]);
+  const [questions, setQuestions] = useState<(string | InterviewQuestion)[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
 

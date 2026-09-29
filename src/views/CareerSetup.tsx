@@ -238,7 +238,7 @@ export default function CareerSetup() {
       if (res.ok) {
         const json = await res.json();
         if (json.data && Array.isArray(json.data.questions) && json.data.questions.length > 0) {
-          setQuestions(json.data.questions.map((q: any) => q.question));
+          setQuestions(json.data.questions);
           if (Array.isArray(json.data.pastCritiques)) {
             setPastCritiques(json.data.pastCritiques);
           }
@@ -259,7 +259,7 @@ export default function CareerSetup() {
     // Fallback Question Pool Selection if API call is skipped or fails
     const questList = getQuestionsForSetup(setupData);
     const limitedQuestions = questList.slice(0, setupData.questionCount);
-    setQuestions(limitedQuestions.map((q) => q.question));
+    setQuestions(limitedQuestions);
     setCurrentQuestionIndex(0);
     setAnswers([]);
 

@@ -35,6 +35,7 @@ export interface GeneratedQuestionItem {
   duration?: number;
   hint?: string;
   targetedWeakness?: string;
+  idealConcepts?: string;
 }
 
 export async function POST(request: Request) {
@@ -178,8 +179,9 @@ Output strict JSON with format:
                 id: q.id || `q_${i + 1}`,
                 question: String(q.question),
                 hint: q.hint ? String(q.hint) : undefined,
-                duration: 120,
+                duration: typeof q.duration === 'number' ? q.duration : 120,
                 targetedWeakness: q.targetedWeakness ? String(q.targetedWeakness) : undefined,
+                idealConcepts: q.idealConcepts ? String(q.idealConcepts) : undefined,
               }));
             }
           }
@@ -202,6 +204,7 @@ Output strict JSON with format:
           duration: q.duration || 120,
           hint: q.hint,
           targetedWeakness,
+          idealConcepts: q.idealConcepts,
         };
       });
     }

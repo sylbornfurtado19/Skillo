@@ -41,6 +41,15 @@ export interface UserProfile {
   skillMemoryStore?: CandidateSkillMemoryStore;
 }
 
+export interface InterviewQuestion {
+  id?: string;
+  question: string;
+  duration?: number;
+  hint?: string;
+  targetedWeakness?: string;
+  idealConcepts?: string;
+}
+
 export * from './interviewModes';
 export * from './systemDesign';
 export * from './themes';
