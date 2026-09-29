@@ -166,9 +166,12 @@ export default function IVPCameraPreview({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, w, h);
-
-    // Draw video frame onto pose canvas
+    // Draw mirrored video frame onto pose canvas so camera view matches selfie video feed
+    ctx.save();
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0, w, h);
+    ctx.restore();
 
     if (poseResult) {
       const { angles } = poseResult;
@@ -281,7 +284,6 @@ export default function IVPCameraPreview({
           <canvas
             ref={gazeCanvasRef}
             className="absolute inset-0 w-full h-full pointer-events-none"
-            style={{ transform: 'scaleX(-1)' }}
           />
 
           {!mediaStream && (
@@ -312,11 +314,10 @@ export default function IVPCameraPreview({
         </div>
 
         <div className="relative w-full" style={{ aspectRatio: '4/3' }}>
-          {/* Mirror Canvas with 3D Wireframe & Axes */}
+          {/* Canvas with 3D Wireframe & Axes */}
           <canvas
             ref={poseCanvasRef}
             className="w-full h-full object-cover"
-            style={{ transform: 'scaleX(-1)' }}
           />
 
           {!mediaStream && (
