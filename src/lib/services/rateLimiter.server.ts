@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/server/supabaseAdmin';
 
 /**
  * ARCHITECTURAL NOTE:
  * Rate limiting across serverless runtime instances (such as Vercel or AWS Lambda)
  * requires a centralized persistent store.
  *
- * This implementation primarily queries the Supabase `request_logs` table.
- * If the table has not yet been migrated in Supabase, it falls back gracefully
- * to an in-memory sliding-window store with a logged advisory.
+ * This implementation queries the Supabase `request_logs` table via the server-side
+ * service-role admin client to bypass Row Level Security (RLS) policies.
+ * If credentials are not configured, database query fails, or table does not exist,
+ * it falls back gracefully to an in-memory sliding-window store with a logged advisory.
  *
  * Recommendation for high-throughput enterprise scale:
  * Integrate Upstash Redis via `@upstash/ratelimit` for sub-millisecond atomic checks.
@@ -40,46 +41,46 @@ export async function checkRateLimit(options: RateLimitOptions): Promise<RateLim
   const windowMs = windowSeconds * 1000;
   const cutoffTime = new Date(nowMs - windowMs).toISOString();
 
-  // 1. Try Supabase request_logs table first only if Supabase is authentically configured
-  if (isSupabaseConfigured && process.env.NODE_ENV !== 'test') {
-    try {
-      const { count, error } = await supabase
-        .from('request_logs')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('action', action)
-        .gte('created_at', cutoffTime);
+  // 1. Try server-side Supabase admin client on request_logs table (bypasses RLS)
+  try {
+    const { count, error } = await supabaseAdmin
+      .from('request_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('action', action)
+      .gte('created_at', cutoffTime);
 
-      if (!error && typeof count === 'number') {
-        if (count >= maxRequests) {
-          return {
-            allowed: false,
-            limit: maxRequests,
-            remaining: 0,
-            resetSeconds: windowSeconds,
-            retryAfterSeconds: windowSeconds,
-            store: 'supabase',
-          };
-        }
-
-        // Log the incoming request asynchronously
-        void supabase.from('request_logs').insert({
-          user_id: userId,
-          action,
-          created_at: new Date(nowMs).toISOString(),
-        });
-
+    if (!error && typeof count === 'number') {
+      if (count >= maxRequests) {
         return {
-          allowed: true,
+          allowed: false,
           limit: maxRequests,
-          remaining: Math.max(0, maxRequests - (count + 1)),
+          remaining: 0,
           resetSeconds: windowSeconds,
+          retryAfterSeconds: windowSeconds,
           store: 'supabase',
         };
       }
-    } catch (err) {
-      // Supabase unavailable or table not created; proceed to in-memory fallback below
+
+      // Log the incoming request asynchronously via admin client
+      void Promise.resolve(
+        supabaseAdmin.from('request_logs').insert({
+          user_id: userId,
+          action,
+          created_at: new Date(nowMs).toISOString(),
+        })
+      ).catch(() => {});
+
+      return {
+        allowed: true,
+        limit: maxRequests,
+        remaining: Math.max(0, maxRequests - (count + 1)),
+        resetSeconds: windowSeconds,
+        store: 'supabase',
+      };
     }
+  } catch {
+    // Admin client unconfigured or database operation failed; proceed to in-memory fallback below
   }
 
   // 2. In-memory sliding window fallback (strictly for development and unit testing)
