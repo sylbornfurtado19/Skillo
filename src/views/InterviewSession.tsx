@@ -15,6 +15,7 @@ import {
   FaStepForward,
 } from 'react-icons/fa';
 import { INTERVIEWER_PERSONAS, submitInterviewAnswers } from '../services/constants';
+import { saveMockInterview, mapEvaluationToMockInterviewPayload } from '../services/interview';
 import { useInterview } from '../context/InterviewContext';
 import { useAuth } from '../hooks/useAuth';
 import { getProfile } from '../services/profile';
@@ -546,6 +547,17 @@ export default function InterviewSession() {
 
           .then((finalReport) => {
             setResults(finalReport);
+            const authUserId = user?.id || finalReport.userId;
+            if (authUserId) {
+              const effectiveSetup = {
+                ...setupData,
+                ...(diagramState?.nodes?.length ? { systemDesignDiagram: diagramState } : {}),
+              };
+              const payload = mapEvaluationToMockInterviewPayload(finalReport, effectiveSetup);
+              saveMockInterview(authUserId, payload).catch((err) => {
+                console.warn('[InterviewSession] Failed to persist mock interview to Supabase:', err);
+              });
+            }
             setGrading(false);
             router.push('/results');
           })
@@ -809,6 +821,17 @@ export default function InterviewSession() {
 
         .then((finalReport) => {
           setResults(finalReport);
+          const authUserId = user?.id || finalReport.userId;
+          if (authUserId) {
+            const effectiveSetup = {
+              ...setupData,
+              ...(diagramState?.nodes?.length ? { systemDesignDiagram: diagramState } : {}),
+            };
+            const payload = mapEvaluationToMockInterviewPayload(finalReport, effectiveSetup);
+            saveMockInterview(authUserId, payload).catch((err) => {
+              console.warn('[InterviewSession] Failed to persist mock interview to Supabase on skip:', err);
+            });
+          }
           setGrading(false);
           router.push('/results');
         })

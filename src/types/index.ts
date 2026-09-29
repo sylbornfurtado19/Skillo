@@ -400,12 +400,23 @@ export interface EvaluationReport {
 export interface MockInterview {
   id: string;
   user_id: string;
+  domain: string;
   role: string;
-  difficulty: string;
-  score: number;
-  feedback: EvaluationReport;
+  experience_level?: string;
+  interview_type?: string;
+  persona?: string;
+  overall_score: number;
+  categories: EvaluationCategories;
+  breakdown: AnswerBreakdown[];
+  interviewer_comments?: string;
   created_at?: string;
+  company?: string;
+  duration?: number;
+  interview_mode_id?: string;
+  system_design_diagram?: Record<string, any>;
 }
+
+export type MockInterviewInsert = Omit<MockInterview, 'id' | 'user_id'>;
 
 export interface ServiceResponse<T> {
   data: T | null;
