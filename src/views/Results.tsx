@@ -9,7 +9,6 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaFilePdf,
-  FaExclamationTriangle,
   FaArrowRight,
   FaAward,
   FaListUl,
@@ -63,7 +62,6 @@ export default function Results() {
   const router = useRouter();
   const { showToast } = useToast();
   const {
-    resumeData,
     results,
     setResults,
     setQuestions,
@@ -195,23 +193,6 @@ export default function Results() {
       setDownloading(false);
     }
   };
-
-  if (!resumeData) {
-    return (
-      <div className="glass-card rounded-2xl p-8 border border-red-500/20 bg-red-500/5 text-center max-w-md mx-auto mt-12 space-y-6">
-        <div className="h-12 w-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 text-xl mx-auto">
-          <FaExclamationTriangle />
-        </div>
-        <h3 className="text-lg font-heading font-bold text-white">Resume Required</h3>
-        <p className="text-xs text-gray-400 leading-relaxed">
-          You must upload your resume and specify job details before you can access performance reports.
-        </p>
-        <Button onClick={() => router.push('/resume')} variant="primary" size="md">
-          Go to Upload Page
-        </Button>
-      </div>
-    );
-  }
 
   if (!results) return null;
 
