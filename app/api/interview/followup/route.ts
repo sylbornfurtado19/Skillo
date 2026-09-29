@@ -22,6 +22,7 @@ const followupRequestSchema = z.object({
 // ── Response Schema (for documentation) ──────────────────────────────────────
 // {
 //   needsFollowUp: boolean,
+//   followUpQuestion?: string,
 //   selectedBranch?: {
 //     actionType: "DEEP_DIVE" | "PIVOT" | "EDGE_CASE_CHALLENGE",
 //     questionText: string,
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
     // 7. Build response payload with explicit fallback flag
     return NextResponse.json({
       needsFollowUp: true,
+      followUpQuestion: selectedNode.questionText,
       fallback: isFallback,
       selectedBranch: {
         actionType: selectedNode.actionType,
@@ -152,6 +154,7 @@ export async function POST(request: Request) {
         ?? fallbackState.simulatedBranches[0];
       return NextResponse.json({
         needsFollowUp: true,
+        followUpQuestion: selectedNode.questionText,
         fallback: true,
         selectedBranch: {
           actionType: selectedNode.actionType,

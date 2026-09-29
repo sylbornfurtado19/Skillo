@@ -613,10 +613,11 @@ export default function InterviewSession() {
       })();
 
       Promise.race([fetchPromise, timeoutPromise]).then((data) => {
-        if (data && data.needsFollowUp && data.followUpQuestion) {
+        const followUpText = data?.followUpQuestion || data?.selectedBranch?.questionText;
+        if (data && data.needsFollowUp && followUpText) {
           const newQuestionsList = [...questions];
           const insertIdx = currentQuestionIndex + 1;
-          newQuestionsList.splice(insertIdx, 0, data.followUpQuestion);
+          newQuestionsList.splice(insertIdx, 0, followUpText);
           followUpBadgeSet.add(insertIdx);
           followUpTrackedIndices.add(insertIdx); // Prevent nested follow-up on the follow-up question itself
 

@@ -249,6 +249,27 @@ describe('API Validation & Abuse Prevention Suite', () => {
       expect(data.message).toBe('Invalid payload');
       expect(JSON.stringify(data.errors)).toContain('10,000 characters limit');
     });
+
+    it('returns followUpQuestion at the root matching selectedBranch.questionText for valid payload', async () => {
+      const req = new Request('http://localhost:3000/api/interview/followup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+        body: JSON.stringify({
+          role: 'Backend Engineer',
+          question: 'How does Kafka guarantee message ordering?',
+          answerText: 'Kafka partitions topic messages by key. Within each partition, messages are assigned sequential offset IDs.',
+        }),
+      });
+
+      const res = await followupHandler(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.needsFollowUp).toBe(true);
+      expect(typeof data.followUpQuestion).toBe('string');
+      expect(data.followUpQuestion.length).toBeGreaterThan(0);
+      expect(data.selectedBranch).toBeDefined();
+      expect(data.followUpQuestion).toBe(data.selectedBranch.questionText);
+    });
   });
 
   describe('/api/resume/analyze Route Validation', () => {
