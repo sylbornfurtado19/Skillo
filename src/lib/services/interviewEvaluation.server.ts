@@ -1,9 +1,7 @@
 import { z } from 'zod';
 import {
-  generateVerbalSelfReflection,
   consolidateReflexionMemory,
   getRelevantReflexionContext,
-  persistSkillMemoryStore,
   retrieveSkillMemoryStore,
 } from './reflexionEngine.server';
 import { generateSimPOContrastiveEvaluation } from './simpoEngine.server';
@@ -595,25 +593,9 @@ export async function performInterviewEvaluation(
   const existingMemoryStore = await retrieveSkillMemoryStore(userId);
   const historicalContext = getRelevantReflexionContext(setupData.role, existingMemoryStore);
 
-  // Non-blocking fire-and-forget Reflexion generation
-  let skillMemoryStore = existingMemoryStore ?? consolidateReflexionMemory(userId, []);
-
-  void (async () => {
-    try {
-      const verbalReflection = await generateVerbalSelfReflection({
-        sessionId,
-        question: selectedQuestion,
-        candidateAnswer: selectedAns,
-        score: overallScore100,
-        role: setupData.role,
-        historicalReflections: historicalContext ? [{ id: 'ctx', sessionId: 'prior', skillTag: setupData.role, timestamp: new Date().toISOString(), mistakeSummary: historicalContext, rootCauseAnalysis: '', actionableRemediation: '', severity: 'MEDIUM' as const }] : undefined,
-      });
-      const updatedStore = consolidateReflexionMemory(userId, [verbalReflection], existingMemoryStore);
-      await persistSkillMemoryStore(userId, updatedStore);
-    } catch (err) {
-      console.warn('[Reflexion] Background memory update failed (non-blocking):', err);
-    }
-  })();
+  // Historical memory retrieved for evaluation context and LATS prior gaps
+  // Reflexion generation and persistence is dispatched exclusively via dispatchReflexionWorker
+  const skillMemoryStore = existingMemoryStore ?? consolidateReflexionMemory(userId, []);
 
   // Run LATS MCTS engine to generate adaptive follow-up tree
   let latsTreeState: LATSTreeState | undefined;
