@@ -1,5 +1,12 @@
 import { supabase } from '../lib/supabase';
-import type { ServiceResponse, UserProfile } from '../types/index';
+import type { ServiceResponse, UserProfile, CandidateSkillMemoryStore } from '../types/index';
+
+const resolveSkillMemoryStore = (raw: any): CandidateSkillMemoryStore | undefined => {
+  const store = raw?.skill_memory_store ?? raw?.skillMemoryStore;
+  if (!store || typeof store !== 'object') return undefined;
+  if (Object.keys(store).length === 0) return undefined;
+  return store as CandidateSkillMemoryStore;
+};
 
 export const getProfile = async (
   userId: string,
@@ -37,6 +44,7 @@ export const getProfile = async (
       const formatted: UserProfile = {
         ...createdData,
         profileSettings: createdData.profile_settings || createdData.profileSettings || {},
+        skillMemoryStore: resolveSkillMemoryStore(createdData),
       };
 
       return { data: formatted, error: null };
@@ -53,6 +61,7 @@ export const getProfile = async (
     const formatted: UserProfile = {
       ...data,
       profileSettings: data.profile_settings || data.profileSettings || {},
+      skillMemoryStore: resolveSkillMemoryStore(data),
     };
 
     return { data: formatted, error: null };
@@ -85,6 +94,14 @@ export const updateProfile = async (
       payload.profile_settings = settingsPayload;
     }
 
+    // Map skillMemoryStore or skill_memory_store to DB skill_memory_store JSONB column
+    const memoryStorePayload = (updates as any).skill_memory_store !== undefined
+      ? (updates as any).skill_memory_store
+      : updates.skillMemoryStore;
+    if (memoryStorePayload !== undefined) {
+      payload.skill_memory_store = memoryStorePayload;
+    }
+
     const { data, error } = await supabase
       .from('profiles')
       .upsert(payload)
@@ -98,6 +115,7 @@ export const updateProfile = async (
     const formatted: UserProfile = {
       ...data,
       profileSettings: data?.profile_settings || data?.profileSettings || {},
+      skillMemoryStore: resolveSkillMemoryStore(data),
     };
 
     return { data: formatted, error: null };
