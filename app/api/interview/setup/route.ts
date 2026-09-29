@@ -6,6 +6,7 @@ import {
   formatHistoricalMemoryPrompt,
 } from '@/lib/services/reflexionService';
 import { getQuestionsForSetup } from '@/services/constants';
+import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,25 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. Parse request payload
+    // 2. Rate limiting check (10 requests per minute for setup)
+    const clientIp =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'anonymous_user';
+    const rateLimitIdentifier = user?.id || `anon_${clientIp}`;
+
+    const rateLimit = await checkRateLimit({
+      userId: rateLimitIdentifier,
+      action: 'interview_setup',
+      maxRequests: 10,
+      windowSeconds: 60,
+    });
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(rateLimit, 'interview setup');
+    }
+
+    // 3. Parse request payload
     let body: unknown;
     try {
       body = await request.json();
