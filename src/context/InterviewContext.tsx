@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { InterviewQuestion } from '../types/index';
+import type { InterviewQuestion, EvaluationReport } from '../types/index';
 
 export type { InterviewQuestion };
 export type QuestionItem = string | InterviewQuestion;
@@ -37,11 +37,14 @@ export interface AnswerBreakdown {
   feedback: string;
   strengths?: string[];
   improvements?: string[];
+  userAnswer?: string;
+  answerText?: string;
+  [key: string]: unknown;
 }
 
 export interface InterviewResults {
   overallScore: number;
-  setupData?: SetupData;
+  setupData?: SetupData | Record<string, any>;
   personaId?: string;
   breakdown?: AnswerBreakdown[];
   [key: string]: unknown;
@@ -67,6 +70,7 @@ export interface SessionHistoryItem {
   };
   persona: string;
   interviewModeId?: string;
+  report?: EvaluationReport | InterviewResults;
 }
 
 
@@ -331,6 +335,10 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
           timeManagement: cats.timeManagement,
         },
         persona: newResults.personaId ?? 'sarah',
+        company: newResults.setupData?.company,
+        duration: newResults.setupData?.duration,
+        interviewModeId: newResults.setupData?.interviewModeId,
+        report: newResults,
       };
       setSessionHistory((prev) => {
         const updated = [historyItem, ...prev].slice(0, SESSION_HISTORY_MAX);

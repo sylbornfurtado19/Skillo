@@ -46,7 +46,7 @@ export default function Landing() {
     },
     {
       q: 'Is there a backend I can connect?',
-      a: 'The project ships with a FastAPI backend scaffold. You can run it locally and swap the front-end mock services to hit the real API. Check the backend/ folder in the repo.',
+      a: 'The application uses a built-in Next.js App Router backend with API routes under app/api/. It natively handles AI evaluation, rate limiting, and Supabase persistence without needing a separate backend server.',
     },
   ];
 

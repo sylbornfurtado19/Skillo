@@ -7,14 +7,91 @@ import dynamic from 'next/dynamic';
 import { FaBriefcase, FaArrowRight, FaEdit, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
 import { getProfile, updateProfile } from '../services/profile';
 import type { UserProfile } from '../types/index';
-import { INTERVIEWER_PERSONAS, getQuestionsForSetup } from '../services/constants';
+import { INTERVIEWER_PERSONAS } from '../services/constants';
 import { useAuth } from '../hooks/useAuth';
-import { useInterview } from '../context/InterviewContext';
+import { useInterview, type SessionHistoryItem } from '../context/InterviewContext';
 import { LogoIcon } from '../components/common/Logo';
 import '../lib/chartSetup';
 import SkillMemoryGraph from '../components/ui/SkillMemoryGraph';
 
 const Doughnut = dynamic(() => import('react-chartjs-2').then((m) => m.Doughnut), { ssr: false });
+
+export function loadPastReport(
+  interview: SessionHistoryItem,
+  callbacks: {
+    setResults: (results: any) => void;
+    setSetupData: (data: any) => void;
+    setQuestions: (q: string[]) => void;
+    setAnswers: (a: any[]) => void;
+    router: { push: (path: string) => void };
+  }
+) {
+  const { setResults, setSetupData, setQuestions, setAnswers, router } = callbacks;
+  if (interview.report) {
+    setResults(interview.report);
+    if (interview.report.setupData) {
+      setSetupData(interview.report.setupData as any);
+    } else {
+      setSetupData({
+        domain: 'Computer Science',
+        role: interview.role || 'Software Engineer',
+        experienceLevel: interview.difficulty || 'Mid-Level',
+        type: interview.type || 'Technical',
+        difficulty: interview.difficulty || 'Mid-Level',
+        questionCount: Array.isArray(interview.report.breakdown) ? interview.report.breakdown.length : 3,
+        focusAreas: ['Core Architecture', 'System Logic'],
+        persona: interview.persona || 'sarah',
+        company: interview.company || 'Generic',
+        duration: interview.duration || 45,
+      });
+    }
+
+    if (Array.isArray(interview.report.breakdown) && interview.report.breakdown.length > 0) {
+      setQuestions(interview.report.breakdown.map((b) => b.question));
+      setAnswers(
+        interview.report.breakdown.map((b) => ({
+          answerText: b.userAnswer || b.answerText || '',
+        }))
+      );
+    } else {
+      setQuestions([]);
+      setAnswers([]);
+    }
+    router.push('/results');
+    return;
+  }
+
+  const setupDataObj = {
+    domain: 'Computer Science',
+    role: interview.role || 'Software Engineer',
+    experienceLevel: interview.difficulty || 'Mid-Level',
+    type: interview.type || 'Technical',
+    difficulty: interview.difficulty || 'Mid-Level',
+    questionCount: 0,
+    focusAreas: [interview.role || 'Software Engineering'],
+    persona: interview.persona || 'sarah',
+    company: interview.company || 'Generic',
+    duration: interview.duration || 45,
+  };
+  setSetupData(setupDataObj);
+  const cats = interview.categories || {};
+  setResults({
+    overallScore: interview.score,
+    categories: {
+      technicalAccuracy: cats.technicalAccuracy ?? cats.techKnowledge ?? interview.score,
+      communication: cats.communication ?? interview.score,
+      depth: cats.depth ?? cats.confidence ?? interview.score,
+      timeManagement: cats.timeManagement ?? cats.problemSolving ?? interview.score,
+    },
+    breakdown: [],
+    interviewerComments: `Historical assessment record from ${interview.date}. Overall score: ${interview.score}%.`,
+    personaId: interview.persona || 'sarah',
+    setupData: setupDataObj,
+  });
+  setQuestions([]);
+  setAnswers([]);
+  router.push('/results');
+}
 
 export default function Profile() {
   const router = useRouter();
@@ -118,37 +195,13 @@ export default function Profile() {
     completedSessions: completedCount,
   };
 
-  const pastInterviews = [
-    {
-      id: 'past_1',
-      date: 'Jun 24, 2026',
-      track: 'React 19 Core & Architecture',
-      difficulty: 'Senior',
-      assessor: 'sarah',
-      score: 86,
-      answers: [
-        'React 19 introduces automated memoization, meaning we can write code without useMemo and useCallback in most cases.',
-        'Reconciliation works by comparing trees using persistent keys.',
-      ],
-    },
-    {
-      id: 'past_2',
-      date: 'Jun 20, 2026',
-      track: 'Engineering Collaboration & STAR',
-      difficulty: 'Senior',
-      assessor: 'david',
-      score: 80,
-      answers: [
-        'I resolved a state store disagreement by building a lightweight sandbox and benchmarking performance profiles.',
-      ],
-    },
-  ];
-
   const doughnutData = {
     labels: ['Score', 'Remaining'],
     datasets: [
       {
-        data: [candidate.averageScore || 75, 100 - (candidate.averageScore || 75)],
+        data: candidate.completedSessions > 0
+          ? [candidate.averageScore, 100 - candidate.averageScore]
+          : [0, 100],
         backgroundColor: ['#6366F1', 'rgba(255, 255, 255, 0.03)'],
         borderColor: ['#6366F1', 'rgba(255, 255, 255, 0.05)'],
         borderWidth: 1,
@@ -162,44 +215,16 @@ export default function Profile() {
     maintainAspectRatio: false,
   };
 
-  const handleLoadPastReport = (interview: (typeof pastInterviews)[0]) => {
-    const setupDataObj = {
-      domain: 'Computer Science',
-      role: 'Software Engineer',
-      experienceLevel: interview.difficulty,
-      type: interview.assessor === 'david' ? 'Behavioral' : 'Technical',
-      difficulty: interview.difficulty,
-      questionCount: interview.answers.length,
-      focusAreas: ['React 19', 'System Design'],
-      persona: interview.assessor,
-    };
 
-    const questionsList = getQuestionsForSetup(setupDataObj);
 
-    setSetupData(setupDataObj);
-    setQuestions(questionsList.map((q) => q.question));
-    setAnswers(interview.answers.map((a) => ({ answerText: a })));
-
-    setResults({
-      overallScore: interview.score,
-      categories: {
-        technicalAccuracy: interview.score,
-        communication: interview.score + 2,
-        depth: interview.score - 3,
-        timeManagement: interview.score + 1,
-      },
-      breakdown: questionsList.slice(0, interview.answers.length).map((q, idx) => ({
-        question: q.question,
-        score: interview.score + (idx % 2 === 0 ? 3 : -3),
-        feedback: 'Highly robust description covering core architecture mechanics.',
-        strengths: ['Excellent command of terminology.'],
-      })),
-      interviewerComments: 'A solid assessment exhibiting strong depth in modular design.',
-      personaId: interview.assessor,
-      setupData: setupDataObj,
+  const handleLoadPastReport = (interview: SessionHistoryItem) => {
+    loadPastReport(interview, {
+      setResults,
+      setSetupData,
+      setQuestions,
+      setAnswers,
+      router,
     });
-
-    router.push('/results');
   };
 
   return (
@@ -381,32 +406,54 @@ export default function Profile() {
           </div>
 
           <div className="space-y-3">
-            {pastInterviews.map((item) => {
-              const interviewer = INTERVIEWER_PERSONAS[item.assessor as keyof typeof INTERVIEWER_PERSONAS] || INTERVIEWER_PERSONAS.sarah;
-              return (
-                <div
-                  key={item.id}
-                  className="bg-[#030712]/50 rounded-xl p-4 border border-white/5 flex items-center justify-between text-left group hover:border-white/10 transition duration-200"
-                >
-                  <div className="space-y-1 min-w-0 pr-4">
-                    <h4 className="text-xs font-semibold text-white truncate">{item.track}</h4>
-                    <div className="flex items-center gap-2 text-[10px] text-gray-500 font-mono">
-                      <span>{item.date}</span>
-                      <span>&bull;</span>
-                      <span>Assessor: {interviewer.name}</span>
-                    </div>
-                  </div>
+            {sessionHistory && sessionHistory.length > 0 ? (
+              sessionHistory.map((item) => {
+                const interviewer =
+                  (item.persona && INTERVIEWER_PERSONAS[item.persona as keyof typeof INTERVIEWER_PERSONAS]) ||
+                  INTERVIEWER_PERSONAS.sarah;
+                const trackName = item.role
+                  ? `${item.role}${item.difficulty ? ` (${item.difficulty})` : ''}`
+                  : 'Practice Assessment';
 
-                  <button
-                    onClick={() => handleLoadPastReport(item)}
-                    className="flex items-center gap-2 text-[11px] font-semibold text-primary group-hover:text-accent transition duration-200 shrink-0 cursor-pointer"
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-[#030712]/50 rounded-xl p-4 border border-white/5 flex items-center justify-between text-left group hover:border-white/10 transition duration-200"
                   >
-                    <span className="font-mono">{item.score}/100</span>
-                    <FaArrowRight size={8} />
-                  </button>
-                </div>
-              );
-            })}
+                    <div className="space-y-1 min-w-0 pr-4">
+                      <h4 className="text-xs font-semibold text-white truncate">{trackName}</h4>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-500 font-mono">
+                        <span>{item.date}</span>
+                        <span>&bull;</span>
+                        <span>Assessor: {interviewer.name}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleLoadPastReport(item)}
+                      className="flex items-center gap-2 text-[11px] font-semibold text-primary group-hover:text-accent transition duration-200 shrink-0 cursor-pointer"
+                    >
+                      <span className="font-mono">{item.score}/100</span>
+                      <FaArrowRight size={8} />
+                    </button>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="bg-[#030712]/50 rounded-xl p-6 border border-white/5 text-center space-y-2">
+                <p className="text-xs text-gray-400 font-medium">No completed assessments yet</p>
+                <p className="text-[11px] text-gray-500">
+                  Complete an interview session to see your evaluation history and metrics here.
+                </p>
+                <button
+                  onClick={() => router.push('/setup')}
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-accent font-semibold pt-1 transition duration-200 cursor-pointer"
+                >
+                  <span>Start Practice Interview</span>
+                  <FaArrowRight size={8} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
