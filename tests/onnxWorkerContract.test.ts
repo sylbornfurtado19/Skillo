@@ -78,24 +78,24 @@ describe('ONNX Web Worker Protocol & Tensor Decoder Suite', () => {
       // Set high Happy logit (index 1)
       const logits = new Float32Array([-1.0, 5.0, -2.0, -1.0, -3.0, -3.0, -2.0]);
       const result = decodeAffectLogits(logits);
-      expect(result.dominantEmotion).toBe('Happy');
-      expect(result.emotionProbabilities.Happy).toBeGreaterThan(80);
+      expect(result.dominantEmotion).toBe('HAPPY');
+      expect(result.emotionProbabilities.HAPPY).toBeGreaterThan(80);
       expect(result.valence).toBeGreaterThan(0);
     });
 
     it('correctly classifies Surprised when surprise logit dominates', () => {
       const logits = new Float32Array([-1.0, 0.0, -1.0, 6.0, -2.0, -2.0, -2.0]);
       const result = decodeAffectLogits(logits);
-      expect(result.dominantEmotion).toBe('Surprised');
-      expect(result.emotionProbabilities.Surprised).toBeGreaterThan(80);
+      expect(result.dominantEmotion).toBe('SURPRISED');
+      expect(result.emotionProbabilities.SURPRISED).toBeGreaterThan(80);
       expect(result.arousal).toBeGreaterThan(0.4);
     });
 
     it('returns Neutral baseline when logits array is invalid or empty', () => {
       const emptyLogits = new Float32Array([]);
       const result = decodeAffectLogits(emptyLogits);
-      expect(result.dominantEmotion).toBe('Neutral');
-      expect(result.emotionProbabilities.Neutral).toBe(70);
+      expect(result.dominantEmotion).toBe('NEUTRAL');
+      expect(result.emotionProbabilities.NEUTRAL).toBe(70);
     });
   });
 
@@ -154,7 +154,7 @@ describe('ONNX Web Worker Protocol & Tensor Decoder Suite', () => {
             gazeX: 0.02,
             gazeY: -0.01,
             composure: 92,
-            dominantEmotion: 'Confident',
+            dominantEmotion: 'CONFIDENT',
             totalInferenceTimeMs: 5.1,
           },
           processingLatencyMs: 5.1,

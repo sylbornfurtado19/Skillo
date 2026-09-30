@@ -2,6 +2,7 @@
 
 import { DEFAULT_SMOOTHING_ALPHAS, CategoricalConsensusSmoother } from './temporalSmoothing';
 import { extractFacialExpressions } from './ivpExpressionKernel';
+import type { DiscreteEmotion } from '@/types/affectEngine';
 
 export type ONNXModelType = 'affect' | 'gaze' | 'pose';
 
@@ -26,7 +27,7 @@ export interface AffectInferenceResult {
   valence: number;
   arousal: number;
   composureScore: number;
-  dominantEmotion: string;
+  dominantEmotion: DiscreteEmotion;
   emotionProbabilities: Record<string, number>;
   inferenceTimeMs: number;
 }
@@ -378,15 +379,15 @@ export function decodePoseOutput(data: Float32Array): { yawDegrees: number; pitc
  * 0: Neutral, 1: Happy, 2: Sad, 3: Surprise, 4: Fear, 5: Disgust, 6: Anger
  */
 export function decodeAffectLogits(logits: Float32Array): {
-  dominantEmotion: string;
+  dominantEmotion: DiscreteEmotion;
   emotionProbabilities: Record<string, number>;
   valence: number;
   arousal: number;
 } {
   if (!logits || logits.length < 7) {
     return {
-      dominantEmotion: 'Neutral',
-      emotionProbabilities: { Neutral: 70, Happy: 10, Surprised: 10, Stressed: 10 },
+      dominantEmotion: 'NEUTRAL',
+      emotionProbabilities: { NEUTRAL: 70, HAPPY: 10, SURPRISED: 10, STRESSED: 10 },
       valence: 0.1,
       arousal: 0.1,
     };
@@ -411,20 +412,20 @@ export function decodeAffectLogits(logits: Float32Array): {
   const pSurprise = sumExp > 0 ? probs7[3] / sumExp : 0.1;
   const pNegative = sumExp > 0 ? (probs7[4] + probs7[5] + probs7[6]) / sumExp : 0.1;
 
-  let dominant = 'Neutral';
-  if (pHappy > pNeutral && pHappy > pSurprise && pHappy > pNegative) dominant = 'Happy';
-  else if (pSurprise > pNeutral && pSurprise > pNegative) dominant = 'Surprised';
-  else if (pNegative > pNeutral || pSad > pNeutral) dominant = 'Stressed';
+  let dominant: DiscreteEmotion = 'NEUTRAL';
+  if (pHappy > pNeutral && pHappy > pSurprise && pHappy > pNegative) dominant = 'HAPPY';
+  else if (pSurprise > pNeutral && pSurprise > pNegative) dominant = 'SURPRISED';
+  else if (pNegative > pNeutral || pSad > pNeutral) dominant = 'STRESSED';
 
   const emotionProbabilities: Record<string, number> = {
-    Neutral: Math.round(pNeutral * 100),
-    Happy: Math.round(pHappy * 100),
-    Surprised: Math.round(pSurprise * 100),
-    Stressed: Math.round((pNegative + pSad) * 100),
+    NEUTRAL: Math.round(pNeutral * 100),
+    HAPPY: Math.round(pHappy * 100),
+    SURPRISED: Math.round(pSurprise * 100),
+    STRESSED: Math.round((pNegative + pSad) * 100),
   };
 
-  const valence = dominant === 'Happy' ? 0.65 : dominant === 'Stressed' ? -0.4 : 0.1;
-  const arousal = dominant === 'Surprised' ? 0.6 : dominant === 'Stressed' ? 0.5 : 0.15;
+  const valence = dominant === 'HAPPY' ? 0.65 : dominant === 'STRESSED' ? -0.4 : 0.1;
+  const arousal = dominant === 'SURPRISED' ? 0.6 : dominant === 'STRESSED' ? 0.5 : 0.15;
 
   return { dominantEmotion: dominant, emotionProbabilities, valence, arousal };
 }
@@ -547,31 +548,31 @@ export async function runAffectONNX(
   }
 
   // 3. Multi-class Emotion Probabilities calibrated with authentic facial geometry
-  let dominantEmotion = expr
+  let dominantEmotion: DiscreteEmotion = expr
     ? expr.dominantEmotion === 'HAPPY'
-      ? 'Happy'
+      ? 'HAPPY'
       : expr.dominantEmotion === 'CONFIDENT'
-      ? 'Confident'
+      ? 'CONFIDENT'
       : expr.dominantEmotion === 'SURPRISED'
-      ? 'Surprised'
+      ? 'SURPRISED'
       : expr.dominantEmotion === 'STRESSED'
-      ? 'Stressed'
+      ? 'STRESSED'
       : expr.dominantEmotion === 'THINKING'
-      ? 'Thoughtful'
+      ? 'THINKING'
       : expr.dominantEmotion === 'HESITANT'
-      ? 'Stressed'
-      : 'Neutral'
-    : 'Neutral';
+      ? 'HESITANT'
+      : 'NEUTRAL'
+    : 'NEUTRAL';
 
   const emotionProbabilities: Record<string, number> = expr
     ? { ...expr.emotionProbabilities }
     : {
-        Neutral: 70,
-        Happy: 8,
-        Surprised: 5,
-        Stressed: 5,
-        Confident: 8,
-        Thoughtful: 4,
+        NEUTRAL: 70,
+        HAPPY: 8,
+        SURPRISED: 5,
+        STRESSED: 5,
+        CONFIDENT: 8,
+        THINKING: 4,
       };
 
   // If ONNX logits are available, blend them with geometric vision probabilities
@@ -594,36 +595,36 @@ export async function runAffectONNX(
 
     if (expr) {
       if (expr.smileScore >= 0.28 || pHappy > 0.45) {
-        dominantEmotion = 'Happy';
-        emotionProbabilities.Happy = Math.round(Math.max(65, pHappy * 100));
-        emotionProbabilities.Neutral = Math.round(Math.min(25, pNeutral * 100));
+        dominantEmotion = 'HAPPY';
+        emotionProbabilities.HAPPY = Math.round(Math.max(65, pHappy * 100));
+        emotionProbabilities.NEUTRAL = Math.round(Math.min(25, pNeutral * 100));
       } else if (expr.ear >= 0.32 && expr.mar >= 0.28) {
-        dominantEmotion = 'Surprised';
-        emotionProbabilities.Surprised = Math.round(Math.max(70, pSurprise * 100));
+        dominantEmotion = 'SURPRISED';
+        emotionProbabilities.SURPRISED = Math.round(Math.max(70, pSurprise * 100));
       } else if (expr.furrowScore >= 0.35 || pNegative > 0.40) {
-        dominantEmotion = 'Stressed';
-        emotionProbabilities.Stressed = Math.round(Math.max(60, pNegative * 100));
+        dominantEmotion = 'STRESSED';
+        emotionProbabilities.STRESSED = Math.round(Math.max(60, pNegative * 100));
       }
     }
   }
 
   const valence = expr
     ? expr.valenceArousal.valence
-    : dominantEmotion === 'Happy'
+    : dominantEmotion === 'HAPPY'
     ? 0.65
-    : dominantEmotion === 'Confident'
+    : dominantEmotion === 'CONFIDENT'
     ? 0.45
-    : dominantEmotion === 'Stressed'
+    : dominantEmotion === 'STRESSED'
     ? -0.42
     : 0.05;
 
   const arousal = expr
     ? expr.valenceArousal.arousal
-    : dominantEmotion === 'Stressed'
+    : dominantEmotion === 'STRESSED'
     ? 0.65
-    : dominantEmotion === 'Surprised'
+    : dominantEmotion === 'SURPRISED'
     ? 0.60
-    : dominantEmotion === 'Happy'
+    : dominantEmotion === 'HAPPY'
     ? 0.35
     : 0.10;
 
@@ -652,7 +653,7 @@ export interface SmoothedTelemetry {
   gazeX: number;
   gazeY: number;
   composure: number;
-  dominantEmotion: string;
+  dominantEmotion: DiscreteEmotion;
   totalInferenceTimeMs: number;
   isBlurry?: boolean;
   blurVariance?: number;
@@ -665,13 +666,13 @@ let smoothedState: SmoothedTelemetry = {
   gazeX: 0,
   gazeY: 0,
   composure: 85,
-  dominantEmotion: 'Neutral',
+  dominantEmotion: 'NEUTRAL',
   totalInferenceTimeMs: 0,
   isBlurry: false,
   blurVariance: 500,
 };
 
-const _emotionConsensus = new CategoricalConsensusSmoother<string>(5, 0.30);
+const _emotionConsensus = new CategoricalConsensusSmoother<DiscreteEmotion>(5, 0.30);
 
 /**
  * Atomic re-entrancy lock.
