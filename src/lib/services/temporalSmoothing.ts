@@ -1403,6 +1403,9 @@ export class DenseLandmarksSmoother {
     timestampMs: number
   ): SmoothedLandmarksResult {
     const numPoints = rawPoints.length;
+    if (numPoints === 0) {
+      return this.getCurrentResult();
+    }
     if (this.filters.length !== numPoints) {
       this.initFilters(numPoints);
     }
@@ -1639,17 +1642,19 @@ export class DenseLandmarksSmoother {
       }
     }
 
+    const hasInitializedFilter = this.filters.some(f => f.getPos() !== null);
+
     return {
       points,
       confidences,
       regionConfidences: {
-        eyes: eyeCount > 0 ? eyeConfSum / eyeCount : 1.0,
-        nose: noseCount > 0 ? noseConfSum / noseCount : 1.0,
-        mouth: mouthCount > 0 ? mouthConfSum / mouthCount : 1.0,
-        overall: this.filters.length > 0 ? totalConfSum / this.filters.length : 1.0,
+        eyes: eyeCount > 0 ? eyeConfSum / eyeCount : (hasInitializedFilter ? 1.0 : 0.0),
+        nose: noseCount > 0 ? noseConfSum / noseCount : (hasInitializedFilter ? 1.0 : 0.0),
+        mouth: mouthCount > 0 ? mouthConfSum / mouthCount : (hasInitializedFilter ? 1.0 : 0.0),
+        overall: this.filters.length > 0 && hasInitializedFilter ? totalConfSum / this.filters.length : 0.0,
       },
       meanAlpha: 0.5,
-      visibilityOpacity: 1.0,
+      visibilityOpacity: hasInitializedFilter ? 1.0 : 0.0,
       occludedDurationSec: this.lastMaxOccludedSec,
       activePreset: this.currentPreset,
       isRelocalizing: this.isRelocalizing,

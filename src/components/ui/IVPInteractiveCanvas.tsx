@@ -1194,16 +1194,20 @@ export default function IVPInteractiveCanvas({
           lastRawNormPtsRef.current = rawPts70.map(p => ({ x: p.x, y: p.y }));
           denseRes = denseSmootherRef.current.updateFromPoints(rawPts70, now);
         } else {
-          denseRes = denseSmootherRef.current.updateFromPoints(
-            (lastRawNormPtsRef.current || []).map(p => ({ x: p.x, y: p.y, confidence: 0.1 })),
-            now
-          );
+          if (lastRawNormPtsRef.current && lastRawNormPtsRef.current.length > 0) {
+            denseRes = denseSmootherRef.current.updateFromPoints(
+              lastRawNormPtsRef.current.map(p => ({ x: p.x, y: p.y, confidence: 0.1 })),
+              now
+            );
+          } else {
+            denseRes = denseSmootherRef.current.getCurrentResult();
+          }
         }
         lastSmoothedResRef.current = denseRes;
       }
     }
 
-    if (isWarmup) {
+    if (isWarmup && (isFaceGenuinelyDetected || denseRes.visibilityOpacity > 0)) {
       denseRes.visibilityOpacity = Math.max(0.65, denseRes.visibilityOpacity);
     }
 
@@ -1258,23 +1262,26 @@ export default function IVPInteractiveCanvas({
 
       authenticBoxW = fb.width > 1.0 ? fb.width : Math.round(rawBoxW);
       authenticBoxH = fb.height > 1.0 ? fb.height : Math.round(rawBoxH);
-    } else {
+    } else if (canvasPts.length > 0) {
       // Fallback: derive from canvasPts
       let minBoxX = 9999, maxBoxX = -9999, minBoxY = 9999, maxBoxY = -9999;
       for (const p of canvasPts) {
+        if (!p) continue;
         if (p.x < minBoxX) minBoxX = p.x;
         if (p.x > maxBoxX) maxBoxX = p.x;
         if (p.y < minBoxY) minBoxY = p.y;
         if (p.y > maxBoxY) maxBoxY = p.y;
       }
-      const padX = (maxBoxX - minBoxX) * 0.12;
-      const padY = (maxBoxY - minBoxY) * 0.14;
-      rawBoxX = Math.max(0, minBoxX - padX);
-      rawBoxY = Math.max(0, minBoxY - padY);
-      rawBoxW = Math.min(CSS_W, (maxBoxX - minBoxX) + padX * 2);
-      rawBoxH = Math.min(CSS_H, (maxBoxY - minBoxY) + padY * 2);
-      authenticBoxW = Math.round(rawBoxW);
-      authenticBoxH = Math.round(rawBoxH);
+      if (minBoxX < maxBoxX && minBoxY < maxBoxY) {
+        const padX = (maxBoxX - minBoxX) * 0.12;
+        const padY = (maxBoxY - minBoxY) * 0.14;
+        rawBoxX = Math.max(0, minBoxX - padX);
+        rawBoxY = Math.max(0, minBoxY - padY);
+        rawBoxW = Math.min(CSS_W, (maxBoxX - minBoxX) + padX * 2);
+        rawBoxH = Math.min(CSS_H, (maxBoxY - minBoxY) + padY * 2);
+        authenticBoxW = Math.round(rawBoxW);
+        authenticBoxH = Math.round(rawBoxH);
+      }
     }
 
     const sf = smoothedFaceRef.current;
@@ -1386,16 +1393,19 @@ export default function IVPInteractiveCanvas({
     }
 
     // ── 12. Render Active Eye & Lip Landmark Geometric Tracking Contours ───
-    if (showLandmarks && !isTargetLost && (isFaceGenuinelyDetected || denseRes.regionConfidences.overall > 0.2) && denseRes.visibilityOpacity > 0.02) {
+    if (showLandmarks && !isTargetLost && (isFaceGenuinelyDetected || denseRes.regionConfidences.overall > 0.2) && denseRes.visibilityOpacity > 0.02 && canvasPts.length >= 68) {
       ctx.save();
       ctx.globalAlpha = denseRes.visibilityOpacity;
 
       // A. Draw Eye Geometric Loops
       const renderEyeContour = (pts: Point2D[], isLeft: boolean) => {
+        if (!pts || pts.length === 0 || !pts[0]) return;
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
         for (let i = 1; i < pts.length; i++) {
-          ctx.lineTo(pts[i].x, pts[i].y);
+          if (pts[i]) {
+            ctx.lineTo(pts[i].x, pts[i].y);
+          }
         }
         ctx.closePath();
 
@@ -1410,7 +1420,8 @@ export default function IVPInteractiveCanvas({
           // Blink indicator badge above eye
           ctx.fillStyle = '#FBBF24';
           ctx.font = 'bold 9px monospace';
-          ctx.fillText(`⚡ BLINK (${liveEAR.toFixed(2)})`, pts[0].x - 6, pts[1].y - 8);
+          const badgeY = pts[1] ? pts[1].y - 8 : pts[0].y - 8;
+          ctx.fillText(`⚡ BLINK (${liveEAR.toFixed(2)})`, pts[0].x - 6, badgeY);
         } else {
           // Open State: Cyan Contour Loop
           ctx.fillStyle = 'rgba(6, 182, 212, 0.15)';
@@ -1421,74 +1432,86 @@ export default function IVPInteractiveCanvas({
 
           // Pupil Center directly tracked from optical image darkness centroid
           const pupilBase = isLeft ? leftPupil : rightPupil;
-          const pCenterX = pupilBase.x;
-          const pCenterY = pupilBase.y;
-          ctx.fillStyle = '#22D3EE';
-          ctx.beginPath();
-          ctx.arc(pCenterX, pCenterY, 3.2 * s, 0, 2 * Math.PI);
-          ctx.fill();
+          if (pupilBase) {
+            const pCenterX = pupilBase.x;
+            const pCenterY = pupilBase.y;
+            ctx.fillStyle = '#22D3EE';
+            ctx.beginPath();
+            ctx.arc(pCenterX, pCenterY, 3.2 * s, 0, 2 * Math.PI);
+            ctx.fill();
+          }
         }
       };
 
-      renderEyeContour(leftEyePts, true);
-      renderEyeContour(rightEyePts, false);
+      if (leftEyePts.length > 0 && leftEyePts[0]) {
+        renderEyeContour(leftEyePts, true);
+      }
+      if (rightEyePts.length > 0 && rightEyePts[0]) {
+        renderEyeContour(rightEyePts, false);
+      }
 
       // B. Draw Lip Articulation Contour
-      ctx.beginPath();
-      ctx.moveTo(mouthPts[0].x, mouthPts[0].y);
-      for (let i = 1; i < mouthPts.length; i++) {
-        ctx.lineTo(mouthPts[i].x, mouthPts[i].y);
-      }
-      ctx.closePath();
-
-      if (isSpeaking || liveMAR >= 0.25) {
-        // Speech Active: Glowing Neon Green with vertical displacement indicator
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.35)';
-        ctx.fill();
-        ctx.strokeStyle = '#10B981';
-        ctx.lineWidth = 2.2;
-        ctx.stroke();
-
-        // Vertical mouth displacement line
-        ctx.strokeStyle = '#34D399';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([2, 2]);
+      if (mouthPts.length > 0 && mouthPts[0]) {
         ctx.beginPath();
-        if (mouthPts[2] && mouthPts[6]) {
-          ctx.moveTo(mouthPts[2].x, mouthPts[2].y);
-          ctx.lineTo(mouthPts[6].x, mouthPts[6].y);
+        ctx.moveTo(mouthPts[0].x, mouthPts[0].y);
+        for (let i = 1; i < mouthPts.length; i++) {
+          if (mouthPts[i]) {
+            ctx.lineTo(mouthPts[i].x, mouthPts[i].y);
+          }
         }
-        ctx.stroke();
-        ctx.setLineDash([]);
+        ctx.closePath();
 
-        ctx.fillStyle = '#34D399';
-        ctx.font = 'bold 9px monospace';
-        ctx.textAlign = 'center';
-        const speechAnchorY = mouthPts[6] ? Math.min(boxY + boxH + 20, mouthPts[6].y + 14) : mouthCenter.y + 14;
-        ctx.fillText(`SPEECH [MAR: ${liveMAR.toFixed(2)}]`, mouthCenter.x, speechAnchorY);
-      } else {
-        // Resting Mouth: Subtle Emerald Loop
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
-        ctx.fill();
-        ctx.strokeStyle = '#059669';
-        ctx.lineWidth = 1.4;
-        ctx.stroke();
+        if (isSpeaking || liveMAR >= 0.25) {
+          // Speech Active: Glowing Neon Green with vertical displacement indicator
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.35)';
+          ctx.fill();
+          ctx.strokeStyle = '#10B981';
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+
+          // Vertical mouth displacement line
+          ctx.strokeStyle = '#34D399';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([2, 2]);
+          ctx.beginPath();
+          if (mouthPts[2] && mouthPts[6]) {
+            ctx.moveTo(mouthPts[2].x, mouthPts[2].y);
+            ctx.lineTo(mouthPts[6].x, mouthPts[6].y);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = '#34D399';
+          ctx.font = 'bold 9px monospace';
+          ctx.textAlign = 'center';
+          const speechAnchorY = mouthPts[6] ? Math.min(boxY + boxH + 20, mouthPts[6].y + 14) : mouthCenter.y + 14;
+          ctx.fillText(`SPEECH [MAR: ${liveMAR.toFixed(2)}]`, mouthCenter.x, speechAnchorY);
+        } else {
+          // Resting Mouth: Subtle Emerald Loop
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+          ctx.fill();
+          ctx.strokeStyle = '#059669';
+          ctx.lineWidth = 1.4;
+          ctx.stroke();
+        }
       }
 
       // C. Nasal Bridge line
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(noseBridge[0].x, noseBridge[0].y);
-      ctx.lineTo(noseBridge[1].x, noseBridge[1].y);
-      ctx.lineTo(noseBridge[2].x, noseBridge[2].y);
-      ctx.stroke();
+      if (noseBridge.length >= 3 && noseBridge[0] && noseBridge[1] && noseBridge[2]) {
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(noseBridge[0].x, noseBridge[0].y);
+        ctx.lineTo(noseBridge[1].x, noseBridge[1].y);
+        ctx.lineTo(noseBridge[2].x, noseBridge[2].y);
+        ctx.stroke();
+      }
 
       ctx.restore();
     }
 
     // ── 13. 3D Projected Euler Axis Tripod (Anchored Strictly to Nose Tip) ──
-    if (show3DAxes && !isTargetLost && denseRes.visibilityOpacity > 0.02) {
+    if (show3DAxes && !isTargetLost && denseRes.visibilityOpacity > 0.02 && noseTip) {
       ctx.save();
       ctx.globalAlpha = denseRes.visibilityOpacity;
       drawProjected3DAxes(
@@ -1504,7 +1527,7 @@ export default function IVPInteractiveCanvas({
     }
 
     // ── 14. Gaze Vector Reticle Overlay ─────────────────────────────────────
-    if (gazeCoords && !isTargetLost && denseRes.visibilityOpacity > 0.02) {
+    if (gazeCoords && !isTargetLost && denseRes.visibilityOpacity > 0.02 && noseTip) {
       const gazeScreenX = noseTip.x + gazeCoords.x * 120;
       const gazeScreenY = (noseTip.y - 25) + gazeCoords.y * 90;
 
