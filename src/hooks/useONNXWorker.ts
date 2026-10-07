@@ -44,7 +44,7 @@ const DEFAULT_TELEMETRY: SmoothedTelemetry = {
   gazeX: 0,
   gazeY: 0,
   composure: 85,
-  dominantEmotion: 'Neutral',
+  dominantEmotion: 'NEUTRAL',
   totalInferenceTimeMs: 0,
   isBlurry: false,
   blurVariance: 500,
