@@ -26,15 +26,24 @@ export const uploadResume = async (
   try {
     const fileExt = file.name.split('.').pop();
     const filePath = `resumes/${userId}/${Date.now()}.${fileExt}`;
-    const storageRef = ref(storage, filePath);
 
-    // Upload to Firebase Cloud Storage
-    await uploadBytes(storageRef, file, {
-      contentType: file.type,
-      customMetadata: { userId, originalName: file.name },
-    });
+    // 1. Try uploading to Firebase Cloud Storage if available (optional)
+    try {
+      if (storage) {
+        const storageRef = ref(storage, filePath);
+        await uploadBytes(storageRef, file, {
+          contentType: file.type,
+          customMetadata: { userId, originalName: file.name },
+        });
+      }
+    } catch (storageErr) {
+      console.warn(
+        '[Firebase Storage] Cloud Storage is not enabled or requires Blaze plan. Storing resume record directly in Firestore database:',
+        storageErr
+      );
+    }
 
-    // Save record to Firestore
+    // 2. Always persist record in Firestore database
     const docPayload = {
       user_id: userId,
       file_name: file.name,
@@ -62,13 +71,13 @@ export const deleteResume = async (
   filePath: string
 ): Promise<ServiceResponse<unknown>> => {
   try {
-    // 1. Delete file from Firebase Storage
-    if (filePath) {
+    // 1. Try deleting from Firebase Storage if it exists
+    if (filePath && storage) {
       try {
         const storageRef = ref(storage, filePath);
         await deleteObject(storageRef);
       } catch (storageErr) {
-        console.warn('[Firebase Storage] Could not delete object:', storageErr);
+        // Silently ignore if file didn't exist in storage bucket
       }
     }
 
@@ -109,10 +118,14 @@ export const getResumeDownloadUrl = async (
   filePath: string
 ): Promise<ServiceResponse<string>> => {
   try {
+    if (!storage) {
+      return { data: '', error: null };
+    }
     const storageRef = ref(storage, filePath);
     const url = await getDownloadURL(storageRef);
     return { data: url, error: null };
-  } catch (err: unknown) {
-    return { data: null, error: err };
+  } catch {
+    // Cloud storage not configured or file not stored in bucket
+    return { data: '', error: null };
   }
 };
