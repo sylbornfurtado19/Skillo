@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { isFirebaseActive } from './backendProvider';
+import * as firebaseResume from '../lib/firebase/services/resume.firebase';
 import type { ResumeRecord, ServiceResponse } from '../types/index';
 
 const BUCKET_NAME = 'resumes';
@@ -7,6 +9,10 @@ export const uploadResume = async (
   file: File,
   userId: string
 ): Promise<ServiceResponse<ResumeRecord>> => {
+  if (isFirebaseActive()) {
+    return firebaseResume.uploadResume(file, userId);
+  }
+
   try {
     const fileExt = file.name.split('.').pop();
     const filePath = `${userId}/${Date.now()}.${fileExt}`;
@@ -41,6 +47,10 @@ export const deleteResume = async (
   resumeId: string,
   filePath: string
 ): Promise<ServiceResponse<unknown>> => {
+  if (isFirebaseActive()) {
+    return firebaseResume.deleteResume(resumeId, filePath);
+  }
+
   try {
     const { error: storageError } = await supabase.storage
       .from(BUCKET_NAME)
@@ -62,6 +72,10 @@ export const deleteResume = async (
 export const listResumes = async (
   userId: string
 ): Promise<ServiceResponse<ResumeRecord[]>> => {
+  if (isFirebaseActive()) {
+    return firebaseResume.getResumes(userId);
+  }
+
   try {
     const { data, error } = await supabase
       .from('resumes')
@@ -79,6 +93,10 @@ export const getSignedUrl = async (
   filePath: string,
   expiresIn = 3600
 ): Promise<ServiceResponse<string>> => {
+  if (isFirebaseActive()) {
+    return firebaseResume.getResumeDownloadUrl(filePath);
+  }
+
   try {
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)

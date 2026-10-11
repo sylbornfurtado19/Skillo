@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { isFirebaseActive } from './backendProvider';
+import * as firebaseAuth from '../lib/firebase/services/auth.firebase';
 import type { ServiceResponse } from '../types/index';
 
 const getOrigin = (): string => {
@@ -15,6 +17,10 @@ export const signUp = async ({
   password: string;
   name?: string;
 }): Promise<ServiceResponse<unknown>> => {
+  if (isFirebaseActive()) {
+    return firebaseAuth.signUp({ email, password, name });
+  }
+
   try {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -34,6 +40,10 @@ export const signIn = async ({
   email: string;
   password: string;
 }): Promise<ServiceResponse<unknown>> => {
+  if (isFirebaseActive()) {
+    return firebaseAuth.signIn({ email, password });
+  }
+
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -48,6 +58,10 @@ export const signIn = async ({
 export const signInWithGoogle = async (
   token?: string
 ): Promise<ServiceResponse<unknown>> => {
+  if (isFirebaseActive()) {
+    return firebaseAuth.signInWithGoogle(token);
+  }
+
   try {
     if (token && typeof token === 'string') {
       const { data, error } = await supabase.auth.signInWithIdToken({
@@ -71,6 +85,10 @@ export const signInWithGoogle = async (
 export const resetPassword = async (
   email: string
 ): Promise<ServiceResponse<unknown>> => {
+  if (isFirebaseActive()) {
+    return firebaseAuth.resetPassword(email);
+  }
+
   try {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${getOrigin()}/login?reset=true`,
@@ -82,6 +100,10 @@ export const resetPassword = async (
 };
 
 export const signOut = async (): Promise<ServiceResponse<boolean>> => {
+  if (isFirebaseActive()) {
+    return firebaseAuth.signOut();
+  }
+
   try {
     const { error } = await supabase.auth.signOut();
     return { data: true, error };
@@ -91,6 +113,10 @@ export const signOut = async (): Promise<ServiceResponse<boolean>> => {
 };
 
 export const getSession = async (): Promise<ServiceResponse<unknown>> => {
+  if (isFirebaseActive()) {
+    return firebaseAuth.getCurrentUser();
+  }
+
   try {
     const {
       data: { session },
@@ -103,6 +129,10 @@ export const getSession = async (): Promise<ServiceResponse<unknown>> => {
 };
 
 export const getCurrentUser = async (): Promise<ServiceResponse<unknown>> => {
+  if (isFirebaseActive()) {
+    return firebaseAuth.getCurrentUser();
+  }
+
   try {
     const {
       data: { user },
@@ -111,5 +141,23 @@ export const getCurrentUser = async (): Promise<ServiceResponse<unknown>> => {
     return { data: user, error };
   } catch (err: unknown) {
     return { data: null, error: err };
+  }
+};
+
+export const getAuthToken = async (): Promise<string | undefined> => {
+  if (isFirebaseActive()) {
+    try {
+      const { auth } = await import('../lib/firebase/config');
+      return (await auth.currentUser?.getIdToken()) || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.access_token;
+  } catch {
+    return undefined;
   }
 };

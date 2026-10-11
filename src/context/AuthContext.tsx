@@ -3,14 +3,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { isFirebaseActive } from '../services/backendProvider';
+import { subscribeToAuthState } from '../lib/firebase/services/auth.firebase';
 import * as authService from '../services/auth';
 import type { ServiceResponse } from '../types/index';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface AuthContextValue {
-  user: User | null;
-  session: Session | null;
+  user: User | any | null;
+  session: Session | any | null;
   loading: boolean;
   isAuthenticated: boolean;
   signUp: (credentials: { email: string; password: string; name?: string }) => Promise<ServiceResponse<unknown>>;
@@ -34,11 +36,28 @@ export const useAuth = (): AuthContextValue => {
 // ── Provider ───────────────────────────────────────────────────────────────────
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | any | null>(null);
+  const [session, setSession] = useState<Session | any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Firebase Provider Path
+    if (isFirebaseActive()) {
+      try {
+        const unsubscribe = subscribeToAuthState((firebaseUser) => {
+          setUser(firebaseUser);
+          setSession(firebaseUser ? { user: firebaseUser } : null);
+          setLoading(false);
+        });
+        return () => unsubscribe();
+      } catch (err: unknown) {
+        console.warn('[AuthContext] Firebase auth subscription error:', err);
+        setLoading(false);
+      }
+      return;
+    }
+
+    // 2. Supabase Provider Path (Default fallback)
     try {
       // Fetch initial active session — with .catch() to handle network failures
       supabase.auth

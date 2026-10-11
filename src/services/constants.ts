@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { getAuthToken } from './auth';
 
 export interface InterviewerPersona {
   id: string;
@@ -350,8 +351,7 @@ export const submitInterviewAnswers = async (
     questionIndex?: number;
   }>
 ) => {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData?.session?.access_token;
+  const token = await getAuthToken();
 
   const response = await fetch('/api/interview/evaluate', {
     method: 'POST',
@@ -394,8 +394,7 @@ export const simulateResumeAnalysis = async (
   showToast?: (message: string, variant?: 'info' | 'success' | 'error') => void,
   resumeText?: string
 ) => {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData?.session?.access_token;
+  const token = await getAuthToken();
 
   const response = await fetch('/api/resume/analyze', {
     method: 'POST',

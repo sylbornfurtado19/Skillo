@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { isFirebaseActive } from './backendProvider';
+import * as firebaseProfile from '../lib/firebase/services/profile.firebase';
 import type { ServiceResponse, UserProfile, CandidateSkillMemoryStore } from '../types/index';
 
 const resolveSkillMemoryStore = (raw: any): CandidateSkillMemoryStore | undefined => {
@@ -13,6 +15,10 @@ export const getProfile = async (
   authEmail?: string,
   authName?: string
 ): Promise<ServiceResponse<UserProfile>> => {
+  if (isFirebaseActive()) {
+    return firebaseProfile.getProfile(userId, authEmail, authName);
+  }
+
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -74,6 +80,10 @@ export const updateProfile = async (
   userId: string,
   updates: Partial<UserProfile>
 ): Promise<ServiceResponse<UserProfile>> => {
+  if (isFirebaseActive()) {
+    return firebaseProfile.updateProfile(userId, updates);
+  }
+
   try {
     // Explicit field mapping between camelCase TS fields and snake_case DB columns
     const payload: Record<string, any> = {

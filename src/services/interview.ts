@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { isFirebaseActive } from './backendProvider';
+import * as firebaseInterview from '../lib/firebase/services/interview.firebase';
 import type { MockInterview, MockInterviewInsert, ServiceResponse, EvaluationReport } from '../types/index';
 
 export type { MockInterviewInsert };
@@ -33,6 +35,10 @@ export const saveMockInterview = async (
   userId: string,
   interviewData: MockInterviewInsert
 ): Promise<ServiceResponse<MockInterview>> => {
+  if (isFirebaseActive()) {
+    return firebaseInterview.saveMockInterview(userId, interviewData);
+  }
+
   try {
     const payload = {
       user_id: userId,
@@ -66,6 +72,10 @@ export const saveMockInterview = async (
 export const getMockInterviews = async (
   userId: string
 ): Promise<ServiceResponse<MockInterview[]>> => {
+  if (isFirebaseActive()) {
+    return firebaseInterview.getMockInterviews(userId);
+  }
+
   try {
     const { data, error } = await supabase
       .from('mock_interviews')
@@ -81,6 +91,10 @@ export const getMockInterviews = async (
 export const getMockInterviewById = async (
   interviewId: string
 ): Promise<ServiceResponse<MockInterview>> => {
+  if (isFirebaseActive()) {
+    return firebaseInterview.getMockInterviewById(interviewId);
+  }
+
   try {
     const { data, error } = await supabase
       .from('mock_interviews')

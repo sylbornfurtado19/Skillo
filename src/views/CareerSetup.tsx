@@ -24,6 +24,7 @@ import { Progress } from '../components/ui/Loader';
 import { InterviewModePreviewCard } from '../components/interview/InterviewModePreviewCard';
 import { resolveInterviewMode } from '../types/interviewModes';
 import { supabase } from '../lib/supabase';
+import { getAuthToken } from '../services/auth';
 
 const SETUP_STORAGE_KEY = 'skillo_career_setup_state';
 
@@ -223,8 +224,7 @@ export default function CareerSetup() {
     }
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const token = await getAuthToken();
 
       const res = await fetch('/api/interview/setup', {
         method: 'POST',

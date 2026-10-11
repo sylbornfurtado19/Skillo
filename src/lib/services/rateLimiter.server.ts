@@ -6,13 +6,8 @@ import { supabaseAdmin } from '@/lib/server/supabaseAdmin';
  * Rate limiting across serverless runtime instances (such as Vercel or AWS Lambda)
  * requires a centralized persistent store.
  *
- * This implementation queries the Supabase `request_logs` table via the server-side
- * service-role admin client to bypass Row Level Security (RLS) policies.
- * If credentials are not configured, database query fails, or table does not exist,
- * it falls back gracefully to an in-memory sliding-window store with a logged advisory.
- *
- * Recommendation for high-throughput enterprise scale:
- * Integrate Upstash Redis via `@upstash/ratelimit` for sub-millisecond atomic checks.
+ * Supports both Firebase Firestore and Supabase request_logs tables,
+ * falling back gracefully to in-memory sliding window when unconfigured.
  */
 
 export interface RateLimitOptions {
@@ -28,7 +23,7 @@ export interface RateLimitResult {
   remaining: number;
   resetSeconds: number;
   retryAfterSeconds?: number;
-  store: 'supabase' | 'in-memory-fallback';
+  store: 'supabase' | 'firebase' | 'in-memory-fallback';
 }
 
 // In-memory sliding window fallback map: key is `${userId}:${action}` -> array of epoch timestamps (ms)
@@ -41,7 +36,51 @@ export async function checkRateLimit(options: RateLimitOptions): Promise<RateLim
   const windowMs = windowSeconds * 1000;
   const cutoffTime = new Date(nowMs - windowMs).toISOString();
 
-  // 1. Try server-side Supabase admin client on request_logs table (bypasses RLS)
+  // 1. Try Firebase Admin Firestore if configured and active
+  if (process.env.NEXT_PUBLIC_BACKEND_PROVIDER === 'firebase') {
+    try {
+      const { isFirebaseAdminConfigured, getAdminFirestore } = await import('@/lib/firebase/admin');
+      if (isFirebaseAdminConfigured) {
+        const adminDb = getAdminFirestore();
+      const snapshot = await adminDb
+        .collection('request_logs')
+        .where('user_id', '==', userId)
+        .where('action', '==', action)
+        .where('created_at', '>=', cutoffTime)
+        .get();
+
+      const count = snapshot.size;
+      if (count >= maxRequests) {
+        return {
+          allowed: false,
+          limit: maxRequests,
+          remaining: 0,
+          resetSeconds: windowSeconds,
+          retryAfterSeconds: windowSeconds,
+          store: 'firebase',
+        };
+      }
+
+      void adminDb.collection('request_logs').add({
+        user_id: userId,
+        action,
+        created_at: new Date(nowMs).toISOString(),
+      }).catch(() => {});
+
+      return {
+        allowed: true,
+        limit: maxRequests,
+        remaining: Math.max(0, maxRequests - (count + 1)),
+        resetSeconds: windowSeconds,
+        store: 'firebase',
+      };
+      }
+    } catch {
+      // Proceed to Supabase or in-memory fallback
+    }
+  }
+
+  // 2. Try server-side Supabase admin client on request_logs table (bypasses RLS)
   try {
     const { count, error } = await supabaseAdmin
       .from('request_logs')

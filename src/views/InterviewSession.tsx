@@ -20,6 +20,7 @@ import { useInterview } from '../context/InterviewContext';
 import { useAuth } from '../hooks/useAuth';
 import { getProfile } from '../services/profile';
 import { supabase } from '../lib/supabase';
+import { getAuthToken } from '../services/auth';
 
 import { LogoIcon } from '../components/common/Logo';
 import { useToast } from '../components/ui/Toast';
@@ -645,8 +646,7 @@ export default function InterviewSession() {
 
       const fetchPromise = (async () => {
         try {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const token = sessionData?.session?.access_token;
+          const token = await getAuthToken();
           const res = await fetch('/api/interview/followup', {
             method: 'POST',
             headers: {
