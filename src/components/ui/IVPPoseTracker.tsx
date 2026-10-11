@@ -411,17 +411,17 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
 
     return (
       <div
-        className={`relative rounded-xl overflow-hidden bg-[#060b14] border border-white/8 ${className} ${
+        className={`relative rounded-xl overflow-hidden bg-surface border border-border shadow-soft ${className} ${
           !visible ? 'hidden' : ''
         }`}
       >
-        <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5">
-          <span className="text-[9px] text-gray-500 font-mono uppercase tracking-widest">
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-surface-alt">
+          <span className="text-[9px] text-text-secondary font-mono uppercase tracking-widest">
             Head Movement & Posture Tracker
           </span>
           <div className="flex items-center gap-1.5">
-            <div className={`h-1.5 w-1.5 rounded-full ${isStarted ? 'bg-indigo-500 animate-pulse' : 'bg-gray-600'}`} />
-            <span className="text-[8px] text-gray-600 font-mono">
+            <div className={`h-1.5 w-1.5 rounded-full ${isStarted ? 'bg-primary animate-pulse' : 'bg-text-secondary/40'}`} />
+            <span className="text-[8px] text-text-secondary font-mono">
               {isStarted ? '10 FPS' : 'IDLE'}
             </span>
           </div>
@@ -442,16 +442,16 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
           />
 
           {!isStarted && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712]/80 text-center px-4 gap-2">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface/90 text-center px-4 gap-2">
               {cameraError ? (
                 <>
-                  <div className="text-red-400 text-lg">🚫</div>
-                  <p className="text-[10px] text-red-400 font-mono">{cameraError}</p>
+                  <div className="text-danger text-lg">🚫</div>
+                  <p className="text-[10px] text-danger font-mono">{cameraError}</p>
                 </>
               ) : (
                 <>
-                  <div className="text-gray-600 text-2xl">👤</div>
-                  <p className="text-[10px] text-gray-600 font-mono">Camera inactive</p>
+                  <div className="text-text-secondary text-2xl">👤</div>
+                  <p className="text-[10px] text-text-secondary font-mono">Camera inactive</p>
                 </>
               )}
             </div>

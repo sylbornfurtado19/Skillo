@@ -24,20 +24,20 @@ const BADGE_CONFIG: Record<
   VERIFIED_GENUINE: {
     label: 'Audio-Visual Sync: Verified Genuine',
     icon: '🟢',
-    bg: 'bg-emerald-500/10 border-emerald-500/20',
-    text: 'text-emerald-400',
+    bg: 'bg-success/10 border-success/20',
+    text: 'text-success',
   },
   LATENCY_LAG_WARNING: {
     label: 'Sync Warning: Audio Lag',
     icon: '🟡',
-    bg: 'bg-amber-500/10 border-amber-500/20',
-    text: 'text-amber-400',
+    bg: 'bg-warning/10 border-warning/20',
+    text: 'text-warning',
   },
   NO_AUDIO_DETECTED: {
     label: 'Sync Tracker: Audio Muted',
     icon: '⚪',
-    bg: 'bg-white/5 border-white/10',
-    text: 'text-gray-400',
+    bg: 'bg-surface-alt border-border',
+    text: 'text-text-secondary',
   },
 };
 
@@ -48,15 +48,15 @@ export default function LipSyncHUD({ currentWindow }: LipSyncHUDProps) {
   const offsetStr = `${currentWindow.optimalOffsetMs >= 0 ? '+' : ''}${currentWindow.optimalOffsetMs}ms`;
 
   return (
-    <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-[#060b14]/90 border border-white/8 backdrop-blur-sm font-mono text-[10px]">
+    <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-surface border border-border shadow-soft font-mono text-[10px]">
       <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold ${cfg.bg} ${cfg.text}`}>
         <span>{cfg.icon}</span>
         <span>{cfg.label}</span>
       </div>
 
-      <div className="flex items-center gap-3 text-gray-500 text-[9px]">
-        <span>Offset: <strong className="text-white">{offsetStr}</strong></span>
-        <span>D(v,a): <strong className="text-white">{currentWindow.crossModalDistance.toFixed(2)}</strong></span>
+      <div className="flex items-center gap-3 text-text-secondary text-[9px]">
+        <span>Offset: <strong className="text-text-primary">{offsetStr}</strong></span>
+        <span>D(v,a): <strong className="text-text-primary">{currentWindow.crossModalDistance.toFixed(2)}</strong></span>
       </div>
     </div>
   );

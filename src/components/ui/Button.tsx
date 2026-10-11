@@ -24,22 +24,21 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const baseStyle =
-    'inline-flex flex-row items-center justify-center gap-2 rounded-xl font-semibold transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none relative overflow-hidden group whitespace-nowrap';
-
+    'inline-flex flex-row items-center justify-center gap-2 rounded-xl font-semibold transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none relative overflow-hidden group whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30';
 
   const variants = {
     primary:
-      'bg-primary hover:bg-indigo-600 text-white shadow-lg shadow-primary/20 hover:shadow-primary/30 border border-primary/10',
+      'bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] text-[var(--text-on-primary)] shadow-[var(--shadow)] border border-[var(--primary)]',
     secondary:
-      'bg-secondary hover:bg-purple-600 text-white shadow-lg shadow-secondary/20 hover:shadow-secondary/30 border border-secondary/10',
+      'bg-[var(--secondary)] hover:bg-[var(--secondary-hover)] active:bg-[var(--secondary-hover)] text-[var(--text-on-primary)] shadow-[var(--shadow)] border border-[var(--secondary)]',
     accent:
-      'bg-accent hover:bg-cyan-500 text-white shadow-lg shadow-accent/20 hover:shadow-accent/30 border border-accent/10',
+      'bg-[var(--primary-soft)] hover:bg-[var(--primary-soft)]/80 text-[var(--primary)] border border-[var(--primary)]/20',
     glass:
-      'bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 backdrop-blur-md',
+      'bg-[var(--bg-surface-alt)] hover:bg-[var(--bg-surface-alt)]/80 text-[var(--text-primary)] border border-[var(--border)] shadow-[var(--shadow)]',
     ghost:
-      'bg-transparent hover:bg-white/5 text-gray-400 hover:text-white border border-transparent',
+      'bg-transparent hover:bg-[var(--bg-surface-alt)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-transparent',
     danger:
-      'bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/30',
+      'bg-[var(--danger)] hover:bg-[var(--danger)]/90 text-[var(--text-on-primary)] border border-[var(--danger)] shadow-[var(--shadow)]',
   };
 
   const sizes = {
@@ -51,21 +50,17 @@ export default function Button({
   return (
     <motion.button
       whileHover={disabled ? {} : { scale: 1.02 }}
-      whileTap={disabled ? {} : { scale: 0.96 }}
+      whileTap={disabled ? {} : { scale: 0.97 }}
       type={type}
       onClick={onClick}
       disabled={disabled}
       className={`${baseStyle} ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >
-      {!disabled && (
-        <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
-      )}
       <div className="flex flex-row items-center justify-center gap-2 relative z-10 w-full shrink-0">
         <span>{children}</span>
         {Icon && <Icon className="text-xs shrink-0" />}
       </div>
-
     </motion.button>
   );
 }

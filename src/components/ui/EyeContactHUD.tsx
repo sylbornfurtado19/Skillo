@@ -18,12 +18,12 @@ const ZONE_CONFIG: Record<
   GazeFrameResult['screenFocusZone'],
   { label: string; icon: string; color: string; ring: string; warning: boolean }
 > = {
-  CENTER_SCREEN:  { label: 'Eye Contact: Direct',         icon: '🟢', color: 'text-emerald-400', ring: '#10b981', warning: false },
-  LOOKING_LEFT:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
-  LOOKING_RIGHT:  { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
-  LOOKING_UP:     { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: false },
-  LOOKING_DOWN:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-amber-400',   ring: '#f59e0b', warning: true  },
-  OFF_SCREEN:     { label: 'Warning: Secondary Screen',   icon: '🔴', color: 'text-red-400',     ring: '#ef4444', warning: true  },
+  CENTER_SCREEN:  { label: 'Eye Contact: Direct',         icon: '🟢', color: 'text-success', ring: '#3F7D58', warning: false },
+  LOOKING_LEFT:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: '#C98A1B', warning: true  },
+  LOOKING_RIGHT:  { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: '#C98A1B', warning: true  },
+  LOOKING_UP:     { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: '#C98A1B', warning: false },
+  LOOKING_DOWN:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: '#C98A1B', warning: true  },
+  OFF_SCREEN:     { label: 'Warning: Secondary Screen',   icon: '🔴', color: 'text-danger',  ring: '#B3261E', warning: true  },
 };
 
 // ── Ring math ─────────────────────────────────────────────────────────────────
@@ -52,9 +52,9 @@ export default function EyeContactHUD({
   if (!currentFrame) {
     // Camera not started or no frame yet — show collapsed placeholder
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/3 border border-white/8">
-        <div className="h-1.5 w-1.5 rounded-full bg-gray-600 animate-pulse" />
-        <span className="text-[10px] text-gray-600 font-mono">Gaze tracker inactive</span>
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-alt border border-border">
+        <div className="h-1.5 w-1.5 rounded-full bg-text-secondary animate-pulse" />
+        <span className="text-[10px] text-text-secondary font-mono">Gaze tracker inactive</span>
       </div>
     );
   }
@@ -68,7 +68,7 @@ export default function EyeContactHUD({
       className={`flex flex-col gap-2 transition-all duration-300 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
     >
       {/* ── Main HUD pill ─────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[#060b14]/90 border border-white/8 backdrop-blur-sm">
+      <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface border border-border shadow-soft">
         {/* Focus Ring Gauge */}
         <div className="relative shrink-0">
           <svg width="56" height="56" viewBox="0 0 56 56">
@@ -79,7 +79,7 @@ export default function EyeContactHUD({
               </linearGradient>
             </defs>
             {/* Track */}
-            <circle cx="28" cy="28" r={RING_R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="5" />
+            <circle cx="28" cy="28" r={RING_R} fill="none" stroke="#E2DDD5" strokeWidth="5" />
             {/* Progress arc */}
             <circle
               cx="28" cy="28" r={RING_R}
@@ -109,7 +109,7 @@ export default function EyeContactHUD({
               {zone.label}
             </span>
           </div>
-          <div className="flex items-center gap-2 text-[9px] text-gray-600 font-mono">
+          <div className="flex items-center gap-2 text-[9px] text-text-secondary font-mono">
             <span>P: {currentFrame.gazeAngles.pitchDegrees.toFixed(1)}°</span>
             <span>Y: {currentFrame.gazeAngles.yawDegrees.toFixed(1)}°</span>
             <span>conf: {(currentFrame.confidenceScore * 100).toFixed(0)}%</span>
@@ -122,19 +122,19 @@ export default function EyeContactHUD({
             className="h-2 w-2 rounded-full"
             style={{
               background: zone.ring,
-              boxShadow: `0 0 6px ${zone.ring}`,
+              boxShadow: `0 0 4px ${zone.ring}`,
               animation: 'pulse 1.2s infinite',
             }}
           />
-          <span className="text-[7px] text-gray-700 font-mono">LIVE</span>
+          <span className="text-[7px] text-text-secondary font-mono">LIVE</span>
         </div>
       </div>
 
       {/* ── Distraction Warning Banner ───────────────────────────────── */}
       {showDistraction && (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 animate-pulse">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-danger/10 border border-danger/20 animate-pulse">
           <span className="text-xs">🔴</span>
-          <span className="text-[10px] text-red-400 font-semibold font-mono">
+          <span className="text-[10px] text-danger font-semibold font-mono">
             Gaze deviation detected — maintain screen focus
           </span>
         </div>

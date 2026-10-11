@@ -261,10 +261,10 @@ function safeSessionSet(key: string, value: unknown): void {
 
 export const InterviewProvider = ({ children }: { children: React.ReactNode }) => {
   // Theme State — guarded for SSR
-  const [theme, setTheme] = useState<string>('dark');
+  const [theme, setTheme] = useState<string>('nmims');
 
   useEffect(() => {
-    const saved = safeLocalGet<string>('iq_theme', 'dark');
+    const saved = safeLocalGet<string>('iq_theme', 'nmims');
     setTheme(saved);
   }, []);
 

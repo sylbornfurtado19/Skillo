@@ -27,22 +27,24 @@ export function Input({
 }: InputProps) {
   return (
     <div className={`space-y-1.5 text-left w-full ${className}`}>
-      {label && <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">{label}</label>}
+      {label && <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">{label}</label>}
       <div className="relative w-full">
-        {Icon && <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />}
+        {Icon && <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--secondary)] text-sm" />}
         <input
           type={type}
           required={required}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className={`w-full rounded-xl bg-background border ${
-            error ? 'border-red-500/50' : 'border-white/10 focus:border-primary/50'
-          } ${Icon ? 'pl-10' : 'px-4'} pr-4 py-3 text-sm text-white focus:outline-none transition duration-200`}
+          className={`w-full rounded-xl bg-[var(--bg-surface)] border ${
+            error
+              ? 'border-[var(--danger)] focus:border-[var(--danger)]'
+              : 'border-[var(--border)] focus:border-[var(--primary)]'
+          } ${Icon ? 'pl-10' : 'px-4'} pr-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/60 focus:outline-none focus:ring-[3px] focus:ring-[var(--primary)]/25 transition duration-200`}
           {...props}
         />
       </div>
-      {error && <p className="text-[10px] text-red-400 font-medium">{error}</p>}
+      {error && <p className="text-[10px] text-[var(--danger)] font-medium">{error}</p>}
     </div>
   );
 }
@@ -71,19 +73,21 @@ export function Textarea({
 }: TextareaProps) {
   return (
     <div className={`space-y-1.5 text-left w-full ${className}`}>
-      {label && <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">{label}</label>}
+      {label && <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">{label}</label>}
       <textarea
         required={required}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
         rows={rows}
-        className={`w-full rounded-xl bg-background border ${
-          error ? 'border-red-500/50' : 'border-white/10 focus:border-primary/50'
-        } px-4 py-3 text-sm text-white focus:outline-none transition duration-200 resize-none font-mono`}
+        className={`w-full rounded-xl bg-[var(--bg-surface)] border ${
+          error
+            ? 'border-[var(--danger)] focus:border-[var(--danger)]'
+            : 'border-[var(--border)] focus:border-[var(--primary)]'
+        } px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/60 focus:outline-none focus:ring-[3px] focus:ring-[var(--primary)]/25 transition duration-200 resize-none font-mono`}
         {...props}
       />
-      {error && <p className="text-[10px] text-red-400 font-medium">{error}</p>}
+      {error && <p className="text-[10px] text-[var(--danger)] font-medium">{error}</p>}
     </div>
   );
 }

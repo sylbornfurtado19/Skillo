@@ -951,12 +951,12 @@ export default function InterviewSession() {
 
   if (!resumeData) {
     return (
-      <div className="glass-card rounded-2xl p-8 border border-red-500/20 bg-red-500/5 text-center max-w-md mx-auto mt-12 space-y-6">
-        <div className="h-12 w-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 text-xl mx-auto">
+      <div className="glass-card rounded-2xl p-8 border border-danger/30 bg-danger/5 text-center max-w-md mx-auto mt-12 space-y-6">
+        <div className="h-12 w-12 rounded-full bg-danger/10 border border-danger/20 flex items-center justify-center text-danger text-xl mx-auto">
           <FaExclamationTriangle />
         </div>
-        <h3 className="text-lg font-heading font-bold text-white">Resume Required</h3>
-        <p className="text-xs text-gray-400 leading-relaxed">
+        <h3 className="text-lg font-heading font-bold text-text-primary">Resume Required</h3>
+        <p className="text-xs text-text-secondary leading-relaxed">
           You must upload your resume and specify job details before you can start active mock interviews.
         </p>
         <Button onClick={() => router.push('/resume')} variant="primary" size="md">
@@ -968,14 +968,14 @@ export default function InterviewSession() {
 
   if (checkingFollowUp) {
     return (
-      <div className="glass-card rounded-2xl p-8 border border-amber-500/20 glow-accent flex flex-col items-center justify-center min-h-[320px] text-center max-w-lg mx-auto mt-16 space-y-4">
+      <div className="glass-card rounded-2xl p-8 border border-warning/30 bg-surface shadow-soft flex flex-col items-center justify-center min-h-[320px] text-center max-w-lg mx-auto mt-16 space-y-4">
         <div className="flex space-x-2">
-          <div className="h-3 w-3 bg-amber-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-          <div className="h-3 w-3 bg-amber-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-          <div className="h-3 w-3 bg-amber-400 rounded-full animate-bounce" />
+          <div className="h-3 w-3 bg-warning rounded-full animate-bounce [animation-delay:-0.3s]" />
+          <div className="h-3 w-3 bg-warning rounded-full animate-bounce [animation-delay:-0.15s]" />
+          <div className="h-3 w-3 bg-warning rounded-full animate-bounce" />
         </div>
-        <h3 className="text-base font-heading font-bold text-white">Reviewing your answer...</h3>
-        <p className="text-xs text-gray-400 font-mono">Real-time AI checking for depth and technical specificity...</p>
+        <h3 className="text-base font-heading font-bold text-text-primary">Reviewing your answer...</h3>
+        <p className="text-xs text-text-secondary font-mono">Real-time AI checking for depth and technical specificity...</p>
       </div>
     );
   }
@@ -983,15 +983,15 @@ export default function InterviewSession() {
   if (grading) {
 
     return (
-      <div className="glass-card rounded-2xl p-10 border border-white/5 glow-secondary flex flex-col items-center justify-center min-h-[420px] text-center max-w-xl mx-auto mt-16">
+      <div className="glass-card rounded-2xl p-10 border border-border bg-surface shadow-soft flex flex-col items-center justify-center min-h-[420px] text-center max-w-xl mx-auto mt-16">
         <div className="relative mb-8">
           <motion.div
             animate={{
               scale: [0.95, 1.05, 0.95],
               filter: [
-                'drop-shadow(0 0 10px rgba(139, 92, 246, 0.15))',
-                'drop-shadow(0 0 25px rgba(139, 92, 246, 0.35))',
-                'drop-shadow(0 0 10px rgba(139, 92, 246, 0.15))',
+                'drop-shadow(0 0 10px rgba(155, 34, 24, 0.15))',
+                'drop-shadow(0 0 25px rgba(155, 34, 24, 0.35))',
+                'drop-shadow(0 0 10px rgba(155, 34, 24, 0.15))',
               ],
             }}
             transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
@@ -999,9 +999,9 @@ export default function InterviewSession() {
             <LogoIcon size={72} />
           </motion.div>
         </div>
-        <h3 className="text-xl font-heading font-bold text-white mb-2">Grading Live Assessment</h3>
-        <p className="text-xs text-gray-500 font-mono mb-6">Evaluating communication parameters and accuracy standards...</p>
-        <div className="w-full h-1.5 bg-white/5 rounded-full max-w-xs overflow-hidden border border-white/5">
+        <h3 className="text-xl font-heading font-bold text-text-primary mb-2">Grading Live Assessment</h3>
+        <p className="text-xs text-text-secondary font-mono mb-6">Evaluating communication parameters and accuracy standards...</p>
+        <div className="w-full h-1.5 bg-surface-alt rounded-full max-w-xs overflow-hidden border border-border">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: '100%' }}
@@ -1043,7 +1043,7 @@ export default function InterviewSession() {
                         />
                       )}
                     </AnimatePresence>
-                    <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-white/10 shadow-lg z-10 shrink-0">
+                    <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-border shadow-soft z-10 shrink-0">
                       <Image
                         src={persona.avatar}
                         alt={persona.name}
@@ -1055,8 +1055,8 @@ export default function InterviewSession() {
                   </div>
 
                   <div className="space-y-1">
-                    <h3 className="font-heading font-bold text-white leading-none">{persona.name}</h3>
-                    <p className="text-[10px] text-gray-500 font-mono uppercase">
+                    <h3 className="font-heading font-bold text-text-primary leading-none">{persona.name}</h3>
+                    <p className="text-[10px] text-text-secondary font-mono uppercase">
                       {persona.role} &bull; {persona.company}
                     </p>
                     <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
@@ -1064,19 +1064,19 @@ export default function InterviewSession() {
                         {interviewerSpeaking ? 'Speaking Voice...' : 'Listening'}
                       </Badge>
                       {followUpBadgeSet.has(currentQuestionIndex) && (
-                        <Badge variant="accent" size="sm" className="bg-amber-500/15 border-amber-500/30 text-amber-300 font-mono font-bold">
+                        <Badge variant="accent" size="sm" className="bg-warning/15 border-warning/30 text-warning font-mono font-bold">
                           ⚡ AI Real-Time Follow-up
                         </Badge>
                       )}
                       {pastCritiques && pastCritiques.length > 0 && (
-                        <Badge variant="accent" size="sm" className="bg-purple-500/20 border-purple-500/40 text-purple-300 font-mono font-bold flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
+                        <Badge variant="accent" size="sm" className="bg-primary-soft border-primary/30 text-primary font-mono font-bold flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                           <span>🧠 Memory Active ({pastCritiques.length})</span>
                         </Badge>
                       )}
                     </div>
                     {recalledMemoryNotice && (
-                      <p className="text-[9px] text-purple-300 font-mono bg-purple-950/40 border border-purple-500/30 rounded px-1.5 py-0.5 mt-1 truncate max-w-[240px]" title={recalledMemoryNotice}>
+                      <p className="text-[9px] text-primary font-mono bg-primary-soft/50 border border-primary/20 rounded px-1.5 py-0.5 mt-1 truncate max-w-[240px]" title={recalledMemoryNotice}>
                         🧠 Recalled: {pastCritiques?.[0]?.summary || recalledMemoryNotice}
                       </p>
                     )}
@@ -1090,7 +1090,7 @@ export default function InterviewSession() {
                     type="button"
                     onClick={cancelSpeechNarration}
                     title="Skip voice narration"
-                    className="flex items-center gap-1 text-[10px] font-mono text-gray-400 hover:text-white bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded-lg transition cursor-pointer shrink-0"
+                    className="flex items-center gap-1 text-[10px] font-mono text-text-secondary hover:text-text-primary bg-surface-alt border border-border hover:bg-border/40 px-2 py-1 rounded-lg transition cursor-pointer shrink-0"
                   >
                     <FaStepForward size={10} />
                     <span>Skip Voice</span>
@@ -1152,7 +1152,7 @@ export default function InterviewSession() {
               />
 
 
-              <div className="bg-[#030712]/60 rounded-xl p-5 border border-white/5 mt-4 min-h-[120px] flex flex-col justify-center">
+              <div className="bg-surface-alt rounded-xl p-5 border border-border mt-4 min-h-[120px] flex flex-col justify-center">
                 <AnimatePresence mode="wait">
                   {interviewerSpeaking ? (
                     <motion.div
@@ -1181,8 +1181,8 @@ export default function InterviewSession() {
                               key={idx}
                               className={`transition-all duration-300 ${
                                 idx === spokenSentenceIndex
-                                  ? 'text-white font-bold bg-primary/20 px-1 rounded border-b border-primary'
-                                  : 'text-gray-400 opacity-70'
+                                  ? 'text-primary font-bold bg-primary-soft px-1 rounded border-b border-primary'
+                                  : 'text-text-secondary opacity-70'
                               }`}
                             >
                               {sentence}{' '}
@@ -1190,7 +1190,7 @@ export default function InterviewSession() {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-xs sm:text-sm font-heading font-medium text-white leading-relaxed">
+                        <p className="text-xs sm:text-sm font-heading font-medium text-text-primary leading-relaxed">
                           {currentQuestion.question}
                         </p>
                       )}
@@ -1201,17 +1201,17 @@ export default function InterviewSession() {
                         key="question"
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-xs sm:text-sm font-heading font-medium text-white leading-relaxed"
+                        className="text-xs sm:text-sm font-heading font-medium text-text-primary leading-relaxed"
                       >
                         {currentQuestion.question}
                       </motion.p>
 
                       {currentQuestion.hint && (
-                        <div className="pt-2 border-t border-white/5">
+                        <div className="pt-2 border-t border-border">
                           <button
                             type="button"
                             onClick={() => setShowHint(!showHint)}
-                            className="text-[10px] text-primary hover:text-accent font-semibold uppercase tracking-wider transition cursor-pointer"
+                            className="text-[10px] text-primary hover:text-primary-hover font-semibold uppercase tracking-wider transition cursor-pointer"
                           >
                             {showHint ? 'Hide Hint' : 'Show Hint'}
                           </button>
@@ -1225,7 +1225,7 @@ export default function InterviewSession() {
                                   height: { duration: 0.3, ease: 'easeInOut' },
                                   opacity: { duration: 0.2, ease: 'linear' },
                                 }}
-                                className="text-[11px] text-gray-400 mt-2 leading-relaxed bg-[#030712]/50 p-2.5 rounded-lg border border-white/5 font-mono overflow-hidden"
+                                className="text-[11px] text-text-secondary mt-2 leading-relaxed bg-surface p-2.5 rounded-lg border border-border font-mono overflow-hidden"
                               >
                                 {currentQuestion.hint}
                               </motion.p>
@@ -1239,8 +1239,8 @@ export default function InterviewSession() {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-white/5 space-y-2">
-              <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">
+            <div className="pt-6 border-t border-border space-y-2">
+              <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider block">
                 Question Focus Elements
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -1253,12 +1253,12 @@ export default function InterviewSession() {
             </div>
           </Card>
 
-          <Card variant="solid" className="p-4 border-l-2 border-l-secondary bg-secondary/5 space-y-1.5">
+          <Card variant="solid" className="p-4 border-l-2 border-l-secondary bg-surface-alt space-y-1.5">
             <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block flex items-center gap-1.5">
               <FaInfoCircle />
               <span>Assessor Pacing Notes</span>
             </span>
-            <p className="text-[11px] text-gray-400 leading-relaxed">
+            <p className="text-[11px] text-text-secondary leading-relaxed">
               {setupData.type === 'Technical'
                 ? 'Elaborate on coding trade-offs, space/time Big O complexities, and error-handling conditions. Do not state high-level design only.'
                 : 'Structure answers using the STAR framework. Clearly define the quantitative results and what metrics changed.'}
@@ -1266,25 +1266,25 @@ export default function InterviewSession() {
           </Card>
         </div>
 
-        <div className="lg:col-span-7 flex flex-col justify-between bg-[#111827]/40 border border-white/5 rounded-2xl p-6 relative space-y-6">
+        <div className="lg:col-span-7 flex flex-col justify-between bg-surface border border-border rounded-2xl p-6 relative space-y-6 shadow-soft">
           <div>
-            <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+            <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-white font-bold uppercase tracking-wider block">Candidate Studio Workspace</span>
+                  <span className="text-xs text-text-primary font-bold uppercase tracking-wider block">Candidate Studio Workspace</span>
                   {isRetry && (
-                    <Badge variant="accent" size="sm" className="bg-amber-500/10 border-amber-500/20 text-amber-400 font-mono font-bold">
+                    <Badge variant="accent" size="sm" className="bg-warning/15 border-warning/30 text-warning font-mono font-bold">
                       Focused Question Retry
                     </Badge>
                   )}
                 </div>
-                <span className="text-[10px] text-gray-500 font-mono">
+                <span className="text-[10px] text-text-secondary font-mono">
                   {isRetry ? 'Single Question Target Practice' : `Question ${currentQuestionIndex + 1} of ${questions.length}`}
                 </span>
               </div>
 
 
-              <div className="bg-[#030712] p-1 rounded-xl border border-white/5 flex gap-1">
+              <div className="bg-surface-alt p-1 rounded-xl border border-border flex gap-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -1293,7 +1293,7 @@ export default function InterviewSession() {
                     setRecording(false);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition duration-200 cursor-pointer ${
-                    responseMode === 'type' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:text-white'
+                    responseMode === 'type' ? 'bg-primary text-white shadow-soft' : 'text-text-secondary hover:text-text-primary'
                   }`}
                 >
                   <FaKeyboard size={10} />
@@ -1307,7 +1307,7 @@ export default function InterviewSession() {
                     setTypedAnswer('');
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition duration-200 cursor-pointer ${
-                    responseMode === 'speak' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:text-white'
+                    responseMode === 'speak' ? 'bg-primary text-white shadow-soft' : 'text-text-secondary hover:text-text-primary'
                   }`}
                 >
                   <FaMicrophone size={10} />
@@ -1318,7 +1318,7 @@ export default function InterviewSession() {
 
             {/* 30-Second Early Warning Banner */}
             {timeLeft <= 30 && timeLeft > 10 && !interviewerSpeaking && (
-              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs px-4 py-2 rounded-xl font-medium mb-3 flex items-center gap-2">
+              <div className="bg-warning/15 border border-warning/30 text-warning text-xs px-4 py-2 rounded-xl font-medium mb-3 flex items-center gap-2">
                 <span>⏱️</span>
                 <span>Pacing Warning: 30 seconds remaining. Wrap up your main points before automatic submission.</span>
               </div>
@@ -1326,7 +1326,7 @@ export default function InterviewSession() {
 
             {/* 10-Second Critical Red Warning Banner */}
             {timeLeft <= 10 && !interviewerSpeaking && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs px-4 py-2.5 rounded-xl font-medium animate-pulse mb-3 text-left">
+              <div className="bg-danger/15 border border-danger/30 text-danger text-xs px-4 py-2.5 rounded-xl font-medium animate-pulse mb-3 text-left">
                 ⚠️ 10 seconds remaining — your answer will be submitted automatically.
               </div>
             )}
@@ -1339,20 +1339,20 @@ export default function InterviewSession() {
                     onChange={(e) => setTypedAnswer(e.target.value)}
                     disabled={interviewerSpeaking}
                     placeholder="Provide your response here..."
-                    className="w-full h-56 rounded-xl bg-[#030712]/50 border border-white/10 p-4 text-xs sm:text-sm text-gray-200 focus:outline-none focus:border-primary/50 transition duration-200 resize-none font-mono disabled:opacity-40"
+                    className="w-full h-56 rounded-xl bg-surface border border-border p-4 text-xs sm:text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/25 transition duration-200 resize-none font-mono disabled:opacity-40"
                   />
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center space-y-6 py-8">
                   {!isSpeechSupported ? (
-                    <div className="text-center p-6 bg-red-500/10 border border-red-500/20 rounded-xl space-y-3 max-w-sm mx-auto">
-                      <div className="h-10 w-10 bg-red-500/20 border border-red-500/30 rounded-full flex items-center justify-center text-red-400 mx-auto">
+                    <div className="text-center p-6 bg-danger/10 border border-danger/20 rounded-xl space-y-3 max-w-sm mx-auto">
+                      <div className="h-10 w-10 bg-danger/20 border border-danger/30 rounded-full flex items-center justify-center text-danger mx-auto">
                         <FaExclamationTriangle />
                       </div>
-                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                      <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
                         Web Speech API Unsupported
                       </h4>
-                      <p className="text-[11px] text-gray-400 leading-relaxed">
+                      <p className="text-[11px] text-text-secondary leading-relaxed">
                         Speech recognition is not supported in this browser. Please try Google Chrome or Microsoft Edge, or switch back to the text Editor mode.
                       </p>
                     </div>
@@ -1364,7 +1364,7 @@ export default function InterviewSession() {
                             key={bar}
                             animate={{ height: [12, Math.floor(Math.random() * 26) + 12, 12] }}
                             transition={{ repeat: Infinity, duration: 0.6 + bar * 0.05, ease: 'easeInOut' }}
-                            className="w-1 bg-gradient-to-t from-primary to-accent rounded-full"
+                            className="w-1 bg-primary rounded-full"
                             style={{ height: '12px' }}
                           />
                         ))}
@@ -1374,7 +1374,7 @@ export default function InterviewSession() {
                         Pause Voice Recording
                       </Button>
 
-                      <div className="w-full bg-[#030712]/50 border border-white/5 rounded-xl p-4 text-xs font-mono text-gray-400 leading-relaxed min-h-[60px] text-left">
+                      <div className="w-full bg-surface-alt border border-border rounded-xl p-4 text-xs font-mono text-text-secondary leading-relaxed min-h-[60px] text-left">
                         {transcriptText || 'Awaiting voice inputs... speak to compile transcript logs.'}
                       </div>
                     </div>
@@ -1384,13 +1384,13 @@ export default function InterviewSession() {
                         type="button"
                         onClick={handleToggleRecord}
                         disabled={interviewerSpeaking}
-                        className="h-16 w-16 rounded-full bg-primary/10 border border-primary/20 hover:border-primary flex items-center justify-center text-primary text-2xl hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition duration-200 cursor-pointer shadow-lg shadow-primary/10"
+                        className="h-16 w-16 rounded-full bg-primary-soft border border-primary/30 hover:border-primary flex items-center justify-center text-primary text-2xl hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition duration-200 cursor-pointer shadow-soft"
                       >
                         <FaMicrophone />
                       </button>
                       <div className="space-y-1">
-                        <p className="text-xs font-bold text-white uppercase tracking-wide">Capture Speech</p>
-                        <p className="text-[10px] text-gray-500">Audio captures are transcribed locally in real-time.</p>
+                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Capture Speech</p>
+                        <p className="text-[10px] text-text-secondary">Audio captures are transcribed locally in real-time.</p>
                       </div>
                     </div>
                   )}
@@ -1398,16 +1398,16 @@ export default function InterviewSession() {
               )}
             </div>
 
-            <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono mt-3 pb-3 border-b border-white/5">
+            <div className="flex justify-between items-center text-[10px] text-text-secondary font-mono mt-3 pb-3 border-b border-border">
               <span>
                 Words:{' '}
                 <span
                   className={
                     wordCount > 100
-                      ? 'text-emerald-400 font-bold'
+                      ? 'text-success font-bold'
                       : wordCount >= 50
-                      ? 'text-yellow-400 font-bold'
-                      : 'text-gray-500'
+                      ? 'text-warning font-bold'
+                      : 'text-text-secondary'
                   }
                 >
                   {wordCount}
@@ -1420,7 +1420,7 @@ export default function InterviewSession() {
 
           {/* System Design Architectural Canvas (Conditional per System Design question) */}
           {isSystemDesignQuestion && (
-            <div className="pt-4 border-t border-white/5">
+            <div className="pt-4 border-t border-border">
               <SystemDesignCanvas
                 initialState={diagramState}
                 onChange={setDiagramState}
@@ -1429,7 +1429,7 @@ export default function InterviewSession() {
           )}
 
 
-          <div className="flex justify-between items-center mt-6 pt-4 border-t border-white/5">
+          <div className="flex justify-between items-center mt-6 pt-4 border-t border-border">
             <div className="flex gap-2 items-center">
               {!confirmSkip ? (
                 <>
@@ -1449,25 +1449,25 @@ export default function InterviewSession() {
                     onClick={() => setConfirmSkip(true)}
                     variant="ghost"
                     size="sm"
-                    className="text-gray-500 hover:text-white"
+                    className="text-text-secondary hover:text-text-primary"
                   >
                     Skip
                   </Button>
                 </>
               ) : (
-                <div className="flex items-center gap-2 bg-[#030712]/60 px-3 py-1.5 rounded-lg border border-white/5 text-[11px] text-gray-400">
+                <div className="flex items-center gap-2 bg-surface-alt px-3 py-1.5 rounded-lg border border-border text-[11px] text-text-secondary">
                   <span>Skip this question? Your answer won't be scored.</span>
                   <button
                     type="button"
                     onClick={handleConfirmSkip}
-                    className="text-red-400 hover:text-red-300 font-bold px-1.5 py-0.5 rounded cursor-pointer transition"
+                    className="text-danger hover:text-danger/80 font-bold px-1.5 py-0.5 rounded cursor-pointer transition"
                   >
                     Confirm
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmSkip(false)}
-                    className="text-gray-400 hover:text-white font-bold px-1.5 py-0.5 rounded cursor-pointer transition"
+                    className="text-text-secondary hover:text-text-primary font-bold px-1.5 py-0.5 rounded cursor-pointer transition"
                   >
                     Cancel
                   </button>
@@ -1477,23 +1477,23 @@ export default function InterviewSession() {
 
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Timer</span>
+                <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider block">Timer</span>
                 <span
                   className={`text-xs font-mono font-bold ${
                     timeLeft <= 10
-                      ? 'text-red-400 animate-pulse'
+                      ? 'text-danger animate-pulse'
                       : timeLeft <= 30
-                      ? 'text-amber-400'
-                      : 'text-white'
+                      ? 'text-warning'
+                      : 'text-text-primary'
                   }`}
                 >
                   {formatTime(timeLeft)}
                 </span>
               </div>
-              <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden shrink-0">
+              <div className="w-16 h-1 bg-surface-alt rounded-full overflow-hidden shrink-0 border border-border">
                 <div
                   className={`h-full transition-all duration-1000 ${
-                    timeLeft <= 10 ? 'bg-red-400' : timeLeft <= 30 ? 'bg-amber-400' : 'bg-primary'
+                    timeLeft <= 10 ? 'bg-danger' : timeLeft <= 30 ? 'bg-warning' : 'bg-primary'
                   }`}
                   style={{ width: `${(timeLeft / currentQuestion.duration) * 100}%` }}
                 />

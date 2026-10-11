@@ -95,13 +95,13 @@ export default function Dashboard() {
       {
         label: 'Assessment Score',
         data: totalCompleted > 0 ? [...finalHistory].reverse().map((h) => h.score) : [0],
-        borderColor: '#6366F1',
-        backgroundColor: 'rgba(99, 102, 241, 0.05)',
+        borderColor: '#9B2218',
+        backgroundColor: 'rgba(155, 34, 24, 0.08)',
         borderWidth: 2,
         tension: 0.35,
         fill: true,
-        pointBackgroundColor: '#06B6D4',
-        pointBorderColor: '#fff',
+        pointBackgroundColor: '#9B2218',
+        pointBorderColor: '#FBF9F6',
         pointHoverRadius: 6,
       },
     ],
@@ -113,8 +113,10 @@ export default function Dashboard() {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#111827',
-        borderColor: 'rgba(255, 255, 255, 0.08)',
+        backgroundColor: '#FBF9F6',
+        titleColor: '#2B2523',
+        bodyColor: '#6A625E',
+        borderColor: '#E2DDD5',
         borderWidth: 1,
         padding: 10,
         cornerRadius: 8,
@@ -124,12 +126,12 @@ export default function Dashboard() {
       y: {
         min: 50,
         max: 100,
-        grid: { color: 'rgba(255, 255, 255, 0.02)' },
-        ticks: { color: '#94A3B8', font: { family: 'Inter', size: 10 } },
+        grid: { color: '#E2DDD5' },
+        ticks: { color: '#6A625E', font: { family: 'Inter', size: 10 } },
       },
       x: {
         grid: { display: false },
-        ticks: { color: '#94A3B8', font: { family: 'Inter', size: 10 } },
+        ticks: { color: '#6A625E', font: { family: 'Inter', size: 10 } },
       },
     },
   };
@@ -147,10 +149,10 @@ export default function Dashboard() {
           categories.depth ?? 75,
           categories.timeManagement ?? 88,
         ],
-        backgroundColor: 'rgba(139, 92, 246, 0.15)',
-        borderColor: '#8B5CF6',
+        backgroundColor: 'rgba(155, 34, 24, 0.15)',
+        borderColor: '#9B2218',
         borderWidth: 2,
-        pointBackgroundColor: '#06B6D4',
+        pointBackgroundColor: '#6B6E70',
         pointBorderWidth: 1,
       },
     ],
@@ -161,12 +163,19 @@ export default function Dashboard() {
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
+      tooltip: {
+        backgroundColor: '#FBF9F6',
+        titleColor: '#2B2523',
+        bodyColor: '#6A625E',
+        borderColor: '#E2DDD5',
+        borderWidth: 1,
+      },
     },
     scales: {
       r: {
-        grid: { color: 'rgba(255, 255, 255, 0.04)' },
-        angleLines: { color: 'rgba(255, 255, 255, 0.04)' },
-        pointLabels: { color: '#94A3B8', font: { family: 'Inter', size: 9, weight: 'bold' as const } },
+        grid: { color: '#E2DDD5' },
+        angleLines: { color: '#E2DDD5' },
+        pointLabels: { color: '#6A625E', font: { family: 'Inter', size: 9, weight: 'bold' as const } },
         ticks: { display: false, stepSize: 20 },
         min: 0,
         max: 100,
@@ -257,29 +266,26 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 pb-10 text-left">
       {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-primary/10 via-secondary/5 to-accent/10 border border-white/10 rounded-2xl p-6 relative overflow-hidden shadow-2xl">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-primary/15 rounded-full blur-[90px] pointer-events-none" />
-
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6 relative overflow-hidden shadow-[var(--shadow)]">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-white">
+            <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-[var(--text-primary)]">
               Welcome back, {candidateName}!
             </h2>
             {streakInfo.currentStreak > 0 && (
-              <Badge variant="accent" size="sm" className="bg-amber-500/10 border-amber-500/20 text-amber-400 font-mono font-bold flex items-center gap-1">
-                <FaFire className="text-amber-500 animate-pulse" />
+              <Badge variant="accent" size="sm" className="bg-[var(--warning)]/10 border-[var(--warning)]/20 text-[var(--warning)] font-mono font-bold flex items-center gap-1">
+                <FaFire className="text-[var(--warning)] animate-pulse" />
                 <span>{streakInfo.currentStreak} day streak</span>
               </Badge>
             )}
           </div>
-          <p className="text-xs sm:text-sm text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1">
             Track metrics and prepare for assessments in your workspace.
           </p>
         </div>
 
-
         <div className="flex flex-wrap gap-3 shrink-0">
-          <Button onClick={() => router.push('/ivp-lab')} variant="secondary" size="sm" icon={FaFlask} className="border-indigo-500/30 bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/60">
+          <Button onClick={() => router.push('/ivp-lab')} variant="secondary" size="sm" icon={FaFlask}>
             IVP Lab
           </Button>
           <Button onClick={() => router.push('/setup')} variant="primary" size="sm" icon={FaPlay}>
@@ -291,19 +297,18 @@ export default function Dashboard() {
         </div>
       </div>
 
-
       {/* ── STREAK NUDGE CARD (Shown if practiced yesterday but not yet today) ── */}
       {Boolean(streakInfo.hasActiveStreakYesterday) && (
-        <Card variant="glass" className="p-4 border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-orange-950/20 to-amber-950/10 flex items-center justify-between gap-4">
+        <Card variant="glass" className="p-4 border border-[var(--warning)]/30 bg-[var(--bg-surface)] shadow-[var(--shadow)] flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-[var(--warning)]/10 border border-[var(--warning)]/25 flex items-center justify-center text-[var(--warning)] shrink-0">
               <FaFire className="animate-pulse" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider font-heading">
+              <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider font-heading">
                 Keep your {streakInfo.currentStreak}-day streak going!
               </h4>
-              <p className="text-[11px] text-gray-300">
+              <p className="text-[11px] text-[var(--text-secondary)]">
                 Complete 1 quick mock session today to maintain your momentum.
               </p>
             </div>
@@ -312,7 +317,7 @@ export default function Dashboard() {
             onClick={() => router.push('/setup')}
             variant="primary"
             size="sm"
-            className="shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold border-none"
+            className="shrink-0"
             icon={FaPlay}
           >
             Practice Now
@@ -331,15 +336,15 @@ export default function Dashboard() {
 
       {totalCompleted === 0 && Boolean(resumeData) && (
         <div className="space-y-4">
-          <Card variant="glass" className="p-6 border border-white/10 flex flex-col md:flex-row items-center justify-between gap-6 glow-accent">
+          <Card variant="glass" className="p-6 border border-[var(--border)] flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-1 text-center md:text-left">
               <Badge variant="accent" size="sm" className="mb-1">
                 Resume Uploaded ✓
               </Badge>
-              <h3 className="text-lg font-heading font-bold text-white">
+              <h3 className="text-lg font-heading font-bold text-[var(--text-primary)]">
                 Ready for your first mock interview session
               </h3>
-              <p className="text-xs text-gray-400 max-w-xl">
+              <p className="text-xs text-[var(--text-secondary)] max-w-xl">
                 Your resume has been parsed. Configure your session parameters to start answering questions.
               </p>
             </div>
@@ -347,7 +352,7 @@ export default function Dashboard() {
               onClick={() => router.push('/setup')}
               variant="primary"
               size="md"
-              className="shrink-0 bg-gradient-to-r from-primary to-accent"
+              className="shrink-0"
               icon={FaPlay}
             >
               Configure Setup
@@ -356,21 +361,20 @@ export default function Dashboard() {
           
           {/* ── PROACTIVE RESUME ANALYSIS INSIGHTS CARD (Rendered whenever resumeData exists) ── */}
           {Boolean(resumeData) && (
-            <Card variant="glass" className="p-6 border border-primary/25 bg-gradient-to-r from-primary/10 via-indigo-950/20 to-purple-950/15 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
-
+            <Card variant="glass" className="p-6 border border-[var(--border)] bg-[var(--bg-surface)] flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
               <div className="space-y-2 text-center md:text-left flex-1">
                 <div className="flex items-center justify-center md:justify-start gap-2">
                   <Badge variant="primary" size="sm">Resume Insights</Badge>
                   {typeof (analysisResult as any)?.matchPercentage === 'number' && (
-                    <span className="text-xs font-mono font-bold text-emerald-400">
+                    <span className="text-xs font-mono font-bold text-[var(--success)]">
                       {(analysisResult as any).matchPercentage}% Match Rating
                     </span>
                   )}
                 </div>
-                <h4 className="text-base font-heading font-bold text-white">
-                  Recommended Target Practice Role: <span className="text-accent">{(analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer'}</span>
+                <h4 className="text-base font-heading font-bold text-[var(--text-primary)]">
+                  Recommended Target Practice Role: <span className="text-[var(--primary)]">{(analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer'}</span>
                 </h4>
-                <p className="text-xs text-gray-300 max-w-2xl leading-relaxed">
+                <p className="text-xs text-[var(--text-secondary)] max-w-2xl leading-relaxed">
                   Based on your parsed resume skills ({(analysisResult as any)?.skillsMatched?.slice(0, 3).join(', ') || 'React, TypeScript, Architecture'}), we recommend practicing the <strong>{(analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer'}</strong> track on <strong>Technical</strong> mode.
                 </p>
               </div>
@@ -408,7 +412,7 @@ export default function Dashboard() {
                 }}
                 variant="primary"
                 size="md"
-                className="shrink-0 bg-gradient-to-r from-primary via-indigo-600 to-accent text-white shadow-lg shadow-primary/20 px-6"
+                className="shrink-0 px-6"
                 icon={FaRocket}
               >
                 <span>Practice this role</span>
@@ -423,21 +427,20 @@ export default function Dashboard() {
       <div className="space-y-6">
           {/* ── PROACTIVE RESUME ANALYSIS INSIGHTS CARD (Rendered whenever resumeData exists) ── */}
           {Boolean(resumeData) && (
-            <Card variant="glass" className="p-6 border border-primary/25 bg-gradient-to-r from-primary/10 via-indigo-950/20 to-purple-950/15 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
-
+            <Card variant="glass" className="p-6 border border-[var(--border)] bg-[var(--bg-surface)] flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
               <div className="space-y-2 text-center md:text-left flex-1">
                 <div className="flex items-center justify-center md:justify-start gap-2">
                   <Badge variant="primary" size="sm">Resume Insights</Badge>
                   {typeof (analysisResult as any)?.matchPercentage === 'number' && (
-                    <span className="text-xs font-mono font-bold text-emerald-400">
+                    <span className="text-xs font-mono font-bold text-[var(--success)]">
                       {(analysisResult as any).matchPercentage}% Match Rating
                     </span>
                   )}
                 </div>
-                <h4 className="text-base font-heading font-bold text-white">
-                  Recommended Target Practice Role: <span className="text-accent">{(analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer'}</span>
+                <h4 className="text-base font-heading font-bold text-[var(--text-primary)]">
+                  Recommended Target Practice Role: <span className="text-[var(--primary)]">{(analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer'}</span>
                 </h4>
-                <p className="text-xs text-gray-300 max-w-2xl leading-relaxed">
+                <p className="text-xs text-[var(--text-secondary)] max-w-2xl leading-relaxed">
                   Based on your parsed resume skills ({(analysisResult as any)?.skillsMatched?.slice(0, 3).join(', ') || 'React, TypeScript, Architecture'}), we recommend practicing the <strong>{(analysisResult as any)?.jobTitle || setupData.role || 'Software Engineer'}</strong> track on <strong>Technical</strong> mode.
                 </p>
               </div>
@@ -474,7 +477,7 @@ export default function Dashboard() {
                 }}
                 variant="primary"
                 size="md"
-                className="shrink-0 bg-gradient-to-r from-primary via-indigo-600 to-accent text-white shadow-lg shadow-primary/20 px-6"
+                className="shrink-0 px-6"
                 icon={FaRocket}
               >
                 <span>Practice this role</span>
@@ -484,49 +487,48 @@ export default function Dashboard() {
           )}
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-
             <Card variant="glass" className="p-5 flex items-center gap-4">
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-lg sm:text-xl shrink-0">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/20 flex items-center justify-center text-[var(--primary)] text-lg sm:text-xl shrink-0">
                 <FaCalendarCheck />
               </div>
               <div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">
+                <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider font-mono font-bold">
                   Completed
                 </span>
                 {loading ? (
-                  <div className="h-6 w-12 bg-white/5 rounded animate-pulse mt-1" />
+                  <div className="h-6 w-12 bg-[var(--bg-surface-alt)] rounded animate-pulse mt-1" />
                 ) : (
-                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-white mt-0.5">{totalCompleted}</p>
+                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-[var(--text-primary)] mt-0.5">{totalCompleted}</p>
                 )}
               </div>
             </Card>
 
             <Card variant="glass" className="p-5 flex items-center gap-4">
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary text-lg sm:text-xl shrink-0">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-[var(--secondary)]/10 border border-[var(--secondary)]/20 flex items-center justify-center text-[var(--secondary)] text-lg sm:text-xl shrink-0">
                 <FaAward />
               </div>
               <div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">Avg Index</span>
+                <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider font-mono font-bold">Avg Index</span>
                 {loading ? (
-                  <div className="h-6 w-16 bg-white/5 rounded animate-pulse mt-1" />
+                  <div className="h-6 w-16 bg-[var(--bg-surface-alt)] rounded animate-pulse mt-1" />
                 ) : (
-                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-white mt-0.5">{averageScore}%</p>
+                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-[var(--text-primary)] mt-0.5">{averageScore}%</p>
                 )}
               </div>
             </Card>
 
             <Card variant="glass" className="p-5 flex items-center gap-4">
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent text-lg sm:text-xl shrink-0">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-[var(--primary-soft)] border border-[var(--primary)]/20 flex items-center justify-center text-[var(--primary)] text-lg sm:text-xl shrink-0">
                 <FaFileAlt />
               </div>
               <div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">
+                <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider font-mono font-bold">
                   Resume Health
                 </span>
                 {loading ? (
-                  <div className="h-6 w-16 bg-white/5 rounded animate-pulse mt-1" />
+                  <div className="h-6 w-16 bg-[var(--bg-surface-alt)] rounded animate-pulse mt-1" />
                 ) : (
-                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-white mt-0.5">
+                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-[var(--text-primary)] mt-0.5">
                     {resumeScore ? `${resumeScore}%` : 'Unrated'}
                   </p>
                 )}
@@ -534,17 +536,17 @@ export default function Dashboard() {
             </Card>
 
             <Card variant="glass" className="p-5 flex items-center gap-4">
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-lg sm:text-xl shrink-0">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-[var(--success)]/10 border border-[var(--success)]/20 flex items-center justify-center text-[var(--success)] text-lg sm:text-xl shrink-0">
                 <FaChartLine />
               </div>
               <div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">
+                <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider font-mono font-bold">
                   Readiness Index
                 </span>
                 {loading ? (
-                  <div className="h-6 w-16 bg-white/5 rounded animate-pulse mt-1" />
+                  <div className="h-6 w-16 bg-[var(--bg-surface-alt)] rounded animate-pulse mt-1" />
                 ) : (
-                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-emerald-400 mt-0.5">
+                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-[var(--success)] mt-0.5">
                     {readinessIndex}%
                   </p>
                 )}
@@ -555,10 +557,10 @@ export default function Dashboard() {
           <Card variant="solid" className="p-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="space-y-1">
-                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">
+                <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider block">
                   Target Career Profile
                 </span>
-                <h3 className="text-base font-heading font-bold text-white flex items-center gap-2">
+                <h3 className="text-base font-heading font-bold text-[var(--text-primary)] flex items-center gap-2">
                   <span>{setupData.role}</span>
                   <Badge variant="accent" size="sm">
                     {setupData.domain}
@@ -566,14 +568,14 @@ export default function Dashboard() {
                 </h3>
               </div>
 
-              <div className="flex gap-4 text-xs font-mono text-gray-400">
+              <div className="flex gap-4 text-xs font-mono text-[var(--text-secondary)]">
                 <div>
-                  <span className="text-gray-500 block text-[9px] uppercase font-bold">Seniority</span>
-                  <span className="text-white font-semibold">{setupData.experienceLevel}</span>
+                  <span className="text-[var(--text-secondary)] block text-[9px] uppercase font-bold">Seniority</span>
+                  <span className="text-[var(--text-primary)] font-semibold">{setupData.experienceLevel}</span>
                 </div>
-                <div className="border-l border-white/5 pl-4">
-                  <span className="text-gray-500 block text-[9px] uppercase font-bold">Focus Track</span>
-                  <span className="text-white font-semibold">{setupData.type}</span>
+                <div className="border-l border-[var(--border)] pl-4">
+                  <span className="text-[var(--text-secondary)] block text-[9px] uppercase font-bold">Focus Track</span>
+                  <span className="text-[var(--text-primary)] font-semibold">{setupData.type}</span>
                 </div>
               </div>
             </div>
@@ -583,8 +585,8 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card variant="glass" className="lg:col-span-2 flex flex-col justify-between h-[340px]">
               <div className="mb-4">
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Score Progression</h3>
-                <p className="text-[10px] text-gray-500 mt-0.5">Evaluation performance trends over time.</p>
+                <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Score Progression</h3>
+                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Evaluation performance trends over time.</p>
               </div>
               <div className="flex-1 relative min-h-0">
                 <Line data={lineChartData} options={lineChartOptions} />
@@ -593,8 +595,8 @@ export default function Dashboard() {
 
             <Card variant="glass" className="flex flex-col justify-between h-[340px]">
               <div className="mb-4">
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Skills Distribution</h3>
-                <p className="text-[10px] text-gray-500 mt-0.5">Evaluated weights across core dimensions.</p>
+                <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Skills Distribution</h3>
+                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Evaluated weights across core dimensions.</p>
               </div>
               <div className="flex-1 relative min-h-0">
                 <Radar data={radarChartData} options={radarChartOptions} />
@@ -607,24 +609,24 @@ export default function Dashboard() {
       {/* RECENT ASSESSMENTS TABLE WITH SORT CONTROLS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card variant="glass" className="lg:col-span-2 space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-white/5">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-[var(--border)]">
             <div>
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">Recent Assessments</h3>
-              <p className="text-[10px] text-gray-500 mt-0.5">Click any session row to inspect the full evaluation report.</p>
+              <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Recent Assessments</h3>
+              <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Click any session row to inspect the full evaluation report.</p>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
               {/* Sort Control */}
-              <div className="flex items-center gap-1.5 text-xs text-gray-400 bg-background/80 border border-white/10 px-2.5 py-1 rounded-xl">
-                <FaSortAmountDown className="text-primary text-[10px]" />
+              <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border)] px-2.5 py-1 rounded-xl">
+                <FaSortAmountDown className="text-[var(--primary)] text-[10px]" />
                 <select
                   value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value as any)}
-                  className="bg-transparent text-white text-xs outline-none cursor-pointer"
+                  className="bg-transparent text-[var(--text-primary)] text-xs outline-none cursor-pointer"
                 >
-                  <option value="newest" className="bg-[#0b0f19]">Newest First</option>
-                  <option value="oldest" className="bg-[#0b0f19]">Oldest First</option>
-                  <option value="highest" className="bg-[#0b0f19]">Highest Score</option>
+                  <option value="newest" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Newest First</option>
+                  <option value="oldest" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Oldest First</option>
+                  <option value="highest" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">Highest Score</option>
                 </select>
               </div>
 
@@ -638,28 +640,28 @@ export default function Dashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-white/5 text-gray-500">
+                <tr className="border-b border-[var(--border)] text-[var(--text-secondary)]">
                   <th className="py-2.5 font-semibold">Date</th>
                   <th className="py-2.5 font-semibold">Role Profile</th>
                   <th className="py-2.5 font-semibold">Type</th>
                   <th className="py-2.5 font-semibold text-right">Score</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-gray-300">
+              <tbody className="divide-y divide-[var(--border)] text-[var(--text-secondary)]">
                 {loading ? (
                   Array.from({ length: 3 }).map((_, idx) => (
-                    <tr key={idx} className="border-b border-white/5">
+                    <tr key={idx} className="border-b border-[var(--border)]">
                       <td className="py-3">
-                        <div className="h-3 bg-white/5 rounded animate-pulse w-12" />
+                        <div className="h-3 bg-[var(--bg-surface-alt)] rounded animate-pulse w-12" />
                       </td>
                       <td className="py-3">
-                        <div className="h-3 bg-white/5 rounded animate-pulse w-32" />
+                        <div className="h-3 bg-[var(--bg-surface-alt)] rounded animate-pulse w-32" />
                       </td>
                       <td className="py-3">
-                        <div className="h-3 bg-white/5 rounded animate-pulse w-16" />
+                        <div className="h-3 bg-[var(--bg-surface-alt)] rounded animate-pulse w-16" />
                       </td>
                       <td className="py-3 text-right">
-                        <div className="h-3 bg-white/5 rounded animate-pulse w-8 ml-auto" />
+                        <div className="h-3 bg-[var(--bg-surface-alt)] rounded animate-pulse w-8 ml-auto" />
                       </td>
                     </tr>
                   ))
@@ -668,12 +670,12 @@ export default function Dashboard() {
                     <tr
                       key={h.id}
                       onClick={() => handleRowClick(h)}
-                      className="hover:bg-white/5 transition duration-150 cursor-pointer group"
+                      className="hover:bg-[var(--bg-surface-alt)] transition duration-150 cursor-pointer group"
                       title="Click to view assessment report"
                     >
-                      <td className="py-3.5 font-mono text-[10px] text-gray-400 group-hover:text-primary transition">{h.date}</td>
-                      <td className="py-3.5 font-medium text-white group-hover:translate-x-0.5 transition">
-                        {h.role} <span className="text-[10px] text-gray-500">({h.difficulty})</span>
+                      <td className="py-3.5 font-mono text-[10px] text-[var(--text-secondary)] group-hover:text-[var(--primary)] transition">{h.date}</td>
+                      <td className="py-3.5 font-medium text-[var(--text-primary)] group-hover:translate-x-0.5 transition">
+                        {h.role} <span className="text-[10px] text-[var(--text-secondary)]">({h.difficulty})</span>
                       </td>
                       <td className="py-3.5">{h.type}</td>
                       <td className="py-3.5 text-right">
@@ -685,7 +687,7 @@ export default function Dashboard() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="py-6 text-center text-gray-500 font-mono text-[11px]">
+                    <td colSpan={4} className="py-6 text-center text-[var(--text-secondary)] font-mono text-[11px]">
                       No historical sessions found.
                     </td>
                   </tr>
@@ -697,21 +699,21 @@ export default function Dashboard() {
 
         <Card variant="glass" className="space-y-4 flex flex-col justify-between">
           <div>
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider pb-2 border-b border-white/5 mb-4 flex items-center gap-2">
-              <FaLightbulb className="text-secondary" />
+            <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider pb-2 border-b border-[var(--border)] mb-4 flex items-center gap-2">
+              <FaLightbulb className="text-[var(--secondary)]" />
               <span>AI Preparation Suggestions</span>
             </h3>
 
-            <div className="space-y-3.5 text-xs text-gray-300">
+            <div className="space-y-3.5 text-xs text-[var(--text-secondary)]">
               {suggestions.map((sug, idx) => (
                 <div
                   key={idx}
-                  className="flex gap-2.5 items-start leading-relaxed bg-[#030712]/30 border border-white/5 p-3 rounded-xl"
+                  className="flex gap-2.5 items-start leading-relaxed bg-[var(--bg-surface-alt)] border border-[var(--border)] p-3 rounded-xl"
                 >
-                  <span className="h-4 w-4 bg-[#111827] border border-white/10 text-primary text-[10px] rounded-full flex items-center justify-center shrink-0 font-bold font-mono">
+                  <span className="h-4 w-4 bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--primary)] text-[10px] rounded-full flex items-center justify-center shrink-0 font-bold font-mono">
                     {idx + 1}
                   </span>
-                  <p className="text-gray-400">{sug}</p>
+                  <p className="text-[var(--text-secondary)]">{sug}</p>
                 </div>
               ))}
             </div>

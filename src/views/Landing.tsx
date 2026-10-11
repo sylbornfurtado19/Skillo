@@ -52,28 +52,6 @@ export default function Landing() {
 
   return (
     <div className="space-y-28 py-8">
-      {/* Animated gradient mesh & floating particles background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
-        <motion.div
-          animate={{
-            scale: [1, 1.15, 1],
-            x: [0, 20, 0],
-            y: [0, -20, 0],
-          }}
-          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-gradient-to-tr from-primary/20 via-secondary/15 to-accent/20 rounded-full blur-[140px] opacity-70"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            x: [0, -30, 0],
-            y: [0, 30, 0],
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-96 -left-20 w-[450px] h-[450px] bg-accent/15 rounded-full blur-[130px] opacity-50"
-        />
-      </div>
-
       {/* 1. Hero Section */}
       <section className="relative flex flex-col items-center text-center max-w-4xl mx-auto pt-10 px-4">
 
@@ -82,10 +60,10 @@ export default function Landing() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="font-heading font-extrabold text-4xl sm:text-6xl tracking-tight text-white leading-tight"
+          className="font-heading font-extrabold text-4xl sm:text-6xl tracking-tight text-[var(--text-primary)] leading-tight"
         >
           Practice interviews that actually{' '}
-          <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent animated-gradient-text">
+          <span className="text-[var(--primary)] font-extrabold">
             prepare you
           </span>
         </motion.h1>
@@ -95,7 +73,7 @@ export default function Landing() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-base sm:text-lg text-gray-300 mt-6 max-w-2xl leading-relaxed mx-auto text-center"
+          className="text-base sm:text-lg text-[var(--text-secondary)] mt-6 max-w-2xl leading-relaxed mx-auto text-center"
         >
           Get real-time feedback on your interview performance. We analyze your responses and provide actionable insights so you can sharpen your skills before the actual day.
         </motion.p>
@@ -111,15 +89,14 @@ export default function Landing() {
             onClick={() => router.push('/dashboard')}
             variant="primary"
             size="lg"
-            className="w-full sm:w-auto relative group overflow-hidden shadow-[0_0_25px_rgba(99,102,241,0.35)] hover:shadow-[0_0_35px_rgba(99,102,241,0.6)] transition-all duration-300"
+            className="w-full sm:w-auto relative group overflow-hidden shadow-[var(--shadow)]"
           >
-            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
             Start Preparing Now
           </Button>
 
           <a
             href="#features"
-            className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 hover:border-white/25 hover:scale-102 active:scale-98 transition-all duration-200 flex items-center justify-center font-semibold text-base shadow-md"
+            className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-[var(--bg-surface-alt)] hover:bg-[var(--border)] text-[var(--text-primary)] border border-[var(--border)] hover:scale-102 active:scale-98 transition-all duration-200 flex items-center justify-center font-semibold text-base shadow-[var(--shadow)]"
           >
             See Features
           </a>
@@ -166,18 +143,18 @@ export default function Landing() {
                   }}
                   className="relative flex flex-col md:flex-row items-center w-full"
                 >
-                  <Card variant="glass" className="p-5 flex-1 h-full text-center flex flex-col items-center justify-between border border-white/5 hover:border-primary/40 hover:shadow-[0_0_25px_rgba(99,102,241,0.2)] transition-all duration-300 relative z-10 w-full group">
+                  <Card variant="glass" className="p-5 flex-1 h-full text-center flex flex-col items-center justify-between border border-[var(--border)] hover:border-[var(--primary)] transition-all duration-300 relative z-10 w-full group">
                     <div className="flex flex-col items-center">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm mb-3.5 shadow-lg shadow-primary/20 group-hover:scale-110 transition duration-300 mx-auto">
+                      <div className="h-10 w-10 rounded-full bg-[var(--primary)] flex items-center justify-center text-[var(--text-on-primary)] text-sm mb-3.5 shadow-sm group-hover:scale-110 transition duration-300 mx-auto">
                         <IconComp />
                       </div>
-                      <span className="text-[10px] font-mono font-bold text-primary uppercase block mb-1">{item.step}</span>
-                      <h4 className="font-heading font-bold text-sm text-white mb-1.5">{item.title}</h4>
-                      <p className="text-xs text-gray-400 leading-normal">{item.desc}</p>
+                      <span className="text-[10px] font-mono font-bold text-[var(--primary)] uppercase block mb-1">{item.step}</span>
+                      <h4 className="font-heading font-bold text-sm text-[var(--text-primary)] mb-1.5">{item.title}</h4>
+                      <p className="text-xs text-[var(--text-secondary)] leading-normal">{item.desc}</p>
                     </div>
                   </Card>
                   {idx < 3 && (
-                    <div className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-[#111827] border border-white/10 items-center justify-center text-gray-500 text-xs shadow-md">
+                    <div className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-[var(--bg-surface-alt)] border border-[var(--border)] items-center justify-center text-[var(--text-secondary)] text-xs shadow-sm">
                       <FaArrowRight />
                     </div>
                   )}
@@ -214,33 +191,33 @@ export default function Landing() {
                 title: 'Resume Review',
                 icon: FaFileAlt,
                 desc: 'Tailor your experience to match specific job descriptions.',
-                colorClass: 'text-accent',
-                borderClass: 'border-t-2 border-t-accent',
-                bgClass: 'bg-accent/5',
+                colorClass: 'text-[var(--primary)]',
+                borderClass: 'border-t-2 border-t-[var(--primary)]',
+                bgClass: 'bg-[var(--bg-surface)]',
               },
               {
                 title: 'Interviewer Personas',
                 icon: FaUserTie,
                 desc: 'Train with different styles to build comfort for any situation.',
-                colorClass: 'text-secondary',
-                borderClass: 'border-t-2 border-t-secondary',
-                bgClass: 'bg-secondary/5',
+                colorClass: 'text-[var(--secondary)]',
+                borderClass: 'border-t-2 border-t-[var(--secondary)]',
+                bgClass: 'bg-[var(--bg-surface)]',
               },
               {
                 title: 'Domain Focus',
                 icon: FaBrain,
                 desc: 'Questions customized for your specific technical field.',
-                colorClass: 'text-primary',
-                borderClass: 'border-t-2 border-t-primary',
-                bgClass: 'bg-primary/5',
+                colorClass: 'text-[var(--primary)]',
+                borderClass: 'border-t-2 border-t-[var(--primary)]',
+                bgClass: 'bg-[var(--bg-surface)]',
               },
               {
                 title: 'Growth Analytics',
                 icon: FaChartLine,
                 desc: 'See exactly where you stand and what to practice next.',
-                colorClass: 'text-emerald-400',
-                borderClass: 'border-t-2 border-t-emerald-500',
-                bgClass: 'bg-emerald-500/5',
+                colorClass: 'text-[var(--success)]',
+                borderClass: 'border-t-2 border-t-[var(--success)]',
+                bgClass: 'bg-[var(--bg-surface)]',
               },
             ].map((f, idx) => {
               const IconComp = f.icon;
@@ -252,13 +229,13 @@ export default function Landing() {
                     visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
                   }}
                 >
-                  <Card variant="glass" className={`p-6 text-center ${f.borderClass} ${f.bgClass} flex flex-col items-center justify-center gap-3 hover:scale-102 hover:shadow-xl transition-all duration-300 group`}>
-                    <div className={`h-11 w-11 rounded-xl bg-[#030712]/60 border border-white/10 flex items-center justify-center shrink-0 text-base ${f.colorClass} group-hover:scale-110 transition duration-300`}>
+                  <Card variant="glass" className={`p-6 text-center ${f.borderClass} ${f.bgClass} flex flex-col items-center justify-center gap-3 hover:scale-102 hover:shadow-[var(--shadow)] transition-all duration-300 group`}>
+                    <div className={`h-11 w-11 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] flex items-center justify-center shrink-0 text-base ${f.colorClass} group-hover:scale-110 transition duration-300`}>
                       <IconComp />
                     </div>
                     <div className="space-y-1">
-                      <h4 className="font-heading font-bold text-sm text-white">{f.title}</h4>
-                      <p className="text-xs text-gray-400 leading-relaxed max-w-sm mx-auto">{f.desc}</p>
+                      <h4 className="font-heading font-bold text-sm text-[var(--text-primary)]">{f.title}</h4>
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed max-w-sm mx-auto">{f.desc}</p>
                     </div>
                   </Card>
                 </motion.div>
@@ -275,16 +252,16 @@ export default function Landing() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <Card variant="solid" className="p-8 border border-white/5 bg-[#111827]/30">
+          <Card variant="solid" className="p-8 border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow)]">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center text-center">
               <div className="space-y-4 flex flex-col items-center">
-                <span className="text-[10px] text-primary font-mono font-bold uppercase tracking-wider block">
+                <span className="text-[10px] text-[var(--primary)] font-mono font-bold uppercase tracking-wider block">
                   SAMPLE FEEDBACK
                 </span>
-                <h3 className="text-xl sm:text-2xl font-heading font-extrabold text-white leading-tight">
+                <h3 className="text-xl sm:text-2xl font-heading font-extrabold text-[var(--text-primary)] leading-tight">
                   Clear, honest evaluation
                 </h3>
-                <p className="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-md mx-auto">
+                <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
                   Every session generates a private performance breakdown, scoring your clarity and confidence.
                 </p>
                 <div className="pt-2 flex justify-center w-full">
@@ -299,14 +276,14 @@ export default function Landing() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-8 bg-[#030712]/40 rounded-2xl p-6 border border-white/5">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-8 bg-[var(--bg-surface-alt)] rounded-2xl p-6 border border-[var(--border)]">
                 <div className="relative h-32 w-32 flex items-center justify-center shrink-0">
                   <svg className="w-full h-full transform -rotate-90">
                     <circle
                       cx="64"
                       cy="64"
                       r="50"
-                      stroke="rgba(255, 255, 255, 0.03)"
+                      stroke="var(--border)"
                       strokeWidth="8"
                       fill="transparent"
                     />
@@ -323,27 +300,26 @@ export default function Landing() {
                     />
                     <defs>
                       <linearGradient id="gradientScore" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#6366F1" />
-                        <stop offset="50%" stopColor="#8B5CF6" />
-                        <stop offset="100%" stopColor="#06B6D4" />
+                        <stop offset="0%" stopColor="var(--primary)" />
+                        <stop offset="100%" stopColor="var(--primary-hover)" />
                       </linearGradient>
                     </defs>
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-2xl font-heading font-extrabold text-white">87</span>
-                    <span className="text-[9px] text-gray-500 font-mono font-bold uppercase">Average</span>
+                    <span className="text-2xl font-heading font-extrabold text-[var(--text-primary)]">87</span>
+                    <span className="text-[9px] text-[var(--text-secondary)] font-mono font-bold uppercase">Average</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 w-full sm:w-auto">
                   {[
-                    { label: 'Tech Depth', val: '91%', color: 'text-primary border-primary/20 bg-primary/5' },
-                    { label: 'Delivery', val: '85%', color: 'text-secondary border-secondary/20 bg-secondary/5' },
-                    { label: 'Confidence', val: '78%', color: 'text-accent border-accent/20 bg-accent/5' },
-                    { label: 'Logic', val: '88%', color: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' },
+                    { label: 'Tech Depth', val: '91%', color: 'text-[var(--primary)] border-[var(--border)] bg-[var(--primary-soft)]' },
+                    { label: 'Delivery', val: '85%', color: 'text-[var(--secondary)] border-[var(--border)] bg-[var(--bg-surface-alt)]' },
+                    { label: 'Confidence', val: '78%', color: 'text-[var(--secondary)] border-[var(--border)] bg-[var(--bg-surface-alt)]' },
+                    { label: 'Logic', val: '88%', color: 'text-[var(--success)] border-[var(--border)] bg-[var(--bg-surface-alt)]' },
                   ].map((item, idx) => (
                     <div key={idx} className={`px-3 py-2 rounded-xl border flex flex-col items-center justify-center text-center min-w-[120px] ${item.color}`}>
-                      <span className="text-[9px] font-mono text-gray-500 font-bold uppercase">{item.label}</span>
+                      <span className="text-[9px] font-mono text-[var(--text-secondary)] font-bold uppercase">{item.label}</span>
                       <span className="text-sm font-heading font-extrabold mt-0.5">{item.val}</span>
                     </div>
                   ))}
@@ -365,15 +341,15 @@ export default function Landing() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="space-y-3 lg:col-span-1 text-center">
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-2 text-center">Select Domain</span>
+            <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider block mb-2 text-center">Select Domain</span>
             {Object.keys(CAREER_DOMAINS).map((domain) => (
               <button
                 key={domain}
                 onClick={() => setSelectedDomain(domain)}
                 className={`w-full p-4 rounded-xl border text-center font-heading font-bold text-sm transition duration-200 flex items-center justify-center gap-2.5 cursor-pointer ${
                   selectedDomain === domain
-                    ? 'border-primary bg-primary/10 text-white shadow-lg shadow-primary/5'
-                    : 'border-white/5 bg-[#111827]/40 text-gray-400 hover:border-white/10 hover:text-white'
+                    ? 'border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)] shadow-sm'
+                    : 'border-[var(--border)] bg-[var(--bg-surface-alt)] text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 <span>{domain}</span>
@@ -385,8 +361,8 @@ export default function Landing() {
           <div className="lg:col-span-2 text-center">
             <Card variant="solid" className="h-full flex flex-col justify-between items-center text-center">
               <div className="w-full">
-                <div className="flex flex-col sm:flex-row justify-center items-center gap-2 border-b border-white/5 pb-3 mb-6">
-                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Available Roles ({selectedDomain})</span>
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-2 border-b border-[var(--border)] pb-3 mb-6">
+                  <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider">Available Roles ({selectedDomain})</span>
                   <Badge variant="secondary">Verified Roles</Badge>
                 </div>
 
@@ -394,22 +370,22 @@ export default function Landing() {
                   {(CAREER_DOMAINS[selectedDomain as keyof typeof CAREER_DOMAINS] || []).map((role) => (
                     <div
                       key={role}
-                      className="flex flex-col sm:flex-row items-center justify-center text-center gap-2.5 p-3 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition duration-200"
+                      className="flex flex-col sm:flex-row items-center justify-center text-center gap-2.5 p-3 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] hover:border-[var(--primary)] transition duration-200"
                     >
-                      <div className="h-2 w-2 rounded-full bg-accent shrink-0" />
-                      <span className="text-xs font-semibold text-white">{role}</span>
+                      <div className="h-2 w-2 rounded-full bg-[var(--primary)] shrink-0" />
+                      <span className="text-xs font-semibold text-[var(--text-primary)]">{role}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="mt-8 pt-4 border-t border-white/5 flex flex-col items-center text-center gap-4 w-full">
-                <p className="text-[11px] text-gray-500">
+              <div className="mt-8 pt-4 border-t border-[var(--border)] flex flex-col items-center text-center gap-4 w-full">
+                <p className="text-[11px] text-[var(--text-secondary)]">
                   Selecting a domain automatically filters available roles on the setup page.
                 </p>
                 <Button
                   onClick={() => router.push('/setup')}
-                  variant="accent"
+                  variant="primary"
                   size="sm"
                 >
                   Configure This Domain
@@ -420,26 +396,26 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* 6. Platform Highlights */}
-      <section className="bg-gradient-to-r from-primary/5 via-[#030712] to-accent/5 border-y border-white/5 py-16 px-4">
+      {/* 6. Platform Highlights Banner */}
+      <section className="bg-[var(--primary)] text-[var(--text-on-primary)] py-16 px-4">
         <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
           <div className="space-y-1">
-            <p className="text-4xl font-heading font-extrabold text-white">5</p>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Industry Domains</p>
+            <p className="text-4xl font-heading font-extrabold text-[var(--text-on-primary)]">5</p>
+            <p className="text-[10px] text-[var(--text-on-primary)]/80 font-bold uppercase tracking-wider">Industry Domains</p>
           </div>
           <div className="space-y-1">
-            <p className="text-4xl font-heading font-extrabold text-white">30+</p>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Common Job Profiles</p>
+            <p className="text-4xl font-heading font-extrabold text-[var(--text-on-primary)]">30+</p>
+            <p className="text-[10px] text-[var(--text-on-primary)]/80 font-bold uppercase tracking-wider">Common Job Profiles</p>
           </div>
           <div className="space-y-1">
-            <p className="text-4xl font-heading font-extrabold text-white">3</p>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Assessor Styles</p>
+            <p className="text-4xl font-heading font-extrabold text-[var(--text-on-primary)]">3</p>
+            <p className="text-[10px] text-[var(--text-on-primary)]/80 font-bold uppercase tracking-wider">Assessor Styles</p>
           </div>
         </div>
       </section>
 
       {/* 7. AI Assessor Personas */}
-      <section className="space-y-12 bg-[#111827]/25 rounded-3xl border border-white/5 p-8 md:p-12 max-w-6xl mx-auto px-4">
+      <section className="space-y-12 bg-[var(--bg-surface)] rounded-3xl border border-[var(--border)] p-8 md:p-12 max-w-6xl mx-auto px-4 shadow-[var(--shadow)]">
         <SectionHeader
           title="Pick your interviewer"
           description="Each one asks questions differently — practice with all three to cover your bases."
@@ -450,11 +426,11 @@ export default function Landing() {
           {Object.values(INTERVIEWER_PERSONAS).map((persona) => (
             <Card
               key={persona.id}
-              variant={persona.id === 'sarah' ? 'glow-primary' : persona.id === 'david' ? 'glow-secondary' : 'glow-accent'}
+              variant="glass"
               className="flex flex-col items-center text-center gap-4 p-6"
             >
               <div className="flex flex-col items-center gap-2">
-                <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 shadow-lg shrink-0">
+                <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-[var(--border)] shadow-md shrink-0">
                   <Image
                     src={persona.avatar}
                     alt={persona.name}
@@ -464,15 +440,15 @@ export default function Landing() {
                   />
                 </div>
                 <div>
-                  <h4 className="font-heading font-bold text-white text-sm">{persona.name}</h4>
-                  <p className="text-[10px] text-gray-400">{persona.role}</p>
-                  <p className="text-[9px] text-primary font-medium tracking-wide uppercase font-mono">{persona.company}</p>
+                  <h4 className="font-heading font-bold text-[var(--text-primary)] text-sm">{persona.name}</h4>
+                  <p className="text-[10px] text-[var(--text-secondary)]">{persona.role}</p>
+                  <p className="text-[9px] text-[var(--primary)] font-medium tracking-wide uppercase font-mono">{persona.company}</p>
                 </div>
               </div>
-              <p className="text-xs text-gray-400 leading-relaxed min-h-16 text-center">
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed min-h-16 text-center">
                 {persona.description}
               </p>
-              <span className={`text-[10px] font-semibold ${persona.accentColor} font-mono mt-auto text-center`}>
+              <span className={`text-[10px] font-semibold text-[var(--secondary)] font-mono mt-auto text-center`}>
                 &bull; {persona.id === 'sarah' ? 'Encouraging Review' : persona.id === 'david' ? 'Pragmatic Leadership' : 'Strict Compliance'}
               </span>
             </Card>
@@ -494,20 +470,20 @@ export default function Landing() {
             return (
               <div
                 key={index}
-                className="bg-[#111827]/40 border border-white/5 rounded-2xl overflow-hidden transition-all duration-300 animate-fade"
+                className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--shadow)] transition-all duration-300"
               >
                 <button
                   type="button"
                   onClick={() => setOpenFaqIndex(isOpen ? null : index)}
-                  className="w-full p-5 flex items-center justify-center gap-4 text-center hover:bg-white/[0.01] transition duration-200 cursor-pointer relative"
+                  className="w-full p-5 flex items-center justify-center gap-4 text-center hover:bg-[var(--bg-surface-alt)] transition duration-200 cursor-pointer relative"
                 >
-                  <span className="text-xs sm:text-sm font-semibold text-white pr-6">{item.q}</span>
+                  <span className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] pr-6">{item.q}</span>
                   <span className="absolute right-5 top-1/2 -translate-y-1/2">
-                    {isOpen ? <FaChevronUp className="text-gray-500 text-xs shrink-0" /> : <FaChevronDown className="text-gray-500 text-xs shrink-0" />}
+                    {isOpen ? <FaChevronUp className="text-[var(--text-secondary)] text-xs shrink-0" /> : <FaChevronDown className="text-[var(--text-secondary)] text-xs shrink-0" />}
                   </span>
                 </button>
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-1 text-xs text-gray-400 leading-relaxed border-t border-white/5 bg-[#030712]/10 text-center">
+                  <div className="px-5 pb-5 pt-1 text-xs text-[var(--text-secondary)] leading-relaxed border-t border-[var(--border)] bg-[var(--bg-surface-alt)] text-center">
                     {item.a}
                   </div>
                 )}
@@ -519,16 +495,16 @@ export default function Landing() {
 
       {/* 10. CTA Box */}
       <section className="max-w-4xl mx-auto px-4 pb-12">
-        <Card variant="glow-secondary" className="p-8 sm:p-12 text-center space-y-6">
-          <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-white">
+        <Card variant="solid" className="p-8 sm:p-12 text-center space-y-6">
+          <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-[var(--text-primary)]">
             Ready to practice?
           </h2>
-          <p className="text-xs sm:text-sm text-gray-400 max-w-xl mx-auto leading-relaxed">
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-xl mx-auto leading-relaxed">
             Set up takes about a minute. Upload your resume, pick a role, and start your first mock interview.
           </p>
           <Button
             onClick={() => router.push('/dashboard')}
-            variant="secondary"
+            variant="primary"
             size="lg"
             icon={FaArrowRight}
           >

@@ -57,19 +57,19 @@ export const ToastContainer = () => {
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 50, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className={`pointer-events-auto flex items-center justify-between p-4 rounded-xl shadow-xl border text-xs sm:text-sm font-medium ${
+            className={`pointer-events-auto flex items-center justify-between p-4 rounded-xl shadow-[var(--shadow)] border text-xs sm:text-sm font-medium ${
               toast.variant === 'success'
-                ? 'bg-emerald-950/95 text-emerald-400 border-emerald-500/30'
+                ? 'bg-[var(--bg-surface)] text-[var(--success)] border-[var(--success)]/40'
                 : toast.variant === 'error'
-                ? 'bg-red-950/95 text-red-400 border-red-500/30'
-                : 'bg-[#111827]/95 text-primary border-primary/30'
+                ? 'bg-[var(--bg-surface)] text-[var(--danger)] border-[var(--danger)]/40'
+                : 'bg-[var(--bg-surface)] text-[var(--primary)] border-[var(--primary)]/40'
             }`}
           >
             <span>{toast.message}</span>
             <button
               type="button"
               onClick={() => removeToast(toast.id)}
-              className="ml-3 text-gray-500 hover:text-white shrink-0 cursor-pointer text-xs focus:outline-none"
+              className="ml-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] shrink-0 cursor-pointer text-xs focus:outline-none"
             >
               ✕
             </button>

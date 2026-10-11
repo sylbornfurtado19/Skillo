@@ -24,9 +24,9 @@ const INTENSITY_STYLE: Record<
   GesturalEvent['intensity'],
   { bg: string; border: string; text: string }
 > = {
-  HIGH:   { bg: 'bg-amber-500/15', border: 'border-amber-500/30', text: 'text-amber-400' },
-  MEDIUM: { bg: 'bg-blue-500/15',  border: 'border-blue-500/30',  text: 'text-blue-400'  },
-  LOW:    { bg: 'bg-gray-500/15',  border: 'border-gray-500/30',  text: 'text-gray-400'  },
+  HIGH:   { bg: 'bg-warning/15',     border: 'border-warning/30',    text: 'text-warning'       },
+  MEDIUM: { bg: 'bg-primary-soft',   border: 'border-primary/20',   text: 'text-primary'       },
+  LOW:    { bg: 'bg-surface-alt',    border: 'border-border',        text: 'text-text-secondary'},
 };
 
 const GESTURE_CONFIG: Record<
@@ -71,18 +71,18 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-heading font-bold text-white">
+              <h3 className="text-sm font-heading font-bold text-text-primary">
                 Head Movement & Posture Tracker
               </h3>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-surface-alt text-text-secondary border border-border">
                 [Canvas Heuristic]
               </span>
             </div>
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p className="text-[11px] text-text-secondary mt-0.5">
               Motion Stability Monitor · {totalFramesAnalyzed} frames analyzed
             </p>
           </div>
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-mono border bg-indigo-500/10 border-indigo-500/25 text-indigo-400">
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-mono border bg-primary-soft border-primary/20 text-primary">
             {postureComposureScore >= 80 ? 'High Composure' : postureComposureScore >= 60 ? 'Moderate Stability' : 'High Motion'}
           </span>
         </div>
@@ -91,8 +91,8 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
       {/* Row 1: Score Ring + Stat Grid */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
         {/* Score Ring Gauge */}
-        <div className="md:col-span-5 flex flex-col items-center justify-center p-5 rounded-2xl bg-[#060b14] border border-white/8 text-center space-y-3">
-          <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest self-start">
+        <div className="md:col-span-5 flex flex-col items-center justify-center p-5 rounded-2xl bg-surface border border-border shadow-soft text-center space-y-3">
+          <span className="text-[10px] text-text-secondary font-mono uppercase tracking-widest self-start">
             Posture Composure Score
           </span>
 
@@ -100,7 +100,7 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
             <svg className="w-full h-full transform -rotate-90">
               <circle
                 cx="72" cy="72" r={RING_R}
-                stroke="rgba(255, 255, 255, 0.04)"
+                stroke="#E2DDD5"
                 strokeWidth="8"
                 fill="transparent"
               />
@@ -116,31 +116,31 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
               />
               <defs>
                 <linearGradient id="postureGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#a855f7" />
+                  <stop offset="0%" stopColor="#9B2218" />
+                  <stop offset="100%" stopColor="#7F1B13" />
                 </linearGradient>
               </defs>
             </svg>
             <div className="absolute flex flex-col items-center">
-              <span className="text-3xl font-heading font-extrabold text-white">
+              <span className="text-3xl font-heading font-extrabold text-text-primary">
                 {postureComposureScore.toFixed(0)}%
               </span>
-              <span className="text-[9px] text-gray-500 font-mono">composure</span>
+              <span className="text-[9px] text-text-secondary font-mono">composure</span>
             </div>
           </div>
 
           {/* Restlessness Index bar */}
-          <div className="w-full space-y-1 text-left border-t border-white/5 pt-3">
+          <div className="w-full space-y-1 text-left border-t border-border pt-3">
             <div className="flex justify-between text-[10px] font-mono">
-              <span className="text-gray-400">Restlessness Index:</span>
-              <span className={restlessnessIndex > 35 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
+              <span className="text-text-secondary">Restlessness Index:</span>
+              <span className={restlessnessIndex > 35 ? 'text-warning font-bold' : 'text-success font-bold'}>
                 {restlessnessIndex.toFixed(1)}%
               </span>
             </div>
-            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-surface-alt border border-border rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  restlessnessIndex > 35 ? 'bg-gradient-to-r from-amber-500 to-red-500' : 'bg-gradient-to-r from-emerald-500 to-indigo-500'
+                  restlessnessIndex > 35 ? 'bg-warning' : 'bg-success'
                 }`}
                 style={{ width: `${Math.min(100, restlessnessIndex)}%` }}
               />
@@ -150,44 +150,44 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
 
         {/* Stat Cards Grid */}
         <div className="md:col-span-7 grid grid-cols-2 gap-3">
-          <div className="p-4 rounded-2xl bg-[#060b14] border border-white/8 flex flex-col justify-between space-y-2">
+          <div className="p-4 rounded-2xl bg-surface border border-border shadow-soft flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs">👍</span>
-              <span className="text-[9px] text-gray-500 font-mono uppercase">Nod Count</span>
+              <span className="text-[9px] text-text-secondary font-mono uppercase">Nod Count</span>
             </div>
             <div>
-              <p className="text-2xl font-bold font-mono text-emerald-400">{nodCount}</p>
-              <p className="text-[10px] text-gray-500 font-mono mt-0.5">Affirmation cycles</p>
+              <p className="text-2xl font-bold font-mono text-success">{nodCount}</p>
+              <p className="text-[10px] text-text-secondary font-mono mt-0.5">Affirmation cycles</p>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#060b14] border border-white/8 flex flex-col justify-between space-y-2">
+          <div className="p-4 rounded-2xl bg-surface border border-border shadow-soft flex flex-col justify-between space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs">❓</span>
-              <span className="text-[9px] text-gray-500 font-mono uppercase">Head Shake</span>
+              <span className="text-[9px] text-text-secondary font-mono uppercase">Head Shake</span>
             </div>
             <div>
-              <p className="text-2xl font-bold font-mono text-amber-400">{headShakeCount}</p>
-              <p className="text-[10px] text-gray-500 font-mono mt-0.5">Hesitation cycles</p>
+              <p className="text-2xl font-bold font-mono text-warning">{headShakeCount}</p>
+              <p className="text-[10px] text-text-secondary font-mono mt-0.5">Hesitation cycles</p>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#060b14] border border-white/8 flex flex-col justify-between space-y-2 col-span-2">
-            <span className="text-[9px] text-gray-500 font-mono uppercase tracking-widest">
+          <div className="p-4 rounded-2xl bg-surface border border-border shadow-soft flex flex-col justify-between space-y-2 col-span-2">
+            <span className="text-[9px] text-text-secondary font-mono uppercase tracking-widest">
               3D Euler Orientation Averages
             </span>
             <div className="grid grid-cols-3 gap-2 text-center pt-1 font-mono">
-              <div className="bg-white/2 p-2 rounded-xl border border-white/5">
-                <span className="text-[9px] text-gray-500 block">Yaw (Side)</span>
-                <span className="text-xs font-bold text-white">{averageYaw >= 0 ? '+' : ''}{averageYaw}°</span>
+              <div className="bg-surface-alt p-2 rounded-xl border border-border">
+                <span className="text-[9px] text-text-secondary block">Yaw (Side)</span>
+                <span className="text-xs font-bold text-text-primary">{averageYaw >= 0 ? '+' : ''}{averageYaw}°</span>
               </div>
-              <div className="bg-white/2 p-2 rounded-xl border border-white/5">
-                <span className="text-[9px] text-gray-500 block">Pitch (Tilt)</span>
-                <span className="text-xs font-bold text-white">{averagePitch >= 0 ? '+' : ''}{averagePitch}°</span>
+              <div className="bg-surface-alt p-2 rounded-xl border border-border">
+                <span className="text-[9px] text-text-secondary block">Pitch (Tilt)</span>
+                <span className="text-xs font-bold text-text-primary">{averagePitch >= 0 ? '+' : ''}{averagePitch}°</span>
               </div>
-              <div className="bg-white/2 p-2 rounded-xl border border-white/5">
-                <span className="text-[9px] text-gray-500 block">Roll (Side)</span>
-                <span className="text-xs font-bold text-white">{averageRoll >= 0 ? '+' : ''}{averageRoll}°</span>
+              <div className="bg-surface-alt p-2 rounded-xl border border-border">
+                <span className="text-[9px] text-text-secondary block">Roll (Side)</span>
+                <span className="text-xs font-bold text-text-primary">{averageRoll >= 0 ? '+' : ''}{averageRoll}°</span>
               </div>
             </div>
           </div>
@@ -195,12 +195,12 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
       </div>
 
       {/* Row 2: Gestural Event Timeline */}
-      <div className="rounded-2xl bg-[#060b14] border border-white/8 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-          <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
+      <div className="rounded-2xl bg-surface border border-border shadow-soft overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <span className="text-[10px] text-text-secondary font-mono uppercase tracking-widest">
             Gestural Event Timeline
           </span>
-          <span className="text-[9px] text-gray-600 font-mono">
+          <span className="text-[9px] text-text-secondary font-mono">
             {gesturalEvents.length} gesture{gesturalEvents.length !== 1 ? 's' : ''} detected
           </span>
         </div>
@@ -208,15 +208,15 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
         {gesturalEvents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <span className="text-2xl">🧍</span>
-            <p className="text-[11px] text-gray-400 font-semibold">
+            <p className="text-[11px] text-text-primary font-semibold">
               Steady composure maintained throughout session
             </p>
-            <p className="text-[10px] text-gray-600 font-mono">
+            <p className="text-[10px] text-text-secondary font-mono">
               No sudden head movements or posture slumps recorded
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-border">
             {gesturalEvents.map((evt, idx) => {
               const cfg = GESTURE_CONFIG[evt.gestureType] ?? {
                 label: evt.gestureType,
@@ -226,22 +226,22 @@ export default function PostureComposureCard({ metrics }: PostureComposureCardPr
               const style = INTENSITY_STYLE[evt.intensity];
 
               return (
-                <div key={idx} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.01] transition">
+                <div key={idx} className="flex items-center justify-between px-4 py-3 hover:bg-surface-alt/40 transition">
                   <div className="flex items-center gap-3">
                     <span className="text-lg">{cfg.icon}</span>
                     <div className="space-y-0.5 text-left">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-white font-mono">{cfg.label}</span>
+                        <span className="text-xs font-bold text-text-primary font-mono">{cfg.label}</span>
                         <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border font-mono ${style.bg} ${style.border} ${style.text}`}>
                           {evt.intensity}
                         </span>
                       </div>
-                      <p className="text-[10px] text-gray-500 font-mono">{cfg.desc}</p>
+                      <p className="text-[10px] text-text-secondary font-mono">{cfg.desc}</p>
                     </div>
                   </div>
 
-                  <div className="text-right font-mono text-[10px] text-gray-500">
-                    <span className="text-white font-bold block">{evt.durationSeconds}s</span>
+                  <div className="text-right font-mono text-[10px] text-text-secondary">
+                    <span className="text-text-primary font-bold block">{evt.durationSeconds}s</span>
                     <span>{fmtTime(evt.startTimeMs)} → {fmtTime(evt.endTimeMs)}</span>
                   </div>
                 </div>

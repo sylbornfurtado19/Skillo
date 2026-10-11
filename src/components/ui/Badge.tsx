@@ -18,13 +18,13 @@ export default function Badge({
     'inline-flex items-center justify-center font-mono font-medium rounded-full border tracking-wide uppercase shrink-0';
 
   const variants = {
-    primary: 'border-primary/20 bg-primary/10 text-primary',
-    secondary: 'border-secondary/20 bg-secondary/10 text-secondary',
-    accent: 'border-accent/20 bg-accent/10 text-accent',
-    success: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400',
-    warning: 'border-yellow-500/20 bg-yellow-500/10 text-yellow-400',
-    danger: 'border-red-500/20 bg-red-500/10 text-red-400',
-    neutral: 'border-white/5 bg-white/5 text-gray-400',
+    primary: 'border-[var(--primary)]/20 bg-[var(--primary-soft)] text-[var(--primary)]',
+    secondary: 'border-[var(--secondary)]/20 bg-[var(--bg-surface-alt)] text-[var(--secondary)]',
+    accent: 'border-[var(--primary)]/20 bg-[var(--primary-soft)] text-[var(--primary)]',
+    success: 'border-[var(--success)]/20 bg-[var(--success)]/10 text-[var(--success)]',
+    warning: 'border-[var(--warning)]/20 bg-[var(--warning)]/10 text-[var(--warning)]',
+    danger: 'border-[var(--danger)]/20 bg-[var(--danger)]/10 text-[var(--danger)]',
+    neutral: 'border-[var(--border)] bg-[var(--bg-surface-alt)] text-[var(--text-secondary)]',
   };
 
   const sizes = {

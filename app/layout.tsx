@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Sora } from 'next/font/google';
 import '../src/index.css';
 import Providers from './providers';
@@ -12,6 +12,10 @@ const sora = Sora({
   subsets: ['latin'],
   variable: '--font-heading',
 });
+
+export const viewport: Viewport = {
+  themeColor: '#9B2218',
+};
 
 export const metadata: Metadata = {
   title: 'Skillo | Intelligent Resume Screening & AI Interview Assistant',
@@ -48,7 +52,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${sora.variable}`}>
-      <body className="bg-[#030712] text-gray-100 min-h-screen">
+      <body className="bg-[var(--bg-page)] text-[var(--text-primary)] min-h-screen">
         <Providers>
           {children}
         </Providers>

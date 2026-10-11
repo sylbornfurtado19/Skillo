@@ -37,19 +37,19 @@ export default function PostureHUD({
       config = {
         text: 'Gestural Affirmation: Nodding Detected',
         icon: '👍',
-        bg: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300',
+        bg: 'bg-success/15 border-success/30 text-success',
       };
     } else if (latestGestureToast.type === 'HEAD_SHAKING') {
       config = {
         text: 'Hesitation Flag: Head Shaking Detected',
         icon: '❓',
-        bg: 'bg-amber-500/15 border-amber-500/30 text-amber-300',
+        bg: 'bg-warning/15 border-warning/30 text-warning',
       };
     } else if (latestGestureToast.type === 'POSTURE_SLUMP') {
       config = {
         text: 'Posture Notice: Off-Center Posture Shift',
         icon: '⚠️',
-        bg: 'bg-amber-500/15 border-amber-500/30 text-amber-300',
+        bg: 'bg-warning/15 border-warning/30 text-warning',
       };
     }
 
@@ -63,14 +63,14 @@ export default function PostureHUD({
   if (isSubjectAbsent) {
     return (
       <div className="flex flex-col gap-2 transition-all duration-300">
-        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-red-950/70 border border-red-500/40 backdrop-blur-sm font-mono text-[10px]">
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-danger/15 border border-danger/30 backdrop-blur-sm font-mono text-[10px]">
           <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-red-400 font-bold">
+            <div className="h-2 w-2 rounded-full bg-danger animate-pulse" />
+            <span className="text-danger font-bold">
               ⚠️ Alert: Subject Not Detected / Left Frame
             </span>
           </div>
-          <span className="text-red-400/80 text-[9px] uppercase tracking-wider">Zero Presence</span>
+          <span className="text-danger text-[9px] uppercase tracking-wider">Zero Presence</span>
         </div>
       </div>
     );
@@ -92,10 +92,10 @@ export default function PostureHUD({
   return (
     <div className="flex flex-col gap-2 transition-all duration-300">
       {/* ── Active Posture Badge ───────────────────────────────────── */}
-      <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-[#060b14]/90 border border-white/8 backdrop-blur-sm font-mono text-[10px]">
+      <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-surface border border-border shadow-soft font-mono text-[10px]">
         <div className="flex items-center gap-2">
-          <div className={`h-2 w-2 rounded-full ${isExcessive ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
-          <span className={isExcessive ? 'text-amber-400 font-bold' : 'text-emerald-400 font-semibold'}>
+          <div className={`h-2 w-2 rounded-full ${isExcessive ? 'bg-warning animate-ping' : 'bg-success'}`} />
+          <span className={isExcessive ? 'text-warning font-bold' : 'text-success font-semibold'}>
             {isExcessive
               ? '⚠️ Notice: Frequent Motion / Motion Spikes'
               : isNod
@@ -105,9 +105,9 @@ export default function PostureHUD({
               : '🟢 Composure: Stable Posture'}
           </span>
         </div>
-        <div className="flex items-center gap-2 text-gray-500 text-[9px]">
+        <div className="flex items-center gap-2 text-text-secondary text-[9px]">
           {me !== undefined && (
-            <span className="text-gray-400">ME: {me}</span>
+            <span className="text-text-secondary">ME: {me}</span>
           )}
           <span>Y: {yaw}°</span>
           <span>P: {pitch}°</span>

@@ -24,16 +24,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
   }, [pathname]);
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-background text-gray-100 overflow-x-hidden transition-colors duration-500">
+    <div className="relative min-h-screen flex flex-col bg-[var(--bg-page)] text-[var(--text-primary)] overflow-x-hidden transition-colors duration-300">
       {/* Page loading transition screen */}
       <AnimatePresence>
         {transitioning && <PageTransition />}
       </AnimatePresence>
-
-      {/* Background radial highlights */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-secondary/5 blur-[120px] pointer-events-none" />
-      <div className="absolute top-[30%] right-[10%] w-[35%] h-[35%] rounded-full bg-accent/5 blur-[120px] pointer-events-none" />
 
       {/* Floating Navbar */}
       <Navbar />

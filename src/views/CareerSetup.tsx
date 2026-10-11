@@ -300,12 +300,12 @@ export default function CareerSetup() {
 
   if (!resumeData) {
     return (
-      <div className="glass-card rounded-2xl p-8 border border-red-500/20 bg-red-500/5 text-center max-w-md mx-auto mt-12 space-y-6">
-        <div className="h-12 w-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 text-xl mx-auto">
+      <div className="bg-[var(--bg-surface)] rounded-2xl p-8 border border-[var(--danger)]/20 bg-[var(--danger)]/5 text-center max-w-md mx-auto mt-12 space-y-6 shadow-[var(--shadow)]">
+        <div className="h-12 w-12 rounded-full bg-[var(--danger)]/10 border border-[var(--danger)]/20 flex items-center justify-center text-[var(--danger)] text-xl mx-auto">
           <FaExclamationTriangle />
         </div>
-        <h3 className="text-lg font-heading font-bold text-white">Resume Required</h3>
-        <p className="text-xs text-gray-400 leading-relaxed">
+        <h3 className="text-lg font-heading font-bold text-[var(--text-primary)]">Resume Required</h3>
+        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
           You must upload your resume and specify job details before you can configure or start mock interview sessions.
         </p>
         <Button onClick={() => router.push('/resume')} variant="primary" size="md">
@@ -368,9 +368,9 @@ export default function CareerSetup() {
 
         {/* Slim Step Progress Indicator Segment Dots */}
         <div className="flex flex-col items-center gap-2 max-w-md mx-auto pt-2">
-          <div className="flex items-center justify-between w-full text-[10px] text-gray-400 font-mono font-bold">
-            <span className="text-primary uppercase tracking-wider">Step {currentStep} of {totalSteps}</span>
-            <span className="text-gray-500">
+          <div className="flex items-center justify-between w-full text-[10px] text-[var(--text-secondary)] font-mono font-bold">
+            <span className="text-[var(--primary)] uppercase tracking-wider">Step {currentStep} of {totalSteps}</span>
+            <span className="text-[var(--text-secondary)]">
               {currentStep === 1
                 ? 'Target Company'
                 : currentStep === 2
@@ -393,10 +393,10 @@ export default function CareerSetup() {
                 onClick={() => setCurrentStep(stepNum)}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   stepNum === currentStep
-                    ? 'bg-gradient-to-r from-primary to-accent shadow-md shadow-primary/30 scale-105'
+                    ? 'bg-[var(--primary)] shadow-sm scale-105'
                     : stepNum < currentStep
-                    ? 'bg-primary/50'
-                    : 'bg-white/10'
+                    ? 'bg-[var(--primary-soft)]'
+                    : 'bg-[var(--border)]'
                 }`}
                 title={`Jump to Step ${stepNum}`}
               />
@@ -406,10 +406,10 @@ export default function CareerSetup() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
-        <div className="lg:col-span-2 flex flex-col justify-between bg-[#111827]/40 border border-white/5 rounded-2xl p-6 relative">
+        <div className="lg:col-span-2 flex flex-col justify-between bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6 relative shadow-[var(--shadow)]">
           <div>
             <div className="flex justify-between items-center mb-6">
-              <span className="text-[10px] text-gray-500 font-mono font-bold uppercase">
+              <span className="text-[10px] text-[var(--text-secondary)] font-mono font-bold uppercase">
                 Step {currentStep} of {totalSteps} &bull;{' '}
                 {currentStep === 1
                   ? 'Target Company'
@@ -423,7 +423,7 @@ export default function CareerSetup() {
                   ? 'Duration'
                   : 'Mode Review & Confirmation'}
               </span>
-              <span className="text-[10px] text-primary font-mono font-bold">
+              <span className="text-[10px] text-[var(--primary)] font-mono font-bold">
                 {Math.round((currentStep / totalSteps) * 100)}% Complete
               </span>
             </div>
@@ -441,7 +441,7 @@ export default function CareerSetup() {
                     exit={{ opacity: 0, x: -10 }}
                     className="space-y-4"
                   >
-                    <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
+                    <h3 className="text-sm font-heading font-bold text-[var(--text-primary)] uppercase tracking-wider mb-4">
                       Select Target Company Preset
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -449,20 +449,20 @@ export default function CareerSetup() {
                         <Card
                           key={comp}
                           onClick={() => selectOption('company', comp)}
-                          variant={setupData.company === comp ? 'glow-primary' : 'glass'}
+                          variant={setupData.company === comp ? 'solid' : 'glass'}
                           className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
-                            setupData.company === comp ? 'border-primary' : 'border-white/5'
+                            setupData.company === comp ? 'border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]' : 'border-[var(--border)] text-[var(--text-primary)]'
                           }`}
                         >
-                          <span className="text-xs font-semibold text-white">{comp} Style</span>
-                          {setupData.company === comp && <FaCheckCircle className="text-primary text-sm" />}
+                          <span className="text-xs font-semibold">{comp} Style</span>
+                          {setupData.company === comp && <FaCheckCircle className="text-[var(--primary)] text-sm" />}
                         </Card>
                       ))}
                     </div>
 
                     {setupData.company === 'Custom' && (
-                      <div className="pt-3 border-t border-white/5 space-y-2">
-                        <label className="text-xs text-gray-400 font-mono block">Specify Custom Target Company Name:</label>
+                      <div className="pt-3 border-t border-[var(--border)] space-y-2">
+                        <label className="text-xs text-[var(--text-secondary)] font-mono block">Specify Custom Target Company Name:</label>
                         <input
                           type="text"
                           value={(setupData.customCompany as string) || ''}
@@ -474,7 +474,7 @@ export default function CareerSetup() {
                             });
                           }}
                           placeholder="e.g. Netflix, Uber, OpenAI"
-                          className="w-full rounded-xl bg-[#030712]/60 border border-white/10 px-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-primary/50 transition font-mono"
+                          className="w-full rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] px-4 py-2.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--primary)] transition font-mono"
                         />
                       </div>
                     )}
@@ -489,7 +489,7 @@ export default function CareerSetup() {
                     exit={{ opacity: 0, x: -10 }}
                     className="space-y-4"
                   >
-                    <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
+                    <h3 className="text-sm font-heading font-bold text-[var(--text-primary)] uppercase tracking-wider mb-4">
                       Select Target Role
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
@@ -497,20 +497,20 @@ export default function CareerSetup() {
                         <Card
                           key={r}
                           onClick={() => selectOption('role', r)}
-                          variant={setupData.role === r ? 'glow-primary' : 'glass'}
+                          variant={setupData.role === r ? 'solid' : 'glass'}
                           className={`hover:scale-[1.01] transition-all py-3.5 px-4 border flex items-center justify-between cursor-pointer ${
-                            setupData.role === r ? 'border-primary' : 'border-white/5'
+                            setupData.role === r ? 'border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]' : 'border-[var(--border)] text-[var(--text-primary)]'
                           }`}
                         >
-                          <span className="text-xs font-semibold text-white">{r}</span>
-                          {setupData.role === r && <FaCheckCircle className="text-primary text-sm" />}
+                          <span className="text-xs font-semibold">{r}</span>
+                          {setupData.role === r && <FaCheckCircle className="text-[var(--primary)] text-sm" />}
                         </Card>
                       ))}
                     </div>
 
                     {setupData.role === 'Custom' && (
-                      <div className="pt-3 border-t border-white/5 space-y-2">
-                        <label className="text-xs text-gray-400 font-mono block">Specify Custom Target Role Name:</label>
+                      <div className="pt-3 border-t border-[var(--border)] space-y-2">
+                        <label className="text-xs text-[var(--text-secondary)] font-mono block">Specify Custom Target Role Name:</label>
                         <input
                           type="text"
                           value={(setupData.customRole as string) || ''}
@@ -522,7 +522,7 @@ export default function CareerSetup() {
                             });
                           }}
                           placeholder="e.g. Distributed Systems Engineer"
-                          className="w-full rounded-xl bg-[#030712]/60 border border-white/10 px-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-primary/50 transition font-mono"
+                          className="w-full rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] px-4 py-2.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--primary)] transition font-mono"
                         />
                       </div>
                     )}
@@ -538,7 +538,7 @@ export default function CareerSetup() {
                     exit={{ opacity: 0, x: -10 }}
                     className="space-y-4"
                   >
-                    <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
+                    <h3 className="text-sm font-heading font-bold text-[var(--text-primary)] uppercase tracking-wider mb-4">
                       Select Interview Type / Track
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -546,13 +546,13 @@ export default function CareerSetup() {
                         <Card
                           key={t}
                           onClick={() => selectOption('type', t)}
-                          variant={setupData.type === t ? 'glow-primary' : 'glass'}
+                          variant={setupData.type === t ? 'solid' : 'glass'}
                           className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
-                            setupData.type === t ? 'border-primary' : 'border-white/5'
+                            setupData.type === t ? 'border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]' : 'border-[var(--border)] text-[var(--text-primary)]'
                           }`}
                         >
-                          <span className="text-xs font-semibold text-white">{t} Track</span>
-                          {setupData.type === t && <FaCheckCircle className="text-primary text-sm" />}
+                          <span className="text-xs font-semibold">{t} Track</span>
+                          {setupData.type === t && <FaCheckCircle className="text-[var(--primary)] text-sm" />}
                         </Card>
                       ))}
                     </div>
@@ -567,7 +567,7 @@ export default function CareerSetup() {
                     exit={{ opacity: 0, x: -10 }}
                     className="space-y-4"
                   >
-                    <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
+                    <h3 className="text-sm font-heading font-bold text-[var(--text-primary)] uppercase tracking-wider mb-4">
                       Select Difficulty Mode
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -575,13 +575,13 @@ export default function CareerSetup() {
                         <Card
                           key={diff}
                           onClick={() => selectOption('difficulty', diff)}
-                          variant={setupData.difficulty === diff ? 'glow-primary' : 'glass'}
+                          variant={setupData.difficulty === diff ? 'solid' : 'glass'}
                           className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
-                            setupData.difficulty === diff ? 'border-primary' : 'border-white/5'
+                            setupData.difficulty === diff ? 'border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]' : 'border-[var(--border)] text-[var(--text-primary)]'
                           }`}
                         >
-                          <span className="text-xs font-semibold text-white">{diff}</span>
-                          {setupData.difficulty === diff && <FaCheckCircle className="text-primary text-sm" />}
+                          <span className="text-xs font-semibold">{diff}</span>
+                          {setupData.difficulty === diff && <FaCheckCircle className="text-[var(--primary)] text-sm" />}
                         </Card>
                       ))}
                     </div>
@@ -596,7 +596,7 @@ export default function CareerSetup() {
                     exit={{ opacity: 0, x: -10 }}
                     className="space-y-4"
                   >
-                    <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4">
+                    <h3 className="text-sm font-heading font-bold text-[var(--text-primary)] uppercase tracking-wider mb-4">
                       Select Interview Duration
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -604,13 +604,13 @@ export default function CareerSetup() {
                         <Card
                           key={dur}
                           onClick={() => selectOption('duration', dur)}
-                          variant={setupData.duration === dur ? 'glow-primary' : 'glass'}
+                          variant={setupData.duration === dur ? 'solid' : 'glass'}
                           className={`hover:scale-[1.01] transition-all py-6 px-4 border flex flex-col items-center justify-center gap-2 cursor-pointer text-center ${
-                            setupData.duration === dur ? 'border-primary' : 'border-white/5'
+                            setupData.duration === dur ? 'border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]' : 'border-[var(--border)] text-[var(--text-primary)]'
                           }`}
                         >
-                          <span className="text-2xl font-heading font-extrabold text-white">{dur}</span>
-                          <span className="text-[10px] text-gray-400 font-mono uppercase">Minutes</span>
+                          <span className="text-2xl font-heading font-extrabold">{dur}</span>
+                          <span className="text-[10px] text-[var(--text-secondary)] font-mono uppercase">Minutes</span>
                         </Card>
                       ))}
                     </div>
@@ -625,7 +625,7 @@ export default function CareerSetup() {
                     exit={{ opacity: 0, x: -10 }}
                     className="space-y-4"
                   >
-                    <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-2">
+                    <h3 className="text-sm font-heading font-bold text-[var(--text-primary)] uppercase tracking-wider mb-2">
                       Review Simulation Parameters
                     </h3>
                     <InterviewModePreviewCard setupData={setupData} />
@@ -635,7 +635,7 @@ export default function CareerSetup() {
             </div>
           </div>
 
-          <div className="pt-6 border-t border-white/5 space-y-3">
+          <div className="pt-6 border-t border-[var(--border)] space-y-3">
             <div className="flex justify-between items-center">
               <Button
                 onClick={handleBack}
@@ -655,29 +655,28 @@ export default function CareerSetup() {
               >
                 Next Step
               </Button>
-
             </div>
 
             {/* Keyboard Shortcuts Hint */}
-            <div className="flex items-center justify-center gap-1.5 text-[10px] font-mono text-gray-500 pt-1">
-              <FaKeyboard className="text-gray-600 text-xs" />
-              <span>Keyboard Shortcuts: Press <kbd className="px-1 py-0.5 bg-white/10 rounded text-gray-300">Enter</kbd> for Next, <kbd className="px-1 py-0.5 bg-white/10 rounded text-gray-300">←</kbd> or <kbd className="px-1 py-0.5 bg-white/10 rounded text-gray-300">Backspace</kbd> for Previous</span>
+            <div className="flex items-center justify-center gap-1.5 text-[10px] font-mono text-[var(--text-secondary)] pt-1">
+              <FaKeyboard className="text-[var(--text-secondary)] text-xs" />
+              <span>Keyboard Shortcuts: Press <kbd className="px-1 py-0.5 bg-[var(--bg-surface-alt)] border border-[var(--border)] rounded text-[var(--text-primary)]">Enter</kbd> for Next, <kbd className="px-1 py-0.5 bg-[var(--bg-surface-alt)] border border-[var(--border)] rounded text-[var(--text-primary)]">←</kbd> or <kbd className="px-1 py-0.5 bg-[var(--bg-surface-alt)] border border-[var(--border)] rounded text-[var(--text-primary)]">Backspace</kbd> for Previous</span>
             </div>
           </div>
         </div>
 
         <div className="space-y-6">
           <Card variant="glass" className="p-6 space-y-6">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider pb-3 border-b border-white/5">
+            <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider pb-3 border-b border-[var(--border)]">
               Hardware Diagnostics
             </h3>
 
             <div className="space-y-4">
-              <div className="relative aspect-video rounded-xl bg-[#030712] border border-white/5 overflow-hidden flex items-center justify-center">
+              <div className="relative aspect-video rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] overflow-hidden flex items-center justify-center">
                 {stream && cameraPermission === 'granted' ? (
                   <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                 ) : (
-                  <div className="flex flex-col items-center gap-2 text-gray-600">
+                  <div className="flex flex-col items-center gap-2 text-[var(--text-secondary)]">
                     <FaVideoSlash className="text-2xl" />
                     <span className="text-[10px] font-mono">Camera Offline</span>
                   </div>
@@ -686,20 +685,20 @@ export default function CareerSetup() {
 
               <div className="space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span>Camera Interface:</span>
+                  <span className="text-[var(--text-secondary)]">Camera Interface:</span>
                   <span
                     className={
-                      cameraPermission === 'granted' ? 'text-emerald-400 font-semibold' : 'text-gray-500 font-medium'
+                      cameraPermission === 'granted' ? 'text-[var(--success)] font-semibold' : 'text-[var(--text-secondary)] font-medium'
                     }
                   >
                     {cameraPermission === 'granted' ? 'Online' : 'Unchecked'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Audio Level:</span>
+                  <span className="text-[var(--text-secondary)]">Audio Level:</span>
                   <span
                     className={
-                      micPermission === 'granted' ? 'text-emerald-400 font-semibold' : 'text-gray-500 font-medium'
+                      micPermission === 'granted' ? 'text-[var(--success)] font-semibold' : 'text-[var(--text-secondary)] font-medium'
                     }
                   >
                     {micPermission === 'granted' ? 'Online' : 'Unchecked'}
@@ -709,12 +708,12 @@ export default function CareerSetup() {
                 {micPermission === 'granted' && (
                   <div className="space-y-1.5 pt-1">
                     <div className="flex items-center justify-between text-[9px] font-mono">
-                      <span>MIC AMPLITUDE (REAL-TIME)</span>
-                      <span className="text-emerald-400 font-bold">{audioLevel}%</span>
+                      <span className="text-[var(--text-secondary)]">MIC AMPLITUDE (REAL-TIME)</span>
+                      <span className="text-[var(--success)] font-bold">{audioLevel}%</span>
                     </div>
-                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-emerald-400 transition-all duration-100 ease-out"
+                        className="h-full bg-[var(--success)] transition-all duration-100 ease-out"
                         style={{ width: `${audioLevel}%` }}
                       />
                     </div>
@@ -735,18 +734,18 @@ export default function CareerSetup() {
                   {deviceChecking ? 'Querying Devices...' : 'Run Diagnostics'}
                 </Button>
               ) : (
-                <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-500/5 border border-emerald-500/15">
-                  <div className="h-4 w-4 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] flex items-center justify-center shrink-0">
+                <div className="flex items-center gap-2 p-2 rounded-xl bg-[var(--success)]/10 border border-[var(--success)]/20">
+                  <div className="h-4 w-4 rounded-full bg-[var(--success)]/20 text-[var(--success)] text-[10px] flex items-center justify-center shrink-0">
                     ✓
                   </div>
-                  <p className="text-[10px] text-emerald-400/90 leading-tight">
+                  <p className="text-[10px] text-[var(--success)] leading-tight">
                     Diagnostics complete. Media interfaces ready.
                   </p>
                 </div>
               )}
 
               {recalledMemoryNotice && (
-                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-mono">
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--primary-soft)] border border-[var(--primary)]/20 text-[var(--primary)] text-xs font-mono">
                   <span>🧠</span>
                   <span>{recalledMemoryNotice}</span>
                 </div>
@@ -757,7 +756,7 @@ export default function CareerSetup() {
                 disabled={startingSession}
                 variant="primary"
                 size="lg"
-                className="w-full bg-gradient-to-r from-primary via-secondary to-accent text-white shadow-xl hover:shadow-primary/20"
+                className="w-full"
                 icon={FaPlay}
               >
                 {startingSession ? 'Conditioning Interview Memory...' : 'Begin Assessment'}

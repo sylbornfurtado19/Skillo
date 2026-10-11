@@ -20,13 +20,13 @@ const EMOTION_BADGES: Record<
   string,
   { label: string; icon: string; color: string; bg: string }
 > = {
-  HAPPY:     { label: 'Composure Signal (Beta): Positive & Happy', icon: '😄', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-  CONFIDENT: { label: 'Composure Signal (Beta): Calm',            icon: '🟢', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-  STRESSED:  { label: 'Composure Signal (Beta): High Activation', icon: '⚠️', color: 'text-red-400',     bg: 'bg-red-500/10 border-red-500/20'     },
-  HESITANT:  { label: 'Composure Signal (Beta): Subtle Shift',    icon: '❓', color: 'text-amber-400',   bg: 'bg-amber-500/10 border-amber-500/20' },
-  THINKING:  { label: 'Composure Signal (Beta): Reflective',      icon: '💡', color: 'text-blue-400',    bg: 'bg-blue-500/10 border-blue-500/20'   },
-  SURPRISED: { label: 'Composure Signal (Beta): Dynamic Arousal', icon: '😲', color: 'text-purple-400',  bg: 'bg-purple-500/10 border-purple-500/20'},
-  NEUTRAL:   { label: 'Composure Signal (Beta): Baseline',        icon: '😐', color: 'text-gray-300',    bg: 'bg-white/5 border-white/10'           },
+  HAPPY:     { label: 'Composure Signal (Beta): Positive & Happy', icon: '😄', color: 'text-success',        bg: 'bg-success/10 border-success/20' },
+  CONFIDENT: { label: 'Composure Signal (Beta): Calm',            icon: '🟢', color: 'text-success',        bg: 'bg-success/10 border-success/20' },
+  STRESSED:  { label: 'Composure Signal (Beta): High Activation', icon: '⚠️', color: 'text-danger',         bg: 'bg-danger/10 border-danger/20'   },
+  HESITANT:  { label: 'Composure Signal (Beta): Subtle Shift',    icon: '❓', color: 'text-warning',        bg: 'bg-warning/10 border-warning/20' },
+  THINKING:  { label: 'Composure Signal (Beta): Reflective',      icon: '💡', color: 'text-info',           bg: 'bg-info/10 border-info/20'       },
+  SURPRISED: { label: 'Composure Signal (Beta): Dynamic Arousal', icon: '😲', color: 'text-primary',        bg: 'bg-primary-soft border-primary/20'},
+  NEUTRAL:   { label: 'Composure Signal (Beta): Baseline',        icon: '😐', color: 'text-text-secondary', bg: 'bg-surface-alt border-border'   },
 };
 
 export default function AffectiveHUD({ currentFrame }: AffectiveHUDProps) {
@@ -41,21 +41,21 @@ export default function AffectiveHUD({ currentFrame }: AffectiveHUDProps) {
   const dotY = Math.max(4, Math.min(44, 24 - vaCoordinates.arousal * 20)); // Y inverted in SVG
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[#060b14]/90 border border-white/8 backdrop-blur-sm">
+    <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface border border-border shadow-soft">
       {/* Mini V-A Quadrant SVG */}
       <div className="relative shrink-0">
-        <svg width="48" height="48" viewBox="0 0 48 48" className="bg-black/40 rounded-lg border border-white/10">
+        <svg width="48" height="48" viewBox="0 0 48 48" className="bg-surface-alt rounded-lg border border-border">
           {/* Axis lines */}
-          <line x1="24" y1="0" x2="24" y2="48" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-          <line x1="0" y1="24" x2="48" y2="24" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+          <line x1="24" y1="0" x2="24" y2="48" stroke="rgba(43,37,35,0.12)" strokeWidth="1" />
+          <line x1="0" y1="24" x2="48" y2="24" stroke="rgba(43,37,35,0.12)" strokeWidth="1" />
           {/* Ideal target zone dot */}
-          <circle cx="32" cy="20" r="3" fill="rgba(16,185,129,0.3)" />
+          <circle cx="32" cy="20" r="3" fill="rgba(63,125,88,0.25)" />
           {/* Current V-A coordinate dot */}
           <circle
             cx={dotX}
             cy={dotY}
             r="3.5"
-            fill={badge.color.includes('emerald') ? '#10b981' : badge.color.includes('red') ? '#ef4444' : badge.color.includes('amber') ? '#f59e0b' : '#3b82f6'}
+            fill={badge.color.includes('success') ? '#3F7D58' : badge.color.includes('danger') ? '#B3261E' : badge.color.includes('warning') ? '#C98A1B' : '#9B2218'}
             className="transition-all duration-300"
           />
         </svg>
@@ -67,10 +67,10 @@ export default function AffectiveHUD({ currentFrame }: AffectiveHUDProps) {
           <span>{badge.icon}</span>
           <span>{badge.label}</span>
         </div>
-        <div className="flex items-center gap-3 text-[9px] text-gray-500 font-mono">
+        <div className="flex items-center gap-3 text-[9px] text-text-secondary font-mono">
           <span>V: {vaCoordinates.valence >= 0 ? '+' : ''}{vaCoordinates.valence.toFixed(2)}</span>
           <span>A: {vaCoordinates.arousal >= 0 ? '+' : ''}{vaCoordinates.arousal.toFixed(2)}</span>
-          <span>Composure: <strong className="text-white">{composureScore.toFixed(0)}%</strong></span>
+          <span>Composure: <strong className="text-text-primary">{composureScore.toFixed(0)}%</strong></span>
         </div>
       </div>
     </div>

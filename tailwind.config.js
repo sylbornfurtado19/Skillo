@@ -7,14 +7,34 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: 'rgb(var(--color-background-rgb, 3 7 18) / <alpha-value>)',
-        card: 'rgb(var(--color-card-rgb, 11 15 25) / <alpha-value>)',
+        'bg-page': 'var(--bg-page)',
+        'bg-surface': 'var(--bg-surface)',
+        'bg-surface-alt': 'var(--bg-surface-alt)',
+        border: 'var(--border)',
         primary: {
-          DEFAULT: 'var(--color-primary)',
-          dark: 'var(--color-primary-dark)',
+          DEFAULT: 'var(--primary)',
+          hover: 'var(--primary-hover)',
+          active: 'var(--primary-active)',
+          soft: 'var(--primary-soft)',
+          dark: 'var(--primary-hover)',
         },
-        secondary: 'var(--color-secondary)',
-        accent: 'var(--color-accent)',
+        secondary: {
+          DEFAULT: 'var(--secondary)',
+          hover: 'var(--secondary-hover)',
+        },
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'text-on-primary': 'var(--text-on-primary)',
+        success: 'var(--success)',
+        warning: 'var(--warning)',
+        danger: 'var(--danger)',
+        info: 'var(--info)',
+        background: 'var(--bg-page)',
+        card: 'var(--bg-surface)',
+        accent: 'var(--secondary)',
+      },
+      boxShadow: {
+        theme: 'var(--shadow)',
       },
       fontFamily: {
         heading: ['Sora', 'sans-serif'],

@@ -105,19 +105,19 @@ export default function IVPTelemetryTimeline({
   };
 
   return (
-    <Card className="p-6 bg-slate-900/90 border-slate-800 space-y-6">
+    <Card className="p-6 bg-surface border-border shadow-soft space-y-6">
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-indigo-600/20 border border-indigo-500/30 rounded-lg text-indigo-400">
+            <div className="p-1.5 bg-primary-soft border border-primary/20 rounded-lg text-primary">
               <FaClock className="text-sm" />
             </div>
-            <h3 className="text-base font-semibold text-slate-100">
+            <h3 className="text-base font-semibold text-text-primary">
               Synchronized IVP Multi-Modal Telemetry Timeline
             </h3>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-text-secondary mt-1">
             Millisecond-accurate timeline tracking AffectNet composure, L2CS-Net gaze rays, and HopeNet head pose dynamics.
           </p>
         </div>
@@ -129,7 +129,7 @@ export default function IVPTelemetryTimeline({
           <Badge variant="success" className="text-xs">
             Composure: {overallComposureScore}/100
           </Badge>
-          <Badge variant="accent" className="text-xs">
+          <Badge variant="neutral" className="text-xs">
             Stability: {overallStabilityScore}%
           </Badge>
         </div>
@@ -137,11 +137,11 @@ export default function IVPTelemetryTimeline({
 
       {/* Empty State Banner (No Anomalous Events) */}
       {resolvedEvents.length === 0 && (
-        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3 text-emerald-400 text-xs">
+        <div className="p-3.5 rounded-xl bg-success/10 border border-success/20 flex items-center gap-3 text-success text-xs">
           <FaCheckCircle className="text-base shrink-0" />
           <div className="space-y-0.5">
-            <p className="font-semibold text-emerald-300">Optimal Behavioral Telemetry</p>
-            <p className="text-emerald-400/90 text-[11px]">
+            <p className="font-semibold text-text-primary">Optimal Behavioral Telemetry</p>
+            <p className="text-text-secondary text-[11px]">
               No anomalous distraction or stress spikes detected during this session. Candidate maintained steady focal contact and high physical composure.
             </p>
           </div>
@@ -152,18 +152,18 @@ export default function IVPTelemetryTimeline({
       <div className="space-y-4">
         {/* Track 1: Affect & Composure */}
         <div className="space-y-1">
-          <div className="flex justify-between text-xs text-slate-400">
-            <span className="flex items-center gap-1.5 text-rose-400 font-medium">
+          <div className="flex justify-between text-xs text-text-secondary">
+            <span className="flex items-center gap-1.5 text-danger font-medium">
               <FaHeartbeat className="text-xs" /> Composure & Stress Vector (Valence / Arousal)
             </span>
             <span>Target (V=0.40, A=0.20)</span>
           </div>
-          <div className="relative h-6 bg-slate-950 rounded-lg overflow-hidden border border-slate-800/80">
+          <div className="relative h-6 bg-surface-alt rounded-lg overflow-hidden border border-border">
             <div
               className="absolute inset-0 opacity-80"
               style={{
                 background:
-                  'linear-gradient(90deg, #10b981 0%, #10b981 35%, #f59e0b 45%, #ef4444 48%, #10b981 55%, #10b981 100%)',
+                  'linear-gradient(90deg, #3F7D58 0%, #3F7D58 35%, #C98A1B 45%, #B3261E 48%, #3F7D58 55%, #3F7D58 100%)',
               }}
             />
             {/* Event Markers */}
@@ -173,7 +173,7 @@ export default function IVPTelemetryTimeline({
                 <button
                   key={idx}
                   onClick={() => setSelectedSec(e.timestampSec)}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-rose-500 border-2 border-white shadow-lg cursor-pointer hover:scale-125 transition-transform"
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-danger border-2 border-surface shadow-soft cursor-pointer hover:scale-125 transition-transform"
                   style={{ left: `${(e.timestampSec / durationSeconds) * 100}%` }}
                   title={e.label}
                 />
@@ -183,18 +183,18 @@ export default function IVPTelemetryTimeline({
 
         {/* Track 2: Eye Contact & Gaze */}
         <div className="space-y-1">
-          <div className="flex justify-between text-xs text-slate-400">
-            <span className="flex items-center gap-1.5 text-amber-400 font-medium">
+          <div className="flex justify-between text-xs text-text-secondary">
+            <span className="flex items-center gap-1.5 text-warning font-medium">
               <FaEye className="text-xs" /> L2CS-Net Eye Contact Focus Zones
             </span>
             <span>Pitch ≤ 12°, Yaw ≤ 15°</span>
           </div>
-          <div className="relative h-6 bg-slate-950 rounded-lg overflow-hidden border border-slate-800/80">
+          <div className="relative h-6 bg-surface-alt rounded-lg overflow-hidden border border-border">
             <div
               className="absolute inset-0 opacity-70"
               style={{
                 background:
-                  'linear-gradient(90deg, #3b82f6 0%, #3b82f6 9%, #f59e0b 12%, #3b82f6 20%, #3b82f6 75%, #f59e0b 83%, #3b82f6 100%)',
+                  'linear-gradient(90deg, #6B6E70 0%, #6B6E70 9%, #C98A1B 12%, #6B6E70 20%, #6B6E70 75%, #C98A1B 83%, #6B6E70 100%)',
               }}
             />
             {resolvedEvents
@@ -203,7 +203,7 @@ export default function IVPTelemetryTimeline({
                 <button
                   key={idx}
                   onClick={() => setSelectedSec(e.timestampSec)}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-slate-900 shadow cursor-pointer hover:scale-125 transition-transform"
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-warning border-2 border-surface shadow-soft cursor-pointer hover:scale-125 transition-transform"
                   style={{ left: `${(e.timestampSec / durationSeconds) * 100}%` }}
                   title={e.label}
                 />
@@ -213,18 +213,18 @@ export default function IVPTelemetryTimeline({
 
         {/* Track 3: Head Pose & Gestures */}
         <div className="space-y-1">
-          <div className="flex justify-between text-xs text-slate-400">
-            <span className="flex items-center gap-1.5 text-cyan-400 font-medium">
+          <div className="flex justify-between text-xs text-text-secondary">
+            <span className="flex items-center gap-1.5 text-primary font-medium">
               <FaUserTie className="text-xs" /> HopeNet Head Dynamics & Gestures
             </span>
             <span>Nodding & Gesture Oscillations</span>
           </div>
-          <div className="relative h-6 bg-slate-950 rounded-lg overflow-hidden border border-slate-800/80">
+          <div className="relative h-6 bg-surface-alt rounded-lg overflow-hidden border border-border">
             <div
               className="absolute inset-0 opacity-60"
               style={{
                 background:
-                  'linear-gradient(90deg, #06b6d4 0%, #06b6d4 25%, #8b5cf6 30%, #06b6d4 40%, #8b5cf6 62%, #06b6d4 100%)',
+                  'linear-gradient(90deg, #9B2218 0%, #9B2218 25%, #6B6E70 30%, #9B2218 40%, #6B6E70 62%, #9B2218 100%)',
               }}
             />
             {resolvedEvents
@@ -233,7 +233,7 @@ export default function IVPTelemetryTimeline({
                 <button
                   key={idx}
                   onClick={() => setSelectedSec(e.timestampSec)}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-cyan-400 border-2 border-slate-900 shadow cursor-pointer hover:scale-125 transition-transform"
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-primary border-2 border-surface shadow-soft cursor-pointer hover:scale-125 transition-transform"
                   style={{ left: `${(e.timestampSec / durationSeconds) * 100}%` }}
                   title={e.label}
                 />
@@ -243,9 +243,9 @@ export default function IVPTelemetryTimeline({
 
         {/* Time Scrubber Slider */}
         <div className="pt-2">
-          <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+          <div className="flex justify-between text-[11px] text-text-secondary mb-1">
             <span>0:00</span>
-            <span className="text-indigo-400 font-semibold">Scrubber: {formatTime(selectedSec)}</span>
+            <span className="text-primary font-semibold">Scrubber: {formatTime(selectedSec)}</span>
             <span>{formatTime(durationSeconds)}</span>
           </div>
           <input
@@ -254,13 +254,13 @@ export default function IVPTelemetryTimeline({
             max={durationSeconds}
             value={selectedSec}
             onChange={(e) => setSelectedSec(Number(e.target.value))}
-            className="w-full accent-indigo-500 cursor-pointer"
+            className="w-full accent-primary cursor-pointer"
           />
         </div>
       </div>
 
       {/* Selected Timestamp Diagnostic Details Card */}
-      <div className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="p-4 bg-surface-alt rounded-xl border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs font-mono">
@@ -280,7 +280,7 @@ export default function IVPTelemetryTimeline({
               </Badge>
             )}
           </div>
-          <p className="text-xs text-slate-300">
+          <p className="text-xs text-text-secondary">
             {activeEvent
               ? activeEvent.detail
               : resolvedEvents.length === 0
@@ -289,7 +289,7 @@ export default function IVPTelemetryTimeline({
           </p>
         </div>
 
-        <div className="text-xs font-mono text-slate-400 text-right shrink-0">
+        <div className="text-xs font-mono text-text-secondary text-right shrink-0">
           <div>Pitch: {activeEvent ? '+18.2°' : '-3.1°'}</div>
           <div>Yaw: {activeEvent ? '+22.4°' : '+4.2°'}</div>
         </div>

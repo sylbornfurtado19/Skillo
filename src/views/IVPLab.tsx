@@ -208,21 +208,21 @@ export default function IVPLab() {
       />
 
       {/* Top Academic Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-[#0B0F17]/90 border border-white/10 rounded-2xl p-5 shadow-xl">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-surface border border-border rounded-2xl p-5 shadow-soft">
         <div className="flex items-center gap-3.5">
-          <div className="h-11 w-11 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xl">
+          <div className="h-11 w-11 rounded-xl bg-primary-soft border border-primary/30 flex items-center justify-center text-primary text-xl">
             <FaFlask />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-white font-heading">
+              <h1 className="text-lg font-bold text-text-primary font-heading">
                 IVP Computer Vision Diagnostic Workbench
               </h1>
               <Badge variant="primary" size="sm">
                 Units 1–8 Aligned
               </Badge>
             </div>
-            <p className="text-xs text-gray-400 font-mono mt-0.5">
+            <p className="text-xs text-text-secondary font-mono mt-0.5">
               Real-time pixel-level frame inspection &bull; ONNX WebAssembly inference &bull; Mathematical signal telemetry
             </p>
           </div>
@@ -254,7 +254,7 @@ export default function IVPLab() {
               onChange={handleFileUpload}
               className="hidden"
             />
-            <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-gray-300 transition">
+            <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl border border-border bg-surface-alt hover:bg-border/40 text-xs font-semibold text-text-secondary transition">
               <FaUpload className="mr-1.5 text-[10px]" /> Upload Frame
             </span>
           </label>
@@ -266,8 +266,8 @@ export default function IVPLab() {
         {/* Left Column: Interactive Dual-Viewport Diagnostic Canvas (8 Cols) */}
         <div className="lg:col-span-8 space-y-4">
           <Card variant="glass" className="p-4 space-y-4">
-            <div className="flex flex-wrap items-center justify-between border-b border-white/5 pb-2 text-xs gap-2">
-              <div className="flex items-center gap-2 font-mono text-gray-300 font-bold uppercase tracking-wider">
+            <div className="flex flex-wrap items-center justify-between border-b border-border pb-2 text-xs gap-2">
+              <div className="flex items-center gap-2 font-mono text-text-primary font-bold uppercase tracking-wider">
                 <FaCube className="text-primary" />
                 <span>Interactive Dual-Viewport Canvas</span>
               </div>
@@ -276,7 +276,7 @@ export default function IVPLab() {
                   type="button"
                   onClick={() => setShowLandmarks(!showLandmarks)}
                   className={`px-2.5 py-1 rounded-md text-[10px] font-mono transition cursor-pointer ${
-                    showLandmarks ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 text-gray-400'
+                    showLandmarks ? 'bg-success/20 text-success border border-success/30' : 'bg-surface-alt border border-border text-text-secondary'
                   }`}
                 >
                   Eye & Lip Contours
@@ -285,7 +285,7 @@ export default function IVPLab() {
                   type="button"
                   onClick={() => setShowBoundingBox(!showBoundingBox)}
                   className={`px-2.5 py-1 rounded-md text-[10px] font-mono transition cursor-pointer ${
-                    showBoundingBox ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-white/5 text-gray-400'
+                    showBoundingBox ? 'bg-secondary/20 text-secondary border border-secondary/30' : 'bg-surface-alt border border-border text-text-secondary'
                   }`}
                 >
                   Face ROI Reticle
@@ -294,7 +294,7 @@ export default function IVPLab() {
                   type="button"
                   onClick={() => setShow3DAxes(!show3DAxes)}
                   className={`px-2.5 py-1 rounded-md text-[10px] font-mono transition cursor-pointer ${
-                    show3DAxes ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-gray-400'
+                    show3DAxes ? 'bg-primary-soft text-primary border border-primary/30' : 'bg-surface-alt border border-border text-text-secondary'
                   }`}
                 >
                   3D Pinhole Axes
@@ -303,7 +303,7 @@ export default function IVPLab() {
                   type="button"
                   onClick={() => setShowHistogram(!showHistogram)}
                   className={`px-2.5 py-1 rounded-md text-[10px] font-mono transition cursor-pointer ${
-                    showHistogram ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 text-gray-400'
+                    showHistogram ? 'bg-success/20 text-success border border-success/30' : 'bg-surface-alt border border-border text-text-secondary'
                   }`}
                 >
                   256-Bin Hist HUD
@@ -312,7 +312,7 @@ export default function IVPLab() {
                   type="button"
                   onClick={() => setShowDebugHUD(!showDebugHUD)}
                   className={`px-2.5 py-1 rounded-md text-[10px] font-mono transition cursor-pointer ${
-                    showDebugHUD ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-white/5 text-gray-400'
+                    showDebugHUD ? 'bg-warning/20 text-warning border border-warning/30' : 'bg-surface-alt border border-border text-text-secondary'
                   }`}
                 >
                   ⚡ Debug HUD
@@ -322,15 +322,15 @@ export default function IVPLab() {
                     type="button"
                     onClick={() => setMirrored(!mirrored)}
                     className={`px-2.5 py-1 rounded-md text-[10px] font-mono transition cursor-pointer ${
-                      mirrored ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-white/5 text-gray-400'
+                      mirrored ? 'bg-primary-soft text-primary border border-primary/30' : 'bg-surface-alt border border-border text-text-secondary'
                     }`}
                   >
                     Mirror: {mirrored ? 'ON' : 'OFF'}
                   </button>
                 )}
                 {/* Tracking Responsiveness Preset Switcher */}
-                <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-md border border-white/10 text-[10px] font-mono">
-                  <span className="text-gray-500 px-1 text-[9px]">PRESET:</span>
+                <div className="flex items-center gap-1 bg-surface-alt p-0.5 rounded-md border border-border text-[10px] font-mono">
+                  <span className="text-text-secondary px-1 text-[9px]">PRESET:</span>
                   {(['BALANCED', 'ULTRA_SMOOTH', 'ULTRA_RESPONSIVE'] as TrackingPreset[]).map((p) => (
                     <button
                       key={p}
@@ -339,7 +339,7 @@ export default function IVPLab() {
                       className={`px-1.5 py-0.5 rounded text-[9px] transition cursor-pointer ${
                         trackingPreset === p
                           ? 'bg-primary text-white font-bold'
-                          : 'text-gray-400 hover:text-white'
+                          : 'text-text-secondary hover:text-text-primary'
                       }`}
                     >
                       {p === 'BALANCED' ? 'BALANCED' : p === 'ULTRA_SMOOTH' ? 'SMOOTH' : 'RESPONSIVE'}
@@ -347,17 +347,17 @@ export default function IVPLab() {
                   ))}
                 </div>
                 {isFallbackMode && fallbackReason && (
-                  <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-warning/20 text-warning border border-warning/30">
                     ⚠ FALLBACK: {fallbackReason}
                   </span>
                 )}
                 {isThrottled && (
-                  <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
+                  <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-warning/20 text-warning border border-warning/30 animate-pulse">
                     ⚡ THROTTLED ({suggestedCadenceFps} FPS)
                   </span>
                 )}
                 {isTabPaused && (
-                  <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-secondary/20 text-secondary border border-secondary/30">
                     ⏸ TAB PAUSED
                   </span>
                 )}
@@ -417,25 +417,25 @@ export default function IVPLab() {
 
           {/* Academic Syllabus Diagnostic Reference */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-[#050811] border border-white/5 p-3 rounded-xl space-y-1 text-left">
-              <span className="text-[10px] font-mono text-emerald-400 font-bold block uppercase">Unit 4 & 5</span>
-              <p className="text-xs font-semibold text-white">Sobel Vector Field</p>
-              <p className="text-[10px] text-gray-400 font-mono">3x3 Convolutions &bull; Gradient Orientation</p>
+            <div className="bg-surface border border-border p-3 rounded-xl space-y-1 text-left shadow-soft">
+              <span className="text-[10px] font-mono text-primary font-bold block uppercase">Unit 4 & 5</span>
+              <p className="text-xs font-semibold text-text-primary">Sobel Vector Field</p>
+              <p className="text-[10px] text-text-secondary font-mono">3x3 Convolutions &bull; Gradient Orientation</p>
             </div>
-            <div className="bg-[#050811] border border-white/5 p-3 rounded-xl space-y-1 text-left">
-              <span className="text-[10px] font-mono text-cyan-400 font-bold block uppercase">Unit 6 & 7</span>
-              <p className="text-xs font-semibold text-white">YCrCb Otsu Mask</p>
-              <p className="text-[10px] text-gray-400 font-mono">Chrominance Cr &bull; Otsu Variance Max</p>
+            <div className="bg-surface border border-border p-3 rounded-xl space-y-1 text-left shadow-soft">
+              <span className="text-[10px] font-mono text-secondary font-bold block uppercase">Unit 6 & 7</span>
+              <p className="text-xs font-semibold text-text-primary">YCrCb Otsu Mask</p>
+              <p className="text-[10px] text-text-secondary font-mono">Chrominance Cr &bull; Otsu Variance Max</p>
             </div>
-            <div className="bg-[#050811] border border-white/5 p-3 rounded-xl space-y-1 text-left">
+            <div className="bg-surface border border-border p-3 rounded-xl space-y-1 text-left shadow-soft">
               <span className="text-[10px] font-mono text-primary font-bold block uppercase">Unit 1 & 2</span>
-              <p className="text-xs font-semibold text-white">Spatial Equalization</p>
-              <p className="text-[10px] text-gray-400 font-mono">Bilinear scaling &bull; CDF Histogram Transfer</p>
+              <p className="text-xs font-semibold text-text-primary">Spatial Equalization</p>
+              <p className="text-[10px] text-text-secondary font-mono">Bilinear scaling &bull; CDF Histogram Transfer</p>
             </div>
-            <div className="bg-[#050811] border border-white/5 p-3 rounded-xl space-y-1 text-left">
-              <span className="text-[10px] font-mono text-red-400 font-bold block uppercase">Unit 8</span>
-              <p className="text-xs font-semibold text-white">Temporal MAD</p>
-              <p className="text-[10px] text-gray-400 font-mono">Inter-Frame Motion Delta Buffer</p>
+            <div className="bg-surface border border-border p-3 rounded-xl space-y-1 text-left shadow-soft">
+              <span className="text-[10px] font-mono text-danger font-bold block uppercase">Unit 8</span>
+              <p className="text-xs font-semibold text-text-primary">Temporal MAD</p>
+              <p className="text-[10px] text-text-secondary font-mono">Inter-Frame Motion Delta Buffer</p>
             </div>
           </div>
         </div>
@@ -444,9 +444,9 @@ export default function IVPLab() {
         <div className="lg:col-span-4 space-y-4">
           {/* Signal Oscilloscopes */}
           <Card variant="glass" className="p-4 space-y-3">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2 text-xs">
-              <div className="flex items-center gap-2 font-mono text-gray-300 font-bold uppercase tracking-wider">
-                <FaWaveSquare className="text-emerald-400" />
+            <div className="flex items-center justify-between border-b border-border pb-2 text-xs">
+              <div className="flex items-center gap-2 font-mono text-text-primary font-bold uppercase tracking-wider">
+                <FaWaveSquare className="text-primary" />
                 <span>Physiological Signal Oscilloscopes</span>
               </div>
               <Badge variant="success" size="sm">
@@ -463,7 +463,7 @@ export default function IVPLab() {
               thresholdLabel="Blink Threshold (0.21)"
               minRange={0.1}
               maxRange={0.4}
-              color="#10B981"
+              color="#3F7D58"
               height={85}
               stats={{
                 triggerCount: blinkCount,
@@ -482,7 +482,7 @@ export default function IVPLab() {
               thresholdLabel="Speech Threshold (0.25)"
               minRange={0.05}
               maxRange={0.5}
-              color="#3B82F6"
+              color="#6B6E70"
               height={85}
               stats={{
                 triggerCount: speechActivePct,
@@ -495,48 +495,48 @@ export default function IVPLab() {
 
           {/* Real-Time ONNX Edge Neural Telemetry */}
           <Card variant="glass" className="p-4 space-y-3">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2 text-xs">
-              <div className="flex items-center gap-2 font-mono text-gray-300 font-bold uppercase tracking-wider">
+            <div className="flex items-center justify-between border-b border-border pb-2 text-xs">
+              <div className="flex items-center gap-2 font-mono text-text-primary font-bold uppercase tracking-wider">
                 <FaMicrochip className="text-primary" />
                 <span>Edge Neural Model Telemetry</span>
               </div>
-              <span className="text-[10px] font-mono text-gray-400">
+              <span className="text-[10px] font-mono text-text-secondary">
                 WASM &bull; {onnxTelemetry.totalInferenceTimeMs} ms
               </span>
             </div>
 
             {/* 3D Euler Angles */}
             <div className="grid grid-cols-3 gap-2 text-center font-mono">
-              <div className="bg-[#030712] p-2.5 rounded-lg border border-red-500/20">
-                <span className="text-[9px] text-gray-400 block">Yaw (Green)</span>
-                <span className="text-xs font-bold text-emerald-400">{onnxTelemetry.yaw.toFixed(1)}°</span>
+              <div className="bg-surface-alt p-2.5 rounded-lg border border-border">
+                <span className="text-[9px] text-text-secondary block">Yaw</span>
+                <span className="text-xs font-bold text-primary">{onnxTelemetry.yaw.toFixed(1)}°</span>
               </div>
-              <div className="bg-[#030712] p-2.5 rounded-lg border border-emerald-500/20">
-                <span className="text-[9px] text-gray-400 block">Pitch (Red)</span>
-                <span className="text-xs font-bold text-red-400">{onnxTelemetry.pitch.toFixed(1)}°</span>
+              <div className="bg-surface-alt p-2.5 rounded-lg border border-border">
+                <span className="text-[9px] text-text-secondary block">Pitch</span>
+                <span className="text-xs font-bold text-secondary">{onnxTelemetry.pitch.toFixed(1)}°</span>
               </div>
-              <div className="bg-[#030712] p-2.5 rounded-lg border border-blue-500/20">
-                <span className="text-[9px] text-gray-400 block">Roll (Blue)</span>
-                <span className="text-xs font-bold text-blue-400">{onnxTelemetry.roll.toFixed(1)}°</span>
+              <div className="bg-surface-alt p-2.5 rounded-lg border border-border">
+                <span className="text-[9px] text-text-secondary block">Roll</span>
+                <span className="text-xs font-bold text-text-primary">{onnxTelemetry.roll.toFixed(1)}°</span>
               </div>
             </div>
 
             {/* Gaze Vector & Composure Metrics */}
             <div className="space-y-2 text-xs font-mono pt-1">
-              <div className="flex items-center justify-between bg-[#030712] p-2 rounded-lg border border-white/5">
-                <span className="text-gray-400">Gaze Coordinate Vector:</span>
-                <strong className="text-cyan-400">
+              <div className="flex items-center justify-between bg-surface-alt p-2 rounded-lg border border-border">
+                <span className="text-text-secondary">Gaze Coordinate Vector:</span>
+                <strong className="text-primary">
                   [{onnxTelemetry.gazeX.toFixed(2)}, {onnxTelemetry.gazeY.toFixed(2)}]
                 </strong>
               </div>
 
-              <div className="flex items-center justify-between bg-[#030712] p-2 rounded-lg border border-white/5">
-                <span className="text-gray-400">Facial Composure Index:</span>
-                <strong className="text-emerald-400">{onnxTelemetry.composure}%</strong>
+              <div className="flex items-center justify-between bg-surface-alt p-2 rounded-lg border border-border">
+                <span className="text-text-secondary">Facial Composure Index:</span>
+                <strong className="text-success">{onnxTelemetry.composure}%</strong>
               </div>
 
-              <div className="flex items-center justify-between bg-[#030712] p-2 rounded-lg border border-white/5">
-                <span className="text-gray-400">Dominant Emotion Class:</span>
+              <div className="flex items-center justify-between bg-surface-alt p-2 rounded-lg border border-border">
+                <span className="text-text-secondary">Dominant Emotion Class:</span>
                 <Badge variant="primary" size="sm">
                   {onnxTelemetry.dominantEmotion}
                 </Badge>

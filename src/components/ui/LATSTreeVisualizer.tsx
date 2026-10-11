@@ -45,14 +45,14 @@ export default function LATSTreeVisualizer({
   const renderNodeTree = (node: LATSTreeNode, level: number = 0) => {
     const isSelected = node.isSelectedTrajectory;
     return (
-      <div key={node.id} className="relative space-y-2 pl-4 sm:pl-6 border-l border-white/10 my-2 text-left">
+      <div key={node.id} className="relative space-y-2 pl-4 sm:pl-6 border-l border-border my-2 text-left">
         <div
           onMouseEnter={() => setHoveredNode(node)}
           onMouseLeave={() => setHoveredNode(null)}
           className={`p-3 rounded-xl transition-all duration-200 cursor-pointer relative ${
             isSelected
-              ? 'bg-[#0B0F17]/90 border-2 border-primary shadow-lg shadow-primary/10 ring-2 ring-primary/20'
-              : 'bg-white/2 border border-white/5 opacity-60 hover:opacity-100 hover:border-white/20'
+              ? 'bg-surface border-2 border-primary shadow-soft ring-2 ring-primary/20'
+              : 'bg-surface-alt/50 border border-border opacity-70 hover:opacity-100 hover:border-border'
           }`}
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -62,25 +62,25 @@ export default function LATSTreeVisualizer({
                 {node.actionType.replace(/_/g, ' ')}
               </Badge>
               {isSelected ? (
-                <span className="text-[9px] font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                <span className="text-[9px] font-mono font-bold text-success uppercase tracking-wider flex items-center gap-1">
                   <FaCheckCircle size={9} /> Selected Trajectory
                 </span>
               ) : (
-                <span className="text-[9px] font-mono text-gray-500 uppercase tracking-wider">
+                <span className="text-[9px] font-mono text-text-secondary uppercase tracking-wider">
                   Pruned Branch
                 </span>
               )}
             </div>
             <div className="flex items-center gap-3 text-[10px] font-mono">
-              <span className="text-gray-400">
-                PRM Score: <strong className={isSelected ? 'text-emerald-400' : 'text-gray-400'}>{(node.prmScore * 100).toFixed(0)}%</strong>
+              <span className="text-text-secondary">
+                PRM Score: <strong className={isSelected ? 'text-success' : 'text-text-secondary'}>{(node.prmScore * 100).toFixed(0)}%</strong>
               </span>
-              <span className="text-gray-500">N(s,a): {node.visitCount}</span>
-              <span className="text-gray-500">UCT: {node.uctValue.toFixed(2)}</span>
+              <span className="text-text-secondary">N(s,a): {node.visitCount}</span>
+              <span className="text-text-secondary">UCT: {node.uctValue.toFixed(2)}</span>
             </div>
           </div>
-          <p className="text-xs text-white font-semibold mt-2 leading-relaxed">{node.questionText}</p>
-          <p className="text-[11px] text-gray-400 italic mt-1 font-mono">"{node.rationale}"</p>
+          <p className="text-xs text-text-primary font-semibold mt-2 leading-relaxed">{node.questionText}</p>
+          <p className="text-[11px] text-text-secondary italic mt-1 font-mono">"{node.rationale}"</p>
         </div>
         {node.children && node.children.length > 0 && (
           <div className="space-y-2 mt-2">
@@ -94,13 +94,13 @@ export default function LATSTreeVisualizer({
   // Empty state — no tree data yet
   if (!treeState) {
     return (
-      <Card variant="glass" className={`p-5 ${className}`}>
+      <Card variant="default" className={`p-5 ${className}`}>
         <div className="flex flex-col items-center justify-center py-10 gap-4 text-center">
-          <FaSitemap className="text-4xl text-white/20" />
-          <p className="text-sm text-gray-400 font-mono">
+          <FaSitemap className="text-4xl text-text-secondary/40" />
+          <p className="text-sm text-text-secondary font-mono">
             LATS decision tree will appear here after question generation.
           </p>
-          <p className="text-[11px] text-gray-600">
+          <p className="text-[11px] text-text-secondary">
             The MCTS engine runs 3 simulations per turn to select the optimal follow-up trajectory.
           </p>
         </div>
@@ -109,25 +109,25 @@ export default function LATSTreeVisualizer({
   }
 
   return (
-    <Card variant="glass" className={`p-5 space-y-4 ${className}`}>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/5 pb-3 text-left">
+    <Card variant="default" className={`p-5 space-y-4 ${className}`}>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-border pb-3 text-left">
         <div className="flex items-center gap-2">
           <FaSitemap className="text-primary text-base" />
           <div>
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider font-heading">
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider font-heading">
               Adaptive Decision Tree (LATS Agent Engine)
             </h4>
-            <p className="text-[10px] text-gray-400 font-mono">
+            <p className="text-[10px] text-text-secondary font-mono">
               MCTS &bull; PRM V ∈ [0,1] &bull; c_puct = 1.414 &bull; {treeState.trajectoryHistory.length} nodes traversed
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-mono text-gray-400">
+        <div className="flex items-center gap-2 text-[10px] font-mono text-text-secondary">
           <span className="flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-primary inline-block" /> Selected Trajectory
           </span>
           <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-white/20 inline-block" /> Pruned Branch
+            <span className="h-2 w-2 rounded-full bg-border inline-block" /> Pruned Branch
           </span>
         </div>
       </div>
@@ -137,22 +137,22 @@ export default function LATSTreeVisualizer({
       </div>
 
       {hoveredNode && (
-        <div className="p-3.5 rounded-xl bg-[#030712]/90 border border-primary/30 text-xs space-y-1.5 text-left font-mono shadow-xl">
+        <div className="p-3.5 rounded-xl bg-surface border border-border text-xs space-y-1.5 text-left font-mono shadow-soft">
           <div className="flex justify-between items-center text-[10px]">
             <span className="text-primary font-bold uppercase tracking-wider flex items-center gap-1">
               <FaInfoCircle /> Node Diagnostic Inspector
             </span>
-            <span className="text-gray-400">ID: {hoveredNode.id}</span>
+            <span className="text-text-secondary">ID: {hoveredNode.id}</span>
           </div>
-          <p className="text-gray-300 text-[11px]"><strong>Rationale:</strong> {hoveredNode.rationale}</p>
-          <div className="grid grid-cols-3 gap-2 text-[10px] pt-1 border-t border-white/5">
-            <div><span className="text-gray-400 block">PRM Value:</span><span className="text-emerald-400 font-bold">{(hoveredNode.prmScore * 100).toFixed(1)}%</span></div>
-            <div><span className="text-gray-400 block">Visit Count:</span><span className="text-white font-bold">{hoveredNode.visitCount}</span></div>
-            <div><span className="text-gray-400 block">UCT:</span><span className="text-accent font-bold">{hoveredNode.uctValue.toFixed(3)}</span></div>
+          <p className="text-text-secondary text-[11px]"><strong>Rationale:</strong> {hoveredNode.rationale}</p>
+          <div className="grid grid-cols-3 gap-2 text-[10px] pt-1 border-t border-border">
+            <div><span className="text-text-secondary block">PRM Value:</span><span className="text-success font-bold">{(hoveredNode.prmScore * 100).toFixed(1)}%</span></div>
+            <div><span className="text-text-secondary block">Visit Count:</span><span className="text-text-primary font-bold">{hoveredNode.visitCount}</span></div>
+            <div><span className="text-text-secondary block">UCT:</span><span className="text-primary font-bold">{hoveredNode.uctValue.toFixed(3)}</span></div>
           </div>
           {hoveredNode.gapsDetected.length > 0 && (
             <div className="pt-1">
-              <span className="text-[10px] text-yellow-400 font-bold block">Gaps Detected:</span>
+              <span className="text-[10px] text-warning font-bold block">Gaps Detected:</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {hoveredNode.gapsDetected.map((gap, i) => (
                   <Badge key={i} variant="warning" size="sm">{gap}</Badge>

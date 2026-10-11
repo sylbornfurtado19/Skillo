@@ -46,12 +46,12 @@ const RAY_LENGTH = 80;
 
 // ── Color palette by focus zone ───────────────────────────────────────────────
 const ZONE_RAY_COLORS: Record<GazeFrameResult['screenFocusZone'], { ray: string; glow: string }> = {
-  CENTER_SCREEN:  { ray: '#10b981', glow: 'rgba(16,185,129,0.35)' },
-  LOOKING_UP:     { ray: '#f59e0b', glow: 'rgba(245,158,11,0.3)'  },
-  LOOKING_DOWN:   { ray: '#f59e0b', glow: 'rgba(245,158,11,0.3)'  },
-  LOOKING_LEFT:   { ray: '#f59e0b', glow: 'rgba(245,158,11,0.3)'  },
-  LOOKING_RIGHT:  { ray: '#f59e0b', glow: 'rgba(245,158,11,0.3)'  },
-  OFF_SCREEN:     { ray: '#ef4444', glow: 'rgba(239,68,68,0.35)'   },
+  CENTER_SCREEN:  { ray: '#3F7D58', glow: 'rgba(63,125,88,0.35)' },
+  LOOKING_UP:     { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)'  },
+  LOOKING_DOWN:   { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)'  },
+  LOOKING_LEFT:   { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)'  },
+  LOOKING_RIGHT:  { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)'  },
+  OFF_SCREEN:     { ray: '#B3261E', glow: 'rgba(179,38,30,0.35)'   },
 };
 
 // ── Public Handle (via ref) ───────────────────────────────────────────────────
@@ -435,20 +435,20 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
 
     return (
       <div
-        className={`relative rounded-xl overflow-hidden bg-[#060b14] border border-white/8 ${className} ${
+        className={`relative rounded-xl overflow-hidden bg-surface border border-border shadow-soft ${className} ${
           !visible ? 'hidden' : ''
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5">
-          <span className="text-[9px] text-gray-500 font-mono uppercase tracking-widest">
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-surface-alt">
+          <span className="text-[9px] text-text-secondary font-mono uppercase tracking-widest">
             Webcam Focus & Gaze Estimator
           </span>
           <div className="flex items-center gap-1.5">
             <div
-              className={`h-1.5 w-1.5 rounded-full ${isStarted ? 'bg-emerald-500 animate-pulse' : 'bg-gray-600'}`}
+              className={`h-1.5 w-1.5 rounded-full ${isStarted ? 'bg-success animate-pulse' : 'bg-text-secondary/40'}`}
             />
-            <span className="text-[8px] text-gray-600 font-mono">
+            <span className="text-[8px] text-text-secondary font-mono">
               {isStarted ? '10 FPS' : 'IDLE'}
             </span>
           </div>
@@ -472,16 +472,16 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
 
           {/* Camera error / inactive overlay */}
           {!isStarted && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712]/80 text-center px-4 gap-2">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface/90 text-center px-4 gap-2">
               {cameraError ? (
                 <>
-                  <div className="text-red-400 text-lg">🚫</div>
-                  <p className="text-[10px] text-red-400 font-mono">{cameraError}</p>
+                  <div className="text-danger text-lg">🚫</div>
+                  <p className="text-[10px] text-danger font-mono">{cameraError}</p>
                 </>
               ) : (
                 <>
-                  <div className="text-gray-600 text-2xl">📷</div>
-                  <p className="text-[10px] text-gray-600 font-mono">
+                  <div className="text-text-secondary text-2xl">📷</div>
+                  <p className="text-[10px] text-text-secondary font-mono">
                     Camera inactive
                   </p>
                 </>

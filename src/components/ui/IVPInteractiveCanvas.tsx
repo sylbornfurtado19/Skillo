@@ -1931,7 +1931,7 @@ export default function IVPInteractiveCanvas({
   return (
     <div className={`space-y-3 text-left ${className}`}>
       {/* Diagnostic Mode Tabs (All 4 Academic Units) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {(
             [
@@ -1947,8 +1947,8 @@ export default function IVPInteractiveCanvas({
               onClick={() => onModeChange?.(mode)}
               className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition cursor-pointer ${
                 activeMode === mode
-                  ? 'bg-primary text-white shadow-md shadow-primary/20 ring-1 ring-primary/40'
-                  : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                  ? 'bg-primary text-text-on-primary shadow-soft'
+                  : 'bg-surface-alt text-text-secondary hover:text-text-primary hover:bg-surface-alt/80 border border-border'
               }`}
             >
               {label}
@@ -1959,24 +1959,24 @@ export default function IVPInteractiveCanvas({
         {/* FPS & Target Status */}
         <div className="flex items-center gap-3 text-[11px] font-mono">
           {trackingState !== 'MODEL_READY' && (
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-warning/15 text-warning border border-warning/30 animate-pulse">
               ⚡ WARMING UP ({trackingState})
             </span>
           )}
           {liveMetrics.targetLost && (
-            <span className="text-red-400 font-bold animate-pulse">⚠ TARGET LOST</span>
+            <span className="text-danger font-bold animate-pulse">⚠ TARGET LOST</span>
           )}
-          <span className="text-gray-400">
+          <span className="text-text-secondary">
             Render:{' '}
-            <strong className={liveMetrics.fps >= 30 ? 'text-emerald-400' : 'text-yellow-400'}>
+            <strong className={liveMetrics.fps >= 30 ? 'text-success' : 'text-warning'}>
               {liveMetrics.fps} FPS
             </strong>
           </span>
-          <span className="text-gray-500">Split: {Math.round(splitPercent)}%</span>
+          <span className="text-text-secondary">Split: {Math.round(splitPercent)}%</span>
 
           {/* Multi-Face Selector Pills */}
           <div id="face-selector-list" className="flex items-center gap-1">
-            <span className="text-gray-400 text-[10px]">Face:</span>
+            <span className="text-text-secondary text-[10px]">Face:</span>
             {(faceList.length > 0 ? faceList : [{ id: String(selectedFaceId || '1'), x: 0, y: 0, w: 0, h: 0 }]).map((f, i) => {
               const isActive = (selectedFaceId === f.id) || (!selectedFaceId && i === 0);
               return (
@@ -1991,8 +1991,8 @@ export default function IVPInteractiveCanvas({
                   }}
                   className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors cursor-pointer ${
                     isActive
-                      ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300 font-bold'
-                      : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                      ? 'bg-primary-soft border-primary/30 text-primary font-bold'
+                      : 'bg-surface-alt border-border text-text-secondary hover:text-text-primary'
                   }`}
                 >
                   Face #{i + 1} {f.id.length > 8 ? f.id.slice(0, 6) : f.id} {isActive ? '★' : ''}
@@ -2011,8 +2011,8 @@ export default function IVPInteractiveCanvas({
             }}
             className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors ${
               featureFlags.enableWarmup
-                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                ? 'bg-warning/15 border-warning/30 text-warning'
+                : 'bg-surface-alt border-border text-text-secondary hover:text-text-primary'
             }`}
           >
             {featureFlags.enableWarmup ? '⚡ WARMUP: ON' : '⚡ WARMUP: OFF'}
@@ -2026,7 +2026,7 @@ export default function IVPInteractiveCanvas({
               setCalibrationStep(1);
               setIsCalibrating(true);
             }}
-            className="px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 text-[10px] font-mono transition-colors"
+            className="px-2 py-0.5 rounded border border-border bg-surface-alt text-text-primary hover:bg-surface-alt/80 text-[10px] font-mono transition-colors"
           >
             🎯 CALIBRATE
           </button>
@@ -2036,7 +2036,7 @@ export default function IVPInteractiveCanvas({
             id="freeze-export-btn"
             type="button"
             onClick={() => handleFreezeAndExport(false)}
-            className="px-2 py-0.5 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 text-[10px] font-mono transition-colors"
+            className="px-2 py-0.5 rounded border border-border bg-surface-alt text-text-primary hover:bg-surface-alt/80 text-[10px] font-mono transition-colors"
           >
             💾 EXPORT TELEMETRY
           </button>
@@ -2051,8 +2051,8 @@ export default function IVPInteractiveCanvas({
             }}
             className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors ${
               featureFlags.enableSafeMode
-                ? 'bg-red-500/20 border-red-500/40 text-red-300'
-                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                ? 'bg-danger/15 border-danger/30 text-danger'
+                : 'bg-surface-alt border-border text-text-secondary hover:text-text-primary'
             }`}
           >
             {featureFlags.enableSafeMode ? '🛡 SAFE MODE: ON' : '🛡 SAFE MODE: OFF'}
@@ -2069,8 +2069,8 @@ export default function IVPInteractiveCanvas({
             }}
             className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors ${
               isMicroPaused
-                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                ? 'bg-warning/15 border-warning/30 text-warning'
+                : 'bg-surface-alt border-border text-text-secondary hover:text-text-primary'
             }`}
           >
             {isMicroPaused ? '▶ RESUME MICRO' : '⏸ PAUSE MICRO'}
@@ -2084,7 +2084,7 @@ export default function IVPInteractiveCanvas({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#030712] shadow-2xl select-none cursor-ew-resize"
+        className="relative rounded-2xl overflow-hidden border border-border bg-surface shadow-soft select-none cursor-ew-resize"
       >
         <canvas
           ref={canvasRef}
@@ -2096,14 +2096,14 @@ export default function IVPInteractiveCanvas({
         {warmupWarning && (
           <div
             id="warmup-warning-banner"
-            className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-amber-950/90 border border-amber-500/50 text-amber-200 text-xs font-mono px-4 py-2 rounded-xl shadow-lg backdrop-blur-md flex items-center gap-2 animate-bounce max-w-[90%]"
+            className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-warning/15 border border-warning/40 text-warning text-xs font-mono px-4 py-2 rounded-xl shadow-soft backdrop-blur-md flex items-center gap-2 animate-bounce max-w-[90%]"
           >
-            <span className="text-amber-400 font-bold">⚠</span>
+            <span className="text-warning font-bold">⚠</span>
             <span>{warmupWarning}</span>
             <button
               type="button"
               onClick={() => setWarmupWarning(null)}
-              className="ml-2 text-amber-400/80 hover:text-white text-[10px] cursor-pointer"
+              className="ml-2 text-warning/80 hover:text-text-primary text-[10px] cursor-pointer"
             >
               ✕
             </button>
@@ -2111,47 +2111,47 @@ export default function IVPInteractiveCanvas({
         )}
 
         {/* Dynamic Metric HUD Pill */}
-        <div className="absolute bottom-3 right-3 bg-[#0B0F17]/90 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-xl text-[10px] font-mono flex items-center gap-3">
+        <div className="absolute bottom-3 right-3 bg-surface/95 backdrop-blur-md border border-border shadow-soft px-3 py-1.5 rounded-xl text-[10px] font-mono flex items-center gap-3">
           {activeMode === 'SOBEL_GRADIENTS' && liveMetrics.sobelStats && (
             <>
-              <span className="text-gray-400">
-                Max |∇|: <strong className="text-emerald-400">{liveMetrics.sobelStats.maxMagnitude} px</strong>
+              <span className="text-text-secondary">
+                Max |∇|: <strong className="text-success">{liveMetrics.sobelStats.maxMagnitude} px</strong>
               </span>
-              <span className="text-gray-400">
-                Edge Coverage: <strong className="text-yellow-400">{liveMetrics.sobelStats.edgePixelRatio.toFixed(1)}%</strong>
+              <span className="text-text-secondary">
+                Edge Coverage: <strong className="text-warning">{liveMetrics.sobelStats.edgePixelRatio.toFixed(1)}%</strong>
               </span>
             </>
           )}
 
           {activeMode === 'YCRCB_SKIN_OTSU' && liveMetrics.otsuStats && (
             <>
-              <span className="text-gray-400">
-                Otsu Threshold t*: <strong className="text-emerald-400">{liveMetrics.otsuStats.otsuThreshold}</strong>
+              <span className="text-text-secondary">
+                Otsu Threshold t*: <strong className="text-success">{liveMetrics.otsuStats.otsuThreshold}</strong>
               </span>
-              <span className="text-gray-400">
-                Skin Area: <strong className="text-cyan-400">{liveMetrics.otsuStats.skinPixelRatio.toFixed(1)}%</strong>
+              <span className="text-text-secondary">
+                Skin Area: <strong className="text-secondary">{liveMetrics.otsuStats.skinPixelRatio.toFixed(1)}%</strong>
               </span>
             </>
           )}
 
           {activeMode === 'LUMINANCE_HISTEQ' && liveMetrics.histStats && (
             <>
-              <span className="text-gray-400">
-                Mean Luma: <strong className="text-emerald-400">{liveMetrics.histStats.meanVal.toFixed(1)}</strong>
+              <span className="text-text-secondary">
+                Mean Luma: <strong className="text-success">{liveMetrics.histStats.meanVal.toFixed(1)}</strong>
               </span>
-              <span className="text-gray-400">
-                Range: <strong className="text-white">[{liveMetrics.histStats.minVal}..{liveMetrics.histStats.maxVal}]</strong>
+              <span className="text-text-secondary">
+                Range: <strong className="text-text-primary">[{liveMetrics.histStats.minVal}..{liveMetrics.histStats.maxVal}]</strong>
               </span>
             </>
           )}
 
           {activeMode === 'TEMPORAL_MAD' && liveMetrics.madStats && (
             <>
-              <span className="text-gray-400">
-                MAD Score: <strong className="text-red-400">{liveMetrics.madStats.madScore.toFixed(2)}</strong>
+              <span className="text-text-secondary">
+                MAD Score: <strong className="text-danger">{liveMetrics.madStats.madScore.toFixed(2)}</strong>
               </span>
-              <span className="text-gray-400">
-                Motion Area: <strong className="text-orange-400">{liveMetrics.madStats.motionAreaRatio.toFixed(1)}%</strong>
+              <span className="text-text-secondary">
+                Motion Area: <strong className="text-warning">{liveMetrics.madStats.motionAreaRatio.toFixed(1)}%</strong>
               </span>
             </>
           )}
@@ -2161,38 +2161,38 @@ export default function IVPInteractiveCanvas({
       {/* Calibration Modal */}
       {isCalibrating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-[#0B0F17] border border-cyan-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="text-sm font-mono font-bold text-white flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+          <div className="bg-surface border border-border rounded-2xl p-6 max-w-md w-full shadow-soft space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-sm font-mono font-bold text-text-primary flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
                 Personal Face Calibration
               </h3>
               <button
                 type="button"
                 onClick={() => setIsCalibrating(false)}
-                className="text-gray-400 hover:text-white text-xs font-mono cursor-pointer"
+                className="text-text-secondary hover:text-text-primary text-xs font-mono cursor-pointer"
               >
                 ✕ CLOSE
               </button>
             </div>
 
-            <div className="space-y-3 text-xs text-gray-300">
+            <div className="space-y-3 text-xs text-text-secondary">
               <div className="flex items-center justify-center py-4">
-                <div className="w-24 h-24 rounded-full border-2 border-dashed border-cyan-400/60 flex items-center justify-center animate-pulse">
+                <div className="w-24 h-24 rounded-full border-2 border-dashed border-primary/40 flex items-center justify-center animate-pulse">
                   <span className="text-2xl">👤</span>
                 </div>
               </div>
 
               {calibrationStep === 1 && (
                 <div className="text-center space-y-2">
-                  <p className="font-semibold text-cyan-300">Step 1: Neutral Gaze Alignment</p>
-                  <p className="text-gray-400 text-[11px]">
+                  <p className="font-semibold text-text-primary">Step 1: Neutral Gaze Alignment</p>
+                  <p className="text-text-secondary text-[11px]">
                     Look straight ahead into the webcam with a relaxed, neutral expression.
                   </p>
                   <button
                     type="button"
                     onClick={() => setCalibrationStep(2)}
-                    className="w-full mt-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-mono text-xs font-bold transition cursor-pointer"
+                    className="w-full mt-3 py-2 bg-primary hover:bg-primary-hover text-text-on-primary rounded-lg font-mono text-xs font-bold transition cursor-pointer"
                   >
                     CONTINUE TO STEP 2 ▶
                   </button>
@@ -2201,8 +2201,8 @@ export default function IVPInteractiveCanvas({
 
               {calibrationStep === 2 && (
                 <div className="text-center space-y-2">
-                  <p className="font-semibold text-cyan-300">Step 2: Natural Smile & Speech</p>
-                  <p className="text-gray-400 text-[11px]">
+                  <p className="font-semibold text-text-primary">Step 2: Natural Smile & Speech</p>
+                  <p className="text-text-secondary text-[11px]">
                     Smile gently or speak a short sentence to register your natural lip corner dynamics.
                   </p>
                   <button
@@ -2224,7 +2224,7 @@ export default function IVPInteractiveCanvas({
                       }
                       setCalibrationStep(3);
                     }}
-                    className="w-full mt-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-mono text-xs font-bold transition cursor-pointer"
+                    className="w-full mt-3 py-2 bg-primary hover:bg-primary-hover text-text-on-primary rounded-lg font-mono text-xs font-bold transition cursor-pointer"
                   >
                     FINALIZE CALIBRATION ▶
                   </button>
@@ -2233,8 +2233,8 @@ export default function IVPInteractiveCanvas({
 
               {calibrationStep === 3 && (
                 <div className="text-center space-y-3">
-                  <div className="text-emerald-400 font-bold text-sm">✓ Calibration Complete!</div>
-                  <p className="text-gray-400 text-[11px]">
+                  <div className="text-success font-bold text-sm">✓ Calibration Complete!</div>
+                  <p className="text-text-secondary text-[11px]">
                     Personalized anchor bias saved: ({calibrationBias.x.toFixed(4)}, {calibrationBias.y.toFixed(4)}).
                     Additive offsets will cling tightly to your unique facial geometry.
                   </p>
@@ -2246,14 +2246,14 @@ export default function IVPInteractiveCanvas({
                         try { window.localStorage.removeItem('ivp_user_calibration'); } catch {}
                         setIsCalibrating(false);
                       }}
-                      className="flex-1 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg font-mono text-xs transition cursor-pointer"
+                      className="flex-1 py-2 bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 rounded-lg font-mono text-xs transition cursor-pointer"
                     >
                       RESET TO DEFAULTS
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsCalibrating(false)}
-                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-mono text-xs font-bold transition cursor-pointer"
+                      className="flex-1 py-2 bg-primary hover:bg-primary-hover text-text-on-primary rounded-lg font-mono text-xs font-bold transition cursor-pointer"
                     >
                       DONE
                     </button>

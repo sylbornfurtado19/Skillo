@@ -34,7 +34,7 @@ export default function IVPSignalOscilloscope({
   thresholdLabel,
   minRange = 0,
   maxRange = 1,
-  color = '#10B981',
+  color = '#3F7D58',
   historyLength = 100,
   height = 95,
   stats,
@@ -99,11 +99,11 @@ export default function IVPSignalOscilloscope({
     const H = height;
 
     // ── Background ────────────────────────────────────────────────────────
-    ctx.fillStyle = '#0B0F17';
+    ctx.fillStyle = '#EFEBE5';
     ctx.fillRect(0, 0, W, H);
 
     // ── Oscilloscope grid lines ───────────────────────────────────────────
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.strokeStyle = 'rgba(43, 37, 35, 0.08)';
     ctx.lineWidth   = 1;
     ctx.setLineDash([]);
 
@@ -125,7 +125,7 @@ export default function IVPSignalOscilloscope({
       const threshY    = H - normThresh * H;
 
       ctx.save();
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
+      ctx.strokeStyle = 'rgba(179, 38, 30, 0.75)';
       ctx.setLineDash([4, 4]);
       ctx.lineWidth   = 1.5;
       ctx.beginPath();
@@ -134,7 +134,7 @@ export default function IVPSignalOscilloscope({
       ctx.stroke();
 
       if (thresholdLabel) {
-        ctx.fillStyle = '#EF4444';
+        ctx.fillStyle = '#B3261E';
         ctx.font      = '9px monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
@@ -181,7 +181,7 @@ export default function IVPSignalOscilloscope({
     const dotX = (n - 1) * dx;
     const dotY = H - latestNorm * H;
 
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = '#9B2218';
     ctx.beginPath();
     ctx.arc(dotX, dotY, 3.5, 0, 2 * Math.PI);
     ctx.fill();
@@ -190,14 +190,14 @@ export default function IVPSignalOscilloscope({
   }, [currentValue, threshold, thresholdLabel, minRange, maxRange, color, height]);
 
   return (
-    <div className={`bg-[#050811] border border-white/10 rounded-xl p-3 space-y-2 text-left ${className}`}>
+    <div className={`bg-surface border border-border shadow-soft rounded-xl p-3 space-y-2 text-left ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[11px] font-bold text-gray-200 uppercase tracking-wider">
+          <span className="font-mono text-[11px] font-bold text-text-primary uppercase tracking-wider">
             {label}
           </span>
-          <span className="text-[10px] text-gray-500 font-mono">
+          <span className="text-[10px] text-text-secondary font-mono">
             [{minRange}..{maxRange} {unit}]
           </span>
         </div>
@@ -207,7 +207,7 @@ export default function IVPSignalOscilloscope({
       </div>
 
       {/* Waveform — canvas sized by CSS, backed by DPR-scaled pixels */}
-      <div className="relative rounded-lg overflow-hidden border border-white/5 bg-[#0B0F17]">
+      <div className="relative rounded-lg overflow-hidden border border-border bg-surface-alt">
         <canvas
           ref={canvasRef}
           className="block"
@@ -217,17 +217,17 @@ export default function IVPSignalOscilloscope({
 
       {/* Stats bar */}
       {stats && (
-        <div className="flex items-center justify-between text-[10px] font-mono text-gray-400 border-t border-white/5 pt-1.5">
+        <div className="flex items-center justify-between text-[10px] font-mono text-text-secondary border-t border-border pt-1.5">
           {stats.triggerLabel !== undefined && stats.triggerCount !== undefined && (
             <div>
               <span>{stats.triggerLabel}: </span>
-              <strong className="text-white">{stats.triggerCount}</strong>
+              <strong className="text-text-primary">{stats.triggerCount}</strong>
             </div>
           )}
           {stats.rateLabel !== undefined && stats.ratePerMin !== undefined && (
             <div>
               <span>{stats.rateLabel}: </span>
-              <strong className="text-emerald-400">{stats.ratePerMin.toFixed(1)}/min</strong>
+              <strong className="text-success">{stats.ratePerMin.toFixed(1)}/min</strong>
             </div>
           )}
         </div>

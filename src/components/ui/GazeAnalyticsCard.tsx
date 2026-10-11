@@ -28,9 +28,9 @@ const SEVERITY_STYLE: Record<
   DistractionEvent['severity'],
   { bg: string; border: string; badge: string; text: string }
 > = {
-  HIGH:   { bg: 'bg-red-500/10',    border: 'border-red-500/25',   badge: 'bg-red-500/20 text-red-400 border-red-500/30',     text: 'text-red-400'    },
-  MEDIUM: { bg: 'bg-amber-500/10',  border: 'border-amber-500/25', badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30', text: 'text-amber-400' },
-  LOW:    { bg: 'bg-blue-500/8',    border: 'border-blue-500/20',  badge: 'bg-blue-500/15 text-blue-400 border-blue-500/25',   text: 'text-blue-400'   },
+  HIGH:   { bg: 'bg-danger/10',    border: 'border-danger/25',   badge: 'bg-danger/20 text-danger border-danger/30',     text: 'text-danger'    },
+  MEDIUM: { bg: 'bg-warning/10',  border: 'border-warning/25', badge: 'bg-warning/20 text-warning border-warning/30', text: 'text-warning' },
+  LOW:    { bg: 'bg-surface-alt',  border: 'border-border',      badge: 'bg-surface-alt text-text-secondary border-border', text: 'text-text-secondary' },
 };
 
 const DIRECTION_ICON: Record<string, string> = {
@@ -44,9 +44,9 @@ const DIRECTION_ICON: Record<string, string> = {
 function gazeZoneColor(pitch: number, yaw: number): string {
   const pitchAbs = Math.abs(pitch);
   const yawAbs = Math.abs(yaw);
-  if (pitchAbs <= 12 && yawAbs <= 15) return '#10b981'; // eye contact → green
-  if (pitchAbs > 35 || yawAbs > 40) return '#ef4444';   // far off → red
-  return '#f59e0b';                                        // moderate → amber
+  if (pitchAbs <= 12 && yawAbs <= 15) return '#3F7D58'; // eye contact → success
+  if (pitchAbs > 35 || yawAbs > 40) return '#B3261E';   // far off → danger
+  return '#C98A1B';                                        // moderate → warning
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -104,19 +104,19 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-heading font-bold text-white">
+              <h3 className="text-sm font-heading font-bold text-text-primary">
                 Webcam Focus & Gaze Estimator
               </h3>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-surface-alt text-text-secondary border border-border">
                 [Canvas Heuristic]
               </span>
             </div>
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p className="text-[11px] text-text-secondary mt-0.5">
               Screen Alignment Tracker · {gazeFrames.length} frames · {totalVideoDurationSeconds.toFixed(1)}s session
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono border bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono border bg-success/10 border-success/20 text-success">
               {distractionEvents.length === 0 ? '✓ No Distractions' : `${distractionEvents.length} Events`}
             </span>
           </div>
@@ -127,8 +127,8 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
         {/* Left: Dual concentric score rings */}
-        <div className="flex flex-col items-center gap-3 p-5 rounded-2xl bg-[#060b14] border border-white/8">
-          <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest self-start">
+        <div className="flex flex-col items-center gap-3 p-5 rounded-2xl bg-surface border border-border shadow-soft">
+          <span className="text-[10px] text-text-secondary font-mono uppercase tracking-widest self-start">
             Session Score Overview
           </span>
 
@@ -137,17 +137,17 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
             <svg width="160" height="160" viewBox="0 0 160 160">
               <defs>
                 <linearGradient id="gazeOuterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#34d399" />
+                  <stop offset="0%" stopColor="#9B2218" />
+                  <stop offset="100%" stopColor="#7F1B13" />
                 </linearGradient>
                 <linearGradient id="gazeInnerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#8b5cf6" />
+                  <stop offset="0%" stopColor="#6B6E70" />
+                  <stop offset="100%" stopColor="#55585A" />
                 </linearGradient>
               </defs>
 
               {/* Outer track + arc — Eye Contact % */}
-              <circle cx="80" cy="80" r={OUTER_R} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="8" />
+              <circle cx="80" cy="80" r={OUTER_R} fill="none" stroke="#E2DDD5" strokeWidth="8" />
               <circle
                 cx="80" cy="80" r={OUTER_R}
                 fill="none"
@@ -161,7 +161,7 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
               />
 
               {/* Inner track + arc — Stability % */}
-              <circle cx="80" cy="80" r={INNER_R} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="6" />
+              <circle cx="80" cy="80" r={INNER_R} fill="none" stroke="#E2DDD5" strokeWidth="6" />
               <circle
                 cx="80" cy="80" r={INNER_R}
                 fill="none"
@@ -177,41 +177,41 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
 
             {/* Center labels */}
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
-              <span className="text-[10px] text-emerald-400 font-mono font-bold">
+              <span className="text-[10px] text-primary font-mono font-bold">
                 {eyeContactPercentage.toFixed(1)}%
               </span>
-              <span className="text-[7px] text-gray-600 font-mono">eye contact</span>
-              <div className="my-1 h-px w-8 bg-white/10" />
-              <span className="text-[10px] text-indigo-400 font-mono font-bold">
+              <span className="text-[7px] text-text-secondary font-mono">eye contact</span>
+              <div className="my-1 h-px w-8 bg-border" />
+              <span className="text-[10px] text-secondary font-mono font-bold">
                 {focusStabilityScore.toFixed(1)}%
               </span>
-              <span className="text-[7px] text-gray-600 font-mono">stability</span>
+              <span className="text-[7px] text-text-secondary font-mono">stability</span>
             </div>
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 text-[9px] text-gray-500 font-mono">
+          <div className="flex items-center gap-4 text-[9px] text-text-secondary font-mono">
             <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-emerald-400" />
+              <div className="h-2 w-2 rounded-full bg-primary" />
               <span>Eye Contact</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-indigo-400" />
+              <div className="h-2 w-2 rounded-full bg-secondary" />
               <span>Stability</span>
             </div>
           </div>
 
           {/* Stats row */}
-          <div className="grid grid-cols-2 gap-3 w-full text-center border-t border-white/5 pt-3">
+          <div className="grid grid-cols-2 gap-3 w-full text-center border-t border-border pt-3">
             <div>
-              <p className="text-[10px] text-gray-500 font-mono">Avg Pitch</p>
-              <p className="text-sm font-bold font-mono text-white">
+              <p className="text-[10px] text-text-secondary font-mono">Avg Pitch</p>
+              <p className="text-sm font-bold font-mono text-text-primary">
                 {averagePitch >= 0 ? '+' : ''}{averagePitch.toFixed(1)}°
               </p>
             </div>
             <div>
-              <p className="text-[10px] text-gray-500 font-mono">Avg Yaw</p>
-              <p className="text-sm font-bold font-mono text-white">
+              <p className="text-[10px] text-text-secondary font-mono">Avg Yaw</p>
+              <p className="text-sm font-bold font-mono text-text-primary">
                 {averageYaw >= 0 ? '+' : ''}{averageYaw.toFixed(1)}°
               </p>
             </div>
@@ -219,12 +219,12 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
         </div>
 
         {/* Right: 2D Gaze Distribution Quadrant */}
-        <div className="flex flex-col gap-3 p-5 rounded-2xl bg-[#060b14] border border-white/8">
+        <div className="flex flex-col gap-3 p-5 rounded-2xl bg-surface border border-border shadow-soft">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
+            <span className="text-[10px] text-text-secondary font-mono uppercase tracking-widest">
               Gaze Distribution Map
             </span>
-            <span className="text-[8px] text-gray-600 font-mono">
+            <span className="text-[8px] text-text-secondary font-mono">
               {quadrantPoints.length} samples
             </span>
           </div>
@@ -235,20 +235,20 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
               width={QUAD_W}
               height={QUAD_H}
               viewBox={`0 0 ${QUAD_W} ${QUAD_H}`}
-              className="rounded-lg overflow-hidden"
-              style={{ background: 'rgba(0,0,0,0.3)' }}
+              className="rounded-lg overflow-hidden border border-border"
+              style={{ background: '#EFEBE5' }}
             >
               {/* Grid lines */}
-              <line x1="100" y1="0" x2="100" y2={QUAD_H} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-              <line x1="0" y1="100" x2={QUAD_W} y2="100" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+              <line x1="100" y1="0" x2="100" y2={QUAD_H} stroke="#E2DDD5" strokeWidth="1" />
+              <line x1="0" y1="100" x2={QUAD_W} y2="100" stroke="#E2DDD5" strokeWidth="1" />
 
               {/* Eye contact zone rect */}
               <rect
                 x={toQX(-15)} y={toQY(12)}
                 width={toQX(15) - toQX(-15)}
                 height={toQY(-12) - toQY(12)}
-                fill="rgba(16,185,129,0.08)"
-                stroke="rgba(16,185,129,0.2)"
+                fill="rgba(63,125,88,0.08)"
+                stroke="rgba(63,125,88,0.25)"
                 strokeWidth="0.5"
               />
 
@@ -260,37 +260,37 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
                   cy={Math.min(QUAD_H - 3, Math.max(3, toQY(pt.pitch)))}
                   r="2"
                   fill={pt.color}
-                  opacity="0.7"
+                  opacity="0.75"
                 />
               ))}
 
               {/* Axis labels */}
-              <text x="102" y="10" fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="monospace">Up</text>
-              <text x="102" y={QUAD_H - 3} fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="monospace">Down</text>
-              <text x="3" y="98" fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="monospace">L</text>
-              <text x={QUAD_W - 12} y="98" fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="monospace">R</text>
+              <text x="102" y="10" fill="rgba(43,37,35,0.4)" fontSize="7" fontFamily="monospace">Up</text>
+              <text x="102" y={QUAD_H - 3} fill="rgba(43,37,35,0.4)" fontSize="7" fontFamily="monospace">Down</text>
+              <text x="3" y="98" fill="rgba(43,37,35,0.4)" fontSize="7" fontFamily="monospace">L</text>
+              <text x={QUAD_W - 12} y="98" fill="rgba(43,37,35,0.4)" fontSize="7" fontFamily="monospace">R</text>
 
               {/* Center crosshair */}
-              <circle cx="100" cy="100" r="3" fill="rgba(16,185,129,0.4)" />
+              <circle cx="100" cy="100" r="3" fill="rgba(63,125,88,0.4)" />
             </svg>
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-4 text-[9px] text-gray-500 font-mono">
-            <div className="flex items-center gap-1"><div className="h-1.5 w-1.5 rounded-full bg-emerald-400" /><span>Center</span></div>
-            <div className="flex items-center gap-1"><div className="h-1.5 w-1.5 rounded-full bg-amber-400" /><span>Off-center</span></div>
-            <div className="flex items-center gap-1"><div className="h-1.5 w-1.5 rounded-full bg-red-400" /><span>Off-screen</span></div>
+          <div className="flex items-center justify-center gap-4 text-[9px] text-text-secondary font-mono">
+            <div className="flex items-center gap-1"><div className="h-1.5 w-1.5 rounded-full bg-success" /><span>Center</span></div>
+            <div className="flex items-center gap-1"><div className="h-1.5 w-1.5 rounded-full bg-warning" /><span>Off-center</span></div>
+            <div className="flex items-center gap-1"><div className="h-1.5 w-1.5 rounded-full bg-danger" /><span>Off-screen</span></div>
           </div>
         </div>
       </div>
 
       {/* ── Row 2: Distraction Event Timeline ───────────────────────────── */}
-      <div className="rounded-2xl bg-[#060b14] border border-white/8 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-          <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
+      <div className="rounded-2xl bg-surface border border-border shadow-soft overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <span className="text-[10px] text-text-secondary font-mono uppercase tracking-widest">
             Distraction Event Timeline
           </span>
-          <span className="text-[9px] text-gray-600 font-mono">
+          <span className="text-[9px] text-text-secondary font-mono">
             {distractionEvents.length} event{distractionEvents.length !== 1 ? 's' : ''} detected
           </span>
         </div>
@@ -298,15 +298,15 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
         {distractionEvents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <span className="text-2xl">🎯</span>
-            <p className="text-[11px] text-emerald-400 font-semibold">
+            <p className="text-[11px] text-success font-semibold">
               Excellent — no distraction events recorded
             </p>
-            <p className="text-[10px] text-gray-600 font-mono">
+            <p className="text-[10px] text-text-secondary font-mono">
               Sustained eye contact maintained throughout the session
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-border">
             {distractionEvents.map((evt, idx) => {
               const style = SEVERITY_STYLE[evt.severity];
               return (
@@ -327,11 +327,11 @@ export default function GazeAnalyticsCard({ metrics }: GazeAnalyticsCardProps) {
                       <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${style.badge}`}>
                         {evt.severity}
                       </span>
-                      <span className="text-[9px] text-gray-600 font-mono">
+                      <span className="text-[9px] text-text-secondary font-mono">
                         {evt.durationSeconds.toFixed(1)}s duration
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-[9px] text-gray-600 font-mono">
+                    <div className="flex items-center gap-3 text-[9px] text-text-secondary font-mono">
                       <span>Start: {fmtTime(evt.startTimeMs)}</span>
                       <span>→</span>
                       <span>End: {fmtTime(evt.endTimeMs)}</span>

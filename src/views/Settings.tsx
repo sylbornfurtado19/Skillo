@@ -95,64 +95,64 @@ export default function Settings() {
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-10 text-left">
       <div>
-        <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-white">Settings</h2>
-        <p className="text-xs sm:text-sm text-gray-400 mt-1">
+        <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-text-primary">Settings</h2>
+        <p className="text-xs sm:text-sm text-text-secondary mt-1">
           Customize your AI session preferences and application defaults.
         </p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        <div className="glass-card rounded-2xl p-6 border border-white/5 space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-white/5">
+        <div className="glass-card rounded-2xl p-6 border border-border bg-surface shadow-soft space-y-4">
+          <div className="flex items-center gap-3 pb-3 border-b border-border">
             <FaUserAlt className="text-primary text-base" />
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Candidate Profile</h3>
+            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Candidate Profile</h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400">Full Name</label>
+              <label className="text-xs font-semibold text-text-secondary">Full Name</label>
               <input
                 type="text"
                 value={profileName}
                 onChange={(e) => setProfileName(e.target.value)}
                 placeholder="e.g. Alex Mercer"
-                className="w-full bg-background border border-white/10 focus:border-primary/60 rounded-xl px-4 py-2.5 text-xs text-white outline-none transition"
+                className="w-full bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400">Email Address</label>
+              <label className="text-xs font-semibold text-text-secondary">Email Address</label>
               <input
                 type="email"
                 value={profileEmail}
                 onChange={(e) => setProfileEmail(e.target.value)}
                 placeholder="name@company.com"
-                className="w-full bg-background border border-white/10 focus:border-primary/60 rounded-xl px-4 py-2.5 text-xs text-white outline-none transition"
+                className="w-full bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <label className="text-xs font-semibold text-gray-400">Target Role Title</label>
+              <label className="text-xs font-semibold text-text-secondary">Target Role Title</label>
               <input
                 type="text"
                 value={targetTitle}
                 onChange={(e) => setTargetTitle(e.target.value)}
                 placeholder="e.g. Senior Frontend Architect / Staff Engineer"
-                className="w-full bg-background border border-white/10 focus:border-primary/60 rounded-xl px-4 py-2.5 text-xs text-white outline-none transition"
+                className="w-full bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
               />
             </div>
           </div>
         </div>
 
-        <div className="glass-card rounded-2xl p-6 border border-white/5 space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-white/5">
+        <div className="glass-card rounded-2xl p-6 border border-border bg-surface shadow-soft space-y-4">
+          <div className="flex items-center gap-3 pb-3 border-b border-border">
             <FaVolumeUp className="text-secondary text-base" />
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">AI Speech Synthesizer</h3>
+            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">AI Speech Synthesizer</h3>
           </div>
 
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="font-semibold text-gray-400">Voice Speech Speed:</span>
+                  <span className="font-semibold text-text-secondary">Voice Speech Speed:</span>
                   <span className="font-mono text-secondary">{voiceRate}x</span>
                 </div>
                 <input
@@ -162,13 +162,13 @@ export default function Settings() {
                   step="0.1"
                   value={voiceRate}
                   onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
-                  className="w-full h-1 bg-background rounded-lg appearance-none cursor-pointer accent-secondary border border-white/5"
+                  className="w-full h-1 bg-surface-alt rounded-lg appearance-none cursor-pointer accent-primary border border-border"
                 />
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="font-semibold text-gray-400">Voice Pitch:</span>
+                  <span className="font-semibold text-text-secondary">Voice Pitch:</span>
                   <span className="font-mono text-secondary">{voicePitch}</span>
                 </div>
                 <input
@@ -178,21 +178,21 @@ export default function Settings() {
                   step="0.1"
                   value={voicePitch}
                   onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
-                  className="w-full h-1 bg-background rounded-lg appearance-none cursor-pointer accent-secondary border border-white/5"
+                  className="w-full h-1 bg-surface-alt rounded-lg appearance-none cursor-pointer accent-primary border border-border"
                 />
               </div>
             </div>
 
             <div className="flex items-center justify-between pt-2">
               <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-white">Enable Subtitle Transcription</p>
-                <p className="text-[10px] text-gray-500">Render recruiter dialogue texts during audio streaming.</p>
+                <p className="text-xs font-semibold text-text-primary">Enable Subtitle Transcription</p>
+                <p className="text-[10px] text-text-secondary">Render recruiter dialogue texts during audio streaming.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSubtitlesEnabled(!subtitlesEnabled)}
                 className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none ${
-                  subtitlesEnabled ? 'bg-secondary' : 'bg-background border-white/10'
+                  subtitlesEnabled ? 'bg-primary' : 'bg-surface-alt border border-border'
                 }`}
               >
                 <span
@@ -206,14 +206,14 @@ export default function Settings() {
         </div>
 
         {/* Custom Visual Studio Theme Switcher Section */}
-        <div className="bg-[#111827]/40 border border-white/5 rounded-2xl p-6 relative">
+        <div className="bg-surface border border-border rounded-2xl p-6 relative shadow-soft">
           <ThemeSwitcher />
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-white/5 items-center">
+        <div className="flex justify-end gap-3 pt-4 border-t border-border items-center">
           <motion.div
             animate={{ opacity: saved ? 1 : 0, x: saved ? 0 : 10 }}
-            className="flex items-center gap-2 text-emerald-400 text-xs font-semibold mr-auto"
+            className="flex items-center gap-2 text-success text-xs font-semibold mr-auto"
           >
             <FaCheckCircle />
             <span>Preferences saved successfully!</span>
@@ -222,7 +222,7 @@ export default function Settings() {
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 font-semibold text-xs text-white hover:scale-102 active:scale-98 transition duration-250 cursor-pointer shadow-lg shadow-primary/15 disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-primary-hover active:bg-primary-active font-semibold text-xs text-white hover:scale-102 active:scale-98 transition duration-250 cursor-pointer shadow-soft disabled:opacity-50"
           >
             <FaSave />
             <span>{saving ? 'Saving...' : 'Save Settings'}</span>

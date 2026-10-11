@@ -28,9 +28,9 @@ function scoreToOffset(score: number): number {
 
 // ── Score color ───────────────────────────────────────────────────────────────
 function scoreColor(score: number): { stroke: string; text: string } {
-  if (score >= 85) return { stroke: '#10b981', text: 'text-emerald-400' };
-  if (score >= 65) return { stroke: '#f59e0b', text: 'text-amber-400' };
-  return { stroke: '#ef4444', text: 'text-red-400' };
+  if (score >= 85) return { stroke: '#3F7D58', text: 'text-success' };
+  if (score >= 65) return { stroke: '#C98A1B', text: 'text-warning' };
+  return { stroke: '#B3261E', text: 'text-danger' };
 }
 
 // ── Layout type styles ────────────────────────────────────────────────────────
@@ -40,20 +40,20 @@ const LAYOUT_TYPE_STYLES: Record<
 > = {
   SINGLE_COLUMN: {
     label: 'Single Column',
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-500/10 border-emerald-500/20',
+    color: 'text-primary',
+    bg: 'bg-primary-soft border-primary/20',
     icon: '▐',
   },
   TWO_COLUMN: {
     label: 'Two Column',
-    color: 'text-sky-400',
-    bg: 'bg-sky-500/10 border-sky-500/20',
+    color: 'text-secondary',
+    bg: 'bg-surface-alt border-border',
     icon: '▐▐',
   },
   HYBRID_GRID: {
     label: 'Hybrid Grid',
-    color: 'text-violet-400',
-    bg: 'bg-violet-500/10 border-violet-500/20',
+    color: 'text-text-primary',
+    bg: 'bg-surface-alt border-border',
     icon: '▐▐▐',
   },
 };
@@ -70,9 +70,9 @@ const SEVERITY_STYLES: Record<
   LayoutFormattingPenalty['severity'],
   { badge: string; border: string; glow: string }
 > = {
-  CRITICAL: { badge: 'bg-red-500/15 text-red-400 border-red-500/30',   border: 'border-red-500/20',   glow: 'hover:border-red-500/40' },
-  MODERATE: { badge: 'bg-amber-500/15 text-amber-400 border-amber-500/30', border: 'border-amber-500/20', glow: 'hover:border-amber-500/40' },
-  MINOR:    { badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',   border: 'border-white/10',     glow: 'hover:border-white/20' },
+  CRITICAL: { badge: 'bg-danger/15 text-danger border-danger/30',   border: 'border-danger/30',   glow: 'hover:border-danger/50' },
+  MODERATE: { badge: 'bg-warning/15 text-warning border-warning/30', border: 'border-warning/30', glow: 'hover:border-warning/50' },
+  MINOR:    { badge: 'bg-secondary/15 text-secondary border-secondary/30',   border: 'border-border',     glow: 'hover:border-border' },
 };
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -102,12 +102,12 @@ export default function LayoutPenaltyViewer({
   return (
     <div className="space-y-4">
       {/* ── Layout Score Ring ─────────────────────────────────────────────── */}
-      <div className="bg-[#060b14] border border-white/8 rounded-2xl p-5 space-y-4">
+      <div className="bg-surface border border-border rounded-2xl p-5 space-y-4 shadow-soft">
         <div>
-          <h4 className="text-xs font-bold text-gray-200 uppercase tracking-wider">
+          <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
             Resume Spacing & Margin Validator
           </h4>
-          <p className="text-[10px] text-gray-500 mt-0.5">
+          <p className="text-[10px] text-text-secondary mt-0.5">
             Analyzes document structure, column boundaries, and typography hierarchy using deterministic spatial geometry rules.
           </p>
         </div>
@@ -120,14 +120,14 @@ export default function LayoutPenaltyViewer({
               <defs>
                 <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor={sc.stroke} />
-                  <stop offset="100%" stopColor={sc.stroke} stopOpacity="0.6" />
+                  <stop offset="100%" stopColor={sc.stroke} stopOpacity="0.8" />
                 </linearGradient>
               </defs>
               {/* Track */}
               <circle
                 cx="48" cy="48" r={RING_R}
                 fill="none"
-                stroke="rgba(255,255,255,0.05)"
+                stroke="#E2DDD5"
                 strokeWidth="7"
               />
               {/* Score arc */}
@@ -171,10 +171,10 @@ export default function LayoutPenaltyViewer({
               ].map(stat => (
                 <div
                   key={stat.label}
-                  className="bg-[#0d1117] border border-white/5 rounded-lg px-2 py-1.5 text-center"
+                  className="bg-surface-alt border border-border rounded-lg px-2 py-1.5 text-center"
                 >
-                  <div className="text-sm font-bold text-white font-heading">{stat.value}</div>
-                  <div className="text-[9px] text-gray-500 font-mono">{stat.label}</div>
+                  <div className="text-sm font-bold text-text-primary font-heading">{stat.value}</div>
+                  <div className="text-[9px] text-text-secondary font-mono">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -183,38 +183,38 @@ export default function LayoutPenaltyViewer({
 
         {/* Element distribution mini bar */}
         <div className="space-y-1">
-          <span className="text-[9px] text-gray-600 font-mono uppercase tracking-wider">
+          <span className="text-[9px] text-text-secondary font-mono uppercase tracking-wider">
             Element Distribution
           </span>
           <div className="flex gap-1 h-1.5 w-full rounded-full overflow-hidden">
             {elements.length > 0 && (
               <>
                 <div
-                  className="bg-indigo-500 rounded-full"
+                  className="bg-primary rounded-full"
                   style={{ width: `${(headerCount / elements.length) * 100}%` }}
                   title={`${headerCount} headers`}
                 />
                 <div
-                  className="bg-sky-500 rounded-full"
+                  className="bg-secondary rounded-full"
                   style={{ width: `${(columnCount / elements.length) * 100}%` }}
                   title={`${columnCount} column blocks`}
                 />
                 <div
-                  className="bg-gray-600 rounded-full flex-1"
+                  className="bg-border rounded-full flex-1"
                   title={`${bodyCount} body blocks`}
                 />
               </>
             )}
           </div>
-          <div className="flex gap-3 text-[8px] text-gray-600 font-mono">
+          <div className="flex gap-3 text-[8px] text-text-secondary font-mono">
             <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block" /> Headers
+              <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" /> Headers
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-500 inline-block" /> Columns
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary inline-block" /> Columns
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-600 inline-block" /> Body
+              <span className="w-1.5 h-1.5 rounded-full bg-text-secondary inline-block" /> Body
             </span>
           </div>
         </div>
@@ -222,16 +222,16 @@ export default function LayoutPenaltyViewer({
 
       {/* ── Penalty Cards ─────────────────────────────────────────────────── */}
       {penalties.length === 0 ? (
-        <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-4 text-center space-y-1">
-          <div className="text-emerald-400 text-lg">✓</div>
-          <p className="text-xs font-semibold text-emerald-400">No layout violations detected</p>
-          <p className="text-[10px] text-gray-500">
+        <div className="bg-success/10 border border-success/30 rounded-xl p-4 text-center space-y-1">
+          <div className="text-success text-lg">✓</div>
+          <p className="text-xs font-semibold text-success">No layout violations detected</p>
+          <p className="text-[10px] text-text-secondary">
             Visual structure meets ATS formatting standards.
           </p>
         </div>
       ) : (
         <div className="space-y-2">
-          <h5 className="text-[9px] text-gray-500 font-mono uppercase tracking-widest px-1">
+          <h5 className="text-[9px] text-text-secondary font-mono uppercase tracking-widest px-1">
             Formatting Penalties · {penalties.length} issue{penalties.length !== 1 ? 's' : ''} found
           </h5>
           {penalties.map((penalty, idx) => {
@@ -245,15 +245,15 @@ export default function LayoutPenaltyViewer({
                 onClick={() => onPenaltyClick(idx)}
                 className={`w-full text-left rounded-xl border p-3.5 space-y-2 transition-all duration-200 cursor-pointer group ${
                   isActive
-                    ? `${sevStyle.border} bg-[#0d1117] ring-1 ring-current`
-                    : `border-white/8 bg-[#060b14] ${sevStyle.glow}`
+                    ? `${sevStyle.border} bg-surface-alt ring-1 ring-primary`
+                    : `border-border bg-surface ${sevStyle.glow} shadow-soft`
                 }`}
               >
                 {/* Top row */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-base shrink-0">{ruleInfo.icon}</span>
-                    <span className="text-xs font-semibold text-white leading-tight truncate">
+                    <span className="text-xs font-semibold text-text-primary leading-tight truncate">
                       {ruleInfo.title}
                     </span>
                   </div>
@@ -267,16 +267,16 @@ export default function LayoutPenaltyViewer({
                 </div>
 
                 {/* Description */}
-                <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2">
+                <p className="text-[11px] text-text-secondary leading-relaxed line-clamp-2">
                   {penalty.description}
                 </p>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between text-[9px] font-mono pt-0.5 border-t border-white/5">
-                  <span className="text-gray-600">
+                <div className="flex items-center justify-between text-[9px] font-mono pt-0.5 border-t border-border">
+                  <span className="text-text-secondary">
                     {penalty.ruleId.replace(/_/g, ' ')}
                   </span>
-                  <span className="text-red-400 font-bold">
+                  <span className="text-danger font-bold">
                     −{penalty.deductionPoints} pts
                   </span>
                 </div>

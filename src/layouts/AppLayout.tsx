@@ -73,14 +73,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const userInitial = userName.charAt(0).toUpperCase();
 
   return (
-    <div className="flex h-screen bg-background text-[#F9FAFB] overflow-hidden font-body transition-colors duration-500">
+    <div className="flex h-screen bg-[var(--bg-page)] text-[var(--text-primary)] overflow-hidden font-body transition-colors duration-300">
       <ToastContainer />
 
       {/* 1. DESKTOP SIDEBAR */}
-      <aside className="hidden md:flex flex-col w-64 bg-card border-r border-white/5 relative z-30 transition-colors duration-500">
-        <div className="h-20 flex items-center px-6 border-b border-white/5">
+      <aside className="hidden md:flex flex-col w-64 bg-[var(--bg-surface)] border-r border-[var(--border)] relative z-30 transition-colors duration-300">
+        <div className="h-20 flex items-center px-6 border-b border-[var(--border)]">
           <Link href="/" className="hover:opacity-90 transition duration-200">
-            <span className="font-heading font-extrabold text-xl text-white tracking-tight">Skillo</span>
+            <span className="font-heading font-extrabold text-xl text-[var(--primary)] tracking-tight">Skillo</span>
           </Link>
         </div>
 
@@ -93,29 +93,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <Link
                 key={item.path}
                 href={item.path}
-                className={`relative flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition duration-250 ${
+                className={`relative flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition duration-200 ${
                   isActive
-                    ? 'text-white font-bold'
-                    : 'text-[#94A3B8] hover:text-white hover:bg-white/5 border border-transparent'
+                    ? 'text-[var(--primary)] font-bold bg-[var(--primary-soft)] border-l-2 border-l-[var(--primary)] shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--primary)] hover:bg-[var(--bg-surface-alt)] border border-transparent'
                 }`}
               >
-                {isActive && (
-                  <motion.div
-                    layoutId="activeNav"
-                    className="absolute inset-0 bg-primary/5 border-l-2 border-l-primary rounded-xl pointer-events-none shadow-[inset_4px_0_12px_-4px_rgba(99,102,241,0.15)]"
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  />
-                )}
-                <Icon className={`text-base relative z-10 ${isActive ? 'text-primary' : 'text-[#94A3B8]'}`} />
+                <Icon className={`text-base relative z-10 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--text-secondary)]'}`} />
                 <span className="relative z-10">{item.name}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/5 bg-[#0f1522]">
-          <Link href="/profile" className="flex items-center gap-3 mb-3 hover:opacity-80 transition cursor-pointer">
-            <div className="relative h-10 w-10 rounded-full border border-white/10 overflow-hidden shrink-0 bg-primary/20 flex items-center justify-center">
+        <div className="p-4 border-t border-[var(--border)] bg-[var(--bg-surface-alt)]">
+          <Link href="/profile" className="flex items-center gap-3 mb-3 hover:opacity-85 transition cursor-pointer">
+            <div className="relative h-10 w-10 rounded-full border border-[var(--border)] overflow-hidden shrink-0 bg-[var(--primary-soft)] flex items-center justify-center">
               {avatarUrl ? (
                 <Image
                   src={avatarUrl}
@@ -126,17 +119,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span className="text-sm font-bold text-primary">{userInitial}</span>
+                <span className="text-sm font-bold text-[var(--primary)]">{userInitial}</span>
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-white truncate">{userName}</p>
-              <p className="text-[10px] text-[#94A3B8] truncate">{user?.email ?? 'candidate@skillo.ai'}</p>
+              <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{userName}</p>
+              <p className="text-[10px] text-[var(--text-secondary)] truncate">{user?.email ?? 'candidate@skillo.ai'}</p>
             </div>
           </Link>
           <button
             onClick={handleLogout}
-            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/25 transition duration-250 text-xs font-medium cursor-pointer"
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)] hover:border-[var(--danger)]/30 transition duration-200 text-xs font-medium text-[var(--text-secondary)] cursor-pointer"
           >
             <FaSignOutAlt />
             <span>Sign Out</span>
@@ -154,21 +147,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
-              style={{ WebkitBackdropFilter: 'blur(4px)', backdropFilter: 'blur(4px)' }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
             />
             <motion.aside
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="fixed top-0 bottom-0 left-0 w-64 bg-[#111827] z-50 flex flex-col md:hidden"
+              className="fixed top-0 bottom-0 left-0 w-64 bg-[var(--bg-surface)] border-r border-[var(--border)] shadow-[var(--shadow)] z-50 flex flex-col md:hidden"
             >
-              <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
+              <div className="h-20 flex items-center justify-between px-6 border-b border-[var(--border)]">
                 <LogoFull />
                 <button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10 text-[#94A3B8]"
+                  className="h-8 w-8 rounded-lg bg-[var(--bg-surface-alt)] flex items-center justify-center border border-[var(--border)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 >
                   <FaTimes />
                 </button>
@@ -183,22 +175,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       key={item.path}
                       href={item.path}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition duration-250 ${
+                      className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition duration-200 ${
                         isActive
-                          ? 'text-white bg-primary/10 border border-primary/25 font-bold shadow-lg shadow-primary/5'
-                          : 'text-[#94A3B8] hover:text-white hover:bg-white/5 border border-transparent'
+                          ? 'text-[var(--primary)] bg-[var(--primary-soft)] border-l-2 border-l-[var(--primary)] font-bold shadow-sm'
+                          : 'text-[var(--text-secondary)] hover:text-[var(--primary)] hover:bg-[var(--bg-surface-alt)] border border-transparent'
                       }`}
                     >
-                      <Icon className={isActive ? 'text-primary' : 'text-[#94A3B8]'} />
+                      <Icon className={isActive ? 'text-[var(--primary)]' : 'text-[var(--text-secondary)]'} />
                       <span>{item.name}</span>
                     </Link>
                   );
                 })}
               </nav>
 
-              <div className="p-4 border-t border-white/5 bg-[#0f1522]">
+              <div className="p-4 border-t border-[var(--border)] bg-[var(--bg-surface-alt)]">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="relative h-10 w-10 rounded-full border border-white/10 overflow-hidden shrink-0 bg-primary/20 flex items-center justify-center">
+                  <div className="relative h-10 w-10 rounded-full border border-[var(--border)] overflow-hidden shrink-0 bg-[var(--primary-soft)] flex items-center justify-center">
                     {avatarUrl ? (
                       <Image
                         src={avatarUrl}
@@ -209,12 +201,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <span className="text-sm font-bold text-primary">{userInitial}</span>
+                      <span className="text-sm font-bold text-[var(--primary)]">{userInitial}</span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-white truncate">{userName}</p>
-                    <p className="text-[10px] text-[#94A3B8] truncate text-ellipsis overflow-hidden">
+                    <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{userName}</p>
+                    <p className="text-[10px] text-[var(--text-secondary)] truncate text-ellipsis overflow-hidden">
                       {user?.email}
                     </p>
                   </div>
@@ -222,7 +214,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
                 <button
                   onClick={handleLogout}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/25 transition duration-250 text-xs font-medium cursor-pointer"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)] hover:border-[var(--danger)]/30 transition duration-200 text-xs font-medium text-[var(--text-secondary)] cursor-pointer"
                 >
                   <FaSignOutAlt />
                   <span>Sign Out</span>
@@ -235,25 +227,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* 3. MAIN WORKSPACE VIEWPORT */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
-        <div className="absolute top-[-10%] left-[10%] w-[35%] h-[35%] rounded-full bg-primary/3 blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[20%] right-[-10%] w-[30%] h-[30%] rounded-full bg-accent/3 blur-[120px] pointer-events-none" />
-
-        <header className="h-20 border-b border-white/5 flex items-center justify-between px-6 bg-[#030712]/80 backdrop-blur-md relative z-20">
+        <header className="h-20 border-b border-[var(--border)] flex items-center justify-between px-6 bg-[var(--bg-surface)] shadow-[var(--shadow)] relative z-20">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden h-10 w-10 rounded-xl bg-[#111827] border border-white/8 flex items-center justify-center text-white cursor-pointer hover:bg-white/5"
+              className="md:hidden h-10 w-10 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] flex items-center justify-center text-[var(--text-primary)] cursor-pointer hover:bg-[var(--border)]"
             >
               <FaBars />
             </button>
 
-            <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-[#94A3B8]">
+            <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
               <span>Console</span>
-              <FaChevronRight className="text-[10px] text-gray-600" />
-              <span className="text-white font-semibold text-sm">{pageTitle}</span>
+              <FaChevronRight className="text-[10px] text-[var(--text-secondary)]" />
+              <span className="text-[var(--text-primary)] font-semibold text-sm">{pageTitle}</span>
             </div>
 
-            <div className="sm:hidden font-heading font-extrabold text-white text-base">
+            <div className="sm:hidden font-heading font-extrabold text-[var(--text-primary)] text-base">
               {pageTitle}
             </div>
           </div>
@@ -262,10 +251,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <div className="relative">
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="h-10 w-10 rounded-xl bg-[#111827] border border-white/8 hover:bg-white/5 hover:border-white/12 flex items-center justify-center text-[#94A3B8] hover:text-white transition duration-200 cursor-pointer relative"
+                className="h-10 w-10 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] hover:border-[var(--primary)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--primary)] transition duration-200 cursor-pointer relative"
               >
                 <FaBell />
-                <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-primary border-2 border-[#111827]" />
+                <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-[var(--primary)] border-2 border-[var(--bg-surface)]" />
               </button>
 
               <AnimatePresence>
@@ -277,13 +266,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 15, scale: 0.95 }}
                       transition={{ duration: 0.2 }}
-                      className="absolute right-0 mt-2 w-80 rounded-2xl bg-[#111827] border border-white/8 shadow-2xl p-4 z-40 space-y-3"
+                      className="absolute right-0 mt-2 w-80 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border)] shadow-[var(--shadow)] p-4 z-40 space-y-3"
                     >
-                      <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <div className="flex justify-between items-center pb-2 border-b border-[var(--border)]">
+                        <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
                           Notifications
                         </span>
-                        <span className="text-[10px] text-primary cursor-pointer hover:underline">
+                        <span className="text-[10px] text-[var(--primary)] cursor-pointer hover:underline">
                           Mark as read
                         </span>
                       </div>
@@ -291,10 +280,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         {mockNotifications.map((notif) => (
                           <div
                             key={notif.id}
-                            className="text-xs bg-white/3 rounded-xl p-2.5 border border-white/5 hover:bg-white/5 transition"
+                            className="text-xs bg-[var(--bg-surface-alt)] rounded-xl p-2.5 border border-[var(--border)] transition"
                           >
-                            <p className="text-gray-200 leading-normal mb-1">{notif.text}</p>
-                            <span className="text-[9px] text-gray-500 font-mono">{notif.time}</span>
+                            <p className="text-[var(--text-primary)] leading-normal mb-1">{notif.text}</p>
+                            <span className="text-[9px] text-[var(--text-secondary)] font-mono">{notif.time}</span>
                           </div>
                         ))}
                       </div>
@@ -306,7 +295,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
             <div
               onClick={() => router.push('/profile')}
-              className="relative h-10 w-10 rounded-full border border-white/10 overflow-hidden cursor-pointer hover:scale-105 active:scale-95 transition duration-200 bg-primary/20 flex items-center justify-center"
+              className="relative h-10 w-10 rounded-full border border-[var(--border)] overflow-hidden cursor-pointer hover:scale-105 active:scale-95 transition duration-200 bg-[var(--primary-soft)] flex items-center justify-center"
               title="View Profile"
             >
               {avatarUrl ? (
@@ -319,7 +308,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span className="text-sm font-bold text-primary">{userInitial}</span>
+                <span className="text-sm font-bold text-[var(--primary)]">{userInitial}</span>
               )}
             </div>
 

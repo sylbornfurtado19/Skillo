@@ -89,18 +89,18 @@ export default function LipSyncVerificationCard({ metrics }: LipSyncVerification
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-heading font-bold text-white">
+          <h3 className="text-sm font-heading font-bold text-text-primary">
             Audio Presence & Latency Monitor
           </h3>
-          <p className="text-[11px] text-gray-500 mt-0.5">
+          <p className="text-[11px] text-text-secondary mt-0.5">
             Speech Activity Indicator · {totalWindowsAnalyzed} windows analyzed
           </p>
-          <p className="text-[10px] text-gray-400 italic mt-0.5">
+          <p className="text-[10px] text-text-secondary italic mt-0.5">
             Checks for audio signal presence and basic stream time alignment.
           </p>
         </div>
         <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono border font-bold ${
-          isVerified ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' : 'bg-amber-500/10 border-amber-500/25 text-amber-400'
+          isVerified ? 'bg-success/10 border-success/25 text-success' : 'bg-warning/10 border-warning/25 text-warning'
         }`}>
           {isVerified ? '✓ VERIFIED GENUINE' : verificationStatus.replace(/_/g, ' ')}
         </span>
@@ -109,8 +109,8 @@ export default function LipSyncVerificationCard({ metrics }: LipSyncVerification
       {/* Row 1: Integrity Gauge + Cross-Correlation Curve */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
         {/* Integrity Score Ring */}
-        <div className="md:col-span-5 flex flex-col items-center justify-between p-5 rounded-2xl bg-[#060b14] border border-white/8 space-y-3">
-          <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest self-start">
+        <div className="md:col-span-5 flex flex-col items-center justify-between p-5 rounded-2xl bg-surface border border-border shadow-soft space-y-3">
+          <span className="text-[10px] text-text-secondary font-mono uppercase tracking-widest self-start">
             Sync Integrity Confidence
           </span>
 
@@ -118,7 +118,7 @@ export default function LipSyncVerificationCard({ metrics }: LipSyncVerification
             <svg className="w-full h-full transform -rotate-90">
               <circle
                 cx="72" cy="72" r={RING_R}
-                stroke="rgba(255, 255, 255, 0.04)"
+                stroke="#E2DDD5"
                 strokeWidth="8"
                 fill="transparent"
               />
@@ -134,40 +134,40 @@ export default function LipSyncVerificationCard({ metrics }: LipSyncVerification
               />
               <defs>
                 <linearGradient id="syncGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#06b6d4" />
+                  <stop offset="0%" stopColor="#9B2218" />
+                  <stop offset="100%" stopColor="#7F1B13" />
                 </linearGradient>
               </defs>
             </svg>
             <div className="absolute flex flex-col items-center">
-              <span className="text-3xl font-heading font-extrabold text-white">
+              <span className="text-3xl font-heading font-extrabold text-text-primary">
                 {overallSyncScore.toFixed(0)}%
               </span>
-              <span className="text-[9px] text-gray-500 font-mono">integrity</span>
+              <span className="text-[9px] text-text-secondary font-mono">integrity</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 w-full text-center border-t border-white/5 pt-3 font-mono">
+          <div className="grid grid-cols-2 gap-3 w-full text-center border-t border-border pt-3 font-mono">
             <div>
-              <p className="text-[9px] text-gray-500">Mean Offset Δt</p>
-              <p className="text-sm font-bold text-white">{averageOffsetMs >= 0 ? '+' : ''}{averageOffsetMs}ms</p>
+              <p className="text-[9px] text-text-secondary">Mean Offset Δt</p>
+              <p className="text-sm font-bold text-text-primary">{averageOffsetMs >= 0 ? '+' : ''}{averageOffsetMs}ms</p>
             </div>
             <div>
-              <p className="text-[9px] text-gray-500">Cross-Modal D(v,a)</p>
-              <p className="text-sm font-bold text-emerald-400">{averageCrossModalDistance.toFixed(2)}</p>
+              <p className="text-[9px] text-text-secondary">Cross-Modal D(v,a)</p>
+              <p className="text-sm font-bold text-success">{averageCrossModalDistance.toFixed(2)}</p>
             </div>
           </div>
         </div>
 
         {/* Audio-Visual Cross-Correlation Time Series Plot */}
-        <div className="md:col-span-7 flex flex-col justify-between p-5 rounded-2xl bg-[#060b14] border border-white/8 space-y-3">
+        <div className="md:col-span-7 flex flex-col justify-between p-5 rounded-2xl bg-surface border border-border shadow-soft space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
+            <span className="text-[10px] text-text-secondary font-mono uppercase tracking-widest">
               Audio-Visual Time-Series Correlation
             </span>
             <div className="flex items-center gap-4 text-[9px] font-mono">
-              <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-emerald-400" /><span className="text-gray-400">Offset Δt</span></div>
-              <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-indigo-400" /><span className="text-gray-400">Distance D(v,a)</span></div>
+              <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-primary" /><span className="text-text-secondary">Offset Δt</span></div>
+              <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-secondary" /><span className="text-text-secondary">Distance D(v,a)</span></div>
             </div>
           </div>
 
@@ -176,36 +176,36 @@ export default function LipSyncVerificationCard({ metrics }: LipSyncVerification
               width="300"
               height="120"
               viewBox="0 0 300 120"
-              className="rounded-lg overflow-hidden w-full"
-              style={{ background: '#030712' }}
+              className="rounded-lg overflow-hidden w-full border border-border"
+              style={{ background: '#EFEBE5' }}
             >
               {/* Zero-line offset guide */}
-              <line x1="0" y1="60" x2="300" y2="60" stroke="rgba(255,255,255,0.08)" strokeDasharray="3,3" />
+              <line x1="0" y1="60" x2="300" y2="60" stroke="#E2DDD5" strokeDasharray="3,3" />
 
-              {/* Offset curve (Green) */}
+              {/* Offset curve (Primary Maroon) */}
               {chartPoints.offsetPath && (
-                <path d={chartPoints.offsetPath} fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
+                <path d={chartPoints.offsetPath} fill="none" stroke="#9B2218" strokeWidth="2" strokeLinecap="round" />
               )}
-              {/* Distance curve (Indigo) */}
+              {/* Distance curve (Secondary Slate) */}
               {chartPoints.distPath && (
-                <path d={chartPoints.distPath} fill="none" stroke="#6366f1" strokeWidth="1.5" strokeDasharray="2,2" />
+                <path d={chartPoints.distPath} fill="none" stroke="#6B6E70" strokeWidth="1.5" strokeDasharray="2,2" />
               )}
 
               {/* Axis labels */}
-              <text x="5" y="15" fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="monospace">+Offset</text>
-              <text x="5" y="115" fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="monospace">-Offset</text>
+              <text x="5" y="15" fill="rgba(43,37,35,0.4)" fontSize="7" fontFamily="monospace">+Offset</text>
+              <text x="5" y="115" fill="rgba(43,37,35,0.4)" fontSize="7" fontFamily="monospace">-Offset</text>
             </svg>
           </div>
         </div>
       </div>
 
       {/* Row 2: Spoofing Audit Log */}
-      <div className="rounded-2xl bg-[#060b14] border border-white/8 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-          <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
+      <div className="rounded-2xl bg-surface border border-border shadow-soft overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <span className="text-[10px] text-text-secondary font-mono uppercase tracking-widest">
             Sync Window Analysis Log
           </span>
-          <span className="text-[9px] text-gray-600 font-mono">
+          <span className="text-[9px] text-text-secondary font-mono">
             {spoofingAlerts.length} anomaly event{spoofingAlerts.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -213,15 +213,15 @@ export default function LipSyncVerificationCard({ metrics }: LipSyncVerification
         {spoofingAlerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <span className="text-2xl">🛡️</span>
-            <p className="text-[11px] text-emerald-400 font-semibold">
+            <p className="text-[11px] text-success font-semibold">
               Security Verification Passed — No Spoofing Anomalies Flagged
             </p>
-            <p className="text-[10px] text-gray-600 font-mono">
+            <p className="text-[10px] text-text-secondary font-mono">
               Spoken audio perfectly matches visual lip dynamics throughout the session
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-border">
             {spoofingAlerts.map((evt, idx) => {
               const cfg = REASON_CONFIG[evt.reason] ?? {
                 label: evt.reason,
@@ -230,22 +230,22 @@ export default function LipSyncVerificationCard({ metrics }: LipSyncVerification
               };
 
               return (
-                <div key={idx} className="flex items-start justify-between px-4 py-3 bg-red-500/5 border-l-2 border-red-500/40">
+                <div key={idx} className="flex items-start justify-between px-4 py-3 bg-danger/5 border-l-2 border-danger/40">
                   <div className="space-y-1 text-left">
                     <div className="flex items-center gap-2">
                       <span className="text-xs">{cfg.icon}</span>
-                      <span className="text-xs font-mono font-bold text-red-400">{cfg.label}</span>
-                      <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-red-500/20 text-red-300 border border-red-500/30">
+                      <span className="text-xs font-mono font-bold text-danger">{cfg.label}</span>
+                      <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-danger/15 text-danger border border-danger/30">
                         {evt.durationSeconds}s duration
                       </span>
                     </div>
-                    <p className="text-[10px] text-gray-400 font-mono">{cfg.desc}</p>
-                    <p className="text-[9px] text-gray-500 font-mono">
-                      Average Cross-Modal Distance D(v,a): <strong className="text-red-400">{evt.averageDistance}</strong>
+                    <p className="text-[10px] text-text-secondary font-mono">{cfg.desc}</p>
+                    <p className="text-[9px] text-text-secondary font-mono">
+                      Average Cross-Modal Distance D(v,a): <strong className="text-danger">{evt.averageDistance}</strong>
                     </p>
                   </div>
 
-                  <div className="text-right font-mono text-[10px] text-gray-500 shrink-0">
+                  <div className="text-right font-mono text-[10px] text-text-secondary shrink-0">
                     <span>{fmtTime(evt.startTimeMs)} → {fmtTime(evt.endTimeMs)}</span>
                   </div>
                 </div>

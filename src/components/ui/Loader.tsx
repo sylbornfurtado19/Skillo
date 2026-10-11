@@ -15,7 +15,7 @@ export function Loader({ size = 'md', className = '' }: LoaderProps) {
 
   return (
     <div className={`flex items-center justify-center ${className}`}>
-      <div className={`rounded-full border-primary/20 border-t-primary animate-spin ${sizes[size]}`} />
+      <div className={`rounded-full border-[var(--primary)]/20 border-t-[var(--primary)] animate-spin ${sizes[size]}`} />
     </div>
   );
 }
@@ -42,10 +42,10 @@ export function Progress({
   const percentage = Math.min(100, Math.max(0, Math.round((value / max) * 100)));
 
   const variants = {
-    primary: 'bg-primary',
-    secondary: 'bg-secondary',
-    accent: 'bg-accent',
-    success: 'bg-emerald-500',
+    primary: 'bg-[var(--primary)]',
+    secondary: 'bg-[var(--secondary)]',
+    accent: 'bg-[var(--primary-soft)]',
+    success: 'bg-[var(--success)]',
   };
 
   const sizes = {
@@ -57,12 +57,12 @@ export function Progress({
   return (
     <div className={`w-full space-y-1.5 ${className}`}>
       {(showLabel || label) && (
-        <div className="flex justify-between text-[10px] font-semibold text-gray-400 uppercase font-mono tracking-wider">
+        <div className="flex justify-between text-[10px] font-semibold text-[var(--text-secondary)] uppercase font-mono tracking-wider">
           <span>{label}</span>
           <span>{percentage}%</span>
         </div>
       )}
-      <div className={`w-full bg-white/5 rounded-full overflow-hidden border border-white/5 ${sizes[size]}`}>
+      <div className={`w-full bg-[var(--bg-surface-alt)] rounded-full overflow-hidden border border-[var(--border)] ${sizes[size]}`}>
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
@@ -86,5 +86,5 @@ export function Skeleton({ variant = 'text', className = '' }: SkeletonProps) {
     rect: 'h-24 w-full rounded-xl',
   };
 
-  return <div className={`bg-white/5 animate-pulse ${variants[variant]} ${className}`} />;
+  return <div className={`bg-[var(--bg-surface-alt)] border border-[var(--border)] animate-pulse ${variants[variant]} ${className}`} />;
 }

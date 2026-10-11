@@ -72,23 +72,23 @@ export default function SkillMemoryGraph({
               <FaBrain />
             </div>
             <div>
-              <h3 className="text-base font-heading font-bold text-white">
+              <h3 className="text-base font-heading font-bold text-text-primary">
                 Candidate Skill Knowledge Graph & Memory Store (Reflexion)
               </h3>
-              <p className="text-[11px] text-gray-400 font-mono">
+              <p className="text-[11px] text-text-secondary font-mono">
                 Episodic-Semantic Dual Memory Architecture &bull; NeurIPS 2023
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-mono bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
-            <FaChartLine className="text-emerald-400" />
-            <span className="text-gray-300">{nodesList.length} Skill Memory Nodes Tracked</span>
+          <div className="flex items-center gap-2 text-xs font-mono bg-surface-alt px-3 py-1.5 rounded-xl border border-border">
+            <FaChartLine className="text-primary" />
+            <span className="text-text-secondary">{nodesList.length} Skill Memory Nodes Tracked</span>
           </div>
         </div>
 
         {/* Global AI Narrative Summary */}
-        <p className="text-xs text-gray-300 leading-relaxed bg-[#030712]/60 p-3.5 rounded-xl border border-white/5 font-mono">
+        <p className="text-xs text-text-secondary leading-relaxed bg-surface-alt p-3.5 rounded-xl border border-border font-mono">
           {store.globalReflectionSummary}
         </p>
       </Card>
@@ -105,23 +105,23 @@ export default function SkillMemoryGraph({
               onClick={() => setSelectedNode(node)}
               className={`p-5 space-y-3 cursor-pointer hover:border-primary/50 transition duration-200 text-left relative ${
                 node.proficiencyLevel === 'MASTERED'
-                  ? 'bg-emerald-500/5 border-emerald-500/20'
+                  ? 'bg-success/5 border-success/30'
                   : node.proficiencyLevel === 'PROFICIENT'
-                  ? 'bg-indigo-500/5 border-indigo-500/20'
+                  ? 'bg-primary-soft/40 border-primary/25'
                   : node.proficiencyLevel === 'DEVELOPING'
-                  ? 'bg-blue-500/5 border-blue-500/20'
-                  : 'bg-amber-500/5 border-amber-500/20'
+                  ? 'bg-surface-alt border-border'
+                  : 'bg-warning/10 border-warning/30'
               }`}
             >
               {/* High Severity Animated Attention Badge */}
               {hasHighDeficiency && (
-                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1 animate-pulse font-mono z-10">
+                <div className="absolute -top-2 -right-2 bg-danger text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-soft flex items-center gap-1 animate-pulse font-mono z-10">
                   <FaFire size={8} /> HIGH DEFICIENCY
                 </div>
               )}
 
               <div className="flex justify-between items-start">
-                <h4 className="text-xs font-bold text-white font-heading truncate max-w-[70%]">
+                <h4 className="text-xs font-bold text-text-primary font-heading truncate max-w-[70%]">
                   {node.skillName}
                 </h4>
                 {getProficiencyBadge(node.proficiencyLevel)}
@@ -130,18 +130,18 @@ export default function SkillMemoryGraph({
               {/* Progress Gauge & Stats */}
               <div className="space-y-1.5 pt-1">
                 <div className="flex justify-between items-center text-[10px] font-mono">
-                  <span className="text-gray-400">Remediation Progress</span>
-                  <span className="text-emerald-400 font-bold">{node.remediationProgress}%</span>
+                  <span className="text-text-secondary">Remediation Progress</span>
+                  <span className="text-success font-bold">{node.remediationProgress}%</span>
                 </div>
-                <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div className="w-full h-1.5 rounded-full bg-surface-alt border border-border overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-primary via-accent to-emerald-400 transition-all duration-500"
+                    className="h-full bg-primary transition-all duration-500"
                     style={{ width: `${node.remediationProgress}%` }}
                   />
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-white/5 flex justify-between items-center text-[10px] text-gray-500 font-mono">
+              <div className="pt-2 border-t border-border flex justify-between items-center text-[10px] text-text-secondary font-mono">
                 <span>{node.attemptsCount} Sessions</span>
                 <span className="text-primary flex items-center gap-1 hover:underline">
                   <FaHistory size={8} /> View Timeline &rarr;

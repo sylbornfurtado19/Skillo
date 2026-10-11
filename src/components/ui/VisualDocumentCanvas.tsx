@@ -17,17 +17,17 @@ const TYPE_STYLES: Record<
   VisualLayoutElement['type'],
   { stroke: string; fill: string; strokeWidth: number }
 > = {
-  HEADER:        { stroke: '#818cf8', fill: 'rgba(99,102,241,0.15)', strokeWidth: 1.5 },
-  SECTION_TITLE: { stroke: '#a5b4fc', fill: 'rgba(139,92,246,0.10)', strokeWidth: 1.5 },
-  BODY_TEXT:     { stroke: '#374151', fill: 'rgba(55,65,81,0.05)',   strokeWidth: 0.8 },
-  COLUMN_BLOCK:  { stroke: '#0ea5e9', fill: 'rgba(14,165,233,0.08)', strokeWidth: 1.2 },
-  LIST_ITEM:     { stroke: '#4b5563', fill: 'rgba(75,85,99,0.04)',   strokeWidth: 0.8 },
+  HEADER:        { stroke: '#9B2218', fill: 'rgba(155,34,24,0.12)', strokeWidth: 1.5 },
+  SECTION_TITLE: { stroke: '#7F1B13', fill: 'rgba(127,27,19,0.08)', strokeWidth: 1.5 },
+  BODY_TEXT:     { stroke: '#6A625E', fill: 'rgba(106,98,94,0.05)',   strokeWidth: 0.8 },
+  COLUMN_BLOCK:  { stroke: '#6B6E70', fill: 'rgba(107,110,112,0.08)', strokeWidth: 1.2 },
+  LIST_ITEM:     { stroke: '#55585A', fill: 'rgba(85,88,90,0.04)',   strokeWidth: 0.8 },
 };
 
 const SEVERITY_COLORS: Record<string, { stroke: string; fill: string; glow: string }> = {
-  CRITICAL: { stroke: '#ef4444', fill: 'rgba(239,68,68,0.18)', glow: '#ef4444' },
-  MODERATE: { stroke: '#f59e0b', fill: 'rgba(245,158,11,0.15)', glow: '#f59e0b' },
-  MINOR:    { stroke: '#22d3ee', fill: 'rgba(34,211,238,0.08)', glow: '#22d3ee' },
+  CRITICAL: { stroke: '#B3261E', fill: 'rgba(179,38,30,0.18)', glow: '#B3261E' },
+  MODERATE: { stroke: '#C98A1B', fill: 'rgba(201,138,27,0.15)', glow: '#C98A1B' },
+  MINOR:    { stroke: '#4A6B8A', fill: 'rgba(74,107,138,0.12)', glow: '#4A6B8A' },
 };
 
 // ── Tooltip state ─────────────────────────────────────────────────────────────
@@ -114,25 +114,25 @@ export default function VisualDocumentCanvas({
   return (
     <div className="relative w-full select-none">
       {/* Document Frame */}
-      <div className="relative w-full rounded-xl overflow-hidden border border-white/10 bg-[#0a0f1a] shadow-2xl">
+      <div className="relative w-full rounded-xl overflow-hidden border border-border bg-surface shadow-soft">
         {/* Header Bar */}
-        <div className="flex flex-col gap-1 px-4 py-3 border-b border-white/5 bg-[#060b14]">
+        <div className="flex flex-col gap-1 px-4 py-3 border-b border-border bg-surface-alt">
           <div className="flex items-center gap-2">
             <div className="flex gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
-              <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
-              <div className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
+              <div className="h-2.5 w-2.5 rounded-full bg-danger/70" />
+              <div className="h-2.5 w-2.5 rounded-full bg-warning/70" />
+              <div className="h-2.5 w-2.5 rounded-full bg-success/70" />
             </div>
-            <span className="text-xs font-heading font-bold text-white ml-2">
+            <span className="text-xs font-heading font-bold text-text-primary ml-2">
               Document Layout & Formatting Inspector
             </span>
             <div className="ml-auto flex items-center gap-3">
-              <span className="text-[9px] text-indigo-400 font-mono">● HEADER</span>
-              <span className="text-[9px] text-sky-400 font-mono">● COLUMN</span>
-              <span className="text-[9px] text-red-400 font-mono">● PENALTY</span>
+              <span className="text-[9px] text-primary font-mono">● HEADER</span>
+              <span className="text-[9px] text-secondary font-mono">● COLUMN</span>
+              <span className="text-[9px] text-danger font-mono">● PENALTY</span>
             </div>
           </div>
-          <p className="text-[10px] text-gray-400">
+          <p className="text-[10px] text-text-secondary">
             Analyzes document structure, column boundaries, and typography hierarchy using deterministic spatial geometry rules.
           </p>
         </div>
@@ -166,11 +166,11 @@ export default function VisualDocumentCanvas({
           </defs>
 
           {/* Page background */}
-          <rect x="0" y="0" width="1000" height="1000" fill="#0d1117" />
+          <rect x="0" y="0" width="1000" height="1000" fill="#FBF9F6" stroke="#E2DDD5" strokeWidth="2" />
 
           {/* Margin safety guide lines */}
-          <line x1="20" y1="0" x2="20" y2="1000" stroke="rgba(239,68,68,0.12)" strokeWidth="1" strokeDasharray="4 6" />
-          <line x1="980" y1="0" x2="980" y2="1000" stroke="rgba(239,68,68,0.12)" strokeWidth="1" strokeDasharray="4 6" />
+          <line x1="20" y1="0" x2="20" y2="1000" stroke="rgba(179,38,30,0.15)" strokeWidth="1" strokeDasharray="4 6" />
+          <line x1="980" y1="0" x2="980" y2="1000" stroke="rgba(179,38,30,0.15)" strokeWidth="1" strokeDasharray="4 6" />
 
           {/* Render all elements */}
           {elements.map(el => {
@@ -201,8 +201,8 @@ export default function VisualDocumentCanvas({
               fill = SEVERITY_COLORS[pen.severity].fill;
               strokeWidth = 1.8;
             } else if (isSelected) {
-              stroke = '#8b5cf6';
-              fill = 'rgba(139,92,246,0.2)';
+              stroke = '#9B2218';
+              fill = 'rgba(155,34,24,0.18)';
               strokeWidth = 2;
             }
 
@@ -253,7 +253,7 @@ export default function VisualDocumentCanvas({
               y={highlightedPenaltyBBox.y0 - 4}
               width={Math.max(highlightedPenaltyBBox.width + 8, 40)}
               height={Math.max(highlightedPenaltyBBox.height + 8, 16)}
-              stroke="#ef4444"
+              stroke="#B3261E"
               fill="none"
               strokeWidth="3"
               strokeDasharray="6 3"
@@ -270,20 +270,20 @@ export default function VisualDocumentCanvas({
             className="absolute z-50 pointer-events-none"
             style={{ left: tooltip.x, top: tooltip.y }}
           >
-            <div className="bg-[#0d1117] border border-white/10 rounded-lg px-3 py-2 shadow-xl text-xs space-y-1 min-w-[180px] max-w-[260px]">
+            <div className="bg-surface border border-border rounded-lg px-3 py-2 shadow-soft text-xs space-y-1 min-w-[180px] max-w-[260px]">
               <div className="flex items-center gap-2">
                 <span
                   className="h-2 w-2 rounded-full shrink-0"
                   style={{ background: TYPE_STYLES[tooltip.element.type].stroke }}
                 />
-                <span className="font-mono font-bold text-white">
+                <span className="font-mono font-bold text-text-primary">
                   {tooltip.element.type}
                 </span>
               </div>
-              <p className="text-gray-400 leading-relaxed line-clamp-2">
+              <p className="text-text-secondary leading-relaxed line-clamp-2">
                 {tooltip.element.text}
               </p>
-              <div className="flex gap-3 text-[10px] text-gray-500 font-mono pt-0.5 border-t border-white/5">
+              <div className="flex gap-3 text-[10px] text-text-secondary font-mono pt-0.5 border-t border-border">
                 <span>col span: {tooltip.element.columnSpan}</span>
                 <span>level: H{tooltip.element.visualHierarchyLevel}</span>
                 <span>
@@ -300,7 +300,7 @@ export default function VisualDocumentCanvas({
         {(
           Object.entries(TYPE_STYLES) as [VisualLayoutElement['type'], (typeof TYPE_STYLES)[VisualLayoutElement['type']]][]
         ).map(([type, style]) => (
-          <div key={type} className="flex items-center gap-1.5 text-[9px] text-gray-500 font-mono">
+          <div key={type} className="flex items-center gap-1.5 text-[9px] text-text-secondary font-mono">
             <div
               className="h-2 w-4 rounded-sm border"
               style={{ borderColor: style.stroke, background: style.fill }}
@@ -308,8 +308,8 @@ export default function VisualDocumentCanvas({
             {type}
           </div>
         ))}
-        <div className="flex items-center gap-1.5 text-[9px] text-red-400 font-mono ml-auto">
-          <div className="h-2 w-4 rounded-sm border border-red-500 bg-red-500/15" />
+        <div className="flex items-center gap-1.5 text-[9px] text-danger font-mono ml-auto">
+          <div className="h-2 w-4 rounded-sm border border-danger bg-danger/15" />
           PENALTY
         </div>
       </div>
