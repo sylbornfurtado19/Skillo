@@ -248,48 +248,83 @@ function generateAnalyticalCoTPass(
 ): SinglePassEvaluation {
   const { setupData, answersList } = input;
 
-  const totalCharLength = answersList.reduce((sum, item) => {
-    const text = typeof item === 'string' ? item : item?.answerText ?? '';
-    return sum + text.trim().length;
-  }, 0);
+  const combinedText = answersList
+    .map((item) => (typeof item === 'string' ? item : item?.answerText ?? ''))
+    .join(' ')
+    .trim();
 
-  const hasContent = totalCharLength > 30;
+  const totalCharLength = combinedText.length;
+  const hasNumbers = /\b\d+(\.\d+)?%?|\bO\([1nkm]\)/i.test(combinedText);
+  const hasEdgeKeywords = /\b(edge|corner|boundary|null|undefined|timeout|retry|split-brain|failover|circuit|exception|error|concurrency|race|deadlock|overflow|fallback|graceful|partition)\b/i.test(combinedText);
+  const hasTechKeywords = /\b(architecture|component|database|cache|api|scale|async|function|service|design|algorithm|state|server|client|query|index)\b/i.test(combinedText);
+
+  // Simple measurable heuristics (length, presence of numbers, edge-case keywords)
+  // Base score from length:
+  // Empty or minimal (< 20 chars): 1.1
+  // Short (20 - 99 chars): 1.6
+  // Medium (100 - 299 chars): 2.0
+  // Substantial (>= 300 chars): 2.3
+  let lengthBase = 1.1;
+  if (totalCharLength >= 300) {
+    lengthBase = 2.3;
+  } else if (totalCharLength >= 100) {
+    lengthBase = 2.0;
+  } else if (totalCharLength >= 20) {
+    lengthBase = 1.6;
+  }
+
+  // Measurable bonuses:
+  const numberBonus = hasNumbers ? 0.3 : 0.0;
+  const edgeBonus = hasEdgeKeywords ? 0.4 : 0.0;
+  const techBonus = hasTechKeywords ? 0.2 : 0.0;
 
   // Temperature variation adjustments for sampling pass index (passIndex 0..4)
-  // Seeded variations simulating LLM temperature 0.7 distribution across N=3 or N=5 passes
   const passVariations = [
     { techOffset: 0.0,  sysOffset: 0.0,  edgeOffset: 0.0,  commOffset: 0.0  },
-    { techOffset: 0.2,  sysOffset: -0.3, edgeOffset: 0.1,  commOffset: 0.2  },
-    { techOffset: -0.2, sysOffset: 0.1,  edgeOffset: -0.2, commOffset: -0.1 },
-    { techOffset: 0.1,  sysOffset: 0.2,  edgeOffset: -0.1, commOffset: 0.1  },
-    { techOffset: -0.1, sysOffset: -0.2, edgeOffset: 0.2,  commOffset: -0.2 },
+    { techOffset: 0.1,  sysOffset: -0.1, edgeOffset: 0.1,  commOffset: 0.1  },
+    { techOffset: -0.1, sysOffset: 0.1,  edgeOffset: -0.1, commOffset: -0.1 },
+    { techOffset: 0.05, sysOffset: 0.05, edgeOffset: -0.05, commOffset: 0.05 },
+    { techOffset: -0.05, sysOffset: -0.05, edgeOffset: 0.05, commOffset: -0.05 },
   ];
-
   const varConfig = passVariations[passIndex % passVariations.length];
 
-  const baseTech = hasContent ? 4.2 : 1.5;
-  const baseSys = hasContent ? 4.0 : 1.5;
-  const baseEdge = hasContent ? 3.8 : 1.2;
-  const baseComm = hasContent ? 4.4 : 1.8;
+  // Compute individual rubric scores capped at 3.0
+  const rawTech = lengthBase + techBonus + numberBonus + varConfig.techOffset;
+  const rawSys = lengthBase + techBonus + (hasEdgeKeywords ? 0.1 : 0.0) + varConfig.sysOffset;
+  const rawEdge = (totalCharLength >= 20 ? 1.2 : 1.0) + edgeBonus + varConfig.edgeOffset;
+  const rawComm = lengthBase + (totalCharLength >= 100 ? 0.2 : 0.0) + varConfig.commOffset;
 
-  const techScore = Math.min(5, Math.max(1, Math.round((baseTech + varConfig.techOffset) * 10) / 10));
-  const sysScore = Math.min(5, Math.max(1, Math.round((baseSys + varConfig.sysOffset) * 10) / 10));
-  const edgeScore = Math.min(5, Math.max(1, Math.round((baseEdge + varConfig.edgeOffset) * 10) / 10));
-  const commScore = Math.min(5, Math.max(1, Math.round((baseComm + varConfig.commOffset) * 10) / 10));
+  // Strict clamp to [1.0, 3.0]
+  const techScore = Math.min(3.0, Math.max(1.0, Math.round(rawTech * 10) / 10));
+  const sysScore = Math.min(3.0, Math.max(1.0, Math.round(rawSys * 10) / 10));
+  const edgeScore = Math.min(3.0, Math.max(1.0, Math.round(rawEdge * 10) / 10));
+  const commScore = Math.min(3.0, Math.max(1.0, Math.round(rawComm * 10) / 10));
 
-  const overall = Math.round((0.35 * techScore + 0.30 * sysScore + 0.20 * edgeScore + 0.15 * commScore) * 100) / 100;
+  // Cap fallback overall at 3.0
+  const weightedOverall = Math.round((0.35 * techScore + 0.30 * sysScore + 0.20 * edgeScore + 0.15 * commScore) * 100) / 100;
+  const overall = Math.min(3.0, Math.max(1.0, weightedOverall));
+
+  const hasContent = totalCharLength > 20;
 
   const criterionEvidence: CriterionEvidence = {
-    technicalAccuracy: hasContent ? `Demonstrated core technical syntax and terminology for ${setupData.role}.` : 'Minimal technical explanation provided.',
-    systemDesignLogic: hasContent ? 'Reasoned modular architecture with clear service boundaries.' : 'Incoherent structural breakdown.',
-    edgeCaseHandling: hasContent ? 'Discussed boundary conditions and fault mitigation.' : 'No boundary conditions or edge cases addressed.',
-    communicationClarity: hasContent ? 'Structured delivery adhering to standard technical interview conventions.' : 'Incomplete or truncated responses.',
+    technicalAccuracy: hasContent
+      ? (hasNumbers ? `Demonstrated quantitative complexity bounds (${setupData.role}).` : `Core technical terminology provided for ${setupData.role}.`)
+      : 'Minimal technical explanation provided.',
+    systemDesignLogic: hasContent
+      ? 'Reasoned baseline architecture and modular flow.'
+      : 'Incoherent or absent structural breakdown.',
+    edgeCaseHandling: hasEdgeKeywords
+      ? 'Proactively addressed boundary edge conditions and failure modes.'
+      : 'Limited or no edge-case failure modes addressed.',
+    communicationClarity: hasContent
+      ? 'Structured communication adhering to baseline technical interview conventions.'
+      : 'Incomplete or truncated responses.',
   };
 
-  const decisionSummary = `Pass ${passIndex + 1}: Evaluated ${setupData.role} submission across 4 rubrics. Weighted overall: ${overall}/5.`;
+  const decisionSummary = `Pass ${passIndex + 1} (Offline heuristic estimate): Evaluated ${setupData.role} submission. Score capped at 3.0: ${overall}/5.`;
 
   const feedback = hasContent
-    ? `Strong response structure demonstrating solid ${setupData.type} alignment for the ${setupData.role} role.`
+    ? `Offline heuristic estimate based on length, quantitative markers, and edge-case awareness for ${setupData.role}.`
     : `Limited answer depth provided. Increase detailed explanations of trade-offs and boundary conditions.`;
 
   return {
@@ -473,26 +508,35 @@ export async function performInterviewEvaluation(
     }/5. Key focus: STAR framework structure and executive brevity.`,
   };
 
-  const evaluationMode: 'live' | 'fallback' | 'partial' = anthropicApiKey ? 'live' : 'fallback';
-  const providerStatus = anthropicApiKey ? 'available' : 'unconfigured';
+  const isFallback = !anthropicApiKey || completedPasses.length === 0;
+  const evaluationMode: 'live' | 'fallback' | 'partial' = !anthropicApiKey || completedPasses.length === 0
+    ? 'fallback'
+    : completedPasses.length < targetN
+    ? 'partial'
+    : 'live';
+  const providerStatus = anthropicApiKey ? (completedPasses.length > 0 ? 'available' : 'error') : 'unconfigured';
+
+  const effectiveConfidenceLevel = isFallback ? 'LOW' : confidenceLevel;
+  const effectiveFinalScore = isFallback ? Math.min(3.0, finalScore) : finalScore;
 
   const suqEvaluation: SUQEvaluationResult = {
-    finalScore,
-    confidenceLevel,
+    finalScore: effectiveFinalScore,
+    confidenceLevel: effectiveConfidenceLevel,
     semanticEntropy,
     clusters,
     passes,
     aggregatedRubricFeedback,
-    requiresValidationPass,
+    requiresValidationPass: isFallback ? true : requiresValidationPass,
     latencyMs,
     passCount: N,
     evaluationMode,
     providerStatus,
     modelId: AI_CONFIG.model,
+    source: isFallback ? 'fallback' : 'live',
   };
 
   // Convert 1-5 scale scores to 0-100 scale for full backward compatibility
-  const overallScore100 = Math.min(100, Math.max(0, Math.round(finalScore * 20)));
+  const overallScore100 = Math.min(100, Math.max(0, Math.round(effectiveFinalScore * 20)));
 
   const avgTech = Math.round(
     (passes.reduce((acc, p) => acc + p.scores.technicalAccuracy, 0) / N) * 20
@@ -644,7 +688,7 @@ export async function performInterviewEvaluation(
     overallScore: overallScore100,
     categories,
     breakdown: questionFeedbacks,
-    interviewerComments: `Prometheus-2 SUQ Evaluation completed with ${confidenceLevel} confidence (Semantic Entropy SE = ${semanticEntropy}, Latency = ${latencyMs}ms). Candidate scored ${overallScore100}% overall for ${setupData.role}.`,
+    interviewerComments: `Prometheus-2 SUQ Evaluation completed with ${effectiveConfidenceLevel} confidence (Semantic Entropy SE = ${semanticEntropy}, Latency = ${latencyMs}ms). Candidate scored ${overallScore100}% overall for ${setupData.role}.`,
     personaId: setupData.persona,
     setupData,
     evaluatedAt: new Date().toISOString(),
@@ -659,6 +703,7 @@ export async function performInterviewEvaluation(
     affectiveMetrics,
     lipSyncMetrics,
     evaluationMode,
+    source: isFallback ? 'fallback' : 'live',
     selectedQuestionIndex,
     selectedQuestionId,
   };

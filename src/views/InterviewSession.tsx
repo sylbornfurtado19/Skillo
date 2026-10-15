@@ -892,8 +892,20 @@ export default function InterviewSession() {
     return <SessionGradingOverlay />;
   }
 
+  const isFallbackSession =
+    (typeof currentQuestionRaw === 'object' && (currentQuestionRaw as any)?.source === 'fallback') ||
+    (setupData as any)?.source === 'fallback';
+
   return (
-    <div className="max-w-6xl mx-auto pb-12 text-left">
+    <div className="max-w-6xl mx-auto pb-12 text-left space-y-4">
+      {isFallbackSession && (
+        <div className="flex items-center justify-center">
+          <Badge variant="warning" size="md" className="flex items-center gap-1.5 px-3 py-1 text-xs">
+            <FaExclamationTriangle className="text-warning text-xs" aria-hidden="true" />
+            <span>Offline estimate, not a live AI evaluation</span>
+          </Badge>
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
         <SessionInterviewerCard
           persona={persona}
@@ -912,6 +924,7 @@ export default function InterviewSession() {
           setShowHint={setShowHint}
           focusAreasList={focusAreasList}
           setupData={setupData}
+          isFallback={isFallbackSession}
         >
           {/* Biometric HUDs (Lazy-loaded with ssr: false) */}
           <SessionBiometricHUDs

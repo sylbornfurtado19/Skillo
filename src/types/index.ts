@@ -151,6 +151,7 @@ export interface GraphRAGAnalysisResult {
   synthesizedSummary: string;
   providerStatus?: 'available' | 'fallback_heuristic' | 'unconfigured' | 'error';
   analysisMethod?: string;
+  source?: 'live' | 'fallback';
   nodes?: GraphEntity[];
   edges?: GraphRelationship[];
   blockedPrerequisites?: PrerequisiteGapChain[];
@@ -168,6 +169,7 @@ export interface VerbalReflection {
   rootCauseAnalysis: string;
   actionableRemediation: string;
   severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  source?: 'live' | 'fallback';
 }
 
 export interface SkillMemoryNode {
@@ -234,6 +236,7 @@ export interface ContrastiveEvaluationResult {
   summaryDeltaText: string;
   /** Zod-validated FAANG structural delta card */
   benchmarkDeltaCard: BenchmarkDeltaCard;
+  source?: 'live' | 'fallback';
 }
 
 export interface ResumeAnalysis {
@@ -331,6 +334,7 @@ export interface SUQEvaluationResult {
   evaluationMode: 'live' | 'fallback' | 'partial';
   providerStatus: 'available' | 'timeout' | 'rate_limited' | 'unconfigured' | 'error';
   modelId: string;
+  source?: 'live' | 'fallback';
 }
 
 // ── LATS Types (Language Agent Tree Search - Zhou et al., ICML 2024) ──────────
@@ -361,6 +365,7 @@ export interface LATSTreeState {
   currentPRMScore: number; // 0..1 or 0..100%
   currentGaps: string[];
   fallback?: boolean;
+  source?: 'live' | 'fallback';
 }
 
 export interface ProcessRewardResult {
@@ -393,6 +398,7 @@ export interface EvaluationReport {
   affectiveMetrics?: AffectiveSessionMetrics;
   lipSyncMetrics?: LipSyncSessionMetrics;
   evaluationMode?: 'live' | 'fallback' | 'partial';
+  source?: 'live' | 'fallback';
   selectedQuestionIndex?: number;
   selectedQuestionId?: string;
 }

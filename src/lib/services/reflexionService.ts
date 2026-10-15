@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/server/supabaseAdmin';
+import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
 import type {
   VerbalReflection,
   SkillMemoryNode,
@@ -87,30 +88,22 @@ REQUIRED JSON OUTPUT FORMAT:
   "severity": "HIGH" | "MEDIUM" | "LOW"
 }`;
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': anthropicApiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 800,
-          temperature: 0.3,
-          system: systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: `Role: ${role}\nQuestion: ${question}\nCandidate Answer: ${candidateAnswer}\nScore: ${score}/100\nPrior Reflections Count: ${historicalReflections?.length ?? 0}`,
-            },
-          ],
-        }),
+      const anthropicRes = await executeAnthropicRequest({
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: `Role: ${role}\nQuestion: ${question}\nCandidate Answer: ${candidateAnswer}\nScore: ${score}/100\nPrior Reflections Count: ${historicalReflections?.length ?? 0}`,
+          },
+        ],
+        maxTokens: AI_CONFIG.maxTokens.reflexion,
+        temperature: AI_CONFIG.temperatureDefaults.reflexionSelfCritique,
+        timeoutMs: AI_CONFIG.timeouts.reflexionMs,
+        apiKey: anthropicApiKey,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const textOutput = data?.content?.[0]?.text ?? '';
+      if (anthropicRes.success && anthropicRes.text) {
+        const textOutput = anthropicRes.text;
         const jsonMatch = textOutput.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
@@ -121,6 +114,7 @@ REQUIRED JSON OUTPUT FORMAT:
               sessionId,
               timestamp,
               ...parseResult.data,
+              source: 'live',
             };
           }
         }
@@ -151,6 +145,7 @@ REQUIRED JSON OUTPUT FORMAT:
     actionableRemediation:
       'Incorporate concrete Big-O complexity numbers and failure recovery mechanics into response.',
     severity: isShort ? 'HIGH' : 'MEDIUM',
+    source: 'fallback',
   };
 }
 

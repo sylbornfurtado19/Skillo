@@ -360,6 +360,7 @@ export async function executeGraphRAGAnalysis(
       synthesizedSummary: `No resume text was provided for ${jobTitle} evaluation. Graph analysis returned 0 extracted entities.`,
       providerStatus: 'unconfigured',
       analysisMethod: 'Empty resume baseline',
+      source: 'fallback',
       nodes,
       edges: graphRelationships,
       blockedPrerequisites: [],
@@ -415,7 +416,7 @@ ${resumeText.slice(0, 15000)}
             target: normalizeEntityName(r.target),
           }));
           providerStatus = 'available';
-          analysisMethod = 'Anthropic Claude-3-5-Sonnet GraphRAG extraction + Leiden clustering';
+          analysisMethod = `Anthropic ${AI_CONFIG.model} GraphRAG extraction + Leiden clustering`;
         } else {
           providerStatus = 'fallback_heuristic';
         }
@@ -474,6 +475,7 @@ ${resumeText.slice(0, 15000)}
     synthesizedSummary,
     providerStatus,
     analysisMethod,
+    source: providerStatus === 'available' ? 'live' : 'fallback',
     // Visualizer schema direct fields
     nodes,
     edges: graphRelationships,

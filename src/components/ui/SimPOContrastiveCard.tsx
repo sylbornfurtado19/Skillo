@@ -65,15 +65,23 @@ export default function SimPOContrastiveCard({
           </div>
 
           {/* Preference Reward Margin Badge */}
-          <div className="flex items-center gap-2 bg-surface-alt px-3.5 py-2 rounded-xl border border-border text-xs font-mono w-full sm:w-auto justify-between sm:justify-end shadow-soft">
-            <FaBolt className="text-primary shrink-0 animate-pulse" aria-hidden="true" />
-            <span className="text-text-secondary font-semibold">Preference Reward Margin:</span>
-            <span className="text-success font-extrabold">
-              &Delta;r = {rewardMargin >= 0 ? '+' : ''}{rewardMargin.toFixed(2)}
-            </span>
-            <Badge variant={marginSatisfied ? 'success' : 'warning'} size="sm">
-              {marginSatisfied ? 'Target Satisfied' : 'Pending Margin'}
-            </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            {data.source === 'fallback' && (
+              <Badge variant="warning" size="sm" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono">
+                <FaExclamationTriangle className="text-warning text-xs" aria-hidden="true" />
+                <span>Offline estimate, not a live AI evaluation</span>
+              </Badge>
+            )}
+            <div className="flex items-center gap-2 bg-surface-alt px-3.5 py-2 rounded-xl border border-border text-xs font-mono w-full sm:w-auto justify-between sm:justify-end shadow-soft">
+              <FaBolt className="text-primary shrink-0 animate-pulse" aria-hidden="true" />
+              <span className="text-text-secondary font-semibold">Preference Reward Margin:</span>
+              <span className="text-success font-extrabold">
+                &Delta;r = {rewardMargin >= 0 ? '+' : ''}{rewardMargin.toFixed(2)}
+              </span>
+              <Badge variant={marginSatisfied ? 'success' : 'warning'} size="sm">
+                {marginSatisfied ? 'Target Satisfied' : 'Pending Margin'}
+              </Badge>
+            </div>
           </div>
         </div>
 

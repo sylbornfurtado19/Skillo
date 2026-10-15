@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { resolveInterviewMode } from '@/types/interviewModes';
 import type { LATSTreeNode, LATSTreeState, LATSActionType, ProcessRewardResult } from '@/types/index';
+import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
 
 const C_PUCT = 1.414;
 
@@ -63,7 +64,7 @@ async function expandBranches(
   candidateAnswer: string,
   priorGaps: string[],
   anthropicApiKey?: string
-): Promise<Array<{ actionType: LATSActionType; questionText: string; rationale: string }>> {
+): Promise<{ branches: Array<{ actionType: LATSActionType; questionText: string; rationale: string }>; isFallback: boolean }> {
   // Meaningful defaults: 3 genuinely different branches
   const defaultBranches: Array<{ actionType: LATSActionType; questionText: string; rationale: string }> = [
     {
@@ -83,7 +84,7 @@ async function expandBranches(
     },
   ];
 
-  if (!anthropicApiKey) return defaultBranches;
+  if (!anthropicApiKey) return { branches: defaultBranches, isFallback: true };
 
   try {
     const systemPrompt = `You are a LATS (Language Agent Tree Search) Question Generator for a ${role} interview.
@@ -101,38 +102,32 @@ REQUIRED JSON OUTPUT:
   ]
 }`;
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicApiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 800,
-        temperature: 0.7,
-        system: systemPrompt,
-        messages: [{
-          role: 'user',
-          content: `Role: ${role}\nPrior Question: ${currentQuestion}\nCandidate Answer: ${candidateAnswer}\nKnown Gaps: ${priorGaps.join(', ') || 'none'}`,
-        }],
-      }),
+    const res = await executeAnthropicRequest({
+      apiKey: anthropicApiKey,
+      system: systemPrompt,
+      messages: [{
+        role: 'user',
+        content: `Role: ${role}\nPrior Question: ${currentQuestion}\nCandidate Answer: ${candidateAnswer}\nKnown Gaps: ${priorGaps.join(', ') || 'none'}`,
+      }],
+      maxTokens: 800,
+      temperature: 0.7,
+      timeoutMs: AI_CONFIG.timeouts.latsBranchMs,
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      const text = data?.content?.[0]?.text ?? '';
-      const match = text.match(/\{[\s\S]*\}/);
+    if (res.success && res.text) {
+      const match = res.text.match(/\{[\s\S]*\}/);
       if (match) {
         const parsed = JSON.parse(match[0]);
         const result = branchExpansionSchema.safeParse(parsed);
         if (result.success) {
-          return result.data.branches.map(b => ({
-            actionType: b.actionType as LATSActionType,
-            questionText: b.questionText,
-            rationale: b.rationale,
-          }));
+          return {
+            branches: result.data.branches.map(b => ({
+              actionType: b.actionType as LATSActionType,
+              questionText: b.questionText,
+              rationale: b.rationale,
+            })),
+            isFallback: false,
+          };
         }
       }
     }
@@ -140,7 +135,7 @@ REQUIRED JSON OUTPUT:
     console.warn('[LATS Expansion] LLM branch generation fallback:', err);
   }
 
-  return defaultBranches;
+  return { branches: defaultBranches, isFallback: true };
 }
 
 // PRM Evaluation: score a node via LLM V ∈ [0,1]
@@ -179,29 +174,20 @@ REQUIRED JSON OUTPUT:
   "detectedGaps": ["<gap1>", "<gap2>"]
 }`;
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicApiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 400,
-        temperature: 0.2,
-        system: systemPrompt,
-        messages: [{
-          role: 'user',
-          content: `Role: ${role}\nQuestion: ${question}\nCandidate Answer: ${candidateAnswer}`,
-        }],
-      }),
+    const res = await executeAnthropicRequest({
+      apiKey: anthropicApiKey,
+      system: systemPrompt,
+      messages: [{
+        role: 'user',
+        content: `Role: ${role}\nQuestion: ${question}\nCandidate Answer: ${candidateAnswer}`,
+      }],
+      maxTokens: 400,
+      temperature: 0.2,
+      timeoutMs: AI_CONFIG.timeouts.latsBranchMs,
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      const text = data?.content?.[0]?.text ?? '';
-      const match = text.match(/\{[\s\S]*\}/);
+    if (res.success && res.text) {
+      const match = res.text.match(/\{[\s\S]*\}/);
       if (match) {
         const parsed = JSON.parse(match[0]);
         const result = prmResponseSchema.safeParse(parsed);
@@ -273,11 +259,14 @@ export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState
   };
 
   // Phase 1: Expansion — generate 3 distinct branches
-  const branches = await expandBranches(
+  const expansion = await expandBranches(
     rootNodeId, role, currentQuestion, candidateAnswer, priorGaps, anthropicApiKey
   );
+  if (expansion.isFallback) {
+    isFallback = true;
+  }
 
-  const childNodes: LATSTreeNode[] = branches.map((branch, idx) => ({
+  const childNodes: LATSTreeNode[] = expansion.branches.map((branch, idx) => ({
     id: `node_${sessionId}_child_${idx}`,
     parentId: rootNodeId,
     actionType: branch.actionType,
@@ -356,5 +345,6 @@ export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState
     currentPRMScore: Math.round(bestChild.prmScore * 100),
     currentGaps: bestChild.gapsDetected,
     fallback: isFallback,
+    source: isFallback ? 'fallback' : 'live',
   };
 }

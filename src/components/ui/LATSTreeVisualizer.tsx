@@ -12,6 +12,7 @@ import {
   FaInfoCircle,
   FaCheckCircle,
   FaSpinner,
+  FaExclamationTriangle,
 } from 'react-icons/fa';
 
 export interface LATSTreeVisualizerProps {
@@ -122,13 +123,21 @@ export default function LATSTreeVisualizer({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-mono text-text-secondary">
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-primary inline-block" /> Selected Trajectory
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-border inline-block" /> Pruned Branch
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {(treeState.source === 'fallback' || treeState.fallback) && (
+            <Badge variant="warning" size="sm" className="flex items-center gap-1.5 px-2.5 py-1 text-[11px]">
+              <FaExclamationTriangle className="text-warning text-[10px]" aria-hidden="true" />
+              <span>Offline estimate, not a live AI evaluation</span>
+            </Badge>
+          )}
+          <div className="flex items-center gap-2 text-[10px] font-mono text-text-secondary">
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-primary inline-block" /> Selected Trajectory
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-border inline-block" /> Pruned Branch
+            </span>
+          </div>
         </div>
       </div>
 

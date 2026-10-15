@@ -5,6 +5,7 @@ import type {
   ContrastiveEvaluationResult,
   BenchmarkDeltaCard,
 } from '@/types/index';
+import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
 
 // ── Zod Schema: FAANG BenchmarkDeltaCard ────────────────────────────────────
 export const benchmarkDeltaCardSchema = z.object({
@@ -154,30 +155,22 @@ REQUIRED JSON OUTPUT FORMAT:
   ]
 }`;
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': anthropicApiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 1200,
-          temperature: 0.25,
-          system: systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: `Role: ${role}\nQuestion: ${question}\nCandidate Answer: ${candidateAnswer}\nScore: ${score}/100`,
-            },
-          ],
-        }),
+      const anthropicRes = await executeAnthropicRequest({
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: `Role: ${role}\nQuestion: ${question}\nCandidate Answer: ${candidateAnswer}\nScore: ${score}/100`,
+          },
+        ],
+        maxTokens: AI_CONFIG.maxTokens.simpo,
+        temperature: AI_CONFIG.temperatureDefaults.simpoContrastive,
+        timeoutMs: AI_CONFIG.timeouts.simpoMs,
+        apiKey: anthropicApiKey,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const textOutput = data?.content?.[0]?.text ?? '';
+      if (anthropicRes.success && anthropicRes.text) {
+        const textOutput = anthropicRes.text;
         const jsonMatch = textOutput.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
@@ -221,6 +214,7 @@ REQUIRED JSON OUTPUT FORMAT:
             },
             summaryDeltaText: `SimPO contrastive evaluation verified preference margin Δr = +${rewardMargin} (${marginSatisfied ? 'Target Margin Satisfied' : 'Pending Margin Alignment'}). Identified ${deltas.length} structural delta(s).`,
             benchmarkDeltaCard: deriveBenchmarkDeltaCard(deltas, preferredReward, role),
+            source: 'live',
           };
         }
       }
@@ -284,5 +278,6 @@ REQUIRED JSON OUTPUT FORMAT:
     },
     summaryDeltaText: `SimPO contrastive evaluation verified preference margin Δr = +${rewardMargin} (${marginSatisfied ? 'Target Margin Satisfied' : 'Pending Margin Alignment'}). Identified ${structuralDeltas.length} structural delta(s).`,
     benchmarkDeltaCard: deriveBenchmarkDeltaCard(structuralDeltas, preferredReward, role),
+    source: 'fallback',
   };
 }

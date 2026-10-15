@@ -7,6 +7,7 @@ import {
 } from '@/lib/services/reflexionService';
 import { getQuestionsForSetup } from '@/services/constants';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
+import { executeAnthropicRequest } from '@/lib/ai/aiConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -147,30 +148,21 @@ Output strict JSON with format:
   ]
 }`;
 
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': anthropicApiKey,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 1200,
-            temperature: 0.4,
-            system: systemPrompt,
-            messages: [
-              {
-                role: 'user',
-                content: `Please generate ${count} questions for: Role: ${setupData.role}, Domain: ${setupData.domain}, Company: ${setupData.company}, Difficulty: ${setupData.difficulty}.`,
-              },
-            ],
-          }),
+        const anthropicRes = await executeAnthropicRequest({
+          apiKey: anthropicApiKey,
+          maxTokens: 1200,
+          temperature: 0.4,
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: `Please generate ${count} questions for: Role: ${setupData.role}, Domain: ${setupData.domain}, Company: ${setupData.company}, Difficulty: ${setupData.difficulty}.`,
+            },
+          ],
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          const text = data?.content?.[0]?.text ?? '';
+        if (anthropicRes.success && anthropicRes.text) {
+          const text = anthropicRes.text;
           const match = text.match(/\{[\s\S]*\}/);
           if (match) {
             const parsed = JSON.parse(match[0]);

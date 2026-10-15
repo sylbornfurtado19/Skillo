@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { safeParseModelJson, extractJsonString } from '../src/lib/ai/safeJsonParser';
+import { AI_CONFIG } from '../src/lib/ai/aiConfig';
 import {
   performInterviewEvaluation,
   computeSemanticEquivalenceAndEntropy,
@@ -17,6 +18,9 @@ import {
   calculateLengthNormalizedReward,
   benchmarkDeltaCardSchema,
 } from '../src/lib/services/simpoEngine.server';
+import { generateVerbalSelfReflection } from '../src/lib/services/reflexionService';
+import { runLATSMCTS } from '../src/lib/services/latsEngine.server';
+import { executeGraphRAGAnalysis } from '../src/lib/services/graphRAG.server';
 
 describe('AI Evaluation Correctness & Grounding Suite', () => {
   describe('Safe JSON Parser & Guardrails', () => {
@@ -216,6 +220,99 @@ describe('AI Evaluation Correctness & Grounding Suite', () => {
       expect(parsedCard.data?.edgeCaseOversights.length).toBeGreaterThan(0);
       expect(typeof parsedCard.data?.faangComparison).toBe('string');
       expect(parsedCard.data?.rewardScore).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Dynamic Model Configuration & Source Transparency', () => {
+    const originalEnv = process.env.ANTHROPIC_MODEL;
+
+    afterEach(() => {
+      if (originalEnv !== undefined) {
+        process.env.ANTHROPIC_MODEL = originalEnv;
+      } else {
+        delete process.env.ANTHROPIC_MODEL;
+      }
+    });
+
+    it('defaults AI_CONFIG.model to claude-sonnet-5-5 when ANTHROPIC_MODEL is unset', () => {
+      delete process.env.ANTHROPIC_MODEL;
+      expect(AI_CONFIG.model).toBe('claude-sonnet-5-5');
+    });
+
+    it('dynamically reads ANTHROPIC_MODEL from environment when set', () => {
+      process.env.ANTHROPIC_MODEL = 'claude-3-7-sonnet-latest';
+      expect(AI_CONFIG.model).toBe('claude-3-7-sonnet-latest');
+    });
+
+    it('scores answers via measurable heuristics, caps fallback at 3.0, and marks source: fallback with confidenceLevel: LOW', async () => {
+      const input: EvaluateInterviewInput = {
+        setupData: { role: 'Backend Engineer', experienceLevel: 'Senior', type: 'System Design' },
+        questionsList: [{ id: 'q1', question: 'How do you handle distributed locks?' }],
+        // Answer with length, numbers, and edge-case keywords
+        answersList: [
+          'We use Redlock with 5 Redis nodes. Lock lease timeout is 3000ms with a retry limit of 3 attempts. When network partitions or split-brain conditions occur, graceful failover and exception handling prevent deadlocks.',
+        ],
+      };
+
+      const report = await performInterviewEvaluation(input, 'test-heuristics-user');
+      expect(report.source).toBe('fallback');
+      expect(report.evaluationMode).toBe('fallback');
+      expect(report.suqEvaluation?.source).toBe('fallback');
+      expect(report.suqEvaluation?.confidenceLevel).toBe('LOW');
+      // Must be capped at 3.0 / 5 (60 / 100)
+      expect(report.suqEvaluation?.finalScore).toBeLessThanOrEqual(3.0);
+      expect(report.overallScore).toBeLessThanOrEqual(60);
+      report.suqEvaluation?.passes.forEach((p) => {
+        expect(p.overallScore).toBeLessThanOrEqual(3.0);
+        expect(p.scores.technicalAccuracy).toBeLessThanOrEqual(3.0);
+        expect(p.scores.systemDesignLogic).toBeLessThanOrEqual(3.0);
+        expect(p.scores.edgeCaseHandling).toBeLessThanOrEqual(3.0);
+        expect(p.scores.communicationClarity).toBeLessThanOrEqual(3.0);
+      });
+    });
+
+    it('every engine result carries explicit source: live | fallback', async () => {
+      // 1. SimPO Engine
+      const simpoResult = await generateSimPOContrastiveEvaluation({
+        question: 'Explain LRU cache.',
+        candidateAnswer: 'I would use a hash map and a doubly linked list with O(1) time complexity.',
+        role: 'Software Engineer',
+        score: 75,
+      });
+      expect(['live', 'fallback']).toContain(simpoResult.source);
+      expect(simpoResult.source).toBe('fallback'); // Since no live key is active in unit test
+
+      // 2. Reflexion Engine
+      const reflexionResult = await generateVerbalSelfReflection({
+        sessionId: 'test_session',
+        question: 'Explain thread safety.',
+        candidateAnswer: 'Use mutex locks and atomics.',
+        score: 60,
+        role: 'Backend Engineer',
+      });
+      expect(['live', 'fallback']).toContain(reflexionResult.source);
+      expect(reflexionResult.source).toBe('fallback');
+
+      // 3. LATS Engine
+      const latsResult = await runLATSMCTS({
+        sessionId: 'test_lats_session',
+        role: 'Frontend Engineer',
+        currentQuestion: 'Explain React rendering cycle.',
+        candidateAnswer: 'React diffs virtual DOM trees and applies minimal DOM updates.',
+        priorGaps: [],
+      });
+      expect(['live', 'fallback']).toContain(latsResult.source);
+      expect(latsResult.source).toBe('fallback');
+
+      // 4. GraphRAG Engine
+      const graphResult = await executeGraphRAGAnalysis({
+        jobTitle: 'Full Stack Engineer',
+        jobDescription: 'React and Node.js microservices',
+        fileName: 'resume.txt',
+        resumeText: 'Experienced with React, Node.js, TypeScript, and Redis caching architectures.',
+      });
+      expect(['live', 'fallback']).toContain(graphResult.source);
+      expect(graphResult.source).toBe('fallback');
     });
   });
 });

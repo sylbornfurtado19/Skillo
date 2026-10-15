@@ -59,6 +59,7 @@ jest.mock('../src/lib/server/supabaseAdmin', () => ({
 import { POST as evaluateHandler } from '../app/api/interview/evaluate/route';
 import { POST as followupHandler } from '../app/api/interview/followup/route';
 import { POST as analyzeHandler } from '../app/api/resume/analyze/route';
+import { POST as extractHandler } from '../app/api/resume/extract/route';
 
 const AUTH_HEADER = { Authorization: 'Bearer valid_test_token' };
 
@@ -91,6 +92,15 @@ describe('API Validation & Abuse Prevention Suite', () => {
         body: JSON.stringify({}),
       });
       const res = await analyzeHandler(req);
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects resume extract request without authorization header with HTTP 401', async () => {
+      const req = new Request('http://localhost:3000/api/resume/extract', {
+        method: 'POST',
+        body: new FormData(),
+      });
+      const res = await extractHandler(req);
       expect(res.status).toBe(401);
     });
   });
@@ -292,4 +302,61 @@ describe('API Validation & Abuse Prevention Suite', () => {
       expect(JSON.stringify(data.errors)).toContain('30,000 characters limit');
     });
   });
+
+  describe('/api/resume/extract Route Validation', () => {
+    it('rejects extract request when no file is uploaded', async () => {
+      const formData = new FormData();
+      const req = new Request('http://localhost:3000/api/resume/extract', {
+        method: 'POST',
+        headers: { ...AUTH_HEADER },
+        body: formData,
+      });
+
+      const res = await extractHandler(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.message).toMatch(/No file provided/i);
+    });
+
+    it('successfully extracts text from valid uploaded multipart txt file', async () => {
+      const validText =
+        'Alice Smith is a Staff Software Engineer with over 10 years of experience designing distributed cloud architectures, Kubernetes clusters, and microservices.';
+      const file = new File([validText], 'resume.txt', { type: 'text/plain' });
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const req = new Request('http://localhost:3000/api/resume/extract', {
+        method: 'POST',
+        headers: { ...AUTH_HEADER },
+        body: formData,
+      });
+
+      const res = await extractHandler(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.status).toBe('success');
+      expect(data.text).toBe(validText);
+      expect(data.charCount).toBe(validText.length);
+      expect(data.pageCount).toBe(1);
+    });
+
+    it('rejects extract request when text is under 100 characters (scanned document)', async () => {
+      const file = new File(['Short bio'], 'short.txt', { type: 'text/plain' });
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const req = new Request('http://localhost:3000/api/resume/extract', {
+        method: 'POST',
+        headers: { ...AUTH_HEADER },
+        body: formData,
+      });
+
+      const res = await extractHandler(req);
+      expect(res.status).toBe(422);
+      const data = await res.json();
+      expect(data.code).toBe('SHORT_TEXT');
+      expect(data.message).toMatch(/scanned PDF, no selectable text/i);
+    });
+  });
 });
+

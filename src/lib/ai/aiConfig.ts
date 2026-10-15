@@ -7,7 +7,9 @@
 
 export const AI_CONFIG = {
   provider: 'anthropic',
-  model: 'claude-3-5-sonnet-20241022',
+  get model(): string {
+    return process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
+  },
   apiVersion: '2023-06-01',
   endpoint: 'https://api.anthropic.com/v1/messages',
   timeouts: {

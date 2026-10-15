@@ -12,7 +12,7 @@ import {
   FaExclamationTriangle,
   FaRedo,
 } from 'react-icons/fa';
-import { simulateResumeAnalysis } from '../services/constants';
+import { simulateResumeAnalysis, extractResumeTextApi } from '../services/constants';
 import { useAuth } from '../hooks/useAuth';
 import { useInterview } from '../context/InterviewContext';
 import { useToast } from '../components/ui/Toast';
@@ -163,14 +163,22 @@ export default function ResumeUpload() {
       }
     }, 800);
 
-    // Read resume text if text-based file
+    // Server-side resume text extraction (PDF / DOCX / TXT)
     let extractedText = '';
     try {
-      if (file.type.startsWith('text/') || file.name.endsWith('.txt')) {
-        extractedText = await file.text();
+      const extraction = await extractResumeTextApi(file, showToast);
+      if (!extraction.text || extraction.charCount < 100) {
+        clearInterval(interval);
+        showToast('scanned PDF, no selectable text', 'error');
+        setCurrentState('failed');
+        return;
       }
-    } catch (readErr) {
-      console.warn('File text extraction warning:', readErr);
+      extractedText = extraction.text;
+    } catch (extractErr: unknown) {
+      clearInterval(interval);
+      console.error('File text extraction warning:', extractErr);
+      setCurrentState('failed');
+      return;
     }
 
     try {

@@ -378,10 +378,18 @@ export default function Results() {
       )}
 
       <div className="flex flex-col items-center gap-2 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-bold border border-primary/30 bg-primary-soft text-primary">
-          <span>{results.setupData?.company || 'Generic'} Simulation Preset</span>
-          &bull;
-          <span>{results.setupData?.role || 'Software Engineer'}</span>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-bold border border-primary/30 bg-primary-soft text-primary">
+            <span>{results.setupData?.company || 'Generic'} Simulation Preset</span>
+            &bull;
+            <span>{results.setupData?.role || 'Software Engineer'}</span>
+          </div>
+          {((results as any).source === 'fallback' || results.evaluationMode === 'fallback' || suq?.source === 'fallback') && (
+            <Badge variant="warning" size="md" className="flex items-center gap-1.5 px-3 py-1 text-xs">
+              <FaExclamationTriangle className="text-warning text-xs" aria-hidden="true" />
+              <span>Offline estimate, not a live AI evaluation</span>
+            </Badge>
+          )}
         </div>
         <SectionHeader
           title="Performance Report"

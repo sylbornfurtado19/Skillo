@@ -113,7 +113,14 @@ export default function SUQConfidenceDashboard({
         </div>
 
         {/* Confidence Badge */}
-        <div>
+        <div className="flex flex-wrap items-center gap-2">
+          {suq.source === 'fallback' && (
+            <Badge variant="warning" size="md" className="flex items-center gap-1.5 px-3 py-1 text-xs">
+              <FaExclamationTriangle className="text-warning text-xs" aria-hidden="true" />
+              <span>Offline estimate, not a live AI evaluation</span>
+            </Badge>
+          )}
+
           {suq.confidenceLevel === 'HIGH' && (
             <Badge variant="success" size="md" className="flex items-center gap-1.5 px-3 py-1 text-xs">
               <FaCheckCircle className="text-success text-xs" aria-hidden="true" />

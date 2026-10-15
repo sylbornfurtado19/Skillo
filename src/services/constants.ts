@@ -387,6 +387,47 @@ export const submitInterviewAnswers = async (
 };
 
 
+export const extractResumeTextApi = async (
+  file: File,
+  showToast?: (message: string, variant?: 'info' | 'success' | 'error') => void
+): Promise<{ text: string; pageCount: number; charCount: number }> => {
+  const token = await getAuthToken();
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch('/api/resume/extract', {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = body.message || `Text extraction failed with status ${response.status}`;
+    if (showToast) {
+      showToast(message, 'error');
+    }
+    throw new Error(message);
+  }
+
+  const text = body.text ?? body.data?.text ?? '';
+  const pageCount = body.pageCount ?? body.data?.pageCount ?? 1;
+  const charCount = body.charCount ?? body.data?.charCount ?? text.length;
+
+  if (!text || text.trim().length < 100) {
+    const errorMsg = 'scanned PDF, no selectable text';
+    if (showToast) {
+      showToast(errorMsg, 'error');
+    }
+    throw new Error(errorMsg);
+  }
+
+  return { text, pageCount, charCount };
+};
+
 export const simulateResumeAnalysis = async (
   fileName: string,
   jobTitle: string,
@@ -410,7 +451,6 @@ export const simulateResumeAnalysis = async (
     }),
   });
 
-
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
     const message = errorBody.message || `Analysis request failed with status ${response.status}`;
@@ -423,3 +463,4 @@ export const simulateResumeAnalysis = async (
   const result = await response.json();
   return result.data;
 };
+

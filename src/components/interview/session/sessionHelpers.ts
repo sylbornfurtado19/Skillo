@@ -24,16 +24,16 @@ export function generateFallbackEvaluationReport(
   questList: Array<{ id: string; question: string; hint?: string; idealConcepts?: string }>,
   ansList: Array<any>
 ) {
-  const avgScore = 78;
+  const avgScore = 60;
   return {
     overallScore: avgScore,
     categories: {
-      technicalAccuracy: 76,
-      communication: 80,
-      depth: 78,
-      timeManagement: 78,
-      systemDesignLogic: 78,
-      edgeCaseHandling: 78,
+      technicalAccuracy: 60,
+      communication: 60,
+      depth: 60,
+      timeManagement: 60,
+      systemDesignLogic: 60,
+      edgeCaseHandling: 60,
     },
     breakdown: questList.map((q, idx) => {
       const rawAns = ansList[idx];
@@ -42,7 +42,7 @@ export function generateFallbackEvaluationReport(
         id: q.id,
         question: q.question,
         userAnswer: ansStr || 'Answer recorded.',
-        score: ansStr.trim().length > 30 ? 80 : 55,
+        score: ansStr.trim().length > 30 ? 60 : 40,
         idealConcepts: q.idealConcepts || (q.hint ? q.hint.trim() : 'Standard domain principles & practices.'),
         feedback: 'Evaluated with resilient client-side assessment fallback.',
         strengths: ['Structured response organization', 'Clear communication'],
@@ -53,9 +53,12 @@ export function generateFallbackEvaluationReport(
     personaId: setup?.persona || 'sarah',
     setupData: setup,
     evaluatedAt: new Date().toISOString(),
+    evaluationMode: 'fallback' as const,
+    source: 'fallback' as const,
     suqEvaluation: {
-      confidenceLevel: 'MEDIUM' as const,
-      semanticEntropy: 0.42,
+      finalScore: 3.0,
+      confidenceLevel: 'LOW' as const,
+      semanticEntropy: 0.85,
       clusters: [],
       passes: [],
       aggregatedRubricFeedback: {
@@ -64,11 +67,17 @@ export function generateFallbackEvaluationReport(
         edgeCaseHandling: 'Addressed common failure paths.',
         communicationClarity: 'Clear and structured articulation.',
       },
-      requiresValidationPass: false,
+      requiresValidationPass: true,
       latencyMs: 320,
+      passCount: 3,
+      evaluationMode: 'fallback' as const,
+      providerStatus: 'unconfigured' as const,
+      modelId: 'claude-sonnet-5-5',
+      source: 'fallback' as const,
     },
     simpoContrastiveResult: {
       evaluationId: `simpo_fb_${Date.now()}`,
+      source: 'fallback' as const,
       contrastivePair: {
         preferredAnswer: {
           text: 'FAANG-level response demonstrates granular trade-off analysis, concurrency models, and resilient error recovery.',

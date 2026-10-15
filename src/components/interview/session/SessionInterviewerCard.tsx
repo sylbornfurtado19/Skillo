@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaStepForward, FaInfoCircle } from 'react-icons/fa';
+import { FaStepForward, FaInfoCircle, FaExclamationTriangle } from 'react-icons/fa';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 
@@ -37,6 +37,7 @@ export interface SessionInterviewerCardProps {
     type?: string;
     role?: string;
   };
+  isFallback?: boolean;
   children?: React.ReactNode;
 }
 
@@ -57,6 +58,7 @@ export default function SessionInterviewerCard({
   setShowHint,
   focusAreasList,
   setupData,
+  isFallback,
   children,
 }: SessionInterviewerCardProps) {
   return (
@@ -104,6 +106,12 @@ export default function SessionInterviewerCard({
                   {persona.role} &bull; {persona.company}
                 </p>
                 <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
+                  {isFallback && (
+                    <Badge variant="warning" size="sm" className="bg-amber-500/15 border-amber-500/30 text-amber-500 font-mono font-bold flex items-center gap-1">
+                      <FaExclamationTriangle size={10} aria-hidden="true" />
+                      <span>Offline estimate, not a live AI evaluation</span>
+                    </Badge>
+                  )}
                   <Badge variant={interviewerSpeaking ? 'primary' : 'neutral'} size="sm">
                     {interviewerSpeaking ? 'Speaking Voice...' : 'Listening'}
                   </Badge>
