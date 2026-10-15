@@ -35,6 +35,7 @@ import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult, Contra
 import { useToast } from '../components/ui/Toast';
 import { useChartTheme } from '../hooks/useChartTheme';
 import { getThemeColor } from '../lib/themeColors';
+import { calculateDeliveryComposite } from '../lib/services/deliveryComposite';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -259,8 +260,37 @@ export default function Results() {
         }, {}),
         longestPauseMs: Math.max(...deliveryAnalytics.map((item) => item.longestPauseMs)),
         averagePauseMs: Math.round(deliveryAnalytics.reduce((sum, item) => sum + item.averagePauseMs, 0) / deliveryAnalytics.length),
+        deliveryScore: Math.round(deliveryAnalytics.reduce((sum, item) => sum + item.deliveryScore, 0) / deliveryAnalytics.length),
       }
     : null;
+
+  const eyeContactRatio = isEyeContactMetrics(results.eyeContactMetrics)
+    ? results.eyeContactMetrics.eyeContactPercentage
+    : undefined;
+  const postureStability = isHeadPoseMetrics(results.headPoseMetrics)
+    ? results.headPoseMetrics.postureComposureScore
+    : undefined;
+  const affectComposure = isAffectiveMetrics(results.affectiveMetrics)
+    ? results.affectiveMetrics.overallComposureScore
+    : undefined;
+  const speechDeliveryScore = deliverySummary?.deliveryScore;
+  const deliveryComponents = [
+    { label: 'Eye contact', value: eyeContactRatio, camera: true },
+    { label: 'Posture stability', value: postureStability, camera: true },
+    { label: 'Affect composure', value: affectComposure, camera: true },
+    { label: 'Speech delivery', value: speechDeliveryScore, camera: false },
+  ];
+  const availableDeliveryComponents = deliveryComponents.filter((component) => component.value !== undefined);
+  const deliveryComposite = results.deliveryComposite
+    ?? calculateDeliveryComposite({
+      eyeContactRatio,
+      postureStability,
+      affectComposure,
+      speechDeliveryScore,
+    });
+  const cameraSignalsCaptured = deliveryComponents.some(
+    (component) => component.camera && component.value !== undefined
+  );
 
   const scores = {
     techAccuracy: categories.technicalAccuracy ?? 80,
@@ -492,6 +522,51 @@ export default function Results() {
           </div>
         </Card>
       )}
+
+      <Card variant="default" className="p-6 space-y-5">
+        <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-text-primary">Presence &amp; Delivery</h3>
+            <p className="text-xs text-text-secondary">
+              A separate delivery signal; it does not change the technical score.
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-mono uppercase tracking-wider text-text-secondary">Composite</p>
+            <p className="text-3xl font-heading font-extrabold text-primary">
+              {deliveryComposite !== undefined ? `${Math.round(deliveryComposite)}/100` : 'N/A'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {deliveryComponents.map((component) => (
+            <div key={component.label} className="rounded-xl border border-border bg-bg-surface-alt p-4">
+              <p className="text-xs font-semibold text-text-secondary">{component.label}</p>
+              <p className="mt-2 text-2xl font-heading font-extrabold text-text-primary">
+                {component.value !== undefined ? `${Math.round(component.value)}` : 'N/A'}
+                <span className="ml-1 text-sm font-mono font-semibold text-text-secondary">/100</span>
+              </p>
+              <p className="mt-1 text-xs text-text-secondary">
+                {component.value !== undefined ? 'Included in composite' : 'Not available'}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-1 text-xs text-text-secondary">
+          <p>
+            Signals available: {availableDeliveryComponents.length > 0
+              ? availableDeliveryComponents.map((component) => component.label).join(', ')
+              : 'none'}.
+          </p>
+          {!cameraSignalsCaptured && (
+            <p className="text-warning">
+              Camera signals were not captured, so presence is based on speech only when speech data is available.
+            </p>
+          )}
+        </div>
+      </Card>
 
       <div className="flex flex-col items-center gap-2 text-center">
         <div className="flex flex-wrap items-center justify-center gap-2">

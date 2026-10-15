@@ -444,6 +444,7 @@ export interface EvaluationReport {
   headPoseMetrics?: HeadPoseSessionMetrics;
   affectiveMetrics?: AffectiveSessionMetrics;
   lipSyncMetrics?: LipSyncSessionMetrics;
+  deliveryComposite?: number;
   evaluationMode?: 'live' | 'fallback' | 'partial';
   source?: 'live' | 'fallback';
   selectedQuestionIndex?: number;

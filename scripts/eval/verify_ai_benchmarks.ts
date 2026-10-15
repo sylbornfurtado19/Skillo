@@ -20,7 +20,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { computeSemanticEquivalenceAndEntropy } from '../../src/lib/services/interviewEvaluation.server';
+import {
+  computeSemanticEquivalenceAndEntropy,
+  performInterviewEvaluation,
+} from '../../src/lib/services/interviewEvaluation.server';
 import { calculateLengthNormalizedReward } from '../../src/lib/services/simpoEngine.server';
 import type { SinglePassEvaluation } from '../../src/types/index';
 
@@ -72,6 +75,227 @@ interface BenchmarkCorpus {
   entries: BenchmarkEntry[];
 }
 
+interface CalibrationBin {
+  lowerBound: number;
+  upperBound: number;
+  count: number;
+  meanConfidence: number;
+  accuracy: number;
+}
+
+interface SplitCalibrationResult {
+  entries: number;
+  pairwiseAccuracy: number;
+  preferredWins: number;
+  ties: number;
+  meanConfidence: number;
+  meanConfidencePerTier: Record<'HIGH' | 'MEDIUM' | 'LOW', number | null>;
+  confidenceTierCounts: Record<'HIGH' | 'MEDIUM' | 'LOW', number>;
+  expectedCalibrationError: number;
+  calibrationBins: CalibrationBin[];
+}
+
+interface CalibrationOutput {
+  generatedAt: string;
+  model: string;
+  splits: Record<'validation' | 'test', SplitCalibrationResult>;
+}
+
+const CALIBRATION_BIN_COUNT = 10;
+const MAX_SEMANTIC_ENTROPY = Math.log2(3);
+
+function round(value: number, digits = 4): number {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
+
+function confidenceFromEntropy(semanticEntropy: number): number {
+  return Math.max(0, Math.min(1, 1 - semanticEntropy / MAX_SEMANTIC_ENTROPY));
+}
+
+function makeCalibrationBins(
+  observations: Array<{ confidence: number; correct: boolean }>
+): { bins: CalibrationBin[]; expectedCalibrationError: number } {
+  const bins = Array.from({ length: CALIBRATION_BIN_COUNT }, (_, index) => ({
+    lowerBound: index / CALIBRATION_BIN_COUNT,
+    upperBound: (index + 1) / CALIBRATION_BIN_COUNT,
+    observations: [] as Array<{ confidence: number; correct: boolean }>,
+  }));
+
+  for (const observation of observations) {
+    const index = Math.min(
+      CALIBRATION_BIN_COUNT - 1,
+      Math.floor(observation.confidence * CALIBRATION_BIN_COUNT)
+    );
+    bins[index].observations.push(observation);
+  }
+
+  let expectedCalibrationError = 0;
+  const result = bins.map(({ lowerBound, upperBound, observations: binObservations }) => {
+    const count = binObservations.length;
+    const meanConfidence = count === 0
+      ? 0
+      : binObservations.reduce((sum, item) => sum + item.confidence, 0) / count;
+    const accuracy = count === 0
+      ? 0
+      : binObservations.filter((item) => item.correct).length / count;
+
+    expectedCalibrationError += observations.length === 0
+      ? 0
+      : (count / observations.length) * Math.abs(meanConfidence - accuracy);
+
+    return {
+      lowerBound: round(lowerBound),
+      upperBound: round(upperBound),
+      count,
+      meanConfidence: round(meanConfidence),
+      accuracy: round(accuracy),
+    };
+  });
+
+  return { bins: result, expectedCalibrationError: round(expectedCalibrationError) };
+}
+
+async function evaluateSplit(
+  split: 'validation' | 'test',
+  entries: BenchmarkEntry[]
+): Promise<SplitCalibrationResult> {
+  const observations: Array<{ confidence: number; correct: boolean }> = [];
+  const confidenceByTier: Record<'HIGH' | 'MEDIUM' | 'LOW', number[]> = {
+    HIGH: [],
+    MEDIUM: [],
+    LOW: [],
+  };
+  let preferredWins = 0;
+  let ties = 0;
+
+  for (const entry of entries.filter((candidate) => candidate.split === split)) {
+    const baseInput = {
+      setupData: {
+        role: 'Technical Interview Candidate',
+        experienceLevel: 'senior',
+        type: entry.domain,
+      },
+      questionsList: [{ id: entry.id, question: entry.question }],
+      deepAnalysisMode: false,
+    };
+
+    const [preferredReport, dispreferredReport] = await Promise.all([
+      performInterviewEvaluation(
+        { ...baseInput, answersList: [entry.preferred] },
+        `benchmark-${entry.id}-preferred`
+      ),
+      performInterviewEvaluation(
+        { ...baseInput, answersList: [entry.dispreferred] },
+        `benchmark-${entry.id}-dispreferred`
+      ),
+    ]);
+
+    const reports = [preferredReport, dispreferredReport];
+    if (reports.some((report) =>
+      report.evaluationMode !== 'live' ||
+      report.suqEvaluation?.evaluationMode !== 'live' ||
+      report.source !== 'live'
+    )) {
+      throw new Error(`Evaluator returned a non-live result for ${entry.id}; refusing to report fallback scores`);
+    }
+    if (reports.some((report) => !report.suqEvaluation)) {
+      throw new Error(`Evaluator returned no structured result for ${entry.id}`);
+    }
+
+    const preferredEvaluation = preferredReport.suqEvaluation;
+    const dispreferredEvaluation = dispreferredReport.suqEvaluation;
+    if (!preferredEvaluation || !dispreferredEvaluation) {
+      throw new Error(`Evaluator returned no structured result for ${entry.id}`);
+    }
+
+    const preferredScore = preferredEvaluation.finalScore;
+    const dispreferredScore = dispreferredEvaluation.finalScore;
+    const preferredWon = preferredScore > dispreferredScore;
+    if (preferredWon) {
+      preferredWins++;
+    } else if (preferredScore === dispreferredScore) {
+      ties++;
+    }
+
+    const pairConfidence = (
+      confidenceFromEntropy(preferredEvaluation.semanticEntropy) +
+      confidenceFromEntropy(dispreferredEvaluation.semanticEntropy)
+    ) / 2;
+    observations.push({ confidence: pairConfidence, correct: preferredWon });
+
+    for (const report of reports) {
+      const evaluation = report.suqEvaluation;
+      if (!evaluation) {
+        throw new Error(`Evaluator returned no structured result for ${entry.id}`);
+      }
+      const tier = evaluation.confidenceLevel;
+      confidenceByTier[tier].push(confidenceFromEntropy(evaluation.semanticEntropy));
+    }
+  }
+
+  const { bins, expectedCalibrationError } = makeCalibrationBins(observations);
+  const tierNames: Array<'HIGH' | 'MEDIUM' | 'LOW'> = ['HIGH', 'MEDIUM', 'LOW'];
+  const meanConfidencePerTier = Object.fromEntries(
+    tierNames.map((tier) => [
+      tier,
+      confidenceByTier[tier].length === 0
+        ? null
+        : round(confidenceByTier[tier].reduce((sum, value) => sum + value, 0) / confidenceByTier[tier].length),
+    ])
+  ) as Record<'HIGH' | 'MEDIUM' | 'LOW', number | null>;
+
+  return {
+    entries: entries.filter((candidate) => candidate.split === split).length,
+    pairwiseAccuracy: round(preferredWins / observations.length),
+    preferredWins,
+    ties,
+    meanConfidence: round(
+      observations.reduce((sum, observation) => sum + observation.confidence, 0) / observations.length
+    ),
+    meanConfidencePerTier,
+    confidenceTierCounts: Object.fromEntries(
+      tierNames.map((tier) => [tier, confidenceByTier[tier].length])
+    ) as Record<'HIGH' | 'MEDIUM' | 'LOW', number>,
+    expectedCalibrationError,
+    calibrationBins: bins,
+  };
+}
+
+async function writeCalibrationResults(entries: BenchmarkEntry[]): Promise<void> {
+  const outputPath = path.resolve(__dirname, '..', '..', 'docs', 'calibration-latest.json');
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+
+  if (!process.env.ANTHROPIC_API_KEY?.trim()) {
+    fs.writeFileSync(outputPath, `${JSON.stringify({
+      skipped: true,
+      reason: 'ANTHROPIC_API_KEY is not configured; live calibration was not run.',
+    }, null, 2)}\n`);
+    console.log(`\nCalibration skipped; wrote ${outputPath}`);
+    return;
+  }
+
+  try {
+    const output: CalibrationOutput = {
+      generatedAt: new Date().toISOString(),
+      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
+      splits: {
+        validation: await evaluateSplit('validation', entries),
+        test: await evaluateSplit('test', entries),
+      },
+    };
+    fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
+    console.log(`\nLive calibration results wrote ${outputPath}`);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    fs.writeFileSync(outputPath, `${JSON.stringify({
+      skipped: true,
+      reason: `Live calibration did not complete: ${reason}`,
+    }, null, 2)}\n`);
+    throw error;
+  }
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
   console.log(`\n${BOLD}${CYAN}Skillo AI Evaluation Benchmark Verification Harness${RESET}`);
@@ -85,15 +309,15 @@ async function main(): Promise<void> {
   const entries = corpus.entries;
 
   console.log(`\n${BOLD}Section 1: Corpus Structure${RESET}`);
-  assert(entries.length === 30, `Total entries = 30 (actual: ${entries.length})`);
+  assert(entries.length === 50, `Total entries = 50 (actual: ${entries.length})`);
 
   const calibration = entries.filter(e => e.split === 'calibration');
   const validation  = entries.filter(e => e.split === 'validation');
   const test        = entries.filter(e => e.split === 'test');
 
-  assert(calibration.length === 21, `Calibration split = 21 (70%) — actual: ${calibration.length}`);
-  assert(validation.length >= 4 && validation.length <= 5, `Validation split = 4–5 (15%) — actual: ${validation.length}`);
-  assert(test.length >= 4 && test.length <= 5, `Test split = 4–5 (15%) — actual: ${test.length}`);
+  assert(calibration.length === 35, `Calibration split = 35 (70%) — actual: ${calibration.length}`);
+  assert(validation.length === 7, `Validation split = 7 (15%) — actual: ${validation.length}`);
+  assert(test.length === 8, `Test split = 8 (15%) — actual: ${test.length}`);
 
   // ── 2. Zero leakage check ──────────────────────────────────────────────────
   console.log(`\n${BOLD}Section 2: Zero Split Leakage${RESET}`);
@@ -175,6 +399,8 @@ async function main(): Promise<void> {
   if (allPreferredLonger) {
     assert(true, `All test-split preferred answers are longer than dispreferred`);
   }
+
+  await writeCalibrationResults(entries);
 
   // ── Summary ────────────────────────────────────────────────────────────────
   console.log(`\n${'─'.repeat(55)}`);
