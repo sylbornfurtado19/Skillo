@@ -91,6 +91,21 @@ const codeAnswerSchema = z.object({
   stderr: z.string().max(10000),
 });
 
+const speechAnalyticsSchema = z.object({
+  wordsPerMinute: z.number().finite().nonnegative(),
+  fillerCount: z.number().int().nonnegative(),
+  fillerRate: z.number().finite().nonnegative(),
+  fillerCounts: z.record(z.string().max(20), z.number().int().nonnegative()),
+  longestPauseMs: z.number().finite().nonnegative(),
+  averagePauseMs: z.number().finite().nonnegative(),
+  deliveryScore: z.number().finite().min(0).max(100),
+  breakdown: z.object({
+    speed: z.object({ score: z.number().finite().min(0).max(100), explanation: z.string().max(500) }),
+    fillers: z.object({ score: z.number().finite().min(0).max(100), explanation: z.string().max(500) }),
+    pauses: z.object({ score: z.number().finite().min(0).max(100), explanation: z.string().max(500) }),
+  }),
+});
+
 const evaluateSchema = z
   .object({
     setupData: setupDataSchema,
@@ -102,6 +117,9 @@ const evaluateSchema = z
     affectFrames: z.array(affectFrameSchema).max(1000).optional(),
     syncWindows: z.array(syncWindowSchema).max(1000).optional(),
     codeAnswer: codeAnswerSchema.optional(),
+    speechAnalytics: z.record(z.string().max(64), speechAnalyticsSchema)
+      .refine((value) => Object.keys(value).length <= 10, 'Cannot exceed 10 speech analytics entries')
+      .optional(),
   })
   .refine((data) => data.questionsList.length === data.answersList.length, {
     message: 'questionsList and answersList must have exactly equal lengths to prevent evaluation misalignment',

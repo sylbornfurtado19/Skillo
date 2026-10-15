@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { getAuthToken } from './auth';
 import type { CodeAnswer } from '../types';
+import type { SpeechAnalytics } from '../lib/services/speechAnalytics';
 
 export interface InterviewerPersona {
   id: string;
@@ -351,7 +352,8 @@ export const submitInterviewAnswers = async (
     questionId?: string;
     questionIndex?: number;
   }>,
-  codeAnswer?: CodeAnswer
+  codeAnswer?: CodeAnswer,
+  speechAnalytics?: Record<string, SpeechAnalytics>
 ) => {
   const token = await getAuthToken();
 
@@ -370,6 +372,7 @@ export const submitInterviewAnswers = async (
       ...(affectFrames && affectFrames.length > 0 ? { affectFrames } : {}),
       ...(syncWindows && syncWindows.length > 0 ? { syncWindows } : {}),
       ...(codeAnswer ? { codeAnswer } : {}),
+      ...(speechAnalytics && Object.keys(speechAnalytics).length > 0 ? { speechAnalytics } : {}),
     }),
   });
 
@@ -466,4 +469,3 @@ export const simulateResumeAnalysis = async (
   const result = await response.json();
   return result.data;
 };
-

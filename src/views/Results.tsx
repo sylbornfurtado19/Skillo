@@ -17,6 +17,9 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
   FaTimesCircle,
+  FaTachometerAlt,
+  FaCommentDots,
+  FaPause,
 } from 'react-icons/fa';
 
 
@@ -44,7 +47,7 @@ import PostureComposureCard from '../components/ui/PostureComposureCard';
 import FacialComposureCard from '../components/ui/FacialComposureCard';
 import LipSyncVerificationCard from '../components/ui/LipSyncVerificationCard';
 import IVPTelemetryTimeline, { extractTelemetryTimelineEvents } from '../components/ui/IVPTelemetryTimeline';
-import type { EyeContactSessionMetrics, HeadPoseSessionMetrics, AffectiveSessionMetrics, LipSyncSessionMetrics } from '../types/index';
+import type { EyeContactSessionMetrics, HeadPoseSessionMetrics, AffectiveSessionMetrics, LipSyncSessionMetrics, SpeechAnalytics } from '../types/index';
 
 function isEyeContactMetrics(obj: any): obj is EyeContactSessionMetrics {
   return Boolean(obj && typeof obj === 'object' && 'totalVideoDurationSeconds' in obj);
@@ -243,6 +246,21 @@ export default function Results() {
   const categories = (results.categories || {}) as EvaluationCategories;
   const suq = results.suqEvaluation as SUQEvaluationResult | undefined;
   const deltaCard = results.benchmarkDeltaCard as BenchmarkDeltaCard | undefined;
+  const speechAnalytics = results.speechAnalytics as Record<string, SpeechAnalytics> | undefined;
+  const deliveryAnalytics = speechAnalytics ? Object.values(speechAnalytics) : [];
+  const deliverySummary = deliveryAnalytics.length > 0
+    ? {
+        wordsPerMinute: Math.round(deliveryAnalytics.reduce((sum, item) => sum + item.wordsPerMinute, 0) / deliveryAnalytics.length),
+        fillerCounts: deliveryAnalytics.reduce<Record<string, number>>((counts, item) => {
+          Object.entries(item.fillerCounts ?? {}).forEach(([word, count]) => {
+            counts[word] = (counts[word] ?? 0) + count;
+          });
+          return counts;
+        }, {}),
+        longestPauseMs: Math.max(...deliveryAnalytics.map((item) => item.longestPauseMs)),
+        averagePauseMs: Math.round(deliveryAnalytics.reduce((sum, item) => sum + item.averagePauseMs, 0) / deliveryAnalytics.length),
+      }
+    : null;
 
   const scores = {
     techAccuracy: categories.technicalAccuracy ?? 80,
@@ -404,11 +422,75 @@ export default function Results() {
               <p className="text-xs font-bold text-text-primary">Evaluation Processing Notice</p>
               <p className="text-xs text-text-secondary">{resultsError}</p>
             </div>
+
           </div>
           <Button onClick={() => setResultsError(null)} variant="danger" size="sm">
             Retry
           </Button>
         </div>
+      )}
+
+      {deliverySummary && (
+        <Card variant="default" className="p-6 space-y-5">
+          <div className="flex items-center gap-3 border-b border-border pb-4">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+              <FaTachometerAlt aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-text-primary">Delivery</h3>
+              <p className="text-xs text-text-secondary">Speaking pace, filler words, and pauses</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-border bg-bg-surface-alt p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
+                <FaTachometerAlt className="text-primary" aria-hidden="true" />
+                <span>Speaking pace</span>
+              </div>
+              <p className="mt-2 text-2xl font-heading font-extrabold text-text-primary">
+                {deliverySummary.wordsPerMinute} <span className="text-sm font-mono font-semibold text-text-secondary">WPM</span>
+              </p>
+              <p className="mt-1 text-xs text-text-secondary">
+                Target band: <span className="font-semibold text-text-primary">120-160 WPM</span>
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-bg-surface-alt p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
+                <FaCommentDots className="text-primary" aria-hidden="true" />
+                <span>Filler words</span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {Object.entries(deliverySummary.fillerCounts).length > 0 ? (
+                  Object.entries(deliverySummary.fillerCounts)
+                    .sort(([, first], [, second]) => second - first)
+                    .map(([word, count]) => (
+                      <span key={word} className="rounded-lg border border-border bg-bg-surface px-2.5 py-1 text-xs text-text-primary">
+                        <span className="font-semibold">{word}</span>: {count}
+                      </span>
+                    ))
+                ) : (
+                  <span className="text-xs text-text-secondary">None detected</span>
+                )}
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-bg-surface-alt p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
+                <FaPause className="text-primary" aria-hidden="true" />
+                <span>Pause summary</span>
+              </div>
+              <dl className="mt-2 space-y-1 text-xs">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-text-secondary">Longest pause</dt>
+                  <dd className="font-semibold text-text-primary">{deliverySummary.longestPauseMs} ms</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-text-secondary">Average pause</dt>
+                  <dd className="font-semibold text-text-primary">{deliverySummary.averagePauseMs} ms</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </Card>
       )}
 
       <div className="flex flex-col items-center gap-2 text-center">

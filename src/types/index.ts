@@ -3,6 +3,8 @@ import type { EyeContactSessionMetrics } from './gazeEngine';
 import type { HeadPoseSessionMetrics } from './poseEngine';
 import type { AffectiveSessionMetrics } from './affectEngine';
 import type { LipSyncSessionMetrics } from './syncEngine';
+import type { SpeechAnalytics } from '@/lib/services/speechAnalytics';
+export type { SpeechAnalytics } from '@/lib/services/speechAnalytics';
 
 
 
@@ -446,6 +448,7 @@ export interface EvaluationReport {
   source?: 'live' | 'fallback';
   selectedQuestionIndex?: number;
   selectedQuestionId?: string;
+  speechAnalytics?: Record<string, SpeechAnalytics>;
 }
 
 export interface MockInterview {

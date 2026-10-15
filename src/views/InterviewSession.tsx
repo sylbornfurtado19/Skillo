@@ -46,6 +46,7 @@ import SessionAnswerWorkspace from '../components/interview/session/SessionAnswe
 import CodeWorkspace from '../components/interview/CodeWorkspace';
 import { INTERVIEW_MODE_PRESETS } from '../types/interviewModes';
 import type { SyncWindowResult, InterviewQuestion, CodeAnswer } from '@/types/index';
+import { analyzeSpeech, type RecognitionSegment, type SpeechAnalytics } from '@/lib/services/speechAnalytics';
 
 const SessionBiometricHUDs = dynamic(
   () => import('../components/interview/session/SessionBiometricHUDs'),
@@ -349,6 +350,26 @@ export default function InterviewSession() {
 
   // Web Speech API recognition ref
   const recognitionRef = useRef<any>(null);
+  const speechSegmentsRef = useRef<RecognitionSegment[]>([]);
+  const processedSpeechResultIndicesRef = useRef<Set<number>>(new Set());
+  const answerStartedAtRef = useRef<number | null>(null);
+  const lastSpeechResultMsRef = useRef(0);
+  const speechAnalyticsRef = useRef<Record<string, SpeechAnalytics>>({});
+  const [, setSpeechAnalyticsByQuestion] = useState<Record<string, SpeechAnalytics>>({});
+
+  const finalizeSpeechAnalytics = useCallback((questionId: string) => {
+    if (speechSegmentsRef.current.length === 0) {
+      return speechAnalyticsRef.current;
+    }
+
+    const analytics = analyzeSpeech(speechSegmentsRef.current);
+    speechAnalyticsRef.current = {
+      ...speechAnalyticsRef.current,
+      [questionId]: analytics,
+    };
+    setSpeechAnalyticsByQuestion(speechAnalyticsRef.current);
+    return speechAnalyticsRef.current;
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -364,6 +385,21 @@ export default function InterviewSession() {
           let currentText = '';
           for (let i = 0; i < event.results.length; ++i) {
             currentText += event.results[i][0].transcript;
+            if (event.results[i].isFinal && !processedSpeechResultIndicesRef.current.has(i)) {
+              processedSpeechResultIndicesRef.current.add(i);
+              const text = event.results[i][0].transcript.trim();
+              const nowMs = answerStartedAtRef.current === null
+                ? 0
+                : Math.max(0, Date.now() - answerStartedAtRef.current);
+              if (text) {
+                const startMs = speechSegmentsRef.current.length > 0
+                  ? lastSpeechResultMsRef.current
+                  : 0;
+                const endMs = Math.max(startMs, nowMs);
+                speechSegmentsRef.current.push({ text, startMs, endMs });
+                lastSpeechResultMsRef.current = endMs;
+              }
+            }
           }
           setTranscriptText(currentText);
         };
@@ -380,6 +416,9 @@ export default function InterviewSession() {
         };
 
         recognitionRef.current = rec;
+      } else {
+        setResponseMode('type');
+        showToast('Speech recognition is unavailable in this browser. Text Editor mode remains available.', 'info');
       }
     }
 
@@ -392,7 +431,7 @@ export default function InterviewSession() {
         }
       }
     };
-  }, [showToast]);
+  }, [showToast, setResponseMode]);
 
   const handleNextQuestion = useCallback(() => {
     cancelSpeechNarration();
@@ -415,6 +454,10 @@ export default function InterviewSession() {
     }
 
     const finalAnswer = responseMode === 'type' ? typedAnswer : transcriptText;
+    const currentSpeechAnalytics = finalizeSpeechAnalytics(currentQuestion.id);
+    speechSegmentsRef.current = [];
+    answerStartedAtRef.current = null;
+    lastSpeechResultMsRef.current = 0;
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = {
       answerText: finalAnswer || 'No response provided.',
@@ -428,7 +471,11 @@ export default function InterviewSession() {
     setShowHint(false);
 
     // Helper to perform normal question progression
-    const proceedToNext = (updatedQuestions: (string | InterviewQuestion)[], updatedAnswers: any[]) => {
+    const proceedToNext = (
+      updatedQuestions: (string | InterviewQuestion)[],
+      updatedAnswers: any[],
+      analyticsByQuestion: Record<string, SpeechAnalytics>
+    ) => {
       setCheckingFollowUp(false);
       if (currentQuestionIndex + 1 < updatedQuestions.length) {
         const nextIndex = currentQuestionIndex + 1;
@@ -467,7 +514,8 @@ export default function InterviewSession() {
           capturedPoseFrames,
           capturedAffectFrames,
           capturedSyncWindows,
-          isCodingMode ? codeAnswer : undefined
+          isCodingMode ? codeAnswer : undefined,
+          analyticsByQuestion
         )
 
 
@@ -535,7 +583,8 @@ export default function InterviewSession() {
         capturedPoseFrames,
         capturedAffectFrames,
         capturedSyncWindows,
-        isCodingMode ? codeAnswer : undefined
+        isCodingMode ? codeAnswer : undefined,
+        currentSpeechAnalytics
       )
 
 
@@ -615,11 +664,11 @@ export default function InterviewSession() {
           setShowHint(false);
           setCurrentQuestionIndex(insertIdx);
         } else {
-          proceedToNext(questions, newAnswers);
+          proceedToNext(questions, newAnswers, currentSpeechAnalytics);
         }
       });
     } else {
-      proceedToNext(questions, newAnswers);
+      proceedToNext(questions, newAnswers, currentSpeechAnalytics);
     }
 
 
@@ -639,6 +688,8 @@ export default function InterviewSession() {
     cancelSpeechNarration,
     codeAnswer,
     isCodingMode,
+    currentQuestion.id,
+    finalizeSpeechAnalytics,
   ]);
 
   // Question countdown timer effect
@@ -697,6 +748,10 @@ export default function InterviewSession() {
       }
     }
 
+    const currentSpeechAnalytics = finalizeSpeechAnalytics(currentQuestion.id);
+    speechSegmentsRef.current = [];
+    answerStartedAtRef.current = null;
+    lastSpeechResultMsRef.current = 0;
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = { answerText: '[Skipped]' };
     setAnswers(newAnswers);
@@ -744,7 +799,8 @@ export default function InterviewSession() {
         capturedPoseFrames,
         capturedAffectFrames,
         capturedSyncWindows,
-        isCodingMode ? codeAnswer : undefined
+        isCodingMode ? codeAnswer : undefined,
+        currentSpeechAnalytics
       )
 
 
@@ -802,6 +858,8 @@ export default function InterviewSession() {
     cancelSpeechNarration,
     codeAnswer,
     isCodingMode,
+    currentQuestion.id,
+    finalizeSpeechAnalytics,
   ]);
 
   const handlePrevQuestion = () => {
@@ -855,6 +913,10 @@ export default function InterviewSession() {
       }
     } else {
       setTranscriptText('');
+      speechSegmentsRef.current = [];
+      processedSpeechResultIndicesRef.current.clear();
+      answerStartedAtRef.current = Date.now();
+      lastSpeechResultMsRef.current = 0;
       setRecording(true);
       if (recognitionRef.current) {
         try {
