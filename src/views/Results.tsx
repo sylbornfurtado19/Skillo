@@ -281,13 +281,15 @@ export default function Results() {
     { label: 'Speech delivery', value: speechDeliveryScore, camera: false },
   ];
   const availableDeliveryComponents = deliveryComponents.filter((component) => component.value !== undefined);
-  const deliveryComposite = results.deliveryComposite
-    ?? calculateDeliveryComposite({
-      eyeContactRatio,
-      postureStability,
-      affectComposure,
-      speechDeliveryScore,
-    });
+  const deliveryComposite: number | undefined =
+    typeof results.deliveryComposite === 'number'
+      ? results.deliveryComposite
+      : calculateDeliveryComposite({
+          eyeContactRatio,
+          postureStability,
+          affectComposure,
+          speechDeliveryScore,
+        });
   const cameraSignalsCaptured = deliveryComponents.some(
     (component) => component.camera && component.value !== undefined
   );
@@ -534,7 +536,7 @@ export default function Results() {
           <div className="text-right">
             <p className="text-xs font-mono uppercase tracking-wider text-text-secondary">Composite</p>
             <p className="text-3xl font-heading font-extrabold text-primary">
-              {deliveryComposite !== undefined ? `${Math.round(deliveryComposite)}/100` : 'N/A'}
+              {typeof deliveryComposite === 'number' ? `${Math.round(deliveryComposite)}/100` : 'N/A'}
             </p>
           </div>
         </div>

@@ -47,6 +47,7 @@ export interface InterviewResults {
   setupData?: SetupData | Record<string, any>;
   personaId?: string;
   breakdown?: AnswerBreakdown[];
+  deliveryComposite?: number;
   [key: string]: unknown;
 }
 
