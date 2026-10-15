@@ -346,20 +346,83 @@ function generateAnalyticalCoTPass(
 }
 
 /**
- * 3. Semantic Equivalence Clustering & Semantic Entropy Math Engine
- * Groups N=5 pass outputs into equivalence clusters based on score variance delta <= 0.5.
- * Calculates Semantic Entropy: SE(x) = - sum_{c in C} P(c) * log2(P(c)).
+ * Zod schema for bidirectional entailment semantic clustering response.
  */
-export function computeSemanticEquivalenceAndEntropy(
-  passes: SinglePassEvaluation[],
-  scoreVarianceThreshold: number = 0.5
-): {
+export const semanticClusterItemSchema = z.union([
+  z.object({
+    passIndices: z.array(z.number().int().nonnegative()),
+    summary: z.string().optional(),
+  }).passthrough(),
+  z.array(z.number().int().nonnegative()),
+]);
+
+export const semanticClusterResponseSchema = z.object({
+  clusters: z.array(semanticClusterItemSchema).min(1),
+});
+
+export interface SemanticEntropyResult {
   clusters: SemanticCluster[];
   semanticEntropy: number;
   confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW';
   requiresValidationPass: boolean;
   finalScore: number;
-} {
+  clusteringMethod: 'semantic-llm' | 'score-variance';
+}
+
+/**
+ * Builds the comparison text for a single evaluation pass from its
+ * criterionEvidence + decisionSummary + feedback (Kuhn et al. 2023).
+ */
+export function buildPassComparisonText(pass: SinglePassEvaluation): string {
+  const sections: string[] = [];
+
+  // 1. Criterion Evidence
+  if (pass.criterionEvidence) {
+    const ce = pass.criterionEvidence;
+    const evidenceLines: string[] = [];
+    if (ce.technicalAccuracy) {
+      evidenceLines.push(`Technical Accuracy: ${ce.technicalAccuracy}`);
+    }
+    if (ce.systemDesignLogic) {
+      evidenceLines.push(`System Architecture & Logic: ${ce.systemDesignLogic}`);
+    }
+    if (ce.edgeCaseHandling) {
+      evidenceLines.push(`Edge-Case Awareness: ${ce.edgeCaseHandling}`);
+    }
+    if (ce.communicationClarity) {
+      evidenceLines.push(`Communication & Tone: ${ce.communicationClarity}`);
+    }
+    if (evidenceLines.length > 0) {
+      sections.push(`[Criterion Evidence]\n${evidenceLines.join('\n')}`);
+    }
+  } else if (pass.cotReasoning) {
+    sections.push(`[Evaluation Reasoning]\n${pass.cotReasoning}`);
+  }
+
+  // 2. Decision Summary
+  if (pass.decisionSummary) {
+    sections.push(`[Decision Summary]\n${pass.decisionSummary}`);
+  }
+
+  // 3. Feedback
+  if (pass.feedback) {
+    sections.push(`[Feedback]\n${pass.feedback}`);
+  }
+
+  if (sections.length === 0) {
+    return `Overall Score: ${pass.overallScore}/5`;
+  }
+
+  return sections.join('\n\n');
+}
+
+/**
+ * Score-variance clustering fallback: groups passes where score difference <= threshold (default 0.5).
+ */
+export function computeScoreVarianceClustering(
+  passes: SinglePassEvaluation[],
+  scoreVarianceThreshold: number = 0.5
+): SemanticEntropyResult {
   const N = passes.length;
   if (N === 0) {
     return {
@@ -368,6 +431,7 @@ export function computeSemanticEquivalenceAndEntropy(
       confidenceLevel: 'HIGH',
       requiresValidationPass: false,
       finalScore: 0,
+      clusteringMethod: 'score-variance',
     };
   }
 
@@ -411,9 +475,9 @@ export function computeSemanticEquivalenceAndEntropy(
     semanticEntropy = 0;
   }
 
-  // 4. Confidence Mapping (Prometheus-2 SUQ certified tiers, N=3 sampling)
-  // HIGH:   SE ≤ 0.3
-  // MEDIUM: 0.3 < SE ≤ 0.8
+  // Confidence Mapping (Prometheus-2 SUQ certified tiers, N=3 sampling)
+  // HIGH:   SE <= 0.3
+  // MEDIUM: 0.3 < SE <= 0.8
   // LOW:    SE > 0.8  (requiresValidationPass = true)
   let confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' = 'HIGH';
   let requiresValidationPass = false;
@@ -439,7 +503,175 @@ export function computeSemanticEquivalenceAndEntropy(
     confidenceLevel,
     requiresValidationPass,
     finalScore,
+    clusteringMethod: 'score-variance',
   };
+}
+
+/**
+ * 3. Semantic Equivalence Clustering & Semantic Entropy Math Engine (Kuhn et al. 2023)
+ * Implements bidirectional-entailment-style clustering via executeAnthropicRequest (T=0, Zod validated).
+ * Falls back to score-variance clustering when API key is unavailable or the LLM call / JSON validation fails.
+ * Returns a Promise that is also decorated with synchronous fallback properties to maintain full backwards compatibility.
+ */
+export function computeSemanticEquivalenceAndEntropy(
+  passes: SinglePassEvaluation[],
+  scoreVarianceThreshold: number = 0.5,
+  options?: { anthropicApiKey?: string; timeoutMs?: number }
+): Promise<SemanticEntropyResult> & SemanticEntropyResult {
+  const fallbackResult = computeScoreVarianceClustering(passes, scoreVarianceThreshold);
+  const apiKey = options?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+
+  if (passes.length < 2 || !apiKey) {
+    const syncPromise = Promise.resolve(fallbackResult);
+    Object.assign(syncPromise, fallbackResult);
+    return syncPromise as Promise<SemanticEntropyResult> & SemanticEntropyResult;
+  }
+
+  const asyncClustering = (async (): Promise<SemanticEntropyResult> => {
+    try {
+      const N = passes.length;
+      const passTexts = passes.map(buildPassComparisonText);
+
+      const systemPrompt = `You are an expert evaluator in AI evaluation calibration and semantic entropy (Kuhn et al., 2023).
+Your task is to cluster evaluation passes based on semantic equivalence (bidirectional entailment).
+
+Two evaluation passes belong to the same cluster if and only if they say semantically the same thing about the candidate's performance, technical capabilities, architectural choices, and overall assessment (i.e. Pass A entails Pass B and Pass B entails Pass A).
+Minor differences in phrasing or wording should be clustered together if the substantive evaluation conclusions are equivalent.
+Passes that arrive at fundamentally different conclusions, identify contradictory flaws, or represent distinct evaluation verdicts must be in separate clusters.
+
+RULES:
+1. You are given N passes indexed 0 to ${N - 1}.
+2. Every pass index from 0 to ${N - 1} must appear in exactly one cluster.
+3. No pass index may be omitted or duplicated.
+4. Return ONLY a valid JSON object matching the schema.
+
+OUTPUT FORMAT (JSON ONLY):
+{
+  "clusters": [
+    { "passIndices": [0, 1] },
+    { "passIndices": [2] }
+  ]
+}`;
+
+      const userContent = `Here are the ${N} evaluation passes for the candidate:\n\n${passTexts
+        .map((text, i) => `<pass index="${i}">\n${text}\n</pass>`)
+        .join('\n\n')}\n\nGroup these ${N} passes (indices 0 to ${N - 1}) into semantic equivalence clusters by bidirectional entailment. Return JSON only.`;
+
+      const res = await executeAnthropicRequest({
+        apiKey,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userContent }],
+        maxTokens: 1000,
+        temperature: 0,
+        timeoutMs: options?.timeoutMs ?? AI_CONFIG.timeouts.singlePassMs,
+      });
+
+      if (!res.success || !res.text) {
+        console.warn('[Semantic Clustering] LLM request failed or returned empty, using fallback:', res.error);
+        return fallbackResult;
+      }
+
+      const parsed = safeParseModelJson(res.text, semanticClusterResponseSchema, {
+        logContext: 'Semantic Equivalence Clustering',
+      });
+
+      if (!parsed.success || !parsed.data) {
+        console.warn('[Semantic Clustering] JSON validation failed, using fallback:', parsed.error);
+        return fallbackResult;
+      }
+
+      // Extract raw clusters
+      const rawClusters = parsed.data.clusters.map((c) => (Array.isArray(c) ? c : c.passIndices));
+
+      // Validate partition:
+      // 1. Each index must be >= 0 and < N
+      // 2. All indices 0..N-1 must appear exactly once across all clusters
+      const seenIndices = new Set<number>();
+      let isValidPartition = true;
+
+      for (const clusterIndices of rawClusters) {
+        if (!Array.isArray(clusterIndices) || clusterIndices.length === 0) {
+          isValidPartition = false;
+          break;
+        }
+        for (const idx of clusterIndices) {
+          if (!Number.isInteger(idx) || idx < 0 || idx >= N || seenIndices.has(idx)) {
+            isValidPartition = false;
+            break;
+          }
+          seenIndices.add(idx);
+        }
+        if (!isValidPartition) break;
+      }
+
+      if (!isValidPartition || seenIndices.size !== N) {
+        console.warn(
+          `[Semantic Clustering] Model returned invalid partition (seen ${seenIndices.size}/${N} indices), using fallback.`
+        );
+        return fallbackResult;
+      }
+
+      // Build SemanticCluster[]
+      const clusters: SemanticCluster[] = rawClusters.map((passIndices, clusterIdx) => {
+        const sum = passIndices.reduce((acc, idx) => acc + passes[idx].overallScore, 0);
+        const representativeScore = Math.round((sum / passIndices.length) * 100) / 100;
+        const probability = Math.round((passIndices.length / N) * 1000) / 1000;
+        return {
+          clusterId: clusterIdx + 1,
+          representativeScore,
+          passIndices,
+          probability,
+        };
+      });
+
+      // Calculate Semantic Entropy (SE) = - sum P(c) * log2(P(c))
+      let semanticEntropy = 0;
+      clusters.forEach((cluster) => {
+        const p = cluster.probability;
+        if (p > 0) {
+          semanticEntropy -= p * Math.log2(p);
+        }
+      });
+      semanticEntropy = Math.round(semanticEntropy * 1000) / 1000;
+      if (isNaN(semanticEntropy) || Math.abs(semanticEntropy) === 0 || clusters.length <= 1) {
+        semanticEntropy = 0;
+      }
+
+      // Confidence Mapping (Prometheus-2 SUQ certified tiers, N=3 sampling)
+      let confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' = 'HIGH';
+      let requiresValidationPass = false;
+
+      if (semanticEntropy <= 0.3) {
+        confidenceLevel = 'HIGH';
+      } else if (semanticEntropy <= 0.8) {
+        confidenceLevel = 'MEDIUM';
+      } else {
+        confidenceLevel = 'LOW';
+        requiresValidationPass = true;
+      }
+
+      // Calculate final weighted score
+      const finalScore =
+        Math.round(
+          clusters.reduce((acc, c) => acc + c.representativeScore * c.probability, 0) * 100
+        ) / 100;
+
+      return {
+        clusters,
+        semanticEntropy,
+        confidenceLevel,
+        requiresValidationPass,
+        finalScore,
+        clusteringMethod: 'semantic-llm',
+      };
+    } catch (err) {
+      console.warn('[Semantic Clustering] Unexpected error, using fallback:', err);
+      return fallbackResult;
+    }
+  })();
+
+  Object.assign(asyncClustering, fallbackResult);
+  return asyncClustering as Promise<SemanticEntropyResult> & SemanticEntropyResult;
 }
 
 /**
@@ -482,8 +714,8 @@ export async function performInterviewEvaluation(
   const N = passes.length;
 
   // Compute Semantic Equivalence Clustering & Semantic Entropy (SE)
-  const { clusters, semanticEntropy, confidenceLevel, requiresValidationPass, finalScore } =
-    computeSemanticEquivalenceAndEntropy(passes, 0.5);
+  const { clusters, semanticEntropy, confidenceLevel, requiresValidationPass, finalScore, clusteringMethod } =
+    await computeSemanticEquivalenceAndEntropy(passes, 0.5, { anthropicApiKey });
 
   const latencyMs = Date.now() - startTime;
 
@@ -536,6 +768,7 @@ export async function performInterviewEvaluation(
     providerStatus,
     modelId: AI_CONFIG.model,
     source: isFallback ? 'fallback' : 'live',
+    clusteringMethod,
   };
 
   // Convert 1-5 scale scores to 0-100 scale for full backward compatibility

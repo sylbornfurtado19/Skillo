@@ -347,6 +347,7 @@ export interface SUQEvaluationResult {
   providerStatus: 'available' | 'timeout' | 'rate_limited' | 'unconfigured' | 'error';
   modelId: string;
   source?: 'live' | 'fallback';
+  clusteringMethod: 'semantic-llm' | 'score-variance';
 }
 
 // ── LATS Types (Language Agent Tree Search - Zhou et al., ICML 2024) ──────────

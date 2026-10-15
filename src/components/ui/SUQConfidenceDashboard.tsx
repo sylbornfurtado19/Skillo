@@ -112,8 +112,19 @@ export default function SUQConfidenceDashboard({
           </div>
         </div>
 
-        {/* Confidence Badge */}
+        {/* Confidence Badge & Clustering Method */}
         <div className="flex flex-wrap items-center gap-2">
+          {suq.clusteringMethod && (
+            <Badge
+              variant={suq.clusteringMethod === 'semantic-llm' ? 'primary' : 'warning'}
+              size="md"
+              className="flex items-center gap-1.5 px-3 py-1 text-xs font-mono"
+              data-testid="clustering-method-badge"
+            >
+              <span>Method: {suq.clusteringMethod}</span>
+            </Badge>
+          )}
+
           {suq.source === 'fallback' && (
             <Badge variant="warning" size="md" className="flex items-center gap-1.5 px-3 py-1 text-xs">
               <FaExclamationTriangle className="text-warning text-xs" aria-hidden="true" />
@@ -252,18 +263,34 @@ export default function SUQConfidenceDashboard({
             </h4>
           </div>
 
-          <div className="flex items-center gap-3 text-xs font-mono">
-            <span className="text-text-secondary text-xs">Semantic Entropy (SE):</span>
-            <span className="text-text-primary font-bold px-2 py-0.5 rounded bg-bg-surface-alt border border-border">
-              {seFormatted}
-            </span>
+          <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
+            {suq.clusteringMethod && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-text-secondary text-xs">Clustering:</span>
+                <span
+                  className="text-text-primary font-bold px-2 py-0.5 rounded bg-bg-surface-alt border border-border"
+                  data-testid="clustering-method-tag"
+                >
+                  {suq.clusteringMethod}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <span className="text-text-secondary text-xs">Semantic Entropy (SE):</span>
+              <span className="text-text-primary font-bold px-2 py-0.5 rounded bg-bg-surface-alt border border-border">
+                {seFormatted}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Cluster Distribution Grid */}
         <div className="space-y-3">
           <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block font-mono">
-            Equivalence Clusters (C = {'{c_1, ..., c_k}'}) &bull; Score Variance &delta; &le; 0.5
+            Equivalence Clusters (C = {'{c_1, ..., c_k}'}) &bull;{' '}
+            {suq.clusteringMethod === 'semantic-llm'
+              ? 'Semantic LLM (Bidirectional Entailment)'
+              : 'Score Variance \u03B4 \u2264 0.5'}
           </span>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
