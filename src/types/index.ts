@@ -286,6 +286,7 @@ export interface AnswerBreakdown {
   headPoseMetrics?: HeadPoseSessionMetrics;
   affectiveMetrics?: AffectiveSessionMetrics;
   lipSyncMetrics?: LipSyncSessionMetrics;
+  groundingScore?: number;
 }
 
 export interface EvaluationCategories {
@@ -305,11 +306,21 @@ export interface RubricCriterion {
   scoreDescriptors: Record<1 | 2 | 3 | 4 | 5, string>;
 }
 
+export interface GroundedEvidence {
+  claim: string;
+  quote: string;
+  verified?: boolean;
+  similarity?: number;
+  flagged?: boolean;
+}
+
+export type CriterionEvidenceValue = GroundedEvidence | string;
+
 export interface CriterionEvidence {
-  technicalAccuracy: string;
-  systemDesignLogic: string;
-  edgeCaseHandling: string;
-  communicationClarity: string;
+  technicalAccuracy: CriterionEvidenceValue;
+  systemDesignLogic: CriterionEvidenceValue;
+  edgeCaseHandling: CriterionEvidenceValue;
+  communicationClarity: CriterionEvidenceValue;
 }
 
 export interface SinglePassEvaluation {
@@ -326,6 +337,8 @@ export interface SinglePassEvaluation {
   };
   overallScore: number;
   feedback: string;
+  groundingScore?: number;
+  isUngrounded?: boolean;
 }
 
 export interface SemanticCluster {
@@ -350,6 +363,8 @@ export interface SUQEvaluationResult {
   modelId: string;
   source?: 'live' | 'fallback';
   clusteringMethod: 'semantic-llm' | 'score-variance';
+  groundingScore?: number;
+  excludedPassesCount?: number;
 }
 
 // ── LATS Types (Language Agent Tree Search - Zhou et al., ICML 2024) ──────────

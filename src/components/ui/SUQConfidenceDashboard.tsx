@@ -14,6 +14,7 @@ import {
   FaBrain,
   FaChartPie,
   FaRedo,
+  FaShieldAlt,
 } from 'react-icons/fa';
 
 export interface SUQConfidenceDashboardProps {
@@ -112,7 +113,7 @@ export default function SUQConfidenceDashboard({
           </div>
         </div>
 
-        {/* Confidence Badge & Clustering Method */}
+        {/* Confidence Badge, Grounding Score & Clustering Method */}
         <div className="flex flex-wrap items-center gap-2">
           {suq.clusteringMethod && (
             <Badge
@@ -122,6 +123,30 @@ export default function SUQConfidenceDashboard({
               data-testid="clustering-method-badge"
             >
               <span>Method: {suq.clusteringMethod}</span>
+            </Badge>
+          )}
+
+          {suq.groundingScore !== undefined && (
+            <Badge
+              variant={suq.groundingScore >= 0.85 ? 'success' : suq.groundingScore >= 0.5 ? 'warning' : 'danger'}
+              size="md"
+              className="flex items-center gap-1.5 px-3 py-1 text-xs font-mono"
+              data-testid="grounding-score-badge"
+            >
+              <FaShieldAlt className="text-xs" aria-hidden="true" />
+              <span>Grounding: {Math.round(suq.groundingScore * 100)}%</span>
+            </Badge>
+          )}
+
+          {suq.excludedPassesCount !== undefined && suq.excludedPassesCount > 0 && (
+            <Badge
+              variant="danger"
+              size="md"
+              className="flex items-center gap-1.5 px-3 py-1 text-xs font-mono animate-pulse"
+              data-testid="excluded-passes-badge"
+            >
+              <FaExclamationTriangle className="text-danger text-xs" aria-hidden="true" />
+              <span>Excluded Passes: {suq.excludedPassesCount}</span>
             </Badge>
           )}
 
@@ -154,6 +179,25 @@ export default function SUQConfidenceDashboard({
           )}
         </div>
       </div>
+
+      {/* Ungrounded Passes Alert Banner */}
+      {suq.excludedPassesCount !== undefined && suq.excludedPassesCount > 0 && (
+        <div
+          className="p-4 rounded-xl border border-warning/40 bg-warning/10 flex items-center gap-3 text-xs"
+          role="alert"
+          data-testid="ungrounded-passes-alert"
+        >
+          <div className="h-9 w-9 rounded-lg bg-warning/20 flex items-center justify-center text-warning text-base shrink-0" aria-hidden="true">
+            <FaExclamationTriangle />
+          </div>
+          <div className="space-y-0.5 text-left">
+            <h5 className="font-bold text-text-primary">Hallucination Guard: {suq.excludedPassesCount} Pass(es) Excluded</h5>
+            <p className="text-text-secondary leading-relaxed">
+              {suq.excludedPassesCount} evaluation pass(es) contained unverified or fabricated quotes (groundingScore &lt; 0.50) and were excluded from entropy and confidence calculations.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Low-Confidence Alert Banner */}
       {(suq.requiresValidationPass || suq.confidenceLevel === 'LOW') && (
@@ -294,7 +338,7 @@ export default function SUQConfidenceDashboard({
           </span>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {suq.clusters.map((cluster) => {
+            {(suq.clusters ?? []).map((cluster) => {
               const probPct = Math.round(cluster.probability * 100);
               return (
                 <div
@@ -345,9 +389,27 @@ export default function SUQConfidenceDashboard({
           {showPassDrawer && (
             <div className="mt-3 space-y-3">
               {suq.passes.map((pass: SinglePassEvaluation, idx: number) => (
-                <div key={idx} className="p-3 rounded-xl bg-bg-surface-alt border border-border space-y-1.5 text-xs">
+                <div
+                  key={idx}
+                  className={`p-3 rounded-xl border space-y-2 text-xs ${
+                    pass.isUngrounded ? 'bg-danger/10 border-danger/40' : 'bg-bg-surface-alt border-border'
+                  }`}
+                  data-testid={`pass-diagnostic-${idx + 1}`}
+                >
                   <div className="flex justify-between items-center">
-                    <span className="font-bold text-text-primary">Pass {idx + 1}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-text-primary">Pass {idx + 1}</span>
+                      {pass.isUngrounded && (
+                        <Badge variant="danger" size="sm" data-testid={`pass-${idx + 1}-ungrounded-badge`}>
+                          Ungrounded (Excluded)
+                        </Badge>
+                      )}
+                      {pass.groundingScore !== undefined && (
+                        <span className="font-mono text-xs text-text-secondary">
+                          Grounding: {Math.round(pass.groundingScore * 100)}%
+                        </span>
+                      )}
+                    </div>
                     <span className="text-primary font-mono text-xs">
                       Overall: {pass.overallScore.toFixed(2)} / 5.0
                     </span>
@@ -355,6 +417,27 @@ export default function SUQConfidenceDashboard({
                   <p className="text-xs text-text-secondary font-mono bg-bg-surface p-2.5 rounded-lg border border-border">
                     {pass.cotReasoning}
                   </p>
+                  {pass.criterionEvidence && (
+                    <div className="text-[11px] font-mono space-y-1 text-text-secondary pt-1">
+                      {Object.entries(pass.criterionEvidence).map(([crit, ev]) => {
+                        if (typeof ev === 'object' && ev !== null && 'quote' in ev) {
+                          return (
+                            <div key={crit} className="flex items-center gap-1.5 flex-wrap">
+                              <span className={ev.verified ? 'text-success font-bold' : 'text-danger font-bold'}>
+                                {ev.verified ? '✓' : '✗'}
+                              </span>
+                              <span className="capitalize text-text-primary">{crit}:</span>
+                              <span className="italic truncate max-w-xs">&ldquo;{ev.quote}&rdquo;</span>
+                              {ev.flagged && (
+                                <span className="text-danger font-semibold">[Fabricated / Unverified]</span>
+                              )}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

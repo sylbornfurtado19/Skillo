@@ -59,6 +59,40 @@ function isLipSyncMetrics(obj: any): obj is LipSyncSessionMetrics {
   return Boolean(obj && typeof obj === 'object' && 'totalWindowsAnalyzed' in obj);
 }
 
+function renderHighlightedAnswer(answerText: string, quotes: string[]) {
+  if (!quotes || quotes.length === 0 || !answerText) {
+    return answerText;
+  }
+
+  const validQuotes = quotes
+    .map((q) => q.trim())
+    .filter((q) => q.length >= 4)
+    .sort((a, b) => b.length - a.length);
+
+  if (validQuotes.length === 0) return answerText;
+
+  const escapedQuotes = validQuotes.map((q) => q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(${escapedQuotes.join('|')})`, 'gi');
+
+  const parts = answerText.split(regex);
+  return parts.map((part, pIdx) => {
+    const isQuote = validQuotes.some((q) => q.toLowerCase() === part.toLowerCase());
+    if (isQuote) {
+      return (
+        <mark
+          key={pIdx}
+          className="bg-primary/20 text-primary font-semibold px-1 py-0.5 rounded border border-primary/30"
+          title="Verified Grounded Candidate Evidence"
+          data-testid="highlighted-candidate-quote"
+        >
+          {part}
+        </mark>
+      );
+    }
+    return part;
+  });
+}
+
 
 
 
@@ -918,6 +952,23 @@ export default function Results() {
                         </span>
                       )}
 
+                      {(item.groundingScore !== undefined || suq?.groundingScore !== undefined) && (
+                        <Badge
+                          variant={
+                            (item.groundingScore ?? suq?.groundingScore ?? 1.0) >= 0.85
+                              ? 'success'
+                              : (item.groundingScore ?? suq?.groundingScore ?? 1.0) >= 0.5
+                              ? 'warning'
+                              : 'danger'
+                          }
+                          size="sm"
+                          className="font-mono text-xs flex items-center gap-1"
+                          data-testid="item-grounding-badge"
+                        >
+                          <span>Grounding: {Math.round((item.groundingScore ?? suq?.groundingScore ?? 1.0) * 100)}%</span>
+                        </Badge>
+                      )}
+
                       <Badge variant="success" className="text-xs flex items-center gap-1">
                         <FaCheckCircle className="text-xs shrink-0" aria-hidden="true" />
                         <span>Score: {item.score}</span>
@@ -927,42 +978,70 @@ export default function Results() {
 
                   </button>
 
-                  {isExpanded && (
-                    <div className="p-6 border-t border-border bg-bg-surface-alt space-y-6 text-left text-xs sm:text-sm">
-                      <div className="space-y-2">
-                        <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block">Candidate Response</span>
-                        <p className="bg-bg-surface p-4 rounded-xl border border-border font-mono text-xs text-text-primary leading-relaxed break-words whitespace-pre-wrap">
-                          {answerText}
-                        </p>
-                      </div>
+                  {isExpanded && (() => {
+                    const quotesToHighlight: string[] = [];
+                    if (suq?.passes) {
+                      for (const p of suq.passes) {
+                        if (p.criterionEvidence) {
+                          for (const ev of Object.values(p.criterionEvidence)) {
+                            if (typeof ev === 'object' && ev !== null && 'quote' in ev && ev.quote) {
+                              if (ev.quote.trim().length >= 4) {
+                                quotesToHighlight.push(ev.quote.trim());
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
 
-                      {deltaCard ? (
-                        <div className="bg-primary-soft rounded-xl p-4 border border-primary/20 space-y-2">
+                    return (
+                      <div className="p-6 border-t border-border bg-bg-surface-alt space-y-6 text-left text-xs sm:text-sm">
+                        <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs text-primary font-bold uppercase tracking-wider font-mono">
-                              SimPO Benchmark Delta Target
-                            </span>
-                            <span className="text-primary font-mono text-xs font-bold">
-                              Reward: +{deltaCard.rewardScore.toFixed(2)} pts
-                            </span>
+                            <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block">Candidate Response</span>
+                            {quotesToHighlight.length > 0 && (
+                              <span className="text-[11px] font-mono text-primary font-semibold">
+                                Cited evidence highlighted below
+                              </span>
+                            )}
                           </div>
-                          <p className="text-text-secondary leading-relaxed italic text-xs">
-                            &ldquo;{deltaCard.faangComparison}&rdquo;
+                          <p className="bg-bg-surface p-4 rounded-xl border border-border font-mono text-xs text-text-primary leading-relaxed break-words whitespace-pre-wrap">
+                            {renderHighlightedAnswer(answerText, quotesToHighlight)}
                           </p>
                         </div>
-                      ) : null}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-bg-surface rounded-xl p-4 border border-border space-y-2">
-                          <span className="text-xs text-primary font-bold uppercase tracking-wider block">AI Evaluator Feedback</span>
-                          <p className="text-text-secondary leading-relaxed">{item.feedback}</p>
-                        </div>
+                        {deltaCard ? (
+                          <div className="bg-primary-soft rounded-xl p-4 border border-primary/20 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-primary font-bold uppercase tracking-wider font-mono">
+                                SimPO Benchmark Delta Target
+                              </span>
+                              <span className="text-primary font-mono text-xs font-bold">
+                                Reward: +{deltaCard.rewardScore.toFixed(2)} pts
+                              </span>
+                            </div>
+                            <p className="text-text-secondary leading-relaxed italic text-xs">
+                              &ldquo;{deltaCard.faangComparison}&rdquo;
+                            </p>
+                          </div>
+                        ) : null}
 
-                        <div className="bg-bg-surface rounded-xl p-4 border border-border space-y-2">
-                          <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block font-mono">Ideal Scope Targets</span>
-                          <p className="text-text-secondary leading-relaxed">{item.idealConcepts ?? item.idealConcept ?? 'Core concepts related to the question.'}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-bg-surface rounded-xl p-4 border border-border space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-primary font-bold uppercase tracking-wider block">AI Evaluator Feedback</span>
+                              <span className="font-mono text-[11px] text-text-secondary" data-testid="feedback-card-grounding">
+                                Grounding: {Math.round((item.groundingScore ?? suq?.groundingScore ?? 1.0) * 100)}%
+                              </span>
+                            </div>
+                            <p className="text-text-secondary leading-relaxed">{item.feedback}</p>
+                          </div>
+
+                          <div className="bg-bg-surface rounded-xl p-4 border border-border space-y-2">
+                            <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block font-mono">Ideal Scope Targets</span>
+                            <p className="text-text-secondary leading-relaxed">{item.idealConcepts ?? item.idealConcept ?? 'Core concepts related to the question.'}</p>
+                          </div>
                         </div>
-                      </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-bg-surface rounded-xl p-4 border border-border space-y-2">
@@ -983,7 +1062,8 @@ export default function Results() {
                         </div>
                       </div>
                     </div>
-                  )}
+                  );
+                })()}
                 </div>
               );
             })
