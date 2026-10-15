@@ -9,7 +9,7 @@ import { FaBars, FaTimes, FaUser, FaSignOutAlt, FaRocket, FaPalette } from 'reac
 import { LogoFull } from './Logo';
 import { useAuth } from '../../hooks/useAuth';
 import { useInterview } from '../../context/InterviewContext';
-import { THEME_PRESETS, ThemeId } from '../../types/themes';
+import { THEME_PRESETS, ThemeId, getThemePreset } from '../../types/themes';
 
 export default function Navbar() {
   const router = useRouter();
@@ -112,20 +112,21 @@ export default function Navbar() {
           {/* Theme Quick Cycle Button */}
           <button
             onClick={() => {
-              const currentTheme: ThemeId = (theme in THEME_PRESETS ? theme : 'onyx') as ThemeId;
+              const currentPreset = getThemePreset(theme);
               const themeKeys: ThemeId[] = ['onyx', 'cyberpunk', 'slate'];
-              const nextIndex = (themeKeys.indexOf(currentTheme) + 1) % themeKeys.length;
+              const nextIndex = (themeKeys.indexOf(currentPreset.id) + 1) % themeKeys.length;
               setTheme(themeKeys[nextIndex]);
             }}
+            aria-label={`Current Theme: ${getThemePreset(theme).name}. Click to switch theme.`}
             className="h-9 px-3.5 rounded-xl bg-[var(--bg-surface-alt)] hover:bg-[var(--primary-soft)] border border-[var(--border)] hover:border-[var(--primary)] text-xs font-semibold text-[var(--text-primary)] transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:scale-105 active:scale-95"
-            title={`Current Theme: ${THEME_PRESETS[(theme in THEME_PRESETS ? theme : 'onyx') as ThemeId]?.name || 'NMIMS Portal'}. Click to toggle.`}
+            title={`Current Theme: ${getThemePreset(theme).name}. Click to toggle.`}
           >
             <span
               className="w-2.5 h-2.5 rounded-full shadow-sm bg-[var(--primary)]"
             />
-            <FaPalette className="text-[var(--primary)] text-xs" />
-            <span className="capitalize text-[11px] font-mono font-bold text-[var(--text-secondary)]">
-              {THEME_PRESETS[(theme in THEME_PRESETS ? theme : 'onyx') as ThemeId]?.name || 'Theme'}
+            <FaPalette aria-hidden="true" className="text-[var(--primary)] text-xs" />
+            <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
+              {getThemePreset(theme).name}
             </span>
           </button>
 
@@ -133,7 +134,7 @@ export default function Navbar() {
             onClick={() => router.push('/dashboard')}
             className="h-9 px-4 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] text-xs font-semibold text-[var(--text-on-primary)] shadow-[var(--shadow)] hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer flex items-center gap-2 relative overflow-hidden group"
           >
-            <FaRocket className="text-xs" />
+            <FaRocket aria-hidden="true" className="text-xs" />
             <span>Start Preparing</span>
           </button>
 
@@ -142,6 +143,7 @@ export default function Navbar() {
               {/* User Google Profile Avatar Badge */}
               <Link
                 href="/profile"
+                aria-label={`View profile for ${userName}`}
                 className="relative group h-9 w-9 rounded-xl flex items-center justify-center p-[1px] bg-[var(--primary)] hover:shadow-[var(--shadow)] transition-all duration-300 active:scale-95"
                 title={`${userName} (Profile)`}
               >
@@ -169,7 +171,7 @@ export default function Navbar() {
                 onClick={handleLogout}
                 className="px-3 h-9 rounded-xl text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--danger)] hover:bg-[var(--bg-surface-alt)] hover:scale-102 active:scale-98 transition duration-200 cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <FaSignOutAlt size={12} />
+                <FaSignOutAlt aria-hidden="true" size={12} />
                 <span>Log Out</span>
               </button>
             </>
@@ -187,9 +189,10 @@ export default function Navbar() {
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="md:hidden h-10 w-10 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)] transition duration-200 cursor-pointer ml-auto"
-          aria-label="Toggle Navigation Menu"
+          aria-label={mobileMenuOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
+          aria-expanded={mobileMenuOpen}
         >
-          {mobileMenuOpen ? <FaTimes size={18} /> : <FaBars size={18} />}
+          {mobileMenuOpen ? <FaTimes aria-hidden="true" size={18} /> : <FaBars aria-hidden="true" size={18} />}
         </button>
       </nav>
 
@@ -226,8 +229,27 @@ export default function Navbar() {
                 }}
                 className="w-full h-11 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] text-xs font-bold text-[var(--text-on-primary)] shadow-[var(--shadow)] flex items-center justify-center gap-2 active:scale-98 transition duration-200"
               >
-                <FaRocket size={14} />
+                <FaRocket aria-hidden="true" size={14} />
                 <span>Start Preparing Now</span>
+              </button>
+
+              {/* Mobile Theme Switcher Button */}
+              <button
+                onClick={() => {
+                  const currentPreset = getThemePreset(theme);
+                  const themeKeys: ThemeId[] = ['onyx', 'cyberpunk', 'slate'];
+                  const nextIndex = (themeKeys.indexOf(currentPreset.id) + 1) % themeKeys.length;
+                  setTheme(themeKeys[nextIndex]);
+                }}
+                aria-label={`Current Theme: ${getThemePreset(theme).name}. Tap to switch theme.`}
+                className="w-full h-10 px-3.5 rounded-xl bg-[var(--bg-surface-alt)] hover:bg-[var(--primary-soft)] border border-[var(--border)] text-xs font-semibold text-[var(--text-primary)] flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full shadow-sm bg-[var(--primary)]" />
+                  <FaPalette aria-hidden="true" className="text-[var(--primary)] text-xs" />
+                  <span>Theme: {getThemePreset(theme).name}</span>
+                </div>
+                <span className="text-xs text-[var(--text-secondary)] font-mono">Tap to switch</span>
               </button>
 
               {isAuthenticated ? (
@@ -235,9 +257,10 @@ export default function Navbar() {
                   <Link
                     href="/profile"
                     onClick={() => setMobileMenuOpen(false)}
+                    aria-label={`View profile for ${userName}`}
                     className="flex-1 h-10 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] px-3 flex items-center gap-2 text-xs text-[var(--text-primary)] font-medium"
                   >
-                    <FaUser className="text-[var(--primary)]" />
+                    <FaUser aria-hidden="true" className="text-[var(--primary)]" />
                     <span className="truncate">{userName}</span>
                   </Link>
 
@@ -245,7 +268,7 @@ export default function Navbar() {
                     onClick={handleLogout}
                     className="h-10 px-3.5 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/20 text-xs font-semibold text-[var(--danger)] flex items-center gap-1.5"
                   >
-                    <FaSignOutAlt size={12} />
+                    <FaSignOutAlt aria-hidden="true" size={12} />
                     <span>Logout</span>
                   </button>
                 </div>

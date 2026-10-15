@@ -48,13 +48,13 @@ export default function LipSyncHUD({ currentWindow }: LipSyncHUDProps) {
   const offsetStr = `${currentWindow.optimalOffsetMs >= 0 ? '+' : ''}${currentWindow.optimalOffsetMs}ms`;
 
   return (
-    <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-surface border border-border shadow-soft font-mono text-[10px]">
-      <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold ${cfg.bg} ${cfg.text}`}>
-        <span>{cfg.icon}</span>
+    <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-surface border border-border shadow-soft font-mono text-xs">
+      <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-bold ${cfg.bg} ${cfg.text}`}>
+        <span aria-hidden="true">{cfg.icon}</span>
         <span>{cfg.label}</span>
       </div>
 
-      <div className="flex items-center gap-3 text-text-secondary text-[9px]">
+      <div className="flex items-center gap-3 text-text-secondary text-xs">
         <span>Offset: <strong className="text-text-primary">{offsetStr}</strong></span>
         <span>D(v,a): <strong className="text-text-primary">{currentWindow.crossModalDistance.toFixed(2)}</strong></span>
       </div>

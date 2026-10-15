@@ -28,9 +28,9 @@ function scoreToOffset(score: number): number {
 
 // ── Score color ───────────────────────────────────────────────────────────────
 function scoreColor(score: number): { stroke: string; text: string } {
-  if (score >= 85) return { stroke: '#3F7D58', text: 'text-success' };
-  if (score >= 65) return { stroke: '#C98A1B', text: 'text-warning' };
-  return { stroke: '#B3261E', text: 'text-danger' };
+  if (score >= 85) return { stroke: 'var(--success)', text: 'text-success' };
+  if (score >= 65) return { stroke: 'var(--warning)', text: 'text-warning' };
+  return { stroke: 'var(--danger)', text: 'text-danger' };
 }
 
 // ── Layout type styles ────────────────────────────────────────────────────────
@@ -47,13 +47,13 @@ const LAYOUT_TYPE_STYLES: Record<
   TWO_COLUMN: {
     label: 'Two Column',
     color: 'text-secondary',
-    bg: 'bg-surface-alt border-border',
+    bg: 'bg-bg-surface-alt border-border',
     icon: '▐▐',
   },
   HYBRID_GRID: {
     label: 'Hybrid Grid',
     color: 'text-text-primary',
-    bg: 'bg-surface-alt border-border',
+    bg: 'bg-bg-surface-alt border-border',
     icon: '▐▐▐',
   },
 };
@@ -102,7 +102,7 @@ export default function LayoutPenaltyViewer({
   return (
     <div className="space-y-4">
       {/* ── Layout Score Ring ─────────────────────────────────────────────── */}
-      <div className="bg-surface border border-border rounded-2xl p-5 space-y-4 shadow-soft">
+      <div className="bg-bg-surface border border-border rounded-2xl p-5 space-y-4 shadow-soft">
         <div>
           <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
             Resume Spacing & Margin Validator
@@ -127,7 +127,7 @@ export default function LayoutPenaltyViewer({
               <circle
                 cx="48" cy="48" r={RING_R}
                 fill="none"
-                stroke="#E2DDD5"
+                stroke="var(--border)"
                 strokeWidth="7"
               />
               {/* Score arc */}
@@ -148,7 +148,7 @@ export default function LayoutPenaltyViewer({
               <span className={`text-xl font-extrabold font-heading ${sc.text}`}>
                 {Math.round(layoutIntegrityScore)}
               </span>
-              <span className="text-[8px] text-gray-600 font-mono">/ 100</span>
+              <span className="text-[8px] text-text-secondary font-mono">/ 100</span>
             </div>
           </div>
 
@@ -171,7 +171,7 @@ export default function LayoutPenaltyViewer({
               ].map(stat => (
                 <div
                   key={stat.label}
-                  className="bg-surface-alt border border-border rounded-lg px-2 py-1.5 text-center"
+                  className="bg-bg-surface-alt border border-border rounded-lg px-2 py-1.5 text-center"
                 >
                   <div className="text-sm font-bold text-text-primary font-heading">{stat.value}</div>
                   <div className="text-[9px] text-text-secondary font-mono">{stat.label}</div>
@@ -245,8 +245,8 @@ export default function LayoutPenaltyViewer({
                 onClick={() => onPenaltyClick(idx)}
                 className={`w-full text-left rounded-xl border p-3.5 space-y-2 transition-all duration-200 cursor-pointer group ${
                   isActive
-                    ? `${sevStyle.border} bg-surface-alt ring-1 ring-primary`
-                    : `border-border bg-surface ${sevStyle.glow} shadow-soft`
+                    ? `${sevStyle.border} bg-bg-surface-alt ring-1 ring-primary`
+                    : `border-border bg-bg-surface ${sevStyle.glow} shadow-soft`
                 }`}
               >
                 {/* Top row */}
@@ -282,14 +282,14 @@ export default function LayoutPenaltyViewer({
                 </div>
 
                 {/* Bbox coordinates */}
-                <div className="text-[8px] text-gray-700 font-mono">
+                <div className="text-[8px] text-text-secondary/70 font-mono">
                   bbox [{penalty.affectedBoundingBox.x0}, {penalty.affectedBoundingBox.y0}] →
                   [{penalty.affectedBoundingBox.x1}, {penalty.affectedBoundingBox.y1}]
                 </div>
 
                 {/* Focus hint */}
                 {isActive && (
-                  <div className="text-[9px] text-amber-400 font-mono animate-pulse">
+                  <div className="text-[9px] text-warning font-mono animate-pulse">
                     ↑ highlighted on canvas
                   </div>
                 )}

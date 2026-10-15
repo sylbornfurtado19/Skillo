@@ -58,7 +58,7 @@ export default function SimPOContrastiveCard({
               <h3 className="text-sm font-heading font-bold text-text-primary flex items-center gap-2">
                 SimPO Benchmark Analysis (Candidate vs. FAANG Target)
               </h3>
-              <p className="text-[11px] text-text-secondary font-mono">
+              <p className="text-xs text-text-secondary font-mono">
                 Simple Preference Optimization &bull; Meng et al., ICML 2024
               </p>
             </div>
@@ -66,7 +66,7 @@ export default function SimPOContrastiveCard({
 
           {/* Preference Reward Margin Badge */}
           <div className="flex items-center gap-2 bg-surface-alt px-3.5 py-2 rounded-xl border border-border text-xs font-mono w-full sm:w-auto justify-between sm:justify-end shadow-soft">
-            <FaBolt className="text-primary shrink-0 animate-pulse" />
+            <FaBolt className="text-primary shrink-0 animate-pulse" aria-hidden="true" />
             <span className="text-text-secondary font-semibold">Preference Reward Margin:</span>
             <span className="text-success font-extrabold">
               &Delta;r = {rewardMargin >= 0 ? '+' : ''}{rewardMargin.toFixed(2)}
@@ -83,17 +83,17 @@ export default function SimPOContrastiveCard({
           <div className="p-4 rounded-xl bg-surface-alt border border-border space-y-3 flex flex-col justify-between">
             <div className="space-y-2">
               <div className="flex justify-between items-center border-b border-border pb-2">
-                <span className="text-[10px] text-warning font-bold uppercase tracking-wider flex items-center gap-1">
-                  <FaExclamationTriangle size={9} /> Candidate Baseline (y_dispreferred)
+                <span className="text-xs text-warning font-bold uppercase tracking-wider flex items-center gap-1">
+                  <FaExclamationTriangle size={12} aria-hidden="true" /> Candidate Baseline (y_dispreferred)
                 </span>
-                <span className="text-[9px] text-text-secondary">{dispreferredAnswer.tokenLength} tokens</span>
+                <span className="text-xs text-text-secondary">{dispreferredAnswer.tokenLength} tokens</span>
               </div>
-              <p className="text-text-secondary leading-relaxed text-[11px] font-normal">
+              <p className="text-text-secondary leading-relaxed text-xs font-normal">
                 &ldquo;{dispreferredAnswer.text}&rdquo;
               </p>
             </div>
 
-            <div className="pt-2 border-t border-border flex justify-between items-center text-[10px] text-text-secondary">
+            <div className="pt-2 border-t border-border flex justify-between items-center text-xs text-text-secondary">
               <span>Implicit Reward (r_SimPO):</span>
               <span className="text-warning font-bold">{dispreferredAnswer.implicitReward}</span>
             </div>
@@ -103,17 +103,17 @@ export default function SimPOContrastiveCard({
           <div className="p-4 rounded-xl bg-surface border-2 border-primary/30 space-y-3 flex flex-col justify-between shadow-soft">
             <div className="space-y-2">
               <div className="flex justify-between items-center border-b border-border pb-2">
-                <span className="text-[10px] text-primary font-bold uppercase tracking-wider flex items-center gap-1">
-                  <FaCheckCircle size={9} /> FAANG Target Benchmark (y_preferred)
+                <span className="text-xs text-primary font-bold uppercase tracking-wider flex items-center gap-1">
+                  <FaCheckCircle size={12} aria-hidden="true" /> FAANG Target Benchmark (y_preferred)
                 </span>
-                <span className="text-[9px] text-primary">{preferredAnswer.tokenLength} tokens</span>
+                <span className="text-xs text-primary">{preferredAnswer.tokenLength} tokens</span>
               </div>
-              <p className="text-text-primary leading-relaxed text-[11px] font-normal">
+              <p className="text-text-primary leading-relaxed text-xs font-normal">
                 &ldquo;{preferredAnswer.text}&rdquo;
               </p>
             </div>
 
-            <div className="pt-2 border-t border-border flex justify-between items-center text-[10px] text-text-secondary">
+            <div className="pt-2 border-t border-border flex justify-between items-center text-xs text-text-secondary">
               <span>Implicit Reward (r_SimPO):</span>
               <span className="text-success font-bold">{preferredAnswer.implicitReward}</span>
             </div>
@@ -130,7 +130,7 @@ export default function SimPOContrastiveCard({
           <div className="p-4 rounded-xl bg-surface border border-border space-y-3 shadow-soft">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FaChartLine className="text-primary text-sm" />
+                <FaChartLine className="text-primary text-sm" aria-hidden="true" />
                 <span className="text-xs font-heading font-bold text-text-primary uppercase tracking-wider">
                   FAANG Benchmark Delta Card
                 </span>
@@ -144,10 +144,10 @@ export default function SimPOContrastiveCard({
               &ldquo;{data.benchmarkDeltaCard.faangComparison}&rdquo;
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] font-mono pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono pt-1">
               {data.benchmarkDeltaCard.architecturalGap.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-warning font-bold uppercase tracking-wider text-[10px] block">
+                  <span className="text-warning font-bold uppercase tracking-wider text-xs block">
                     Architectural Gaps:
                   </span>
                   <ul className="space-y-1 text-text-secondary">
@@ -163,7 +163,7 @@ export default function SimPOContrastiveCard({
 
               {data.benchmarkDeltaCard.edgeCaseOversights.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-warning font-bold uppercase tracking-wider text-[10px] block">
+                  <span className="text-warning font-bold uppercase tracking-wider text-xs block">
                     Edge-Case Oversights:
                   </span>
                   <ul className="space-y-1 text-text-secondary">

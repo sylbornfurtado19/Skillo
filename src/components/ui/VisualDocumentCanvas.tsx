@@ -127,12 +127,12 @@ export default function VisualDocumentCanvas({
               Document Layout & Formatting Inspector
             </span>
             <div className="ml-auto flex items-center gap-3">
-              <span className="text-[9px] text-primary font-mono">● HEADER</span>
-              <span className="text-[9px] text-secondary font-mono">● COLUMN</span>
-              <span className="text-[9px] text-danger font-mono">● PENALTY</span>
+              <span className="text-xs text-primary font-mono">● HEADER</span>
+              <span className="text-xs text-secondary font-mono">● COLUMN</span>
+              <span className="text-xs text-danger font-mono">● PENALTY</span>
             </div>
           </div>
-          <p className="text-[10px] text-text-secondary">
+          <p className="text-xs text-text-secondary">
             Analyzes document structure, column boundaries, and typography hierarchy using deterministic spatial geometry rules.
           </p>
         </div>
@@ -283,7 +283,7 @@ export default function VisualDocumentCanvas({
               <p className="text-text-secondary leading-relaxed line-clamp-2">
                 {tooltip.element.text}
               </p>
-              <div className="flex gap-3 text-[10px] text-text-secondary font-mono pt-0.5 border-t border-border">
+              <div className="flex gap-3 text-xs text-text-secondary font-mono pt-0.5 border-t border-border">
                 <span>col span: {tooltip.element.columnSpan}</span>
                 <span>level: H{tooltip.element.visualHierarchyLevel}</span>
                 <span>
@@ -300,16 +300,17 @@ export default function VisualDocumentCanvas({
         {(
           Object.entries(TYPE_STYLES) as [VisualLayoutElement['type'], (typeof TYPE_STYLES)[VisualLayoutElement['type']]][]
         ).map(([type, style]) => (
-          <div key={type} className="flex items-center gap-1.5 text-[9px] text-text-secondary font-mono">
+          <div key={type} className="flex items-center gap-1.5 text-xs text-text-secondary font-mono">
             <div
               className="h-2 w-4 rounded-sm border"
               style={{ borderColor: style.stroke, background: style.fill }}
+              aria-hidden="true"
             />
             {type}
           </div>
         ))}
-        <div className="flex items-center gap-1.5 text-[9px] text-danger font-mono ml-auto">
-          <div className="h-2 w-4 rounded-sm border border-danger bg-danger/15" />
+        <div className="flex items-center gap-1.5 text-xs text-danger font-mono ml-auto">
+          <div className="h-2 w-4 rounded-sm border border-danger bg-danger/15" aria-hidden="true" />
           PENALTY
         </div>
       </div>

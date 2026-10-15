@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { motion } from 'framer-motion';
 import { FaUserAlt, FaVolumeUp, FaSave, FaCheckCircle } from 'react-icons/fa';
 
@@ -15,6 +15,11 @@ export default function Settings() {
 
   const [saving, setSaving] = useState(false);
 
+  const nameInputId = useId();
+  const emailInputId = useId();
+  const titleInputId = useId();
+  const voiceRateId = useId();
+  const voicePitchId = useId();
 
   const candidateName =
     (user?.user_metadata?.full_name as string | undefined) ??
@@ -29,6 +34,28 @@ export default function Settings() {
   const [voiceRate, setVoiceRate] = useState(1.0);
   const [voicePitch, setVoicePitch] = useState(1.0);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
+  const [isSpeakingTest, setIsSpeakingTest] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setSpeechSupported('speechSynthesis' in window);
+    }
+  }, []);
+
+  const handleTestVoice = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(
+      'Hello! I am your AI interviewer. This is a preview of my voice pitch and speech rate.'
+    );
+    utterance.rate = voiceRate;
+    utterance.pitch = voicePitch;
+    utterance.onstart = () => setIsSpeakingTest(true);
+    utterance.onend = () => setIsSpeakingTest(false);
+    utterance.onerror = () => setIsSpeakingTest(false);
+    window.speechSynthesis.speak(utterance);
+  };
 
   const [saved, setSaved] = useState(false);
 
@@ -102,49 +129,52 @@ export default function Settings() {
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        <div className="glass-card rounded-2xl p-6 border border-border bg-surface shadow-soft space-y-4">
+        <div className="bg-bg-surface rounded-2xl p-6 border border-border shadow-soft space-y-4">
           <div className="flex items-center gap-3 pb-3 border-b border-border">
-            <FaUserAlt className="text-primary text-base" />
+            <FaUserAlt aria-hidden="true" className="text-primary text-base" />
             <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Candidate Profile</h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-text-secondary">Full Name</label>
+              <label htmlFor={nameInputId} className="text-xs font-semibold text-text-secondary">Full Name</label>
               <input
+                id={nameInputId}
                 type="text"
                 value={profileName}
                 onChange={(e) => setProfileName(e.target.value)}
                 placeholder="e.g. Alex Mercer"
-                className="w-full bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
+                className="w-full bg-bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-text-secondary">Email Address</label>
+              <label htmlFor={emailInputId} className="text-xs font-semibold text-text-secondary">Email Address</label>
               <input
+                id={emailInputId}
                 type="email"
                 value={profileEmail}
                 onChange={(e) => setProfileEmail(e.target.value)}
                 placeholder="name@company.com"
-                className="w-full bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
+                className="w-full bg-bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <label className="text-xs font-semibold text-text-secondary">Target Role Title</label>
+              <label htmlFor={titleInputId} className="text-xs font-semibold text-text-secondary">Target Role Title</label>
               <input
+                id={titleInputId}
                 type="text"
                 value={targetTitle}
                 onChange={(e) => setTargetTitle(e.target.value)}
                 placeholder="e.g. Senior Frontend Architect / Staff Engineer"
-                className="w-full bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
+                className="w-full bg-bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
               />
             </div>
           </div>
         </div>
 
-        <div className="glass-card rounded-2xl p-6 border border-border bg-surface shadow-soft space-y-4">
+        <div className="bg-bg-surface rounded-2xl p-6 border border-border shadow-soft space-y-4">
           <div className="flex items-center gap-3 pb-3 border-b border-border">
-            <FaVolumeUp className="text-secondary text-base" />
+            <FaVolumeUp aria-hidden="true" className="text-secondary text-base" />
             <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">AI Speech Synthesizer</h3>
           </div>
 
@@ -152,33 +182,35 @@ export default function Settings() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="font-semibold text-text-secondary">Voice Speech Speed:</span>
+                  <label htmlFor={voiceRateId} className="font-semibold text-text-secondary">Voice Speech Speed:</label>
                   <span className="font-mono text-secondary">{voiceRate}x</span>
                 </div>
                 <input
+                  id={voiceRateId}
                   type="range"
                   min="0.5"
                   max="1.8"
                   step="0.1"
                   value={voiceRate}
                   onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
-                  className="w-full h-1 bg-surface-alt rounded-lg appearance-none cursor-pointer accent-primary border border-border"
+                  className="w-full h-1 bg-bg-surface-alt rounded-lg appearance-none cursor-pointer accent-primary border border-border"
                 />
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="font-semibold text-text-secondary">Voice Pitch:</span>
+                  <label htmlFor={voicePitchId} className="font-semibold text-text-secondary">Voice Pitch:</label>
                   <span className="font-mono text-secondary">{voicePitch}</span>
                 </div>
                 <input
+                  id={voicePitchId}
                   type="range"
                   min="0.5"
                   max="1.5"
                   step="0.1"
                   value={voicePitch}
                   onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
-                  className="w-full h-1 bg-surface-alt rounded-lg appearance-none cursor-pointer accent-primary border border-border"
+                  className="w-full h-1 bg-bg-surface-alt rounded-lg appearance-none cursor-pointer accent-primary border border-border"
                 />
               </div>
             </div>
@@ -186,27 +218,47 @@ export default function Settings() {
             <div className="flex items-center justify-between pt-2">
               <div className="space-y-0.5">
                 <p className="text-xs font-semibold text-text-primary">Enable Subtitle Transcription</p>
-                <p className="text-[10px] text-text-secondary">Render recruiter dialogue texts during audio streaming.</p>
+                <p className="text-xs text-text-secondary">Render recruiter dialogue texts during audio streaming.</p>
               </div>
               <button
                 type="button"
+                role="switch"
+                aria-checked={subtitlesEnabled}
+                aria-label="Enable Subtitle Transcription"
                 onClick={() => setSubtitlesEnabled(!subtitlesEnabled)}
-                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none ${
-                  subtitlesEnabled ? 'bg-primary' : 'bg-surface-alt border border-border'
+                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                  subtitlesEnabled ? 'bg-primary' : 'bg-bg-surface-alt border border-border'
                 }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-bg-surface shadow ring-0 transition duration-200 ease-in-out ${
                     subtitlesEnabled ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-border">
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-text-primary">Voice Preview</p>
+                <p className="text-xs text-text-secondary">Listen to how the AI recruiter sounds with your current speed and pitch.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleTestVoice}
+                disabled={!speechSupported || isSpeakingTest}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-bg-surface-alt hover:bg-border text-xs font-semibold text-text-primary border border-border transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                title={speechSupported ? 'Test voice synthesis' : 'Speech synthesis is not supported in this browser'}
+              >
+                <FaVolumeUp aria-hidden="true" className={isSpeakingTest ? 'text-primary animate-pulse' : 'text-text-secondary'} />
+                <span>{isSpeakingTest ? 'Testing...' : 'Test voice'}</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Custom Visual Studio Theme Switcher Section */}
-        <div className="bg-surface border border-border rounded-2xl p-6 relative shadow-soft">
+        <div className="bg-bg-surface border border-border rounded-2xl p-6 relative shadow-soft">
           <ThemeSwitcher />
         </div>
 
@@ -215,16 +267,16 @@ export default function Settings() {
             animate={{ opacity: saved ? 1 : 0, x: saved ? 0 : 10 }}
             className="flex items-center gap-2 text-success text-xs font-semibold mr-auto"
           >
-            <FaCheckCircle />
+            <FaCheckCircle aria-hidden="true" />
             <span>Preferences saved successfully!</span>
           </motion.div>
 
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-primary-hover active:bg-primary-active font-semibold text-xs text-white hover:scale-102 active:scale-98 transition duration-250 cursor-pointer shadow-soft disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-primary-hover active:bg-primary-active font-semibold text-xs text-text-on-primary hover:scale-102 active:scale-98 transition duration-250 cursor-pointer shadow-soft disabled:opacity-50"
           >
-            <FaSave />
+            <FaSave aria-hidden="true" />
             <span>{saving ? 'Saving...' : 'Save Settings'}</span>
           </button>
         </div>

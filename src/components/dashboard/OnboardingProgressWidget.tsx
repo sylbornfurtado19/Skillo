@@ -90,25 +90,25 @@ export const OnboardingProgressWidget: React.FC<OnboardingProgressWidgetProps> =
 
   return (
     <Card
-      variant="glass"
-      className={`p-6 sm:p-8 border border-white/10 relative overflow-hidden space-y-6 ${className}`}
+      variant="default"
+      className={`p-6 sm:p-8 border border-border relative overflow-hidden space-y-6 ${className}`}
     >
       {/* Background ambient glow */}
       <div className="absolute top-0 right-0 w-60 h-60 bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
 
       {/* Header & Gamified Progress Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
         <div className="space-y-1 text-left">
           <div className="flex items-center gap-2">
             <Badge variant="primary" size="sm">
-              <span className="h-2 w-2 rounded-full bg-accent mr-1.5 inline-block animate-pulse" />
+              <span className="h-2 w-2 rounded-full bg-primary mr-1.5 inline-block animate-pulse" />
               Skillo Onboarding Tracker
             </Badge>
-            <span className="text-xs font-mono font-bold text-gray-400">
+            <span className="text-xs font-mono font-bold text-text-secondary">
               {completedCount} of 3 Completed
             </span>
           </div>
-          <h3 className="text-lg sm:text-xl font-heading font-extrabold text-white">
+          <h3 className="text-lg sm:text-xl font-heading font-extrabold text-text-primary">
             {activeStep === 4
               ? '🎉 Onboarding Complete! Keep Practicing'
               : 'Complete Setup to Unlock Benchmark Performance'}
@@ -118,15 +118,15 @@ export const OnboardingProgressWidget: React.FC<OnboardingProgressWidgetProps> =
         {/* Progress Bar Gauge */}
         <div className="w-full md:w-64 space-y-1.5 shrink-0">
           <div className="flex justify-between items-center text-xs font-mono">
-            <span className="text-gray-400 font-semibold">Progress</span>
+            <span className="text-text-secondary font-semibold">Progress</span>
             <span className="text-primary font-bold">{percentage}%</span>
           </div>
-          <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/10">
+          <div className="h-2.5 w-full bg-bg-surface-alt rounded-full overflow-hidden p-0.5 border border-border">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${percentage}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="h-full rounded-full bg-gradient-to-r from-primary via-secondary to-accent shadow-[0_0_12px_rgba(99,102,241,0.5)]"
+              className="h-full rounded-full bg-gradient-to-r from-primary to-secondary shadow-soft"
             />
           </div>
         </div>
@@ -145,10 +145,10 @@ export const OnboardingProgressWidget: React.FC<OnboardingProgressWidgetProps> =
               onClick={() => router.push(item.path)}
               className={`p-5 rounded-2xl border transition-all duration-300 cursor-pointer relative flex flex-col justify-between space-y-4 ${
                 item.isActive
-                  ? 'animated-glow-border bg-primary/10 border-primary/40 shadow-xl shadow-primary/15'
+                  ? 'bg-primary/10 border-primary/40 shadow-soft shadow-primary/15'
                   : item.isCompleted
-                  ? 'bg-emerald-500/5 border-emerald-500/25 hover:border-emerald-500/40'
-                  : 'bg-white/3 border-white/5 hover:border-white/15'
+                  ? 'bg-success/5 border-success/25 hover:border-success/40'
+                  : 'bg-bg-surface-alt/50 border-border hover:border-border/80'
               }`}
             >
               <div className="space-y-3">
@@ -156,17 +156,17 @@ export const OnboardingProgressWidget: React.FC<OnboardingProgressWidgetProps> =
                   <div
                     className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold text-sm border ${
                       item.isCompleted
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                        ? 'bg-success/20 text-success border-success/30'
                         : item.isActive
                         ? 'bg-primary/20 text-primary border-primary/40'
-                        : 'bg-white/5 text-gray-400 border-white/10'
+                        : 'bg-bg-surface-alt text-text-secondary border-border'
                     }`}
                   >
                     <Icon className="text-base" />
                   </div>
 
                   {item.isCompleted ? (
-                    <span className="text-emerald-400 font-mono text-[11px] font-bold flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                    <span className="text-success font-mono text-[11px] font-bold flex items-center gap-1 bg-success/10 px-2.5 py-1 rounded-lg border border-success/20">
                       <FaCheckCircle className="text-xs" />
                       Completed
                     </span>
@@ -175,17 +175,17 @@ export const OnboardingProgressWidget: React.FC<OnboardingProgressWidgetProps> =
                       Active Step ⚡
                     </span>
                   ) : (
-                    <span className="text-gray-500 font-mono text-[10px] uppercase tracking-wider">
+                    <span className="text-text-secondary font-mono text-[10px] uppercase tracking-wider">
                       Step {item.step}
                     </span>
                   )}
                 </div>
 
                 <div>
-                  <h4 className="font-heading font-bold text-white text-sm flex items-center gap-1.5">
+                  <h4 className="font-heading font-bold text-text-primary text-sm flex items-center gap-1.5">
                     <span>{item.title}</span>
                   </h4>
-                  <p className="text-xs text-gray-400 leading-relaxed mt-1">{item.subtitle}</p>
+                  <p className="text-xs text-text-secondary leading-relaxed mt-1">{item.subtitle}</p>
                 </div>
               </div>
 

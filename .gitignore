@@ -17,6 +17,8 @@ ProjectReport.md
 .env.development.local
 .env.production.local
 .env.test.local
+VERCEL_ENV.txt
+*.env.txt
 
 # logs
 *.log

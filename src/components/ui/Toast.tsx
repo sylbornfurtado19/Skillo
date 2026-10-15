@@ -47,11 +47,16 @@ export const ToastContainer = () => {
   const { toasts, removeToast } = useToast();
 
   return (
-    <div className="fixed bottom-6 right-6 z-[999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed bottom-6 right-6 z-[999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none"
+    >
       <AnimatePresence>
         {toasts.map((toast) => (
           <motion.div
             key={toast.id}
+            role={toast.variant === 'error' ? 'alert' : 'status'}
             layout
             initial={{ opacity: 0, x: 100, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -69,9 +74,10 @@ export const ToastContainer = () => {
             <button
               type="button"
               onClick={() => removeToast(toast.id)}
-              className="ml-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] shrink-0 cursor-pointer text-xs focus:outline-none"
+              aria-label="Dismiss notification"
+              className="ml-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] shrink-0 cursor-pointer text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded"
             >
-              ✕
+              <span aria-hidden="true">✕</span>
             </button>
           </motion.div>
         ))}

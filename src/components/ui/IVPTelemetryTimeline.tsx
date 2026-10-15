@@ -105,7 +105,7 @@ export default function IVPTelemetryTimeline({
   };
 
   return (
-    <Card className="p-6 bg-surface border-border shadow-soft space-y-6">
+    <Card className="p-6 bg-bg-surface border-border shadow-soft space-y-6">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
@@ -158,12 +158,12 @@ export default function IVPTelemetryTimeline({
             </span>
             <span>Target (V=0.40, A=0.20)</span>
           </div>
-          <div className="relative h-6 bg-surface-alt rounded-lg overflow-hidden border border-border">
+          <div className="relative h-6 bg-bg-surface-alt rounded-lg overflow-hidden border border-border">
             <div
               className="absolute inset-0 opacity-80"
               style={{
                 background:
-                  'linear-gradient(90deg, #3F7D58 0%, #3F7D58 35%, #C98A1B 45%, #B3261E 48%, #3F7D58 55%, #3F7D58 100%)',
+                  'linear-gradient(90deg, var(--success) 0%, var(--success) 35%, var(--warning) 45%, var(--danger) 48%, var(--success) 55%, var(--success) 100%)',
               }}
             />
             {/* Event Markers */}
@@ -173,7 +173,7 @@ export default function IVPTelemetryTimeline({
                 <button
                   key={idx}
                   onClick={() => setSelectedSec(e.timestampSec)}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-danger border-2 border-surface shadow-soft cursor-pointer hover:scale-125 transition-transform"
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-danger border-2 border-bg-surface shadow-soft cursor-pointer hover:scale-125 transition-transform"
                   style={{ left: `${(e.timestampSec / durationSeconds) * 100}%` }}
                   title={e.label}
                 />
@@ -189,12 +189,12 @@ export default function IVPTelemetryTimeline({
             </span>
             <span>Pitch ≤ 12°, Yaw ≤ 15°</span>
           </div>
-          <div className="relative h-6 bg-surface-alt rounded-lg overflow-hidden border border-border">
+          <div className="relative h-6 bg-bg-surface-alt rounded-lg overflow-hidden border border-border">
             <div
               className="absolute inset-0 opacity-70"
               style={{
                 background:
-                  'linear-gradient(90deg, #6B6E70 0%, #6B6E70 9%, #C98A1B 12%, #6B6E70 20%, #6B6E70 75%, #C98A1B 83%, #6B6E70 100%)',
+                  'linear-gradient(90deg, var(--secondary) 0%, var(--secondary) 9%, var(--warning) 12%, var(--secondary) 20%, var(--secondary) 75%, var(--warning) 83%, var(--secondary) 100%)',
               }}
             />
             {resolvedEvents
@@ -203,7 +203,7 @@ export default function IVPTelemetryTimeline({
                 <button
                   key={idx}
                   onClick={() => setSelectedSec(e.timestampSec)}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-warning border-2 border-surface shadow-soft cursor-pointer hover:scale-125 transition-transform"
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-warning border-2 border-bg-surface shadow-soft cursor-pointer hover:scale-125 transition-transform"
                   style={{ left: `${(e.timestampSec / durationSeconds) * 100}%` }}
                   title={e.label}
                 />
@@ -219,12 +219,12 @@ export default function IVPTelemetryTimeline({
             </span>
             <span>Nodding & Gesture Oscillations</span>
           </div>
-          <div className="relative h-6 bg-surface-alt rounded-lg overflow-hidden border border-border">
+          <div className="relative h-6 bg-bg-surface-alt rounded-lg overflow-hidden border border-border">
             <div
               className="absolute inset-0 opacity-60"
               style={{
                 background:
-                  'linear-gradient(90deg, #9B2218 0%, #9B2218 25%, #6B6E70 30%, #9B2218 40%, #6B6E70 62%, #9B2218 100%)',
+                  'linear-gradient(90deg, var(--primary) 0%, var(--primary) 25%, var(--secondary) 30%, var(--primary) 40%, var(--secondary) 62%, var(--primary) 100%)',
               }}
             />
             {resolvedEvents
@@ -233,7 +233,7 @@ export default function IVPTelemetryTimeline({
                 <button
                   key={idx}
                   onClick={() => setSelectedSec(e.timestampSec)}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-primary border-2 border-surface shadow-soft cursor-pointer hover:scale-125 transition-transform"
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-primary border-2 border-bg-surface shadow-soft cursor-pointer hover:scale-125 transition-transform"
                   style={{ left: `${(e.timestampSec / durationSeconds) * 100}%` }}
                   title={e.label}
                 />
@@ -260,7 +260,7 @@ export default function IVPTelemetryTimeline({
       </div>
 
       {/* Selected Timestamp Diagnostic Details Card */}
-      <div className="p-4 bg-surface-alt rounded-xl border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="p-4 bg-bg-surface-alt rounded-xl border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs font-mono">

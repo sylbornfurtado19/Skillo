@@ -18,12 +18,12 @@ const ZONE_CONFIG: Record<
   GazeFrameResult['screenFocusZone'],
   { label: string; icon: string; color: string; ring: string; warning: boolean }
 > = {
-  CENTER_SCREEN:  { label: 'Eye Contact: Direct',         icon: '🟢', color: 'text-success', ring: '#3F7D58', warning: false },
-  LOOKING_LEFT:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: '#C98A1B', warning: true  },
-  LOOKING_RIGHT:  { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: '#C98A1B', warning: true  },
-  LOOKING_UP:     { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: '#C98A1B', warning: false },
-  LOOKING_DOWN:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: '#C98A1B', warning: true  },
-  OFF_SCREEN:     { label: 'Warning: Secondary Screen',   icon: '🔴', color: 'text-danger',  ring: '#B3261E', warning: true  },
+  CENTER_SCREEN:  { label: 'Eye Contact: Direct',         icon: '🟢', color: 'text-success', ring: 'var(--success)', warning: false },
+  LOOKING_LEFT:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: 'var(--warning)', warning: true  },
+  LOOKING_RIGHT:  { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: 'var(--warning)', warning: true  },
+  LOOKING_UP:     { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: 'var(--warning)', warning: false },
+  LOOKING_DOWN:   { label: 'Gaze: Off-Center',            icon: '⚠️', color: 'text-warning', ring: 'var(--warning)', warning: true  },
+  OFF_SCREEN:     { label: 'Warning: Secondary Screen',   icon: '🔴', color: 'text-danger',  ring: 'var(--danger)',  warning: true  },
 };
 
 // ── Ring math ─────────────────────────────────────────────────────────────────
@@ -52,9 +52,9 @@ export default function EyeContactHUD({
   if (!currentFrame) {
     // Camera not started or no frame yet — show collapsed placeholder
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-alt border border-border">
-        <div className="h-1.5 w-1.5 rounded-full bg-text-secondary animate-pulse" />
-        <span className="text-[10px] text-text-secondary font-mono">Gaze tracker inactive</span>
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-bg-surface-alt border border-border">
+        <div className="h-1.5 w-1.5 rounded-full bg-text-secondary animate-pulse" aria-hidden="true" />
+        <span className="text-xs text-text-secondary font-mono">Gaze tracker inactive</span>
       </div>
     );
   }
@@ -68,10 +68,10 @@ export default function EyeContactHUD({
       className={`flex flex-col gap-2 transition-all duration-300 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
     >
       {/* ── Main HUD pill ─────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface border border-border shadow-soft">
+      <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-bg-surface border border-border shadow-soft">
         {/* Focus Ring Gauge */}
         <div className="relative shrink-0">
-          <svg width="56" height="56" viewBox="0 0 56 56">
+          <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
             <defs>
               <linearGradient id="gazeRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor={zone.ring} />
@@ -79,7 +79,7 @@ export default function EyeContactHUD({
               </linearGradient>
             </defs>
             {/* Track */}
-            <circle cx="28" cy="28" r={RING_R} fill="none" stroke="#E2DDD5" strokeWidth="5" />
+            <circle cx="28" cy="28" r={RING_R} fill="none" stroke="var(--border)" strokeWidth="5" />
             {/* Progress arc */}
             <circle
               cx="28" cy="28" r={RING_R}
@@ -95,7 +95,7 @@ export default function EyeContactHUD({
           </svg>
           {/* Percentage label */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className={`text-[10px] font-bold font-mono ${zone.color}`}>
+            <span className={`text-xs font-bold font-mono ${zone.color}`}>
               {Math.round(pct)}%
             </span>
           </div>
@@ -104,12 +104,12 @@ export default function EyeContactHUD({
         {/* Zone info */}
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center gap-1.5">
-            <span className="text-sm">{zone.icon}</span>
-            <span className={`text-[11px] font-semibold truncate ${zone.color}`}>
+            <span className="text-sm" aria-hidden="true">{zone.icon}</span>
+            <span className={`text-xs font-semibold truncate ${zone.color}`}>
               {zone.label}
             </span>
           </div>
-          <div className="flex items-center gap-2 text-[9px] text-text-secondary font-mono">
+          <div className="flex items-center gap-2 text-xs text-text-secondary font-mono">
             <span>P: {currentFrame.gazeAngles.pitchDegrees.toFixed(1)}°</span>
             <span>Y: {currentFrame.gazeAngles.yawDegrees.toFixed(1)}°</span>
             <span>conf: {(currentFrame.confidenceScore * 100).toFixed(0)}%</span>
@@ -117,7 +117,7 @@ export default function EyeContactHUD({
         </div>
 
         {/* Live pulse indicator */}
-        <div className="shrink-0 flex flex-col items-center gap-0.5">
+        <div className="shrink-0 flex flex-col items-center gap-0.5" aria-hidden="true">
           <div
             className="h-2 w-2 rounded-full"
             style={{
@@ -126,15 +126,15 @@ export default function EyeContactHUD({
               animation: 'pulse 1.2s infinite',
             }}
           />
-          <span className="text-[7px] text-text-secondary font-mono">LIVE</span>
+          <span className="text-[10px] text-text-secondary font-mono font-bold">LIVE</span>
         </div>
       </div>
 
       {/* ── Distraction Warning Banner ───────────────────────────────── */}
       {showDistraction && (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-danger/10 border border-danger/20 animate-pulse">
-          <span className="text-xs">🔴</span>
-          <span className="text-[10px] text-danger font-semibold font-mono">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-danger/10 border border-danger/20 animate-pulse" role="alert">
+          <span className="text-xs" aria-hidden="true">🔴</span>
+          <span className="text-xs text-danger font-semibold font-mono">
             Gaze deviation detected — maintain screen focus
           </span>
         </div>

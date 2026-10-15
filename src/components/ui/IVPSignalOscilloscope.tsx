@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback } from 'react';
+import { getThemeColor } from '@/lib/themeColors';
 
 export interface IVPSignalOscilloscopeProps {
   label: string;
@@ -34,12 +35,13 @@ export default function IVPSignalOscilloscope({
   thresholdLabel,
   minRange = 0,
   maxRange = 1,
-  color = '#3F7D58',
+  color,
   historyLength = 100,
   height = 95,
   stats,
   className = '',
 }: IVPSignalOscilloscopeProps) {
+  const signalColor = color || getThemeColor('success');
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // ── O(1) Circular Ring Buffer — zero array allocations after init ────────
@@ -99,11 +101,11 @@ export default function IVPSignalOscilloscope({
     const H = height;
 
     // ── Background ────────────────────────────────────────────────────────
-    ctx.fillStyle = '#EFEBE5';
+    ctx.fillStyle = getThemeColor('bg-surface-alt');
     ctx.fillRect(0, 0, W, H);
 
     // ── Oscilloscope grid lines ───────────────────────────────────────────
-    ctx.strokeStyle = 'rgba(43, 37, 35, 0.08)';
+    ctx.strokeStyle = getThemeColor('border');
     ctx.lineWidth   = 1;
     ctx.setLineDash([]);
 
@@ -125,7 +127,7 @@ export default function IVPSignalOscilloscope({
       const threshY    = H - normThresh * H;
 
       ctx.save();
-      ctx.strokeStyle = 'rgba(179, 38, 30, 0.75)';
+      ctx.strokeStyle = getThemeColor('danger');
       ctx.setLineDash([4, 4]);
       ctx.lineWidth   = 1.5;
       ctx.beginPath();
@@ -134,7 +136,7 @@ export default function IVPSignalOscilloscope({
       ctx.stroke();
 
       if (thresholdLabel) {
-        ctx.fillStyle = '#B3261E';
+        ctx.fillStyle = getThemeColor('danger');
         ctx.font      = '9px monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
@@ -152,8 +154,8 @@ export default function IVPSignalOscilloscope({
     ctx.lineWidth   = 2.2;
     ctx.lineCap     = 'round';
     ctx.lineJoin    = 'round';
-    ctx.strokeStyle = color;
-    ctx.shadowColor = color;
+    ctx.strokeStyle = signalColor;
+    ctx.shadowColor = signalColor;
     ctx.shadowBlur  = 5;
     ctx.setLineDash([]);
 
@@ -181,16 +183,16 @@ export default function IVPSignalOscilloscope({
     const dotX = (n - 1) * dx;
     const dotY = H - latestNorm * H;
 
-    ctx.fillStyle = '#9B2218';
+    ctx.fillStyle = getThemeColor('primary');
     ctx.beginPath();
     ctx.arc(dotX, dotY, 3.5, 0, 2 * Math.PI);
     ctx.fill();
 
     ctx.restore();
-  }, [currentValue, threshold, thresholdLabel, minRange, maxRange, color, height]);
+  }, [currentValue, threshold, thresholdLabel, minRange, maxRange, signalColor, height]);
 
   return (
-    <div className={`bg-surface border border-border shadow-soft rounded-xl p-3 space-y-2 text-left ${className}`}>
+    <div className={`bg-bg-surface border border-border shadow-soft rounded-xl p-3 space-y-2 text-left ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
@@ -201,13 +203,13 @@ export default function IVPSignalOscilloscope({
             [{minRange}..{maxRange} {unit}]
           </span>
         </div>
-        <span className="text-xs font-bold font-mono" style={{ color }}>
+        <span className="text-xs font-bold font-mono" style={{ color: signalColor }}>
           {currentValue.toFixed(3)} {unit}
         </span>
       </div>
 
       {/* Waveform — canvas sized by CSS, backed by DPR-scaled pixels */}
-      <div className="relative rounded-lg overflow-hidden border border-border bg-surface-alt">
+      <div className="relative rounded-lg overflow-hidden border border-border bg-bg-surface-alt">
         <canvas
           ref={canvasRef}
           className="block"

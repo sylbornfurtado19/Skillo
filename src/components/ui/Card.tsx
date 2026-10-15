@@ -1,9 +1,23 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
+export type CardVariant =
+  | 'default'
+  | 'elevated'
+  /** @deprecated use 'default' */
+  | 'glass'
+  /** @deprecated use 'default' */
+  | 'solid'
+  /** @deprecated use 'default' */
+  | 'glow-primary'
+  /** @deprecated use 'default' */
+  | 'glow-secondary'
+  /** @deprecated use 'default' */
+  | 'glow-accent';
+
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
-  variant?: 'glass' | 'solid' | 'glow-primary' | 'glow-secondary' | 'glow-accent' | 'default';
+  variant?: CardVariant;
   hoverLift?: boolean;
   className?: string;
   onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
@@ -11,21 +25,24 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export default function Card({
   children,
-  variant = 'glass',
+  variant = 'default',
   hoverLift = false,
   className = '',
   onClick,
   ...props
 }: CardProps) {
-  const baseStyle = 'rounded-2xl border border-[var(--border)] p-6 relative overflow-hidden bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow)]';
+  const baseStyle =
+    'rounded-2xl border border-border p-6 relative overflow-hidden bg-bg-surface text-text-primary shadow-soft';
 
-  const variants = {
-    default: 'bg-[var(--bg-surface)] border-[var(--border)] shadow-[var(--shadow)]',
-    glass: 'bg-[var(--bg-surface)] border-[var(--border)] shadow-[var(--shadow)]',
-    solid: 'bg-[var(--bg-surface)] border-[var(--border)] shadow-[var(--shadow)]',
-    'glow-primary': 'bg-[var(--bg-surface)] border-[var(--border)] shadow-[var(--shadow)]',
-    'glow-secondary': 'bg-[var(--bg-surface)] border-[var(--border)] shadow-[var(--shadow)]',
-    'glow-accent': 'bg-[var(--bg-surface)] border-[var(--border)] shadow-[var(--shadow)]',
+  const variants: Record<CardVariant, string> = {
+    default: 'bg-bg-surface border-border shadow-soft',
+    elevated: 'bg-bg-surface border-border shadow-md ring-1 ring-border/50',
+    // Deprecated aliases mapped to default
+    glass: 'bg-bg-surface border-border shadow-soft',
+    solid: 'bg-bg-surface border-border shadow-soft',
+    'glow-primary': 'bg-bg-surface border-border shadow-soft',
+    'glow-secondary': 'bg-bg-surface border-border shadow-soft',
+    'glow-accent': 'bg-bg-surface border-border shadow-soft',
   };
 
   if (hoverLift) {

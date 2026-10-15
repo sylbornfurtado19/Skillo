@@ -50,7 +50,7 @@ export default function AdaptiveHUDHeader({
             {badgeInfo.label}
           </Badge>
           <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="text-text-secondary text-[10px] uppercase tracking-wider">PRM Confidence:</span>
+            <span className="text-text-secondary text-xs uppercase tracking-wider">PRM Confidence:</span>
             <div className="w-24 h-2 rounded-full bg-surface-alt overflow-hidden shrink-0 border border-border">
               <div
                 className={`h-full transition-all duration-500 ${prmPct >= 80 ? 'bg-success' : prmPct >= 60 ? 'bg-warning' : 'bg-danger'}`}
@@ -63,17 +63,18 @@ export default function AdaptiveHUDHeader({
         <button
           type="button"
           onClick={() => setShowTreeDrawer(!showTreeDrawer)}
-          className="text-[11px] font-mono text-primary hover:text-primary-hover font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0"
+          aria-expanded={showTreeDrawer}
+          className="text-xs font-mono text-primary hover:text-primary-hover font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0"
         >
-          <FaSitemap size={12} />
+          <FaSitemap size={12} aria-hidden="true" />
           <span>{showTreeDrawer ? 'Hide Decision Tree' : 'View Decision Tree (LATS)'}</span>
-          {showTreeDrawer ? <FaChevronUp size={9} /> : <FaChevronDown size={9} />}
+          {showTreeDrawer ? <FaChevronUp size={9} aria-hidden="true" /> : <FaChevronDown size={9} aria-hidden="true" />}
         </button>
       </div>
 
       {latsState.currentGaps && latsState.currentGaps.length > 0 && (
         <div className="flex items-center gap-2 bg-surface-alt p-2.5 rounded-lg border border-border text-xs">
-          <span className="text-[10px] text-warning font-bold uppercase tracking-wider font-mono shrink-0">Identified Focus Gaps:</span>
+          <span className="text-xs text-warning font-bold uppercase tracking-wider font-mono shrink-0">Identified Focus Gaps:</span>
           <div className="flex flex-wrap gap-1.5">
             {latsState.currentGaps.map((gap, idx) => (
               <Badge key={idx} variant="warning" size="sm">{gap}</Badge>

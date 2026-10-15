@@ -5,12 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaEnvelope, FaLock, FaArrowRight, FaSpinner, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../components/ui/Toast';
 import { LogoFull } from '../components/common/Logo';
+import Modal from '../components/ui/Modal';
 
 export default function Login() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { signIn, signUp, signInWithGoogle } = useAuth();
+  const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -22,6 +25,7 @@ export default function Login() {
   const [forgotSent, setForgotSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [googleLoggingIn, setGoogleLoggingIn] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // 3D Tilt state for Card
   const [rotateX, setRotateX] = useState(0);
@@ -50,7 +54,7 @@ export default function Login() {
   };
 
   const getPasswordStrength = (pass: string) => {
-    if (!pass) return { score: 0, label: '', color: 'bg-gray-700' };
+    if (!pass) return { score: 0, label: '', color: 'bg-[var(--border)]' };
     let score = 0;
     if (pass.length >= 6) score += 1;
     if (pass.length >= 10) score += 1;
@@ -58,9 +62,9 @@ export default function Login() {
     if (/[0-9]/.test(pass)) score += 1;
     if (/[^A-Za-z0-9]/.test(pass)) score += 1;
 
-    if (score <= 2) return { score: 33, label: 'Weak', color: 'bg-red-500' };
-    if (score <= 4) return { score: 66, label: 'Medium', color: 'bg-amber-500' };
-    return { score: 100, label: 'Strong', color: 'bg-emerald-500' };
+    if (score <= 2) return { score: 33, label: 'Weak', color: 'bg-[var(--danger)]' };
+    if (score <= 4) return { score: 66, label: 'Medium', color: 'bg-[var(--warning)]' };
+    return { score: 100, label: 'Strong', color: 'bg-[var(--success)]' };
   };
 
   const strength = getPasswordStrength(password);
@@ -70,6 +74,7 @@ export default function Login() {
     if (!email || !password) return;
     if (activeTab === 'signup' && !name) return;
 
+    setErrorMessage(null);
     setSubmitting(true);
     try {
       const res =
@@ -79,26 +84,33 @@ export default function Login() {
 
       if (res.error) {
         const errObj = res.error as { message?: string };
-        alert(`Authentication Error: ${errObj.message ?? 'Sign in failed'}`);
+        const msg = errObj.message ?? 'Authentication failed';
+        setErrorMessage(msg);
+        showToast(msg, 'error');
       } else {
         router.replace(from);
       }
     } catch (error: unknown) {
       console.error('Auth error:', error);
       const errObj = error as { message?: string };
-      alert(`Authentication error: ${errObj.message ?? 'An unknown error occurred'}`);
+      const msg = errObj.message ?? 'An unexpected authentication error occurred';
+      setErrorMessage(msg);
+      showToast(msg, 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleGoogleSuccess = async () => {
+    setErrorMessage(null);
     setGoogleLoggingIn(true);
     try {
       const res = await signInWithGoogle();
       if (res.error) {
         const errObj = res.error as { message?: string };
-        alert(`Google Auth Error: ${errObj.message ?? 'OAuth failed'}`);
+        const msg = errObj.message ?? 'Google authentication failed';
+        setErrorMessage(msg);
+        showToast(msg, 'error');
       } else if (res.data && typeof res.data === 'object' && 'url' in res.data && typeof res.data.url === 'string') {
         window.location.href = res.data.url;
       } else {
@@ -107,7 +119,9 @@ export default function Login() {
     } catch (error: unknown) {
       console.error('Auth error:', error);
       const errObj = error as { message?: string };
-      alert(`Google authentication error: ${errObj.message ?? 'An unknown error occurred'}`);
+      const msg = errObj.message ?? 'Google authentication error';
+      setErrorMessage(msg);
+      showToast(msg, 'error');
     } finally {
       setGoogleLoggingIn(false);
     }
@@ -122,84 +136,67 @@ export default function Login() {
   return (
     <div className="relative min-h-[calc(100vh-9rem)] flex items-center justify-center px-4 py-8 overflow-hidden bg-[var(--bg-page)] text-[var(--text-primary)]">
       {/* Forgot Password Modal */}
-      <AnimatePresence>
-        {forgotModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10000] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              className="rounded-2xl p-6 border border-[var(--border)] bg-[var(--bg-surface)] max-w-sm w-full space-y-4 shadow-[var(--shadow)] text-left"
+      <Modal
+        isOpen={forgotModalOpen}
+        onClose={() => {
+          setForgotModalOpen(false);
+          setForgotSent(false);
+        }}
+        title="Reset Password"
+        maxWidth="max-w-sm"
+      >
+        {forgotSent ? (
+          <div className="space-y-3 py-2 text-center">
+            <div className="h-10 w-10 rounded-full bg-[var(--success)]/20 text-[var(--success)] border border-[var(--success)]/30 flex items-center justify-center mx-auto text-lg">
+              <span aria-hidden="true">✓</span>
+            </div>
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Reset instructions sent to <strong className="text-[var(--text-primary)]">{forgotEmail}</strong>. Please check your inbox.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setForgotModalOpen(false);
+                setForgotSent(false);
+              }}
+              className="w-full py-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] text-xs font-semibold text-[var(--text-on-primary)] mt-2 shadow-[var(--shadow)]"
             >
-              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-                <h3 className="font-heading font-bold text-[var(--text-primary)] text-base">Reset Password</h3>
-                <button
-                  onClick={() => {
-                    setForgotModalOpen(false);
-                    setForgotSent(false);
-                  }}
-                  className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-bold px-2 py-1 rounded bg-[var(--bg-surface-alt)]"
-                >
-                  ✕
-                </button>
+              Back to Sign In
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleForgotSubmit} className="space-y-4">
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Enter the email address tied to your account and we&apos;ll send you a password reset link.
+            </p>
+
+            <div className="space-y-1.5">
+              <label htmlFor="forgot-email" className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider block">
+                Email Address
+              </label>
+              <div className="relative">
+                <input
+                  id="forgot-email"
+                  type="email"
+                  required
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  className="w-full rounded-xl bg-[var(--bg-surface)] border border-[var(--border)] pl-10 pr-4 py-2.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--primary)]/25"
+                />
+                <FaEnvelope aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--secondary)] text-xs" />
               </div>
+            </div>
 
-              {forgotSent ? (
-                <div className="space-y-3 py-2 text-center">
-                  <div className="h-10 w-10 rounded-full bg-[var(--success)]/20 text-[var(--success)] border border-[var(--success)]/30 flex items-center justify-center mx-auto text-lg">
-                    ✓
-                  </div>
-                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                    Reset instructions sent to <strong className="text-[var(--text-primary)]">{forgotEmail}</strong>. Please check your inbox.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setForgotModalOpen(false);
-                      setForgotSent(false);
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] text-xs font-semibold text-[var(--text-on-primary)] mt-2 shadow-[var(--shadow)]"
-                  >
-                    Back to Sign In
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleForgotSubmit} className="space-y-4">
-                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                    Enter the email address tied to your account and we&apos;ll send you a password reset link.
-                  </p>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block">Email Address</label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        required
-                        value={forgotEmail}
-                        onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="name@company.com"
-                        className="w-full rounded-xl bg-[var(--bg-surface)] border border-[var(--border)] pl-10 pr-4 py-2.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--primary)]/25"
-                      />
-                      <FaEnvelope className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--secondary)] text-xs" />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] font-semibold text-xs text-[var(--text-on-primary)] shadow-[var(--shadow)]"
-                  >
-                    Send Reset Instructions
-                  </button>
-                </form>
-              )}
-            </motion.div>
-          </motion.div>
+            <button
+              type="submit"
+              className="w-full py-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] font-semibold text-xs text-[var(--text-on-primary)] shadow-[var(--shadow)]"
+            >
+              Send Reset Instructions
+            </button>
+          </form>
         )}
-      </AnimatePresence>
+      </Modal>
 
       {/* Google Overlay Loader */}
       <AnimatePresence>
@@ -231,7 +228,7 @@ export default function Login() {
                 <p className="text-xs text-[var(--text-secondary)] font-mono">Connecting to accounts.google.com...</p>
               </div>
 
-              <p className="text-[10px] text-[var(--text-secondary)] leading-normal">
+              <p className="text-xs text-[var(--text-secondary)] leading-normal">
                 Skillo will securely extract your public email address and name to build your profile database.
               </p>
             </motion.div>
@@ -265,7 +262,10 @@ export default function Login() {
         <div className="bg-[var(--bg-surface-alt)] p-1 rounded-xl border border-[var(--border)] flex gap-1 mb-6 shadow-inner">
           <button
             type="button"
-            onClick={() => setActiveTab('login')}
+            onClick={() => {
+              setActiveTab('login');
+              setErrorMessage(null);
+            }}
             className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
               activeTab === 'login'
                 ? 'bg-[var(--primary)] text-[var(--text-on-primary)] shadow-sm'
@@ -276,7 +276,10 @@ export default function Login() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('signup')}
+            onClick={() => {
+              setActiveTab('signup');
+              setErrorMessage(null);
+            }}
             className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
               activeTab === 'signup'
                 ? 'bg-[var(--primary)] text-[var(--text-on-primary)] shadow-sm'
@@ -290,39 +293,51 @@ export default function Login() {
         <form onSubmit={handleTraditionalSubmit} className="space-y-4">
           {activeTab === 'signup' && (
             <div className="space-y-1.5 text-left">
-              <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block">Full Name</label>
+              <label htmlFor="login-name" className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider block">
+                Full Name
+              </label>
               <div className="relative">
                 <input
+                  id="login-name"
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Alex Mercer"
+                  aria-invalid={!!errorMessage}
+                  aria-describedby={errorMessage ? 'login-error-msg' : undefined}
                   className="w-full rounded-xl bg-[var(--bg-surface)] border border-[var(--border)] pl-10 pr-4 py-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/60 focus:outline-none focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--primary)]/25 transition duration-200"
                 />
-                <FaEnvelope className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--secondary)] text-xs" />
+                <FaEnvelope aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--secondary)] text-xs" />
               </div>
             </div>
           )}
 
           <div className="space-y-1.5 text-left">
-            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block">Email Address</label>
+            <label htmlFor="login-email" className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider block">
+              Email Address
+            </label>
             <div className="relative">
               <input
+                id="login-email"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@company.com"
+                aria-invalid={!!errorMessage}
+                aria-describedby={errorMessage ? 'login-error-msg' : undefined}
                 className="w-full rounded-xl bg-[var(--bg-surface)] border border-[var(--border)] pl-10 pr-4 py-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/60 focus:outline-none focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--primary)]/25 transition duration-200"
               />
-              <FaEnvelope className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--secondary)] text-xs" />
+              <FaEnvelope aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--secondary)] text-xs" />
             </div>
           </div>
 
           <div className="space-y-1.5 text-left">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block">Password</label>
+              <label htmlFor="login-password" className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider block">
+                Password
+              </label>
               {activeTab === 'login' && (
                 <button
                   type="button"
@@ -330,7 +345,7 @@ export default function Login() {
                     setForgotEmail(email);
                     setForgotModalOpen(true);
                   }}
-                  className="text-[10px] text-[var(--primary)] hover:text-[var(--primary-hover)] font-semibold transition duration-150 cursor-pointer"
+                  className="text-xs text-[var(--primary)] hover:text-[var(--primary-hover)] font-semibold transition duration-150 cursor-pointer"
                 >
                   Forgot?
                 </button>
@@ -338,14 +353,17 @@ export default function Login() {
             </div>
             <div className="relative">
               <input
+                id="login-password"
                 type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                aria-invalid={!!errorMessage}
+                aria-describedby={errorMessage ? 'login-error-msg' : undefined}
                 className="w-full rounded-xl bg-[var(--bg-surface)] border border-[var(--border)] pl-10 pr-10 py-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/60 focus:outline-none focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--primary)]/25 transition duration-200"
               />
-              <FaLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--secondary)] text-xs" />
+              <FaLock aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--secondary)] text-xs" />
 
               <button
                 type="button"
@@ -353,7 +371,7 @@ export default function Login() {
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition duration-150 cursor-pointer"
                 aria-label={showPassword ? 'Hide Password' : 'Show Password'}
               >
-                {showPassword ? <FaEyeSlash size={13} /> : <FaEye size={13} />}
+                {showPassword ? <FaEyeSlash aria-hidden="true" size={13} /> : <FaEye aria-hidden="true" size={13} />}
               </button>
             </div>
 
@@ -366,7 +384,7 @@ export default function Login() {
                     style={{ width: `${strength.score}%` }}
                   />
                 </div>
-                <div className="flex justify-between items-center text-[9px] font-mono text-[var(--text-secondary)]">
+                <div className="flex justify-between items-center text-xs font-mono text-[var(--text-secondary)]">
                   <span>Strength: <strong className="text-[var(--text-primary)]">{strength.label}</strong></span>
                   <span>{password.length} chars</span>
                 </div>
@@ -381,33 +399,47 @@ export default function Login() {
           >
             {submitting ? (
               <>
-                <FaSpinner className="animate-spin text-xs" />
+                <FaSpinner aria-hidden="true" className="animate-spin text-xs" />
                 <span>Processing...</span>
               </>
             ) : (
               <>
                 <span>{activeTab === 'login' ? 'Sign In' : 'Create Account'}</span>
-                <FaArrowRight className="text-xs" />
+                <FaArrowRight aria-hidden="true" className="text-xs" />
               </>
             )}
           </button>
+
+          {/* Inline Error Message */}
+          {errorMessage && (
+            <motion.div
+              id="login-error-msg"
+              role="alert"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-[var(--danger)] text-xs text-left flex items-start gap-2"
+            >
+              <span aria-hidden="true" className="font-bold mt-0.5">⚠</span>
+              <span className="leading-relaxed">{errorMessage}</span>
+            </motion.div>
+          )}
         </form>
 
         <div className="relative my-5 text-center">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t border-[var(--border)]" />
           </div>
-          <span className="relative bg-[var(--bg-surface)] px-3 text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
+          <span className="relative bg-[var(--bg-surface)] px-3 text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
             or continue with
           </span>
         </div>
 
         {/* OAuth Buttons */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="w-full">
           <button
             type="button"
             onClick={handleGoogleSuccess}
-            className="py-2.5 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] hover:border-[var(--secondary)] text-[var(--text-primary)] font-medium text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="w-full py-2.5 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] hover:border-[var(--secondary)] text-[var(--text-primary)] font-medium text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

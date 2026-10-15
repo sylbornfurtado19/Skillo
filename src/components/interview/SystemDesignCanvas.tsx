@@ -309,15 +309,15 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#050B14] border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative select-none">
+    <div className="flex flex-col h-full w-full bg-bg-surface border border-border rounded-2xl overflow-hidden shadow-2xl relative select-none">
       {/* ── TOP TOOLBAR ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#0B0F19] border-b border-white/10 text-xs gap-2 flex-wrap z-20">
+      <div className="flex items-center justify-between px-4 py-2 bg-bg-surface-alt border-b border-border text-xs gap-2 flex-wrap z-20">
         {/* Undo/Redo & Zoom Controls */}
         <div className="flex items-center gap-1">
           <button
             onClick={handleUndo}
             disabled={historyStack.length === 0 || readOnly}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-40 transition-all"
+            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary disabled:opacity-40 transition-all border border-border"
             title="Undo"
           >
             <FaUndo size={11} />
@@ -325,25 +325,25 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
           <button
             onClick={handleRedo}
             disabled={redoStack.length === 0 || readOnly}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-40 transition-all"
+            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary disabled:opacity-40 transition-all border border-border"
             title="Redo"
           >
             <FaRedo size={11} />
           </button>
-          <div className="h-4 w-px bg-white/10 mx-1" />
+          <div className="h-4 w-px bg-border mx-1" />
           <button
             onClick={() => setZoom((z) => Math.min(2, z + 0.1))}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 transition-all"
+            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary transition-all border border-border"
             title="Zoom In"
           >
             <FaSearchPlus size={11} />
           </button>
-          <span className="text-[10px] font-mono text-gray-400 w-10 text-center">
+          <span className="text-[10px] font-mono text-text-secondary w-10 text-center">
             {Math.round(zoom * 100)}%
           </span>
           <button
             onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 transition-all"
+            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary transition-all border border-border"
             title="Zoom Out"
           >
             <FaSearchMinus size={11} />
@@ -353,7 +353,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
               setZoom(1);
               setPan({ x: 0, y: 0 });
             }}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 transition-all"
+            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary transition-all border border-border"
             title="Reset View"
           >
             <FaExpandArrowsAlt size={11} />
@@ -363,17 +363,17 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
         {/* Mode Indicators */}
         <div className="flex items-center gap-2">
           {connectingSourceId ? (
-            <span className="animate-pulse flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 border border-amber-500/40 text-amber-300">
+            <span className="animate-pulse flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-warning/20 border border-warning/40 text-warning">
               <FaPlug size={10} />
               Click target node to connect edge ({connectLabel})
             </span>
           ) : (
-            <div className="flex items-center gap-1.5 text-[10px] font-mono text-gray-400">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-secondary">
               <span>Protocol Label:</span>
               <select
                 value={connectLabel}
                 onChange={(e) => setConnectLabel(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-white font-mono text-[10px]"
+                className="bg-bg-surface border border-border rounded px-1.5 py-0.5 text-text-primary font-mono text-[10px]"
               >
                 <option value="HTTPS">HTTPS</option>
                 <option value="gRPC">gRPC</option>
@@ -392,7 +392,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
             <button
               onClick={handleDeleteSelected}
               disabled={readOnly}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 transition-all text-[10px] font-semibold"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-danger/20 hover:bg-danger/30 text-danger border border-danger/30 transition-all text-[10px] font-semibold"
             >
               <FaTrash size={10} />
               Delete
@@ -401,14 +401,14 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
           <button
             onClick={handleClearCanvas}
             disabled={readOnly}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-all"
+            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-secondary transition-all border border-border"
             title="Clear Whiteboard"
           >
             <FaTimes size={11} />
           </button>
           <button
             onClick={handleExportJSON}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 transition-all text-[10px] font-semibold"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary border border-border transition-all text-[10px] font-semibold"
           >
             <FaDownload size={10} />
             Export JSON
@@ -416,7 +416,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
           {onSave && (
             <button
               onClick={() => onSave(diagramState)}
-              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold transition-all text-[10px] shadow-lg shadow-primary/20"
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-primary hover:bg-primary/90 text-text-on-primary font-bold transition-all text-[10px] shadow-soft"
             >
               <FaSave size={10} />
               Save Design
@@ -429,8 +429,8 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
       <div className="flex-1 flex relative overflow-hidden">
         {/* Left Side Tool Palette */}
         {!readOnly && (
-          <div className="w-14 bg-[#080D1A] border-r border-white/10 flex flex-col items-center py-3 gap-2 z-10 shrink-0 overflow-y-auto">
-            <span className="text-[8px] font-mono text-gray-500 uppercase tracking-tighter mb-1">
+          <div className="w-14 bg-bg-surface-alt border-r border-border flex flex-col items-center py-3 gap-2 z-10 shrink-0 overflow-y-auto">
+            <span className="text-[8px] font-mono text-text-secondary uppercase tracking-tighter mb-1">
               Nodes
             </span>
             {(Object.keys(NODE_PRESET_CONFIGS) as SystemDesignNodeType[]).map((type) => {
@@ -462,7 +462,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
             setSelectedEdgeId(null);
             setConnectingSourceId(null);
           }}
-          className="flex-1 relative cursor-crosshair overflow-hidden bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px]"
+          className="flex-1 relative cursor-crosshair overflow-hidden bg-[radial-gradient(var(--border)_1px,transparent_1px)] [background-size:24px_24px]"
         >
           <div
             style={{
@@ -485,7 +485,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
                   markerHeight="6"
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366F1" />
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--primary)" />
                 </marker>
               </defs>
               {diagramState.edges.map((edge) => {
@@ -521,7 +521,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
                       y1={y1}
                       x2={x2}
                       y2={y2}
-                      stroke={isSelected ? '#EC4899' : '#6366F1'}
+                      stroke={isSelected ? 'var(--secondary)' : 'var(--primary)'}
                       strokeWidth={isSelected ? 3 : 2}
                       strokeDasharray={edge.label?.includes('Queue') ? '4' : undefined}
                       markerEnd="url(#arrow)"
@@ -533,14 +533,14 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
                       width={60}
                       height={18}
                       rx={4}
-                      fill="#0B0F19"
-                      stroke={isSelected ? '#EC4899' : '#312E81'}
+                      fill="var(--bg-surface-alt)"
+                      stroke={isSelected ? 'var(--secondary)' : 'var(--border)'}
                       strokeWidth={1}
                     />
                     <text
                       x={midX}
                       y={midY + 3}
-                      fill="#C7D2FE"
+                      fill="var(--text-primary)"
                       fontSize={9}
                       fontFamily="monospace"
                       textAnchor="middle"
@@ -574,26 +574,26 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
                     width: `${node.width || cfg.defaultWidth}px`,
                     height: `${node.height || cfg.defaultHeight}px`,
                   }}
-                  className={`absolute rounded-xl border p-2 flex items-center justify-start gap-2 shadow-lg backdrop-blur-md transition-shadow cursor-grab active:cursor-grabbing z-10 ${
+                  className={`absolute rounded-xl border p-2 flex items-center justify-start gap-2 shadow-soft backdrop-blur-md transition-shadow cursor-grab active:cursor-grabbing z-10 ${
                     cfg.bgColor
                   } ${
                     isSelected
-                      ? 'ring-2 ring-primary border-primary shadow-primary/20 scale-[1.02]'
+                      ? 'ring-2 ring-primary border-primary shadow-soft scale-[1.02]'
                       : isConnectSource
-                      ? 'ring-2 ring-amber-400 border-amber-400 animate-pulse'
+                      ? 'ring-2 ring-warning border-warning animate-pulse'
                       : cfg.borderColor
                   }`}
                 >
                   <div
-                    className={`w-7 h-7 rounded-lg bg-black/40 flex items-center justify-center shrink-0 ${cfg.textColor}`}
+                    className={`w-7 h-7 rounded-lg bg-bg-surface-alt/80 flex items-center justify-center shrink-0 ${cfg.textColor}`}
                   >
                     {renderIcon(node.type)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-white truncate font-heading leading-tight">
+                    <p className="text-xs font-bold text-text-primary truncate font-heading leading-tight">
                       {node.label}
                     </p>
-                    <p className="text-[8px] font-mono text-gray-400 uppercase tracking-tighter truncate">
+                    <p className="text-[8px] font-mono text-text-secondary uppercase tracking-tighter truncate">
                       {node.type.replace('_', ' ')}
                     </p>
                   </div>
@@ -605,7 +605,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
                         e.stopPropagation();
                         setConnectingSourceId(isConnectSource ? null : node.id);
                       }}
-                      className="w-5 h-5 rounded-full bg-white/10 hover:bg-primary text-gray-300 hover:text-white flex items-center justify-center shrink-0 transition-colors"
+                      className="w-5 h-5 rounded-full bg-border/60 hover:bg-primary text-text-secondary hover:text-text-on-primary flex items-center justify-center shrink-0 transition-colors"
                       title="Connect edge to target"
                     >
                       <FaPlug size={8} />
@@ -620,9 +620,9 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
 
       {/* ── EDIT LABEL MODAL ─────────────────────────────────────────────────── */}
       {editingNodeId && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-30 p-4">
-          <div className="bg-[#0B0F19] border border-white/15 rounded-2xl p-5 max-w-xs w-full space-y-4 shadow-2xl">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-30 p-4">
+          <div className="bg-bg-surface border border-border rounded-2xl p-5 max-w-xs w-full space-y-4 shadow-soft">
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
               Rename Component Node
             </h4>
             <input
@@ -631,19 +631,19 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
               onChange={(e) => setEditLabelText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSaveNodeLabel()}
               autoFocus
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:border-primary focus:outline-none"
+              className="w-full px-3 py-2 bg-bg-surface-alt border border-border rounded-xl text-xs text-text-primary focus:border-primary focus:outline-none"
               placeholder="Node Label"
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setEditingNodeId(null)}
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-gray-300"
+                className="px-3 py-1.5 rounded-lg bg-bg-surface-alt hover:bg-border text-xs text-text-primary"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveNodeLabel}
-                className="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-xs text-white font-bold"
+                className="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-xs text-text-on-primary font-bold"
               >
                 Save
               </button>
@@ -654,39 +654,39 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
 
       {/* ── FIRST-TIME USAGE SYSTEM DESIGN TOOLTIP OVERLAY ──────────────────── */}
       {showTooltip && (
-        <div className="absolute top-12 left-4 right-4 z-40 bg-[#0B0F19]/95 backdrop-blur-md border border-primary/40 rounded-2xl p-4 shadow-2xl space-y-3">
-          <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-2">
+        <div className="absolute top-12 left-4 right-4 z-40 bg-bg-surface/95 backdrop-blur-md border border-primary/40 rounded-2xl p-4 shadow-soft space-y-3">
+          <div className="flex items-start justify-between gap-3 border-b border-border pb-2">
             <div className="flex items-center gap-2">
-              <span className="h-6 w-6 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">💡</span>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+              <span className="h-6 w-6 rounded-lg bg-primary-soft text-primary flex items-center justify-center font-bold text-xs">💡</span>
+              <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
                 System Design Canvas Guide
               </h4>
             </div>
             <button
               onClick={dismissTooltip}
-              className="text-gray-400 hover:text-white transition-colors p-1"
+              className="text-text-secondary hover:text-text-primary transition-colors p-1"
               title="Dismiss Guide"
             >
               <FaTimes size={12} />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px] text-gray-300 font-mono">
-            <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 space-y-1">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px] text-text-primary font-mono">
+            <div className="bg-bg-surface-alt p-2.5 rounded-xl border border-border space-y-1">
               <span className="text-primary font-bold block">1. Add & Drag Components</span>
-              <p className="text-[10px] text-gray-400 leading-tight">
+              <p className="text-[10px] text-text-secondary leading-tight">
                 Click preset nodes (Client, Load Balancer, DB, Cache) in the top toolbar to add them. Drag to position.
               </p>
             </div>
-            <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 space-y-1">
+            <div className="bg-bg-surface-alt p-2.5 rounded-xl border border-border space-y-1">
               <span className="text-secondary font-bold block">2. Connect Data Flows</span>
-              <p className="text-[10px] text-gray-400 leading-tight">
-                Click the plug pin <FaPlug className="inline text-gray-300" size={8} /> on a node to select it, then click any target node to draw a connected edge.
+              <p className="text-[10px] text-text-secondary leading-tight">
+                Click the plug pin <FaPlug className="inline text-text-secondary" size={8} /> on a node to select it, then click any target node to draw a connected edge.
               </p>
             </div>
-            <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 space-y-1">
-              <span className="text-accent font-bold block">3. Rename & Adjust</span>
-              <p className="text-[10px] text-gray-400 leading-tight">
+            <div className="bg-bg-surface-alt p-2.5 rounded-xl border border-border space-y-1">
+              <span className="text-primary font-bold block">3. Rename & Adjust</span>
+              <p className="text-[10px] text-text-secondary leading-tight">
                 Double-click nodes to edit labels. Select and click delete to remove components or edges.
               </p>
             </div>
@@ -695,7 +695,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
           <div className="flex justify-end pt-1">
             <button
               onClick={dismissTooltip}
-              className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-xs font-bold shadow-md hover:scale-[1.02] active:scale-[0.98] transition cursor-pointer"
+              className="px-4 py-1.5 rounded-xl bg-primary text-text-on-primary text-xs font-bold shadow-soft hover:scale-102 active:scale-98 transition cursor-pointer"
             >
               Got it, start designing!
             </button>

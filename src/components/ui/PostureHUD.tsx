@@ -63,14 +63,14 @@ export default function PostureHUD({
   if (isSubjectAbsent) {
     return (
       <div className="flex flex-col gap-2 transition-all duration-300">
-        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-danger/15 border border-danger/30 backdrop-blur-sm font-mono text-[10px]">
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-danger/15 border border-danger/30 backdrop-blur-sm font-mono text-xs">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-danger animate-pulse" />
             <span className="text-danger font-bold">
               ⚠️ Alert: Subject Not Detected / Left Frame
             </span>
           </div>
-          <span className="text-danger text-[9px] uppercase tracking-wider">Zero Presence</span>
+          <span className="text-danger text-xs uppercase tracking-wider">Zero Presence</span>
         </div>
       </div>
     );
@@ -92,7 +92,7 @@ export default function PostureHUD({
   return (
     <div className="flex flex-col gap-2 transition-all duration-300">
       {/* ── Active Posture Badge ───────────────────────────────────── */}
-      <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-surface border border-border shadow-soft font-mono text-[10px]">
+      <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-surface border border-border shadow-soft font-mono text-xs">
         <div className="flex items-center gap-2">
           <div className={`h-2 w-2 rounded-full ${isExcessive ? 'bg-warning animate-ping' : 'bg-success'}`} />
           <span className={isExcessive ? 'text-warning font-bold' : 'text-success font-semibold'}>
@@ -105,7 +105,7 @@ export default function PostureHUD({
               : '🟢 Composure: Stable Posture'}
           </span>
         </div>
-        <div className="flex items-center gap-2 text-text-secondary text-[9px]">
+        <div className="flex items-center gap-2 text-text-secondary text-xs">
           {me !== undefined && (
             <span className="text-text-secondary">ME: {me}</span>
           )}
@@ -119,7 +119,7 @@ export default function PostureHUD({
       {toastMessage && (
         <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border shadow-lg backdrop-blur-md animate-bounce ${toastMessage.bg}`}>
           <span className="text-sm">{toastMessage.icon}</span>
-          <span className="text-[11px] font-mono font-bold">{toastMessage.text}</span>
+          <span className="text-xs font-mono font-bold">{toastMessage.text}</span>
         </div>
       )}
     </div>

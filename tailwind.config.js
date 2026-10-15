@@ -35,6 +35,14 @@ export default {
       },
       boxShadow: {
         theme: 'var(--shadow)',
+        soft: 'var(--shadow)',
+      },
+      scale: {
+        102: '1.02',
+        98: '0.98',
+      },
+      transitionDuration: {
+        250: '250ms',
       },
       fontFamily: {
         heading: ['Sora', 'sans-serif'],

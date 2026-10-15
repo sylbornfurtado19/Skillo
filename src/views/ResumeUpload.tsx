@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -21,6 +21,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import { Progress, Loader } from '../components/ui/Loader';
+import { Skeleton } from '../components/ui/Skeleton';
 import GraphRAGDashboard from '../components/ui/GraphRAGDashboard';
 import VisualDocumentCanvas from '../components/ui/VisualDocumentCanvas';
 import LayoutPenaltyViewer from '../components/ui/LayoutPenaltyViewer';
@@ -29,6 +30,10 @@ import type { VisualLayoutAnalysisResult, BoundingBox2D } from '@/types/index';
 
 export default function ResumeUpload() {
   const router = useRouter();
+  const fileInputId = useId();
+  const jobTitleId = useId();
+  const jobDescriptionId = useId();
+
   const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
   const {
@@ -59,12 +64,12 @@ export default function ResumeUpload() {
 
   if (!isAuthenticated) {
     return (
-      <div className="glass-card rounded-2xl p-8 border border-white/5 text-center max-w-md mx-auto mt-12 space-y-6">
-        <div className="h-12 w-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 text-xl mx-auto animate-pulse">
+      <div className="bg-bg-surface rounded-2xl p-8 border border-border shadow-soft text-center max-w-md mx-auto mt-12 space-y-6">
+        <div className="h-12 w-12 rounded-full bg-danger/10 border border-danger/20 flex items-center justify-center text-danger text-xl mx-auto animate-pulse">
           <FaExclamationTriangle />
         </div>
-        <h3 className="text-lg font-heading font-bold text-white">Sign In Required</h3>
-        <p className="text-xs text-gray-400 leading-relaxed">
+        <h3 className="text-lg font-heading font-bold text-text-primary">Sign In Required</h3>
+        <p className="text-xs text-text-secondary leading-relaxed">
           Please sign in to access the resume parser and targeted mock interview generation engine.
         </p>
         <Button onClick={() => router.push('/login')} variant="primary" size="md">
@@ -227,13 +232,13 @@ export default function ResumeUpload() {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="bg-[var(--bg-surface)] rounded-2xl p-10 border border-[var(--border)] shadow-[var(--shadow)] flex flex-col items-center justify-center min-h-[300px] text-center"
+            className="bg-bg-surface rounded-2xl p-10 border border-border shadow-soft flex flex-col items-center justify-center min-h-[300px] text-center"
           >
-            <div className="h-14 w-14 rounded-full bg-[var(--primary-soft)] border border-[var(--primary)]/20 flex items-center justify-center text-[var(--primary)] text-2xl mb-4 animate-bounce">
+            <div className="h-14 w-14 rounded-full bg-primary-soft border border-primary/20 flex items-center justify-center text-primary text-2xl mb-4 animate-bounce">
               <FaCloudUploadAlt />
             </div>
-            <h3 className="text-lg font-heading font-bold text-[var(--text-primary)] mb-2">Uploading Document</h3>
-            <p className="text-xs text-[var(--text-secondary)] mb-6 font-mono">Transferring package payload...</p>
+            <h3 className="text-lg font-heading font-bold text-text-primary mb-2">Uploading Document</h3>
+            <p className="text-xs text-text-secondary mb-6 font-mono">Transferring package payload...</p>
             <Progress value={uploadProgress} max={100} showLabel={true} label="Upload Status" className="max-w-xs" />
           </motion.div>
         )}
@@ -244,39 +249,48 @@ export default function ResumeUpload() {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="bg-[var(--bg-surface)] rounded-2xl p-10 border border-[var(--border)] shadow-[var(--shadow)] flex flex-col items-center justify-center min-h-[350px] text-center"
+            className="space-y-6"
           >
-            <Loader size="lg" className="mb-6" />
-            <h3 className="text-lg font-heading font-bold text-[var(--text-primary)] mb-2">Analyzing Resume</h3>
-            <p className="text-xs text-[var(--text-secondary)] font-mono mb-6 font-medium">Running AI scanning queries...</p>
+            <div className="bg-bg-surface rounded-2xl p-8 border border-border shadow-soft flex flex-col items-center justify-center text-center">
+              <Loader size="lg" className="mb-4" />
+              <h3 className="text-lg font-heading font-bold text-text-primary mb-1">Analyzing Resume with LayoutLMv3</h3>
+              <p className="text-xs text-text-secondary font-mono mb-6 font-medium">Extracting semantic tokens and ATS alignment...</p>
 
-            <div className="w-full max-w-md bg-[var(--bg-surface-alt)] border border-[var(--border)] rounded-xl p-5 space-y-3.5 text-left">
-              {analysisSteps.map((stepDesc, idx) => {
-                const isDone = idx < analysisStep;
-                const isCurrent = idx === analysisStep;
-                return (
-                  <div key={idx} className="flex items-center gap-3 text-xs">
-                    {isDone ? (
-                      <div className="h-4 w-4 rounded-full bg-[var(--success)]/20 flex items-center justify-center text-[var(--success)] text-[10px]">
-                        <FaCheck />
-                      </div>
-                    ) : isCurrent ? (
-                      <div className="h-4 w-4 rounded-full bg-[var(--primary)]/20 flex items-center justify-center shrink-0">
-                        <div className="h-1.5 w-1.5 rounded-full bg-[var(--primary)] animate-ping" />
-                      </div>
-                    ) : (
-                      <div className="h-4 w-4 rounded-full bg-[var(--bg-surface)] border border-[var(--border)] shrink-0" />
-                    )}
-                    <span
-                      className={`font-mono ${
-                        isDone ? 'text-[var(--success)]' : isCurrent ? 'text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)]'
-                      }`}
-                    >
-                      {stepDesc}
-                    </span>
-                  </div>
-                );
-              })}
+              <div className="w-full max-w-md bg-bg-surface-alt border border-border rounded-xl p-5 space-y-3.5 text-left mb-6">
+                {analysisSteps.map((stepDesc, idx) => {
+                  const isDone = idx < analysisStep;
+                  const isCurrent = idx === analysisStep;
+                  return (
+                    <div key={idx} className="flex items-center gap-3 text-xs">
+                      {isDone ? (
+                        <div className="h-4 w-4 rounded-full bg-success/20 flex items-center justify-center text-success text-xs">
+                          <FaCheck aria-hidden="true" />
+                        </div>
+                      ) : isCurrent ? (
+                        <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                          <div className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
+                        </div>
+                      ) : (
+                        <div className="h-4 w-4 rounded-full bg-bg-surface border border-border shrink-0" />
+                      )}
+                      <span
+                        className={`font-mono ${
+                          isDone ? 'text-success' : isCurrent ? 'text-text-primary font-semibold' : 'text-text-secondary'
+                        }`}
+                      >
+                        {stepDesc}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Skeleton Preview of Upcoming Report */}
+              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <Skeleton variant="rect" className="h-28 rounded-xl" />
+                <Skeleton variant="rect" className="h-28 rounded-xl" />
+                <Skeleton variant="rect" className="h-28 rounded-xl" />
+              </div>
             </div>
           </motion.div>
         )}
@@ -287,13 +301,13 @@ export default function ResumeUpload() {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="bg-[var(--bg-surface)] rounded-2xl p-10 border border-[var(--danger)]/30 bg-[var(--danger)]/5 flex flex-col items-center justify-center min-h-[300px] text-center"
+            className="bg-bg-surface rounded-2xl p-10 border border-danger/30 bg-danger/5 flex flex-col items-center justify-center min-h-[300px] text-center"
           >
-            <div className="h-12 w-12 rounded-full bg-[var(--danger)]/10 border border-[var(--danger)]/20 flex items-center justify-center text-[var(--danger)] text-xl mb-4">
-              <FaExclamationTriangle />
+            <div className="h-12 w-12 rounded-full bg-danger/10 border border-danger/20 flex items-center justify-center text-danger text-xl mb-4">
+              <FaExclamationTriangle aria-hidden="true" />
             </div>
-            <h3 className="text-lg font-heading font-bold text-[var(--text-primary)] mb-2">Analysis Error</h3>
-            <p className="text-xs text-[var(--text-secondary)] leading-relaxed max-w-sm mb-6">
+            <h3 className="text-lg font-heading font-bold text-text-primary mb-2">Analysis Error</h3>
+            <p className="text-xs text-text-secondary leading-relaxed max-w-sm mb-6">
               Could not complete analysis. Ensure you are signed in and have entered valid job details.
             </p>
             <Button onClick={() => setCurrentState('idle')} variant="danger" size="sm" icon={FaRedo}>
@@ -304,10 +318,10 @@ export default function ResumeUpload() {
 
         {currentState === 'complete' && resultObj && (
           <motion.div key="complete" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <Card variant="glass" className="p-6 sm:p-8">
+            <Card variant="default" className="p-6 sm:p-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-                <div className="flex flex-col items-center justify-center text-center p-4 border-b md:border-b-0 md:border-r border-[var(--border)]">
-                  <span className="text-xs text-[var(--text-secondary)] font-bold uppercase tracking-wider mb-4">Alignment Score</span>
+                <div className="flex flex-col items-center justify-center text-center p-4 border-b md:border-b-0 md:border-r border-border">
+                  <span className="text-xs text-text-secondary font-bold uppercase tracking-wider mb-4">Alignment Score</span>
 
                   <div className="relative h-32 w-32 flex items-center justify-center">
                     <svg className="w-full h-full transform -rotate-90">
@@ -332,34 +346,34 @@ export default function ResumeUpload() {
                       />
                       <defs>
                         <linearGradient id="resumeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#9B2218" />
-                          <stop offset="100%" stopColor="#7F1B13" />
+                          <stop offset="0%" stopColor="var(--primary)" />
+                          <stop offset="100%" stopColor="var(--primary-hover)" />
                         </linearGradient>
                       </defs>
                     </svg>
                     <div className="absolute flex flex-col items-center">
-                      <span className="text-3xl font-heading font-extrabold text-[var(--text-primary)]">
+                      <span className="text-3xl font-heading font-extrabold text-text-primary">
                         {resultObj.matchPercentage ?? 80}%
                       </span>
                     </div>
                   </div>
 
-                  <span className="text-[10px] text-[var(--text-secondary)] font-mono mt-4 truncate max-w-full">
+                  <span className="text-xs text-text-secondary font-mono mt-4 truncate max-w-full">
                     {resultObj.fileName ?? file?.name}
                   </span>
                 </div>
 
                 <div className="col-span-2 space-y-4">
                   <div>
-                    <h3 className="text-lg font-heading font-bold text-[var(--text-primary)]">
+                    <h3 className="text-lg font-heading font-bold text-text-primary">
                       Profile Alignment Index for {jobTitle}
                     </h3>
-                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed mt-2">{resultObj.summary}</p>
+                    <p className="text-xs text-text-secondary leading-relaxed mt-2">{resultObj.summary}</p>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-[var(--bg-surface-alt)] border border-[var(--border)] rounded-xl p-3">
-                      <span className="text-[10px] text-[var(--success)] font-bold uppercase tracking-wider block mb-2">
+                    <div className="bg-bg-surface-alt border border-border rounded-xl p-3">
+                      <span className="text-xs text-success font-bold uppercase tracking-wider block mb-2">
                         Matched Tech ({resultObj.skillsMatched?.length ?? 0})
                       </span>
                       <div className="flex flex-wrap gap-1">
@@ -371,8 +385,8 @@ export default function ResumeUpload() {
                       </div>
                     </div>
 
-                    <div className="bg-[var(--bg-surface-alt)] border border-[var(--border)] rounded-xl p-3">
-                      <span className="text-[10px] text-[var(--warning)] font-bold uppercase tracking-wider block mb-2">
+                    <div className="bg-bg-surface-alt border border-border rounded-xl p-3">
+                      <span className="text-xs text-warning font-bold uppercase tracking-wider block mb-2">
                         Missing Keywords ({resultObj.skillsMissing?.length ?? 0})
                       </span>
                       <div className="flex flex-wrap gap-1">
@@ -416,31 +430,31 @@ export default function ResumeUpload() {
                   {/* Section header */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-heading font-bold text-[var(--text-primary)]">
+                      <h3 className="text-sm font-heading font-bold text-text-primary">
                         Document Layout &amp; Formatting Inspector
                       </h3>
-                      <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                      <p className="text-xs text-text-secondary mt-0.5">
                         Analyzes document structure, column boundaries, and typography hierarchy using deterministic spatial geometry rules.
                       </p>
                     </div>
                     {/* Page indicator */}
-                    <div className="flex items-center gap-1 text-[10px] text-[var(--text-secondary)] font-mono">
-                      <span className="px-2 py-0.5 rounded bg-[var(--bg-surface-alt)] border border-[var(--border)]">
+                    <div className="flex items-center gap-1 text-xs text-text-secondary font-mono">
+                      <span className="px-2 py-0.5 rounded bg-bg-surface-alt border border-border">
                         pg {activePageNumber} / {vla.pageCount}
                       </span>
                     </div>
                   </div>
 
                   {/* Mobile tab switcher */}
-                  <div className="flex lg:hidden gap-1 bg-[var(--bg-surface-alt)] border border-[var(--border)] rounded-xl p-1">
+                  <div className="flex lg:hidden gap-1 bg-bg-surface-alt border border-border rounded-xl p-1">
                     {(['canvas', 'penalties'] as const).map(tab => (
                       <button
                         key={tab}
                         onClick={() => setVisualLayoutTab(tab)}
                         className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
                           visualLayoutTab === tab
-                            ? 'bg-[var(--primary)] text-[var(--text-on-primary)]'
-                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                            ? 'bg-primary text-text-on-primary'
+                            : 'text-text-secondary hover:text-text-primary'
                         }`}
                       >
                         {tab === 'canvas' ? '🗺 Canvas' : '⚠ Penalties'}
@@ -475,14 +489,14 @@ export default function ResumeUpload() {
             })()}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card variant="glass" className="space-y-4">
-                <h4 className="text-sm font-heading font-bold text-[var(--text-primary)] uppercase tracking-wider border-b border-[var(--border)] pb-2">
+              <Card variant="default" className="space-y-4">
+                <h4 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider border-b border-border pb-2">
                   Detected Competencies
                 </h4>
 
                 <div className="space-y-3">
                   <div>
-                    <span className="text-[9px] text-[var(--text-secondary)] font-bold uppercase block mb-1">Core Skills</span>
+                    <span className="text-xs text-text-secondary font-bold uppercase block mb-1">Core Skills</span>
                     <div className="flex flex-wrap gap-1.5">
                       {resultObj.detectedSkills?.map((s: string) => (
                         <Badge key={s} variant="primary" size="sm">
@@ -493,7 +507,7 @@ export default function ResumeUpload() {
                   </div>
 
                   <div>
-                    <span className="text-[9px] text-[var(--text-secondary)] font-bold uppercase block mb-1">Frameworks & Tools</span>
+                    <span className="text-xs text-text-secondary font-bold uppercase block mb-1">Frameworks & Tools</span>
                     <div className="flex flex-wrap gap-1.5">
                       {resultObj.detectedTech?.map((s: string) => (
                         <Badge key={s} variant="secondary" size="sm">
@@ -505,14 +519,14 @@ export default function ResumeUpload() {
                 </div>
               </Card>
 
-              <Card variant="glass" className="space-y-4">
-                <h4 className="text-sm font-heading font-bold text-[var(--text-primary)] uppercase tracking-wider border-b border-[var(--border)] pb-2">
+              <Card variant="default" className="space-y-4">
+                <h4 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider border-b border-border pb-2">
                   Suggested Improvements
                 </h4>
                 <div className="space-y-3">
                   {(resultObj.recommendations ?? []).map((rec: string, idx: number) => (
-                    <div key={idx} className="flex gap-2.5 text-xs text-[var(--text-secondary)] leading-relaxed items-start">
-                      <span className="h-4 w-4 rounded-full bg-[var(--bg-surface-alt)] border border-[var(--border)] flex items-center justify-center font-mono font-bold text-[9px] shrink-0 text-[var(--text-primary)]">
+                    <div key={idx} className="flex gap-2.5 text-xs text-text-secondary leading-relaxed items-start">
+                      <span className="h-4 w-4 rounded-full bg-bg-surface-alt border border-border flex items-center justify-center font-mono font-bold text-xs shrink-0 text-text-primary">
                         {idx + 1}
                       </span>
                       <p>{rec}</p>
@@ -521,47 +535,47 @@ export default function ResumeUpload() {
                 </div>
               </Card>
 
-              <Card variant="glass" className="space-y-4 md:col-span-2">
-                <h4 className="text-sm font-heading font-bold text-[var(--text-primary)] uppercase tracking-wider border-b border-[var(--border)] pb-2">
+              <Card variant="default" className="space-y-4 md:col-span-2">
+                <h4 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider border-b border-border pb-2">
                   Parsed Experience & Projects
                 </h4>
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <span className="text-[9px] text-[var(--text-secondary)] font-bold uppercase block">Professional History</span>
+                    <span className="text-xs text-text-secondary font-bold uppercase block">Professional History</span>
                     {resultObj.experience?.map((exp: any, idx: number) => (
-                      <div key={idx} className="p-3 bg-[var(--bg-surface-alt)] border border-[var(--border)] rounded-xl space-y-1">
-                        <div className="flex justify-between items-center text-xs font-semibold text-[var(--text-primary)]">
+                      <div key={idx} className="p-3 bg-bg-surface-alt border border-border rounded-xl space-y-1">
+                        <div className="flex justify-between items-center text-xs font-semibold text-text-primary">
                           <span>
                             {exp.role} @ {exp.company}
                           </span>
-                          <span className="text-[var(--text-secondary)] text-[10px] font-mono">{exp.period}</span>
+                          <span className="text-text-secondary text-xs font-mono">{exp.period}</span>
                         </div>
-                        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{exp.bullet}</p>
+                        <p className="text-xs text-text-secondary leading-relaxed">{exp.bullet}</p>
                       </div>
                     ))}
                   </div>
 
                   <div className="space-y-2">
-                    <span className="text-[9px] text-[var(--text-secondary)] font-bold uppercase block">Highlighted Projects</span>
+                    <span className="text-xs text-text-secondary font-bold uppercase block">Highlighted Projects</span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {resultObj.projects?.map((proj: any, idx: number) => (
-                        <div key={idx} className="p-3 bg-[var(--bg-surface-alt)] border border-[var(--border)] rounded-xl space-y-1 text-xs">
-                          <h5 className="font-semibold text-[var(--text-primary)]">{proj.name}</h5>
-                          <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{proj.desc}</p>
+                        <div key={idx} className="p-3 bg-bg-surface-alt border border-border rounded-xl space-y-1 text-xs">
+                          <h5 className="font-semibold text-text-primary">{proj.name}</h5>
+                          <p className="text-xs text-text-secondary leading-relaxed">{proj.desc}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <span className="text-[9px] text-[var(--text-secondary)] font-bold uppercase block">Academic Degrees</span>
+                    <span className="text-xs text-text-secondary font-bold uppercase block">Academic Degrees</span>
                     {resultObj.education?.map((edu: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center p-3 bg-[var(--bg-surface-alt)] border border-[var(--border)] rounded-xl text-xs">
-                        <span className="font-semibold text-[var(--text-primary)]">
-                          {edu.degree} &bull; <span className="text-[var(--text-secondary)]">{edu.school}</span>
+                      <div key={idx} className="flex justify-between items-center p-3 bg-bg-surface-alt border border-border rounded-xl text-xs">
+                        <span className="font-semibold text-text-primary">
+                          {edu.degree} &bull; <span className="text-text-secondary">{edu.school}</span>
                         </span>
-                        <span className="text-[var(--text-secondary)] text-[10px] font-mono">{edu.period}</span>
+                        <span className="text-text-secondary text-xs font-mono">{edu.period}</span>
                       </div>
                     ))}
                   </div>
@@ -569,10 +583,10 @@ export default function ResumeUpload() {
               </Card>
             </div>
 
-            <div className="flex justify-between items-center bg-[var(--bg-surface)] rounded-xl p-4 border border-[var(--border)] shadow-[var(--shadow)]">
+            <div className="flex justify-between items-center bg-bg-surface rounded-xl p-4 border border-border shadow-soft">
               <button
                 onClick={handleRemoveFile}
-                className="px-4 py-2 text-xs rounded-lg hover:bg-[var(--bg-surface-alt)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition duration-200"
+                className="px-4 py-2 text-xs rounded-lg hover:bg-bg-surface-alt text-text-secondary hover:text-text-primary transition duration-200"
               >
                 Upload Different Resume
               </button>
@@ -591,79 +605,81 @@ export default function ResumeUpload() {
         {currentState === 'idle' && (
           <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div
-              className={`bg-[var(--bg-surface)] rounded-2xl border p-6 flex flex-col justify-between items-center transition duration-300 min-h-[380px] shadow-[var(--shadow)] ${
-                dragging ? 'border-[var(--primary)] bg-[var(--primary-soft)]' : 'border-[var(--border)] hover:border-[var(--secondary)]'
+              className={`bg-bg-surface rounded-2xl border p-6 flex flex-col justify-between items-center transition duration-300 min-h-[380px] shadow-soft ${
+                dragging ? 'border-primary bg-primary-soft' : 'border-border hover:border-secondary'
               }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
-              <div className="w-full flex items-center justify-between border-b border-[var(--border)] pb-3">
-                <span className="text-xs text-[var(--text-secondary)] font-bold uppercase tracking-wider">Candidate Profile</span>
+              <div className="w-full flex items-center justify-between border-b border-border pb-3">
+                <span className="text-xs text-text-secondary font-bold uppercase tracking-wider">Candidate Profile</span>
                 <Badge variant="neutral">PDF, DOCX, TXT</Badge>
               </div>
 
               {!file ? (
                 <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                  <div className="h-16 w-16 rounded-full bg-[var(--bg-surface-alt)] flex items-center justify-center border border-[var(--border)] text-[var(--text-secondary)] text-3xl group hover:text-[var(--primary)] transition duration-300">
-                    <FaCloudUploadAlt className="animate-pulse" />
+                  <div className="h-16 w-16 rounded-full bg-bg-surface-alt flex items-center justify-center border border-border text-text-secondary text-3xl group hover:text-primary transition duration-300">
+                    <FaCloudUploadAlt className="animate-pulse" aria-hidden="true" />
                   </div>
                   <div className="text-center space-y-1">
-                    <label className="text-sm font-semibold text-[var(--text-primary)] cursor-pointer hover:text-[var(--primary)] transition duration-200">
+                    <label htmlFor={fileInputId} className="text-sm font-semibold text-text-primary cursor-pointer hover:text-primary transition duration-200">
                       <span>Click to upload file</span>
-                      <input type="file" className="hidden" accept=".pdf,.docx,.txt" onChange={handleFileSelect} />
+                      <input id={fileInputId} type="file" className="hidden" accept=".pdf,.docx,.txt" onChange={handleFileSelect} />
                     </label>
-                    <p className="text-xs text-[var(--text-secondary)]">or drag and drop resume here</p>
+                    <p className="text-xs text-text-secondary">or drag and drop resume here</p>
                   </div>
                 </div>
               ) : (
-                <div className="w-full flex items-center gap-4 bg-[var(--bg-surface-alt)] rounded-xl p-4 border border-[var(--border)] relative">
-                  <div className="h-12 w-12 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/20 flex items-center justify-center text-[var(--danger)] text-2xl shrink-0">
-                    <FaFilePdf />
+                <div className="w-full flex items-center gap-4 bg-bg-surface-alt rounded-xl p-4 border border-border relative">
+                  <div className="h-12 w-12 rounded-lg bg-danger/10 border border-danger/20 flex items-center justify-center text-danger text-2xl shrink-0">
+                    <FaFilePdf aria-hidden="true" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-[var(--text-primary)] truncate">{file.name}</h4>
-                    <p className="text-xs text-[var(--text-secondary)] font-mono mt-0.5">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <h4 className="text-sm font-medium text-text-primary truncate">{file.name}</h4>
+                    <p className="text-xs text-text-secondary font-mono mt-0.5">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                   <button
                     onClick={handleRemoveFile}
-                    className="h-8 w-8 rounded-lg hover:bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition duration-200 shrink-0"
+                    aria-label="Remove uploaded file"
+                    className="h-8 w-8 rounded-lg hover:bg-bg-surface flex items-center justify-center text-text-secondary hover:text-text-primary transition duration-200 shrink-0"
                   >
-                    <FaTimes />
+                    <FaTimes aria-hidden="true" />
                   </button>
                 </div>
               )}
 
-              <div className="w-full text-center text-[10px] text-[var(--text-secondary)]">
+              <div className="w-full text-center text-xs text-text-secondary">
                 Data processed locally. Max file size limit: 12MB.
               </div>
             </div>
 
             <form
               onSubmit={handleStartAnalysis}
-              className="bg-[var(--bg-surface)] rounded-2xl p-6 border border-[var(--border)] shadow-[var(--shadow)] flex flex-col justify-between space-y-4"
+              className="bg-bg-surface rounded-2xl p-6 border border-border shadow-soft flex flex-col justify-between space-y-4"
             >
               <div className="space-y-4">
-                <div className="w-full flex items-center justify-between border-b border-[var(--border)] pb-3">
-                  <span className="text-xs text-[var(--text-secondary)] font-bold uppercase tracking-wider">Job Target Specs</span>
+                <div className="w-full flex items-center justify-between border-b border-border pb-3">
+                  <span className="text-xs text-text-secondary font-bold uppercase tracking-wider">Job Target Specs</span>
                   <Badge variant="primary">Target Matrix</Badge>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">Job Title</label>
+                  <label htmlFor={jobTitleId} className="text-xs font-semibold text-text-secondary uppercase tracking-wider block">Job Title</label>
                   <input
+                    id={jobTitleId}
                     type="text"
                     required
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
                     placeholder="e.g., Software Engineer"
-                    className="w-full rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] transition duration-200"
+                    className="w-full rounded-xl bg-bg-surface-alt border border-border px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition duration-200"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">Job Description</label>
+                    <label htmlFor={jobDescriptionId} className="text-xs font-semibold text-text-secondary uppercase tracking-wider block">Job Description</label>
                     <button
                       type="button"
                       onClick={() =>
@@ -671,17 +687,18 @@ export default function ResumeUpload() {
                           'We are looking for a Software Engineer with 3+ years of experience building scalable applications. Must be fluent in React, TypeScript, state management stores, and responsive layouts.'
                         )
                       }
-                      className="text-[10px] text-[var(--primary)] hover:underline font-medium font-mono"
+                      className="text-xs text-primary hover:underline font-medium font-mono"
                     >
                       Load Sample JD
                     </button>
                   </div>
                   <textarea
+                    id={jobDescriptionId}
                     required
                     value={jobDescription}
                     onChange={(e) => setJobDescription(e.target.value)}
                     placeholder="Paste the target job description requirements here..."
-                    className="w-full h-32 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] p-4 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] transition duration-200 resize-none font-mono"
+                    className="w-full h-32 rounded-xl bg-bg-surface-alt border border-border p-4 text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition duration-200 resize-none font-mono"
                   />
                 </div>
               </div>

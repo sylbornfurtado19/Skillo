@@ -64,7 +64,7 @@ export default function ReflectionTimelineDrawer({
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Drawer Container */}
-      <div className="relative w-full max-w-lg bg-surface border-l border-border h-full overflow-y-auto p-6 space-y-6 shadow-soft z-10 text-left">
+      <div className="relative w-full max-w-lg bg-bg-surface border-l border-border h-full overflow-y-auto p-6 space-y-6 shadow-soft z-10 text-left">
         {/* Drawer Header */}
         <div className="flex items-start justify-between border-b border-border pb-4">
           <div className="space-y-1">
@@ -77,7 +77,7 @@ export default function ReflectionTimelineDrawer({
             <h2 className="text-xl font-heading font-extrabold text-text-primary">{node.skillName}</h2>
             <div className="flex items-center gap-2 pt-1">
               {getProficiencyBadge(node.proficiencyLevel)}
-              <span className="text-[10px] text-text-secondary font-mono">
+              <span className="text-xs text-text-secondary font-mono">
                 {node.attemptsCount} Session Attempts &bull; {node.remediationProgress}% Remediated
               </span>
             </div>
@@ -86,19 +86,20 @@ export default function ReflectionTimelineDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-text-secondary hover:text-text-primary rounded-lg hover:bg-surface-alt transition cursor-pointer"
+            aria-label="Close reflection details drawer"
+            className="p-2 text-text-secondary hover:text-text-primary rounded-lg hover:bg-bg-surface-alt transition cursor-pointer"
           >
-            <FaTimes size={14} />
+            <FaTimes size={14} aria-hidden="true" />
           </button>
         </div>
 
         {/* Remediation Progress Bar */}
-        <div className="bg-surface-alt p-4 rounded-xl border border-border space-y-2">
+        <div className="bg-bg-surface-alt p-4 rounded-xl border border-border space-y-2">
           <div className="flex justify-between items-center text-xs font-mono">
             <span className="text-text-secondary font-semibold">Remediation Progress Index</span>
             <span className="text-success font-bold">{node.remediationProgress}%</span>
           </div>
-          <div className="w-full h-2 rounded-full bg-surface border border-border overflow-hidden">
+          <div className="w-full h-2 rounded-full bg-bg-surface border border-border overflow-hidden">
             <div
               className="h-full bg-primary transition-all duration-500"
               style={{ width: `${node.remediationProgress}%` }}
@@ -109,7 +110,7 @@ export default function ReflectionTimelineDrawer({
         {/* Persistent Deficiencies List */}
         {node.persistentDeficiencies.length > 0 && (
           <div className="space-y-2">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block font-mono">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block font-mono">
               Active Persistent Deficiencies
             </span>
             <div className="space-y-1.5">
@@ -118,7 +119,7 @@ export default function ReflectionTimelineDrawer({
                   key={idx}
                   className="p-2.5 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger flex items-start gap-2"
                 >
-                  <FaFire className="text-danger shrink-0 mt-0.5" />
+                  <FaFire className="text-danger shrink-0 mt-0.5" aria-hidden="true" />
                   <span className="leading-tight">{def}</span>
                 </div>
               ))}
@@ -128,16 +129,16 @@ export default function ReflectionTimelineDrawer({
 
         {/* Episodic Verbal Reflection History List */}
         <div className="space-y-4">
-          <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block font-mono">
+          <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block font-mono">
             Episodic Reflection Traces ({node.reflections.length})
           </span>
 
           <div className="space-y-4">
             {node.reflections.map((ref, idx) => (
-              <Card key={ref.id || idx} variant="glass" className="p-4 space-y-3 relative text-left">
+              <Card key={ref.id || idx} variant="default" className="p-4 space-y-3 relative text-left">
                 {/* Reflection Header */}
                 <div className="flex justify-between items-center text-xs border-b border-border pb-2">
-                  <span className="font-mono text-text-secondary text-[10px]">
+                  <span className="font-mono text-text-secondary text-xs">
                     Trace #{node.reflections.length - idx} &bull; {new Date(ref.timestamp).toLocaleDateString()}
                   </span>
                   {getSeverityBadge(ref.severity)}
@@ -145,31 +146,31 @@ export default function ReflectionTimelineDrawer({
 
                 {/* 1. Mistake Summary */}
                 <div className="space-y-1">
-                  <span className="text-[9px] font-bold text-warning uppercase tracking-wider flex items-center gap-1 font-mono">
-                    <FaExclamationTriangle size={9} /> Mistake Summary
+                  <span className="text-xs font-bold text-warning uppercase tracking-wider flex items-center gap-1 font-mono">
+                    <FaExclamationTriangle size={9} aria-hidden="true" /> Mistake Summary
                   </span>
-                  <p className="text-xs text-text-secondary leading-relaxed bg-surface-alt p-2.5 rounded-lg border border-border">
+                  <p className="text-xs text-text-secondary leading-relaxed bg-bg-surface-alt p-2.5 rounded-lg border border-border">
                     {ref.mistakeSummary}
                   </p>
                 </div>
 
                 {/* 2. Root-Cause Analysis */}
                 <div className="space-y-1">
-                  <span className="text-[9px] font-bold text-primary uppercase tracking-wider flex items-center gap-1 font-mono">
-                    <FaLightbulb size={9} /> Root-Cause Analysis (Why it occurred)
+                  <span className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1 font-mono">
+                    <FaLightbulb size={9} aria-hidden="true" /> Root-Cause Analysis (Why it occurred)
                   </span>
-                  <p className="text-xs text-text-secondary leading-relaxed bg-surface-alt p-2.5 rounded-lg border border-border">
+                  <p className="text-xs text-text-secondary leading-relaxed bg-bg-surface-alt p-2.5 rounded-lg border border-border">
                     {ref.rootCauseAnalysis}
                   </p>
                 </div>
 
                 {/* 3. Actionable Remediation Checklist */}
                 <div className="space-y-1">
-                  <span className="text-[9px] font-bold text-success uppercase tracking-wider flex items-center gap-1 font-mono">
-                    <FaGraduationCap size={9} /> Actionable Remediation Step
+                  <span className="text-xs font-bold text-success uppercase tracking-wider flex items-center gap-1 font-mono">
+                    <FaGraduationCap size={9} aria-hidden="true" /> Actionable Remediation Step
                   </span>
                   <div className="flex items-start gap-2 bg-success/5 p-2.5 rounded-lg border border-success/20 text-xs text-success">
-                    <FaCheckCircle size={10} className="shrink-0 mt-0.5" />
+                    <FaCheckCircle size={10} className="shrink-0 mt-0.5" aria-hidden="true" />
                     <span>{ref.actionableRemediation}</span>
                   </div>
                 </div>

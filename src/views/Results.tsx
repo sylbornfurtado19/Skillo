@@ -14,6 +14,9 @@ import {
   FaListUl,
   FaExchangeAlt,
   FaShareAlt,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaTimesCircle,
 } from 'react-icons/fa';
 
 
@@ -27,9 +30,12 @@ import { INTERVIEWER_PERSONAS } from '../services/constants';
 import { useInterview } from '../context/InterviewContext';
 import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult, ContrastiveEvaluationResult, BenchmarkDeltaCard } from '../types/index';
 import { useToast } from '../components/ui/Toast';
+import { useChartTheme } from '../hooks/useChartTheme';
+import { getThemeColor } from '../lib/themeColors';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import { Skeleton } from '../components/ui/Skeleton';
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import SUQConfidenceDashboard from '../components/ui/SUQConfidenceDashboard';
 import SimPOContrastiveCard from '../components/ui/SimPOContrastiveCard';
@@ -61,6 +67,7 @@ function isLipSyncMetrics(obj: any): obj is LipSyncSessionMetrics {
 export default function Results() {
   const router = useRouter();
   const { showToast } = useToast();
+  const chartTheme = useChartTheme();
   const {
     results,
     setResults,
@@ -96,11 +103,12 @@ export default function Results() {
 
 
 
+  const [mounted, setMounted] = useState(false);
+  const [resultsError, setResultsError] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!results) {
-      router.push('/resume');
-    }
-  }, [results, router]);
+    setMounted(true);
+  }, []);
 
   const scrollToSection = (id: string, tab: 'overview' | 'confidence' | 'contrastive' | 'gaze' | 'pose' | 'affect' | 'sync' | 'responses') => {
 
@@ -128,7 +136,7 @@ export default function Results() {
       const canvas = await html2canvas(shareCardRef.current, {
         scale: 3,
         useCORS: true,
-        backgroundColor: '#FBF9F6',
+        backgroundColor: getThemeColor('--bg-surface') || '#FBF9F6',
         logging: false,
       });
 
@@ -163,7 +171,7 @@ export default function Results() {
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#F6F3EE',
+        backgroundColor: getThemeColor('--bg-page') || '#F6F3EE',
         logging: false,
       });
 
@@ -194,7 +202,85 @@ export default function Results() {
     }
   };
 
-  if (!results) return null;
+  if (!mounted) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-8 pb-16 text-left p-4">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <Skeleton variant="text" className="h-5 w-48 mx-auto" />
+          <Skeleton variant="text" className="h-8 w-64 mx-auto" />
+          <Skeleton variant="text" className="h-4 w-96 mx-auto" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Skeleton variant="rect" className="h-36 rounded-2xl" />
+          <Skeleton variant="rect" className="h-36 rounded-2xl" />
+          <Skeleton variant="rect" className="h-36 rounded-2xl" />
+        </div>
+
+        <Skeleton variant="rect" className="h-96 rounded-2xl" />
+
+        <div className="space-y-4">
+          <Skeleton variant="text" className="h-6 w-52" />
+          <Skeleton variant="rect" className="h-28 rounded-2xl" />
+          <Skeleton variant="rect" className="h-28 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!results) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-8 pb-12 pt-6 text-left">
+        {resultsError && (
+          <div className="bg-danger/10 border border-danger/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
+            <div className="flex items-center gap-3">
+              <FaExclamationTriangle className="text-danger text-lg shrink-0" aria-hidden="true" />
+              <div>
+                <p className="text-xs font-bold text-text-primary">Evaluation Report Notice</p>
+                <p className="text-xs text-text-secondary">{resultsError}</p>
+              </div>
+            </div>
+            <Button onClick={() => setResultsError(null)} variant="danger" size="sm">
+              Retry
+            </Button>
+          </div>
+        )}
+
+        <Card variant="solid" className="p-8 sm:p-12 text-center space-y-6">
+          <div className="h-16 w-16 rounded-2xl bg-primary-soft text-primary border border-primary/20 flex items-center justify-center mx-auto text-2xl">
+            <FaAward aria-hidden="true" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-text-primary">
+              No Assessment Results Found
+            </h2>
+            <p className="text-xs sm:text-sm text-text-secondary max-w-md mx-auto leading-relaxed">
+              Complete your first mock interview simulation or pick a session from your dashboard history to inspect full scorecards and telemetry.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <Button
+              onClick={() => router.push('/setup')}
+              variant="primary"
+              size="md"
+              icon={FaArrowRight}
+            >
+              Start Practice Interview
+            </Button>
+            <Button
+              onClick={() => router.push('/dashboard')}
+              variant="ghost"
+              size="md"
+            >
+              Return to Dashboard
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const persona = INTERVIEWER_PERSONAS[results.personaId as keyof typeof INTERVIEWER_PERSONAS] || INTERVIEWER_PERSONAS.sarah;
 
@@ -240,11 +326,11 @@ export default function Results() {
     {
       label: 'Current Session',
       data: [scores.techAccuracy, scores.systemDesignLogic, scores.edgeCaseHandling, scores.communication],
-      backgroundColor: 'rgba(155, 34, 24, 0.2)',
-      borderColor: '#9B2218',
+      backgroundColor: `${chartTheme.primary}33`,
+      borderColor: chartTheme.primary,
       borderWidth: 2.5,
-      pointBackgroundColor: '#9B2218',
-      pointBorderColor: '#FBF9F6',
+      pointBackgroundColor: chartTheme.primary,
+      pointBorderColor: chartTheme.bgSurface,
       pointHoverRadius: 6,
     },
   ];
@@ -253,11 +339,11 @@ export default function Results() {
     radarDatasets.push({
       label: `Previous Session (${previousSession?.date || 'Prior'})`,
       data: [prevScores.techAccuracy, prevScores.systemDesignLogic, prevScores.edgeCaseHandling, prevScores.communication],
-      backgroundColor: 'rgba(107, 110, 112, 0.1)',
-      borderColor: '#6B6E70',
+      backgroundColor: `${chartTheme.secondary}1a`,
+      borderColor: chartTheme.secondary,
       borderWidth: 1.5,
-      pointBackgroundColor: '#6B6E70',
-      pointBorderColor: '#FBF9F6',
+      pointBackgroundColor: chartTheme.secondary,
+      pointBorderColor: chartTheme.bgSurface,
       pointHoverRadius: 5,
     });
   }
@@ -275,10 +361,10 @@ export default function Results() {
   const radarOptions = {
     scales: {
       r: {
-        angleLines: { color: '#E2DDD5' },
-        grid: { color: '#E2DDD5' },
+        angleLines: { color: chartTheme.border },
+        grid: { color: chartTheme.border },
         pointLabels: {
-          color: '#6A625E',
+          color: chartTheme.textSecondary,
           font: { family: 'Sora', size: 10, weight: 'bold' as const },
         },
         ticks: {
@@ -294,16 +380,16 @@ export default function Results() {
         display: !!prevScores,
         position: 'top' as const,
         labels: {
-          color: '#6A625E',
+          color: chartTheme.textSecondary,
           font: { family: 'Inter', size: 10 },
           boxWidth: 12,
         },
       },
       tooltip: {
-        backgroundColor: '#FBF9F6',
-        titleColor: '#2B2523',
-        bodyColor: '#6A625E',
-        borderColor: '#E2DDD5',
+        backgroundColor: chartTheme.bgSurface,
+        titleColor: chartTheme.textPrimary,
+        bodyColor: chartTheme.textSecondary,
+        borderColor: chartTheme.border,
         borderWidth: 1,
       },
     },
@@ -354,8 +440,23 @@ export default function Results() {
 
   return (
     <div ref={reportRef} className="max-w-6xl mx-auto space-y-8 pb-16 text-left p-4">
+      {resultsError && (
+        <div className="bg-danger/10 border border-danger/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
+          <div className="flex items-center gap-3">
+            <FaExclamationTriangle className="text-danger text-lg shrink-0" aria-hidden="true" />
+            <div>
+              <p className="text-xs font-bold text-text-primary">Evaluation Processing Notice</p>
+              <p className="text-xs text-text-secondary">{resultsError}</p>
+            </div>
+          </div>
+          <Button onClick={() => setResultsError(null)} variant="danger" size="sm">
+            Retry
+          </Button>
+        </div>
+      )}
+
       <div className="flex flex-col items-center gap-2 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-bold border border-[var(--primary)]/30 bg-[var(--primary-soft)] text-[var(--primary)]">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-bold border border-primary/30 bg-primary-soft text-primary">
           <span>{results.setupData?.company || 'Generic'} Simulation Preset</span>
           &bull;
           <span>{results.setupData?.role || 'Software Engineer'}</span>
@@ -367,37 +468,37 @@ export default function Results() {
         />
 
         {/* Execution Mode Audit Summary Breakdown */}
-        <div className="w-full max-w-4xl mx-auto bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-4 text-left space-y-3 shadow-[var(--shadow)]">
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
-            <h4 className="text-xs font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
-              <span>🔍</span> Vision & Signal Execution Mode Audit Summary
+        <div className="w-full max-w-4xl mx-auto bg-bg-surface border border-border rounded-2xl p-4 text-left space-y-3 shadow-soft">
+          <div className="flex items-center justify-between border-b border-border pb-2">
+            <h4 className="text-xs font-mono font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
+              <span aria-hidden="true">🔍</span> Vision &amp; Signal Execution Mode Audit Summary
             </h4>
-            <span className="text-[10px] font-mono text-[var(--text-secondary)]">System Telemetry Audit</span>
+            <span className="text-xs font-mono text-text-secondary">System Telemetry Audit</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] flex flex-col justify-between">
-              <span className="text-[10px] font-mono text-[var(--text-secondary)]">Gaze Estimation</span>
+            <div className="p-3 rounded-xl bg-bg-surface-alt border border-border flex flex-col justify-between">
+              <span className="text-xs font-mono text-text-secondary">Gaze Estimation</span>
               <div className="mt-1 flex items-center gap-1.5">
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--primary)]/20">
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-primary-soft text-primary border border-primary/20">
                   [Canvas Heuristic]
                 </span>
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] flex flex-col justify-between">
-              <span className="text-[10px] font-mono text-[var(--text-secondary)]">3D Head Pose</span>
+            <div className="p-3 rounded-xl bg-bg-surface-alt border border-border flex flex-col justify-between">
+              <span className="text-xs font-mono text-text-secondary">3D Head Pose</span>
               <div className="mt-1 flex items-center gap-1.5">
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--primary)]/20">
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-primary-soft text-primary border border-primary/20">
                   [Canvas Heuristic]
                 </span>
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] flex flex-col justify-between">
-              <span className="text-[10px] font-mono text-[var(--text-secondary)]">Facial Affect</span>
+            <div className="p-3 rounded-xl bg-bg-surface-alt border border-border flex flex-col justify-between">
+              <span className="text-xs font-mono text-text-secondary">Facial Affect</span>
               <div className="mt-1 flex items-center gap-1.5">
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--primary)]/20">
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-primary-soft text-primary border border-primary/20">
                   [Canvas Heuristic]
                 </span>
               </div>
@@ -407,15 +508,15 @@ export default function Results() {
       </div>
 
       {/* 1. Docked In-Page Navigation Bar */}
-      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-[var(--bg-surface)] border-b border-[var(--border)] shadow-[var(--shadow)]">
+      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-bg-surface border-b border-border shadow-soft">
         <div className="flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1">
           <button
             type="button"
             onClick={() => scrollToSection('sec-overview', 'overview')}
-            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'overview'
-                ? 'bg-[var(--primary)] text-[var(--text-on-primary)] shadow-sm'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-alt)] hover:bg-[var(--border)]'
+                ? 'bg-primary text-text-on-primary shadow-sm'
+                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
             }`}
           >
             Overview
@@ -423,10 +524,10 @@ export default function Results() {
           <button
             type="button"
             onClick={() => scrollToSection('sec-confidence', 'confidence')}
-            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'confidence'
-                ? 'bg-[var(--primary)] text-[var(--text-on-primary)] shadow-sm'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-alt)] hover:bg-[var(--border)]'
+                ? 'bg-primary text-text-on-primary shadow-sm'
+                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
             }`}
           >
             Confidence Analysis
@@ -434,10 +535,10 @@ export default function Results() {
           <button
             type="button"
             onClick={() => scrollToSection('sec-contrastive', 'contrastive')}
-            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'contrastive'
-                ? 'bg-[var(--primary)] text-[var(--text-on-primary)] shadow-sm'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-alt)] hover:bg-[var(--border)]'
+                ? 'bg-primary text-text-on-primary shadow-sm'
+                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
             }`}
           >
             Contrastive Analysis
@@ -447,10 +548,10 @@ export default function Results() {
             <button
               type="button"
               onClick={() => scrollToSection('sec-gaze', 'gaze')}
-              className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === 'gaze'
-                  ? 'bg-[var(--primary)] text-[var(--text-on-primary)] shadow-sm'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-alt)] hover:bg-[var(--border)]'
+                  ? 'bg-primary text-text-on-primary shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
               }`}
             >
               Gaze Analytics
@@ -461,13 +562,13 @@ export default function Results() {
             <button
               type="button"
               onClick={() => scrollToSection('sec-pose', 'pose')}
-              className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === 'pose'
-                  ? 'bg-[var(--primary)] text-[var(--text-on-primary)] shadow-sm'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-alt)] hover:bg-[var(--border)]'
+                  ? 'bg-primary text-text-on-primary shadow-sm'
+                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
               }`}
             >
-              Posture & Gestures
+              Posture &amp; Gestures
             </button>
           )}
           {/* Affect & Composure tab — only shown when metrics are available */}
@@ -475,10 +576,10 @@ export default function Results() {
             <button
               type="button"
               onClick={() => scrollToSection('sec-affect', 'affect')}
-              className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === 'affect'
-                  ? 'bg-[var(--primary)] text-[var(--text-on-primary)] shadow-sm'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-alt)] hover:bg-[var(--border)]'
+                  ? 'bg-primary text-text-on-primary shadow-sm'
+                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
               }`}
             >
               Facial Composure
@@ -489,22 +590,22 @@ export default function Results() {
             <button
               type="button"
               onClick={() => scrollToSection('sec-sync', 'sync')}
-              className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === 'sync'
-                  ? 'bg-[var(--primary)] text-[var(--text-on-primary)] shadow-sm'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-alt)] hover:bg-[var(--border)]'
+                  ? 'bg-primary text-text-on-primary shadow-sm'
+                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
               }`}
             >
-              Audio & Latency
+              Audio &amp; Latency
             </button>
           )}
           <button
             type="button"
             onClick={() => scrollToSection('sec-responses', 'responses')}
-            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'responses'
-                ? 'bg-[var(--primary)] text-[var(--text-on-primary)] shadow-sm'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-alt)] hover:bg-[var(--border)]'
+                ? 'bg-primary text-text-on-primary shadow-sm'
+                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
             }`}
           >
             Detailed Responses
@@ -517,24 +618,24 @@ export default function Results() {
       <div id="sec-overview" className="scroll-mt-32 space-y-6">
         {/* 2. Compare to Previous Session Panel (rendered if prior session and category data exist) */}
         {previousSession && prevScores && (
-          <Card variant="glass" className="p-5 border border-[var(--border)] bg-[var(--bg-surface)] flex flex-col md:flex-row items-center justify-between gap-4">
+          <Card variant="default" className="p-5 border border-border bg-bg-surface flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/20 flex items-center justify-center text-[var(--primary)] text-base shrink-0">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-base shrink-0">
                 <FaExchangeAlt />
               </div>
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Session Progression Comparison</span>
+                  <span className="text-xs font-bold text-text-primary uppercase tracking-wider">Session Progression Comparison</span>
                   <Badge variant="accent" size="sm">Compared with {previousSession.date}</Badge>
                 </div>
-                <p className="text-xs text-[var(--text-secondary)]">
-                  Current score (<strong className="text-[var(--text-primary)]">{results.overallScore}%</strong>) vs Previous session (<strong className="text-[var(--text-secondary)]">{previousSession.score}%</strong>) for {results.setupData?.role || 'Engineer'}.
+                <p className="text-xs text-text-secondary">
+                  Current score (<strong className="text-text-primary">{results.overallScore}%</strong>) vs Previous session (<strong className="text-text-secondary">{previousSession.score}%</strong>) for {results.setupData?.role || 'Engineer'}.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 text-xs font-mono shrink-0">
-              <span className={`px-2.5 py-1 rounded-lg font-bold ${results.overallScore >= previousSession.score ? 'bg-[var(--success)]/15 text-[var(--success)] border border-[var(--success)]/30' : 'bg-[var(--warning)]/15 text-[var(--warning)] border border-[var(--warning)]/30'}`}>
+              <span className={`px-2.5 py-1 rounded-lg font-bold ${results.overallScore >= previousSession.score ? 'bg-success/15 text-success border border-success/30' : 'bg-warning/15 text-warning border border-warning/30'}`}>
                 {results.overallScore >= previousSession.score ? `+${results.overallScore - previousSession.score}% Delta` : `${results.overallScore - previousSession.score}% Delta`}
               </span>
             </div>
@@ -543,8 +644,8 @@ export default function Results() {
 
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          <Card variant="glass" className="lg:col-span-4 flex flex-col justify-between items-center text-center py-8 min-h-[340px]">
-            <span className="text-xs text-[var(--text-secondary)] font-bold uppercase tracking-wider block border-b border-[var(--border)] pb-2 w-full">
+          <Card variant="default" className="lg:col-span-4 flex flex-col justify-between items-center text-center py-8 min-h-[340px]">
+            <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block border-b border-border pb-2 w-full">
               Overall Score Index
             </span>
 
@@ -571,26 +672,41 @@ export default function Results() {
                 />
                 <defs>
                   <linearGradient id="resultsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#9B2218" />
-                    <stop offset="100%" stopColor="#7F1B13" />
+                    <stop offset="0%" stopColor="var(--primary)" />
+                    <stop offset="100%" stopColor="var(--primary-hover)" />
                   </linearGradient>
                 </defs>
               </svg>
               <div className="absolute flex flex-col items-center">
-                <span className="text-5xl font-heading font-extrabold text-[var(--text-primary)]">
+                <span className="text-5xl font-heading font-extrabold text-text-primary">
                   {results.overallScore}
                 </span>
-                <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider font-mono mt-1">
+                <span className="text-xs text-text-secondary font-bold uppercase tracking-wider font-mono mt-1">
                   Out of 100
                 </span>
               </div>
             </div>
 
             <div className="w-full space-y-1">
-              <span className="text-sm font-semibold text-[var(--primary)] block">
-                {results.overallScore >= 85 ? 'Exceptional Fit' : results.overallScore >= 75 ? 'Strong Candidate' : 'Focus Needed'}
+              <span className="text-sm font-semibold text-primary flex items-center justify-center gap-1.5">
+                {results.overallScore >= 85 ? (
+                  <>
+                    <FaCheckCircle className="text-success text-xs shrink-0" aria-hidden="true" />
+                    <span>Exceptional Fit</span>
+                  </>
+                ) : results.overallScore >= 75 ? (
+                  <>
+                    <FaCheckCircle className="text-primary text-xs shrink-0" aria-hidden="true" />
+                    <span>Strong Candidate</span>
+                  </>
+                ) : (
+                  <>
+                    <FaExclamationTriangle className="text-warning text-xs shrink-0" aria-hidden="true" />
+                    <span>Focus Needed</span>
+                  </>
+                )}
               </span>
-              <p className="text-[10px] text-[var(--text-secondary)] uppercase font-mono tracking-wide">
+              <p className="text-xs text-text-secondary uppercase font-mono tracking-wide">
                 Target seniority: {results.setupData?.experienceLevel ?? 'Mid-Level'}
               </p>
               {suq?.confidenceLevel && (
@@ -604,12 +720,19 @@ export default function Results() {
                         : 'danger'
                     }
                     size="sm"
-                    className="font-mono text-[10px]"
+                    className="font-mono text-xs flex items-center gap-1"
                   >
-                    SUQ Confidence: {suq.confidenceLevel}
+                    {suq.confidenceLevel === 'HIGH' ? (
+                      <FaCheckCircle className="text-xs shrink-0" aria-hidden="true" />
+                    ) : suq.confidenceLevel === 'MEDIUM' ? (
+                      <FaExclamationTriangle className="text-xs shrink-0" aria-hidden="true" />
+                    ) : (
+                      <FaTimesCircle className="text-xs shrink-0" aria-hidden="true" />
+                    )}
+                    <span>SUQ Confidence: {suq.confidenceLevel}</span>
                   </Badge>
                   {deltaCard?.rewardScore !== undefined && (
-                    <span className="px-2 py-0.5 rounded-lg bg-[var(--primary-soft)] border border-[var(--primary)]/30 text-[var(--primary)] font-mono text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-lg bg-primary-soft border border-primary/30 text-primary font-mono text-xs font-bold">
                       SimPO: +{deltaCard.rewardScore.toFixed(2)} pts
                     </span>
                   )}
@@ -618,39 +741,39 @@ export default function Results() {
             </div>
           </Card>
 
-          <Card variant="glass" className="lg:col-span-8 flex flex-col justify-between items-center text-center min-h-[340px]">
-            <span className="text-xs text-[var(--text-secondary)] font-bold uppercase tracking-wider block border-b border-[var(--border)] pb-2 w-full">
+          <Card variant="default" className="lg:col-span-8 flex flex-col justify-between items-center text-center min-h-[340px]">
+            <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block border-b border-border pb-2 w-full">
               Evaluation Matrix Profile {previousSession ? '(Overlay Comparison)' : ''}
             </span>
 
             <div className="w-full h-56 relative my-4">
-              <Radar data={radarData} options={radarOptions} />
+              <Radar key={`results-radar-${chartTheme.themeKey}`} data={radarData} options={radarOptions} />
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full text-[10px] text-[var(--text-secondary)] font-mono border-t border-[var(--border)] pt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full text-xs text-text-secondary font-mono border-t border-border pt-4">
               <div className="space-y-0.5">
                 <span>Technical Accuracy</span>
-                <p className="text-[var(--text-primary)] font-bold text-xs">{scores.techAccuracy}%</p>
+                <p className="text-text-primary font-bold text-xs">{scores.techAccuracy}%</p>
               </div>
               <div className="space-y-0.5">
                 <span>System Architecture &amp; Logic</span>
-                <p className="text-[var(--text-primary)] font-bold text-xs">{scores.systemDesignLogic}%</p>
+                <p className="text-text-primary font-bold text-xs">{scores.systemDesignLogic}%</p>
               </div>
               <div className="space-y-0.5">
                 <span>Edge-Case Awareness</span>
-                <p className="text-[var(--text-primary)] font-bold text-xs">{scores.edgeCaseHandling}%</p>
+                <p className="text-text-primary font-bold text-xs">{scores.edgeCaseHandling}%</p>
               </div>
               <div className="space-y-0.5">
                 <span>Communication &amp; Tone</span>
-                <p className="text-[var(--text-primary)] font-bold text-xs">{scores.communication}%</p>
+                <p className="text-text-primary font-bold text-xs">{scores.communication}%</p>
               </div>
             </div>
           </Card>
         </div>
 
-        <Card variant="glass" className="flex flex-col md:flex-row gap-6 items-center">
+        <Card variant="default" className="flex flex-col md:flex-row gap-6 items-center">
           <div className="shrink-0 flex flex-col items-center text-center space-y-2">
-            <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-[var(--border)] shadow-md">
+            <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-border shadow-md">
               <Image
                 src={persona.avatar}
                 alt={persona.name}
@@ -660,14 +783,14 @@ export default function Results() {
               />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-[var(--text-primary)] leading-none">{persona.name}</h4>
-              <p className="text-[9px] text-[var(--text-secondary)] uppercase font-mono">{persona.role}</p>
+              <h4 className="text-xs font-bold text-text-primary leading-none">{persona.name}</h4>
+              <p className="text-xs text-text-secondary uppercase font-mono">{persona.role}</p>
             </div>
           </div>
 
           <div className="space-y-1.5 flex-1">
-            <span className="text-xs text-[var(--primary)] font-bold uppercase tracking-wider font-mono">Assessor Evaluation Details</span>
-            <p className="text-xs text-[var(--text-secondary)] leading-relaxed italic">
+            <span className="text-xs text-primary font-bold uppercase tracking-wider font-mono">Assessor Evaluation Details</span>
+            <p className="text-xs text-text-secondary leading-relaxed italic">
               "{typeof results.interviewerComments === 'string' ? results.interviewerComments : 'Solid technical breakdown across foundational questions.'}"
             </p>
           </div>
@@ -688,18 +811,18 @@ export default function Results() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-          <Card variant="glass" className="space-y-4">
-            <h4 className="text-sm font-heading font-bold text-[var(--text-primary)] uppercase tracking-wider border-b border-[var(--border)] pb-2">
+          <Card variant="default" className="space-y-4">
+            <h4 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider border-b border-border pb-2">
               Skill Analytics Breakdown
             </h4>
 
             <div className="space-y-4 text-xs">
               <div className="space-y-2">
-                <span className="text-[10px] text-[var(--success)] font-bold uppercase tracking-wider block">Key Strengths</span>
+                <span className="text-xs text-success font-bold uppercase tracking-wider block">Key Strengths</span>
                 <ul className="space-y-2">
                   {strengths.map((str, idx) => (
-                    <li key={idx} className="flex gap-2 items-start text-[var(--text-secondary)] leading-relaxed">
-                      <span className="text-[var(--success)] font-bold mt-0.5">&bull;</span>
+                    <li key={idx} className="flex gap-2 items-start text-text-secondary leading-relaxed">
+                      <span className="text-success font-bold mt-0.5">&bull;</span>
                       <span>{str}</span>
                     </li>
                   ))}
@@ -707,11 +830,11 @@ export default function Results() {
               </div>
 
               <div className="space-y-2">
-                <span className="text-[10px] text-[var(--warning)] font-bold uppercase tracking-wider block">Focus Limitations</span>
+                <span className="text-xs text-warning font-bold uppercase tracking-wider block">Focus Limitations</span>
                 <ul className="space-y-2">
                   {weaknesses.map((wk, idx) => (
-                    <li key={idx} className="flex gap-2 items-start text-[var(--text-secondary)] leading-relaxed">
-                      <span className="text-[var(--warning)] font-bold mt-0.5">&bull;</span>
+                    <li key={idx} className="flex gap-2 items-start text-text-secondary leading-relaxed">
+                      <span className="text-warning font-bold mt-0.5">&bull;</span>
                       <span>{wk}</span>
                     </li>
                   ))}
@@ -720,20 +843,20 @@ export default function Results() {
             </div>
           </Card>
 
-          <Card variant="glass" className="space-y-4">
-            <h4 className="text-sm font-heading font-bold text-[var(--text-primary)] uppercase tracking-wider border-b border-[var(--border)] pb-2 flex items-center gap-2">
-              <FaAward className="text-[var(--primary)]" />
+          <Card variant="default" className="space-y-4">
+            <h4 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider border-b border-border pb-2 flex items-center gap-2">
+              <FaAward className="text-primary" />
               <span>Actionable Improvement Plan</span>
             </h4>
 
             <div className="space-y-3.5">
               {plan.map((item, idx) => (
-                <div key={idx} className="p-3 bg-[var(--bg-surface-alt)] border border-[var(--border)] rounded-xl text-xs space-y-1">
+                <div key={idx} className="p-3 bg-bg-surface-alt border border-border rounded-xl text-xs space-y-1">
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-[var(--text-primary)]">{item.topic}</span>
+                    <span className="font-semibold text-text-primary">{item.topic}</span>
                     <Badge variant="primary" size="sm">Topic {idx + 1}</Badge>
                   </div>
-                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{item.desc}</p>
+                  <p className="text-xs text-text-secondary leading-relaxed">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -782,19 +905,19 @@ export default function Results() {
 
       {/* SECTION 4: DETAILED RESPONSES LOG */}
       <div id="sec-responses" className="scroll-mt-32 space-y-4">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)] text-left pl-1">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-text-primary text-left pl-1">
           Detailed Responses Log
         </h3>
 
         <div className="space-y-3">
           {!results.breakdown || results.breakdown.length === 0 ? (
-            <Card variant="glass" className="p-8 text-center flex flex-col items-center justify-center space-y-3">
-              <div className="h-12 w-12 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border)] flex items-center justify-center text-[var(--text-secondary)] text-lg">
+            <Card variant="default" className="p-8 text-center flex flex-col items-center justify-center space-y-3">
+              <div className="h-12 w-12 rounded-xl bg-bg-surface-alt border border-border flex items-center justify-center text-text-secondary text-lg">
                 <FaListUl />
               </div>
               <div className="space-y-1">
-                <h4 className="font-heading font-bold text-sm text-[var(--text-primary)]">No responses recorded</h4>
-                <p className="text-xs text-[var(--text-secondary)] max-w-sm">Complete an interview session to see your detailed breakdown here.</p>
+                <h4 className="font-heading font-bold text-sm text-text-primary">No responses recorded</h4>
+                <p className="text-xs text-text-secondary max-w-sm">Complete an interview session to see your detailed breakdown here.</p>
               </div>
             </Card>
           ) : (
@@ -807,17 +930,18 @@ export default function Results() {
                 : item.strengths ?? 'Solid structural clarity.';
 
               return (
-                <div key={qId} className="bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] shadow-[var(--shadow)] overflow-hidden transition-all duration-350">
+                <div key={qId} className="bg-bg-surface rounded-2xl border border-border shadow-soft overflow-hidden transition-all duration-350">
                   <button
                     type="button"
                     onClick={() => toggleQuestionExpand(qId)}
-                    className="w-full p-5 flex items-center justify-between text-left hover:bg-[var(--bg-surface-alt)] transition duration-200 cursor-pointer"
+                    aria-expanded={isExpanded}
+                    className="w-full p-5 flex items-center justify-between text-left hover:bg-bg-surface-alt transition duration-200 cursor-pointer"
                   >
                     <div className="flex items-center gap-4 min-w-0 pr-4">
-                      <span className="h-6 w-6 rounded-lg bg-[var(--bg-surface-alt)] border border-[var(--border)] text-xs font-bold font-mono text-[var(--text-secondary)] flex items-center justify-center shrink-0">
+                      <span className="h-6 w-6 rounded-lg bg-bg-surface-alt border border-border text-xs font-bold font-mono text-text-secondary flex items-center justify-center shrink-0">
                         {String(idx + 1).padStart(2, '0')}
                       </span>
-                      <p className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] truncate">{item.question}</p>
+                      <p className="text-xs sm:text-sm font-semibold text-text-primary truncate">{item.question}</p>
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
@@ -827,10 +951,11 @@ export default function Results() {
                           e.stopPropagation();
                           handleRetryQuestion(idx, item.question);
                         }}
-                        className="px-3 py-1 rounded-lg bg-[var(--warning)]/10 border border-[var(--warning)]/20 text-[var(--warning)] hover:bg-[var(--warning)]/20 text-xs font-mono font-bold flex items-center gap-1.5 transition cursor-pointer"
+                        aria-label={`Retry question: ${item.question}`}
+                        className="px-3 py-1 rounded-lg bg-warning/10 border border-warning/20 text-warning hover:bg-warning/20 text-xs font-mono font-bold flex items-center gap-1.5 transition cursor-pointer"
                         title="Focus on this single question in a mini-session"
                       >
-                        <FaUndo size={9} />
+                        <FaUndo size={9} aria-hidden="true" />
                         <span>Retry this question</span>
                       </button>
 
@@ -844,73 +969,83 @@ export default function Results() {
                               : 'danger'
                           }
                           size="sm"
-                          className="font-mono text-[10px]"
+                          className="font-mono text-xs flex items-center gap-1"
                         >
-                          SUQ: {suq.confidenceLevel}
+                          {suq.confidenceLevel === 'HIGH' ? (
+                            <FaCheckCircle className="text-xs shrink-0" aria-hidden="true" />
+                          ) : suq.confidenceLevel === 'MEDIUM' ? (
+                            <FaExclamationTriangle className="text-xs shrink-0" aria-hidden="true" />
+                          ) : (
+                            <FaTimesCircle className="text-xs shrink-0" aria-hidden="true" />
+                          )}
+                          <span>SUQ: {suq.confidenceLevel}</span>
                         </Badge>
                       )}
 
                       {deltaCard?.rewardScore !== undefined && (
-                        <span className="hidden sm:inline-block px-2 py-0.5 rounded-lg bg-[var(--primary-soft)] border border-[var(--primary)]/30 text-[var(--primary)] font-mono text-[10px] font-bold">
+                        <span className="hidden sm:inline-block px-2 py-0.5 rounded-lg bg-primary-soft border border-primary/30 text-primary font-mono text-xs font-bold">
                           +{deltaCard.rewardScore.toFixed(2)} pts
                         </span>
                       )}
 
-                      <Badge variant="success">Score: {item.score}</Badge>
-                      {isExpanded ? <FaChevronUp className="text-[var(--text-secondary)] text-xs" /> : <FaChevronDown className="text-[var(--text-secondary)] text-xs" />}
+                      <Badge variant="success" className="text-xs flex items-center gap-1">
+                        <FaCheckCircle className="text-xs shrink-0" aria-hidden="true" />
+                        <span>Score: {item.score}</span>
+                      </Badge>
+                      {isExpanded ? <FaChevronUp className="text-text-secondary text-xs" aria-hidden="true" /> : <FaChevronDown className="text-text-secondary text-xs" aria-hidden="true" />}
                     </div>
 
                   </button>
 
                   {isExpanded && (
-                    <div className="p-6 border-t border-[var(--border)] bg-[var(--bg-surface-alt)] space-y-6 text-left text-xs sm:text-sm">
+                    <div className="p-6 border-t border-border bg-bg-surface-alt space-y-6 text-left text-xs sm:text-sm">
                       <div className="space-y-2">
-                        <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider block">Candidate Response</span>
-                        <p className="bg-[var(--bg-surface)] p-4 rounded-xl border border-[var(--border)] font-mono text-xs text-[var(--text-primary)] leading-relaxed break-words whitespace-pre-wrap">
+                        <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block">Candidate Response</span>
+                        <p className="bg-bg-surface p-4 rounded-xl border border-border font-mono text-xs text-text-primary leading-relaxed break-words whitespace-pre-wrap">
                           {answerText}
                         </p>
                       </div>
 
                       {deltaCard ? (
-                        <div className="bg-[var(--primary-soft)] rounded-xl p-4 border border-[var(--primary)]/20 space-y-2">
+                        <div className="bg-primary-soft rounded-xl p-4 border border-primary/20 space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-[var(--primary)] font-bold uppercase tracking-wider font-mono">
+                            <span className="text-xs text-primary font-bold uppercase tracking-wider font-mono">
                               SimPO Benchmark Delta Target
                             </span>
-                            <span className="text-[var(--primary)] font-mono text-[10px] font-bold">
+                            <span className="text-primary font-mono text-xs font-bold">
                               Reward: +{deltaCard.rewardScore.toFixed(2)} pts
                             </span>
                           </div>
-                          <p className="text-[var(--text-secondary)] leading-relaxed italic text-xs">
+                          <p className="text-text-secondary leading-relaxed italic text-xs">
                             &ldquo;{deltaCard.faangComparison}&rdquo;
                           </p>
                         </div>
                       ) : null}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-[var(--bg-surface)] rounded-xl p-4 border border-[var(--border)] space-y-2">
-                          <span className="text-[10px] text-[var(--primary)] font-bold uppercase tracking-wider block">AI Evaluator Feedback</span>
-                          <p className="text-[var(--text-secondary)] leading-relaxed">{item.feedback}</p>
+                        <div className="bg-bg-surface rounded-xl p-4 border border-border space-y-2">
+                          <span className="text-xs text-primary font-bold uppercase tracking-wider block">AI Evaluator Feedback</span>
+                          <p className="text-text-secondary leading-relaxed">{item.feedback}</p>
                         </div>
 
-                        <div className="bg-[var(--bg-surface)] rounded-xl p-4 border border-[var(--border)] space-y-2">
-                          <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider block font-mono">Ideal Scope Targets</span>
-                          <p className="text-[var(--text-secondary)] leading-relaxed">{item.idealConcepts ?? item.idealConcept ?? 'Core concepts related to the question.'}</p>
+                        <div className="bg-bg-surface rounded-xl p-4 border border-border space-y-2">
+                          <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block font-mono">Ideal Scope Targets</span>
+                          <p className="text-text-secondary leading-relaxed">{item.idealConcepts ?? item.idealConcept ?? 'Core concepts related to the question.'}</p>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-[var(--bg-surface)] rounded-xl p-4 border border-[var(--border)] space-y-2">
-                          <span className="text-[10px] text-[var(--success)] font-bold uppercase tracking-wider block">Key Strengths</span>
-                          <p className="text-[var(--text-secondary)] leading-relaxed">{strengthsText}</p>
+                        <div className="bg-bg-surface rounded-xl p-4 border border-border space-y-2">
+                          <span className="text-xs text-success font-bold uppercase tracking-wider block">Key Strengths</span>
+                          <p className="text-text-secondary leading-relaxed">{strengthsText}</p>
                         </div>
 
-                        <div className="bg-[var(--bg-surface)] rounded-xl p-4 border border-[var(--border)] space-y-2">
-                          <span className="text-[10px] text-[var(--primary)] font-bold uppercase tracking-wider block">Enhancement Areas</span>
-                          <ul className="space-y-2 text-[var(--text-secondary)] leading-relaxed">
+                        <div className="bg-bg-surface rounded-xl p-4 border border-border space-y-2">
+                          <span className="text-xs text-primary font-bold uppercase tracking-wider block">Enhancement Areas</span>
+                          <ul className="space-y-2 text-text-secondary leading-relaxed">
                             {(item.suggestions ?? ['Quantify accomplishments with metrics.']).map((sug: string, sIdx: number) => (
                               <li key={sIdx} className="flex gap-2 items-start">
-                                <span className="text-[var(--primary)] mt-0.5">&bull;</span>
+                                <span className="text-primary mt-0.5">&bull;</span>
                                 <span>{sug}</span>
                               </li>
                             ))}
@@ -927,21 +1062,21 @@ export default function Results() {
       </div>
 
       {/* 3. CTA Action Bar with Clear Single Primary Hierarchy */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-[var(--bg-surface)] rounded-2xl p-5 border border-[var(--border)] shadow-[var(--shadow)]">
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-bg-surface rounded-2xl p-5 border border-border shadow-soft">
         <div className="flex flex-wrap gap-2.5 w-full sm:w-auto">
-          <Button onClick={handleGoDashboard} variant="ghost" size="sm" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+          <Button onClick={handleGoDashboard} variant="ghost" size="sm" className="text-text-secondary hover:text-text-primary">
             Dashboard
           </Button>
 
-          <Button onClick={handleUploadNew} variant="ghost" size="sm" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+          <Button onClick={handleUploadNew} variant="ghost" size="sm" className="text-text-secondary hover:text-text-primary">
             Upload New Resume
           </Button>
 
-          <Button onClick={handleDownloadPDF} disabled={downloading} variant="ghost" size="sm" icon={FaFilePdf} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+          <Button onClick={handleDownloadPDF} disabled={downloading} variant="ghost" size="sm" icon={FaFilePdf} className="text-text-secondary hover:text-text-primary">
             {downloading ? 'Exporting...' : 'Export Report'}
           </Button>
 
-          <Button onClick={handleShareImage} disabled={sharing} variant="ghost" size="sm" icon={FaShareAlt} className="text-[var(--primary)] hover:text-[var(--primary-hover)] border border-[var(--primary)]/20 bg-[var(--primary-soft)]">
+          <Button onClick={handleShareImage} disabled={sharing} variant="ghost" size="sm" icon={FaShareAlt} className="text-primary hover:text-primary-hover border border-primary/20 bg-primary-soft">
             {sharing ? 'Generating Card...' : 'Share Results'}
           </Button>
         </div>
@@ -965,20 +1100,20 @@ export default function Results() {
       <div className="fixed top-[-9999px] left-[-9999px] pointer-events-none z-[-100]">
         <div
           ref={shareCardRef}
-          className="w-[600px] h-[315px] bg-[#FBF9F6] p-8 border border-[#E2DDD5] rounded-3xl font-sans text-[#2B2523] flex flex-col justify-between shadow-2xl relative overflow-hidden"
+          className="w-[600px] h-[315px] bg-bg-surface p-8 border border-border rounded-3xl font-sans text-text-primary flex flex-col justify-between shadow-2xl relative overflow-hidden"
         >
           {/* Top Header */}
-          <div className="flex items-center justify-between z-10 border-b border-[#E2DDD5] pb-4">
+          <div className="flex items-center justify-between z-10 border-b border-border pb-4">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-[#9B2218] flex items-center justify-center font-extrabold font-heading text-white text-sm shadow-md">
+              <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center font-extrabold font-heading text-text-on-primary text-sm shadow-md">
                 Sk
               </div>
               <div>
-                <h3 className="font-heading font-extrabold text-[#2B2523] text-base tracking-wide leading-none">Skillo AI</h3>
-                <p className="text-[10px] text-[#6A625E] font-mono mt-0.5">Career Prep Assessment Report</p>
+                <h3 className="font-heading font-extrabold text-text-primary text-base tracking-wide leading-none">Skillo AI</h3>
+                <p className="text-xs text-text-secondary font-mono mt-0.5">Career Prep Assessment Report</p>
               </div>
             </div>
-            <div className="bg-[#EFEBE5] border border-[#E2DDD5] px-3 py-1 rounded-full text-xs font-mono text-[#6A625E]">
+            <div className="bg-bg-surface-alt border border-border px-3 py-1 rounded-full text-xs font-mono text-text-secondary">
               Verified Benchmark
             </div>
           </div>
@@ -986,26 +1121,35 @@ export default function Results() {
           {/* Body content grid */}
           <div className="grid grid-cols-12 gap-6 items-center z-10 py-2">
             {/* Score Pill */}
-            <div className="col-span-4 bg-[#F3E1DE] border border-[#9B2218]/30 rounded-2xl p-4 text-center flex flex-col justify-center items-center shadow-lg">
-              <span className="text-[9px] font-mono text-[#9B2218] uppercase font-bold tracking-wider">Overall Score</span>
-              <span className="text-4xl font-heading font-extrabold text-[#2B2523] mt-1">
-                {results.overallScore}<span className="text-sm font-normal text-[#6A625E]">/100</span>
+            <div className="col-span-4 bg-primary/10 border border-primary/30 rounded-2xl p-4 text-center flex flex-col justify-center items-center shadow-lg">
+              <span className="text-xs font-mono text-primary uppercase font-bold tracking-wider">Overall Score</span>
+              <span className="text-4xl font-heading font-extrabold text-text-primary mt-1">
+                {results.overallScore}<span className="text-sm font-normal text-text-secondary">/100</span>
               </span>
-              <span className="text-[10px] text-[#3F7D58] font-bold mt-1 font-mono">Top Candidate Tier</span>
+              <span className="text-xs text-success font-bold mt-1 font-mono flex items-center justify-center gap-1">
+                {results.overallScore >= 75 ? (
+                  <FaCheckCircle className="text-xs shrink-0" aria-hidden="true" />
+                ) : results.overallScore >= 60 ? (
+                  <FaExclamationTriangle className="text-xs shrink-0" aria-hidden="true" />
+                ) : (
+                  <FaTimesCircle className="text-xs shrink-0" aria-hidden="true" />
+                )}
+                <span>{results.overallScore >= 85 ? 'Top Candidate Tier' : results.overallScore >= 70 ? 'Competitive Tier' : 'Needs Development'}</span>
+              </span>
             </div>
 
             {/* Assessment Details */}
             <div className="col-span-8 space-y-3">
               <div>
-                <span className="text-[10px] text-[#6A625E] uppercase font-mono font-bold tracking-wider block">Target Role & Preset</span>
-                <h4 className="text-base font-heading font-bold text-[#2B2523] leading-snug">
-                  {results.setupData?.role || 'Software Engineer'} &bull; <span className="text-[#9B2218]">{results.setupData?.company || 'Generic'} Style</span>
+                <span className="text-xs text-text-secondary uppercase font-mono font-bold tracking-wider block">Target Role &amp; Preset</span>
+                <h4 className="text-base font-heading font-bold text-text-primary leading-snug">
+                  {results.setupData?.role || 'Software Engineer'} &bull; <span className="text-primary">{results.setupData?.company || 'Generic'} Style</span>
                 </h4>
               </div>
 
               <div>
-                <span className="text-[10px] text-[#6A625E] uppercase font-mono font-bold tracking-wider block">Key Demonstrated Strength</span>
-                <p className="text-xs text-[#2B2523] leading-relaxed font-medium bg-[#EFEBE5] p-2.5 rounded-xl border border-[#E2DDD5] truncate">
+                <span className="text-xs text-text-secondary uppercase font-mono font-bold tracking-wider block">Key Demonstrated Strength</span>
+                <p className="text-xs text-text-primary leading-relaxed font-medium bg-bg-surface-alt p-2.5 rounded-xl border border-border truncate">
                   {strengths[0]}
                 </p>
               </div>
@@ -1013,9 +1157,9 @@ export default function Results() {
           </div>
 
           {/* Footer watermark */}
-          <div className="flex items-center justify-between z-10 border-t border-[#E2DDD5] pt-3 text-[10px] text-[#6A625E] font-mono">
+          <div className="flex items-center justify-between z-10 border-t border-border pt-3 text-xs text-text-secondary font-mono">
             <span>Evaluated by AI Persona {persona.name} ({persona.role})</span>
-            <span className="text-[#9B2218] font-bold">skillo.dev</span>
+            <span className="text-primary font-bold">skillo.dev</span>
           </div>
         </div>
       </div>

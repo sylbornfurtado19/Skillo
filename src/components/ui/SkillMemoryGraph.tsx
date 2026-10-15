@@ -30,15 +30,15 @@ export default function SkillMemoryGraph({
   if (!memoryStore || Object.keys(memoryStore.nodes).length === 0) {
     return (
       <div className={`space-y-6 text-left ${className}`}>
-        <div className="glass-card rounded-2xl p-8 border border-white/5 flex flex-col items-center justify-center gap-4 text-center">
-          <FaBrain className="text-4xl text-white/20" />
-          <h3 className="text-sm font-heading font-bold text-white">Skill Memory Graph</h3>
-          <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
+        <div className="bg-bg-surface rounded-2xl p-8 border border-border flex flex-col items-center justify-center gap-4 text-center shadow-soft">
+          <FaBrain className="text-4xl text-text-secondary/40" />
+          <h3 className="text-sm font-heading font-bold text-text-primary">Skill Memory Graph</h3>
+          <p className="text-xs text-text-secondary leading-relaxed max-w-sm">
             Your personalized skill memory graph will populate after completing your first interview session.
             Reflexion traces are generated automatically post-evaluation.
           </p>
-          <div className="flex items-center gap-2 text-[10px] font-mono text-gray-600 bg-white/3 px-3 py-1.5 rounded-lg border border-white/5">
-            <FaGraduationCap />
+          <div className="flex items-center gap-2 text-xs font-mono text-text-secondary bg-bg-surface-alt px-3 py-1.5 rounded-lg border border-border">
+            <FaGraduationCap aria-hidden="true" />
             <span>0 Skill Memory Nodes Tracked</span>
           </div>
         </div>
@@ -65,30 +65,30 @@ export default function SkillMemoryGraph({
   return (
     <div className={`space-y-6 text-left ${className}`}>
       {/* Header & Global Reflection Narrative */}
-      <Card variant="glow-primary" className="p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+      <Card variant="default" className="p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-lg shrink-0">
-              <FaBrain />
+            <div className="h-10 w-10 rounded-xl bg-primary-soft border border-primary/20 flex items-center justify-center text-primary text-lg shrink-0">
+              <FaBrain aria-hidden="true" />
             </div>
             <div>
               <h3 className="text-base font-heading font-bold text-text-primary">
-                Candidate Skill Knowledge Graph & Memory Store (Reflexion)
+                Candidate Skill Knowledge Graph &amp; Memory Store (Reflexion)
               </h3>
-              <p className="text-[11px] text-text-secondary font-mono">
+              <p className="text-xs text-text-secondary font-mono">
                 Episodic-Semantic Dual Memory Architecture &bull; NeurIPS 2023
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-mono bg-surface-alt px-3 py-1.5 rounded-xl border border-border">
-            <FaChartLine className="text-primary" />
+          <div className="flex items-center gap-2 text-xs font-mono bg-bg-surface-alt px-3 py-1.5 rounded-xl border border-border">
+            <FaChartLine className="text-primary" aria-hidden="true" />
             <span className="text-text-secondary">{nodesList.length} Skill Memory Nodes Tracked</span>
           </div>
         </div>
 
         {/* Global AI Narrative Summary */}
-        <p className="text-xs text-text-secondary leading-relaxed bg-surface-alt p-3.5 rounded-xl border border-border font-mono">
+        <p className="text-xs text-text-secondary leading-relaxed bg-bg-surface-alt p-3.5 rounded-xl border border-border font-mono">
           {store.globalReflectionSummary}
         </p>
       </Card>
@@ -101,7 +101,7 @@ export default function SkillMemoryGraph({
           return (
             <Card
               key={node.skillId}
-              variant="glass"
+              variant="default"
               onClick={() => setSelectedNode(node)}
               className={`p-5 space-y-3 cursor-pointer hover:border-primary/50 transition duration-200 text-left relative ${
                 node.proficiencyLevel === 'MASTERED'
@@ -109,14 +109,14 @@ export default function SkillMemoryGraph({
                   : node.proficiencyLevel === 'PROFICIENT'
                   ? 'bg-primary-soft/40 border-primary/25'
                   : node.proficiencyLevel === 'DEVELOPING'
-                  ? 'bg-surface-alt border-border'
+                  ? 'bg-bg-surface-alt border-border'
                   : 'bg-warning/10 border-warning/30'
               }`}
             >
               {/* High Severity Animated Attention Badge */}
               {hasHighDeficiency && (
-                <div className="absolute -top-2 -right-2 bg-danger text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-soft flex items-center gap-1 animate-pulse font-mono z-10">
-                  <FaFire size={8} /> HIGH DEFICIENCY
+                <div className="absolute -top-2 -right-2 bg-danger text-text-on-primary text-xs font-bold px-2 py-0.5 rounded-full shadow-soft flex items-center gap-1 animate-pulse font-mono z-10">
+                  <FaFire size={8} aria-hidden="true" /> HIGH DEFICIENCY
                 </div>
               )}
 
@@ -129,11 +129,11 @@ export default function SkillMemoryGraph({
 
               {/* Progress Gauge & Stats */}
               <div className="space-y-1.5 pt-1">
-                <div className="flex justify-between items-center text-[10px] font-mono">
+                <div className="flex justify-between items-center text-xs font-mono">
                   <span className="text-text-secondary">Remediation Progress</span>
                   <span className="text-success font-bold">{node.remediationProgress}%</span>
                 </div>
-                <div className="w-full h-1.5 rounded-full bg-surface-alt border border-border overflow-hidden">
+                <div className="w-full h-1.5 rounded-full bg-bg-surface-alt border border-border overflow-hidden">
                   <div
                     className="h-full bg-primary transition-all duration-500"
                     style={{ width: `${node.remediationProgress}%` }}
@@ -141,10 +141,10 @@ export default function SkillMemoryGraph({
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-border flex justify-between items-center text-[10px] text-text-secondary font-mono">
+              <div className="pt-2 border-t border-border flex justify-between items-center text-xs text-text-secondary font-mono">
                 <span>{node.attemptsCount} Sessions</span>
                 <span className="text-primary flex items-center gap-1 hover:underline">
-                  <FaHistory size={8} /> View Timeline &rarr;
+                  <FaHistory size={8} aria-hidden="true" /> View Timeline &rarr;
                 </span>
               </div>
             </Card>

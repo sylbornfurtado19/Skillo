@@ -5,7 +5,7 @@ import type { IconType } from 'react-icons';
 export interface ButtonProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onAnimationStart' | 'onDrag' | 'onDragStart' | 'onDragEnd'> {
   children?: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'accent' | 'glass' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'glass' | 'ghost' | 'danger' | 'default';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   className?: string;
@@ -24,21 +24,21 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const baseStyle =
-    'inline-flex flex-row items-center justify-center gap-2 rounded-xl font-semibold transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none relative overflow-hidden group whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30';
+    'inline-flex flex-row items-center justify-center gap-2 rounded-xl font-semibold transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none relative overflow-hidden group whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
 
   const variants = {
     primary:
-      'bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] text-[var(--text-on-primary)] shadow-[var(--shadow)] border border-[var(--primary)]',
+      'bg-primary hover:bg-primary-hover active:bg-primary-active text-text-on-primary shadow-soft border border-primary',
     secondary:
-      'bg-[var(--secondary)] hover:bg-[var(--secondary-hover)] active:bg-[var(--secondary-hover)] text-[var(--text-on-primary)] shadow-[var(--shadow)] border border-[var(--secondary)]',
-    accent:
-      'bg-[var(--primary-soft)] hover:bg-[var(--primary-soft)]/80 text-[var(--primary)] border border-[var(--primary)]/20',
+      'bg-secondary hover:bg-secondary-hover active:bg-secondary-hover text-text-on-primary shadow-soft border border-secondary',
+    default:
+      'bg-bg-surface-alt hover:bg-bg-surface-alt/80 text-text-primary border border-border shadow-soft',
     glass:
-      'bg-[var(--bg-surface-alt)] hover:bg-[var(--bg-surface-alt)]/80 text-[var(--text-primary)] border border-[var(--border)] shadow-[var(--shadow)]',
+      'bg-bg-surface-alt hover:bg-bg-surface-alt/80 text-text-primary border border-border shadow-soft',
     ghost:
-      'bg-transparent hover:bg-[var(--bg-surface-alt)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-transparent',
+      'bg-transparent hover:bg-bg-surface-alt text-text-secondary hover:text-text-primary border border-transparent',
     danger:
-      'bg-[var(--danger)] hover:bg-[var(--danger)]/90 text-[var(--text-on-primary)] border border-[var(--danger)] shadow-[var(--shadow)]',
+      'bg-danger hover:bg-danger/90 text-text-on-primary border border-danger shadow-soft',
   };
 
   const sizes = {
@@ -57,10 +57,8 @@ export default function Button({
       className={`${baseStyle} ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >
-      <div className="flex flex-row items-center justify-center gap-2 relative z-10 w-full shrink-0">
-        <span>{children}</span>
-        {Icon && <Icon className="text-xs shrink-0" />}
-      </div>
+      {children && <span>{children}</span>}
+      {Icon && <Icon className="text-xs shrink-0" />}
     </motion.button>
   );
 }

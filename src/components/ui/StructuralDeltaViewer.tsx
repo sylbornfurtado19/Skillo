@@ -60,57 +60,57 @@ export default function StructuralDeltaViewer({
 
   return (
     <div className={`space-y-4 text-left ${className}`}>
-      <div className="flex items-center justify-between border-b border-white/5 pb-2">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2 font-heading">
-          <FaSlidersH className="text-accent" />
-          <span>Key Architectural & Complexity Deltas (&Delta;)</span>
+      <div className="flex items-center justify-between border-b border-border pb-2">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-2 font-heading">
+          <FaSlidersH className="text-primary" aria-hidden="true" />
+          <span>Key Architectural &amp; Complexity Deltas (&Delta;)</span>
         </h4>
-        <span className="text-[10px] text-gray-500 font-mono">
+        <span className="text-xs text-text-secondary font-mono">
           {list.length} Structural Dimension(s) Evaluated
         </span>
       </div>
 
       <div className="space-y-3">
         {list.map((item, idx) => (
-          <Card variant="glass" key={idx} className="p-4 space-y-3">
+          <Card variant="default" key={idx} className="p-4 space-y-3">
             {/* Header: Dimension & Impact Score */}
             <div className="flex justify-between items-center text-xs font-mono">
               <div className="flex items-center gap-2">
                 {getDimensionLabel(item.dimension)}
-                <span className="text-[10px] text-gray-400">Delta #{idx + 1}</span>
+                <span className="text-xs text-text-secondary">Delta #{idx + 1}</span>
               </div>
 
               {/* Impact Score Bar ($0.0$ to $10.0$) */}
               <div className="flex items-center gap-2">
-                <span className="text-[9px] text-gray-400 uppercase">Impact Score</span>
-                <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <span className="text-xs text-text-secondary uppercase">Impact Score</span>
+                <div className="w-16 h-1.5 rounded-full bg-bg-surface-alt overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-yellow-400 via-accent to-red-400"
+                    className="h-full bg-gradient-to-r from-warning via-primary to-danger"
                     style={{ width: `${(item.impactScore / 10) * 100}%` }}
                   />
                 </div>
-                <span className="text-xs font-bold text-accent">{item.impactScore}/10</span>
+                <span className="text-xs font-bold text-primary">{item.impactScore}/10</span>
               </div>
             </div>
 
             {/* Metric Comparison Row: Deficiency vs Target Benchmark */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
               {/* Candidate Deficiency Pill */}
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 space-y-1">
-                <span className="text-[9px] text-red-400 font-bold uppercase tracking-wider flex items-center gap-1 font-mono">
-                  <FaTimesCircle size={9} /> Candidate Deficiency
+              <div className="p-3 rounded-xl bg-danger/10 border border-danger/20 space-y-1">
+                <span className="text-xs text-danger font-bold uppercase tracking-wider flex items-center gap-1 font-mono">
+                  <FaTimesCircle size={9} aria-hidden="true" /> Candidate Deficiency
                 </span>
-                <p className="text-gray-200 leading-relaxed text-[11px] font-mono">
+                <p className="text-text-primary leading-relaxed text-xs font-mono">
                   {item.candidateDeficiency}
                 </p>
               </div>
 
               {/* Target Benchmark Pill */}
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
-                <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1 font-mono">
-                  <FaCheckCircle size={9} /> Optimal FAANG Benchmark
+              <div className="p-3 rounded-xl bg-success/10 border border-success/20 space-y-1">
+                <span className="text-xs text-success font-bold uppercase tracking-wider flex items-center gap-1 font-mono">
+                  <FaCheckCircle size={9} aria-hidden="true" /> Optimal FAANG Benchmark
                 </span>
-                <p className="text-gray-200 leading-relaxed text-[11px] font-mono">
+                <p className="text-text-primary leading-relaxed text-xs font-mono">
                   {item.preferredBenchmark}
                 </p>
               </div>

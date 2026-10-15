@@ -10,50 +10,51 @@ export interface ThemePreset {
   primaryHex: string;
   secondaryHex: string;
   accentHex: string;
-  badgeClass: string;
   isLight?: boolean;
 }
 
 export const THEME_PRESETS: Record<ThemeId, ThemePreset> = {
   onyx: {
     id: 'onyx',
-    name: 'Onyx Glass',
-    subtitle: 'Deep Obsidian & Indigo Glows',
-    description: 'Ultra-deep space black background with translucent glassmorphic cards and indigo/violet neon accents.',
-    bgHex: '#030712',
-    cardHex: '#0B0F19',
-    primaryHex: '#6366F1',
-    secondaryHex: '#8B5CF6',
-    accentHex: '#06B6D4',
-    badgeClass: 'from-indigo-500/20 to-purple-500/20 text-indigo-400 border-indigo-500/30',
+    name: 'NMIMS Light',
+    subtitle: 'Warm Ivory & Heritage Maroon',
+    description: 'Official NMIMS university portal aesthetic with warm ivory pages, crisp card surfaces, and deep heritage maroon accents.',
+    bgHex: '#F6F3EE',
+    cardHex: '#FBF9F6',
+    primaryHex: '#9B2218',
+    secondaryHex: '#6B6E70',
+    accentHex: '#6B6E70',
+    isLight: true,
   },
   cyberpunk: {
     id: 'cyberpunk',
-    name: 'Cyberpunk Dark',
-    subtitle: 'Neon Pink & Electric Cyan',
-    description: 'High-contrast synthwave dark purple canvas with vibrant electric cyan and hot pink neon highlights.',
-    bgHex: '#090414',
-    cardHex: '#140A23',
-    primaryHex: '#EC4899',
-    secondaryHex: '#A855F7',
-    accentHex: '#00F0FF',
-    badgeClass: 'from-pink-500/20 to-cyan-500/20 text-pink-400 border-pink-500/30',
+    name: 'NMIMS Dark',
+    subtitle: 'Dark Charcoal & Vivid Crimson',
+    description: 'High-contrast dark mode with charcoal canvas, warm dark surfaces, and vivid crimson maroon highlights.',
+    bgHex: '#1E1A19',
+    cardHex: '#272221',
+    primaryHex: '#CC3F33',
+    secondaryHex: '#9B9E9F',
+    accentHex: '#9B9E9F',
+    isLight: false,
   },
   slate: {
     id: 'slate',
-    name: 'Enterprise Slate',
-    subtitle: 'Minimalist Corporate Slate',
-    description: 'Refined dark slate blue-gray background with minimalist sky blue and emerald executive accents.',
-    bgHex: '#0F172A',
-    cardHex: '#1E293B',
-    primaryHex: '#38BDF8',
-    secondaryHex: '#6366F1',
-    accentHex: '#10B981',
-    badgeClass: 'from-sky-500/20 to-emerald-500/20 text-sky-400 border-sky-500/30',
+    name: 'Slate',
+    subtitle: 'Executive Slate Navy & Maroon',
+    description: 'Refined slate navy background with cool balanced surfaces and authoritative university maroon highlights.',
+    bgHex: '#1E2229',
+    cardHex: '#262B34',
+    primaryHex: '#9B2218',
+    secondaryHex: '#8B949E',
+    accentHex: '#8B949E',
+    isLight: false,
   },
 };
 
 export function getThemePreset(id: string): ThemePreset {
+  if (id === 'nmims' || id === 'light') return THEME_PRESETS.onyx;
+  if (id === 'dark') return THEME_PRESETS.cyberpunk;
   if (id in THEME_PRESETS) {
     return THEME_PRESETS[id as ThemeId];
   }

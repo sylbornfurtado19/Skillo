@@ -39,8 +39,6 @@
     --color-primary-dark: var(--primary-hover);
     --color-secondary: var(--secondary);
     --color-accent: var(--secondary);
-    --color-glow-1: rgba(155, 34, 24, 0.08);
-    --color-glow-2: rgba(107, 110, 112, 0.08);
     --font-heading: "Sora", sans-serif;
     --font-body: "Inter", sans-serif;
   }
@@ -78,8 +76,6 @@
     --color-primary-dark: var(--primary-hover);
     --color-secondary: var(--secondary);
     --color-accent: var(--secondary);
-    --color-glow-1: rgba(204, 63, 51, 0.15);
-    --color-glow-2: rgba(155, 158, 159, 0.15);
   }
 
   [data-theme="slate"] {
@@ -114,8 +110,6 @@
     --color-primary-dark: var(--primary-hover);
     --color-secondary: var(--secondary);
     --color-accent: var(--secondary);
-    --color-glow-1: rgba(155, 34, 24, 0.15);
-    --color-glow-2: rgba(139, 148, 158, 0.15);
   }
 }
 
@@ -152,9 +146,6 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   transition: background-color 0.25s ease, color 0.25s ease;
-  /* Subtle formal off-white micro-texture (soft 45-deg watermark lines at 2% opacity) */
-  background-image: radial-gradient(var(--border) 0.5px, transparent 0.5px);
-  background-size: 24px 24px;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -188,8 +179,8 @@ li a:not([class*="btn"]):not([class*="button"]),
 
 /* Visible :focus-visible states using --focus-ring across all interactive elements */
 :focus-visible {
-  outline: none !important;
-  box-shadow: var(--focus-ring) !important;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 button:focus-visible,
@@ -198,8 +189,8 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: none !important;
-  box-shadow: var(--focus-ring) !important;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* Clear Disabled States */
@@ -208,10 +199,10 @@ input:disabled,
 select:disabled,
 textarea:disabled,
 [aria-disabled="true"] {
-  opacity: 0.55 !important;
-  cursor: not-allowed !important;
-  filter: grayscale(0.4) !important;
-  pointer-events: none !important;
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+  pointer-events: none;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -282,25 +273,6 @@ textarea:disabled,
   transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
-/* Flat / subtle token tints replacing neon glow effects */
-.glow-primary {
-  box-shadow: var(--shadow);
-}
-
-.glow-secondary {
-  box-shadow: var(--shadow);
-}
-
-.glow-accent {
-  box-shadow: var(--shadow);
-}
-
-.animated-glow-border {
-  position: relative;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: inherit;
-}
 
 /* Accessibility: prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {

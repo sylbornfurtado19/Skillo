@@ -34,7 +34,7 @@ export default function SUQConfidenceDashboard({
   if (!suqEvaluation) {
     return (
       <div className={`space-y-6 text-left ${className}`}>
-        <div className="bg-surface p-5 rounded-2xl border border-border shadow-soft flex flex-col items-center justify-center gap-3 text-center py-10">
+        <div className="bg-bg-surface p-5 rounded-2xl border border-border shadow-soft flex flex-col items-center justify-center gap-3 text-center py-10">
           <FaBrain className="text-4xl text-text-secondary/40" />
           <h3 className="text-sm font-heading font-bold text-text-primary">Prometheus-2 Evaluation</h3>
           <p className="text-xs text-text-secondary leading-relaxed max-w-sm">
@@ -97,7 +97,7 @@ export default function SUQConfidenceDashboard({
   return (
     <div className={`space-y-6 text-left ${className}`}>
       {/* 1. Header & Confidence Badge */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-surface p-4 sm:p-5 rounded-2xl border border-border shadow-soft">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-bg-surface p-4 sm:p-5 rounded-2xl border border-border shadow-soft">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-primary-soft border border-primary/20 flex items-center justify-center text-primary text-lg shrink-0">
             <FaBrain />
@@ -106,7 +106,7 @@ export default function SUQConfidenceDashboard({
             <h3 className="text-sm font-heading font-bold text-text-primary flex items-center gap-2">
               Prometheus-2 Rubric &amp; Semantic Uncertainty Engine
             </h3>
-            <p className="text-[11px] text-text-secondary">
+            <p className="text-xs text-text-secondary">
               N = 3 Multi-Pass CoT Evaluation &bull; Latency: {suq.latencyMs}ms
             </p>
           </div>
@@ -116,21 +116,21 @@ export default function SUQConfidenceDashboard({
         <div>
           {suq.confidenceLevel === 'HIGH' && (
             <Badge variant="success" size="md" className="flex items-center gap-1.5 px-3 py-1 text-xs">
-              <FaCheckCircle className="text-emerald-400 text-xs" />
+              <FaCheckCircle className="text-success text-xs" aria-hidden="true" />
               <span>Model Agreement: High (SE: {seFormatted})</span>
             </Badge>
           )}
 
           {suq.confidenceLevel === 'MEDIUM' && (
             <Badge variant="warning" size="md" className="flex items-center gap-1.5 px-3 py-1 text-xs">
-              <FaExclamationTriangle className="text-yellow-400 text-xs" />
+              <FaExclamationTriangle className="text-warning text-xs" aria-hidden="true" />
               <span>Model Agreement: Moderate (SE: {seFormatted})</span>
             </Badge>
           )}
 
           {suq.confidenceLevel === 'LOW' && (
             <Badge variant="danger" size="md" className="flex items-center gap-1.5 px-3 py-1 text-xs">
-              <FaTimesCircle className="text-red-400 text-xs" />
+              <FaTimesCircle className="text-danger text-xs" aria-hidden="true" />
               <span>Model Variance Detected (SE: {seFormatted})</span>
             </Badge>
           )}
@@ -139,14 +139,14 @@ export default function SUQConfidenceDashboard({
 
       {/* Low-Confidence Alert Banner */}
       {(suq.requiresValidationPass || suq.confidenceLevel === 'LOW') && (
-        <div className="p-4 rounded-xl border border-danger/30 bg-danger/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-4 rounded-xl border border-danger/30 bg-danger/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" role="alert">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-danger/20 flex items-center justify-center text-danger text-base shrink-0">
+            <div className="h-9 w-9 rounded-lg bg-danger/20 flex items-center justify-center text-danger text-base shrink-0" aria-hidden="true">
               <FaExclamationTriangle />
             </div>
             <div className="space-y-0.5 text-xs text-left">
               <h5 className="font-bold text-text-primary leading-none">High Model Variance Detected</h5>
-              <p className="text-danger leading-relaxed text-[11px]">
+              <p className="text-danger leading-relaxed text-xs">
                 Multi-pass sampling detected variance across evaluation outputs (Semantic Entropy SE = {seFormatted}).
               </p>
             </div>
@@ -158,7 +158,7 @@ export default function SUQConfidenceDashboard({
               size="sm"
               className="border-danger/40 text-danger hover:bg-danger/20 shrink-0 text-xs"
             >
-              <FaRedo className="mr-1 text-xs" />
+              <FaRedo className="mr-1 text-xs" aria-hidden="true" />
               Trigger Secondary Review
             </Button>
           )}
@@ -177,12 +177,12 @@ export default function SUQConfidenceDashboard({
             const descriptor = getDescriptor(dim.score);
 
             return (
-              <Card variant="glass" key={dim.key} className="p-4 space-y-3 flex flex-col justify-between">
+              <Card variant="default" key={dim.key} className="p-4 space-y-3 flex flex-col justify-between">
                 <div className="space-y-2">
                   <div className="flex justify-between items-start">
                     <div>
                       <span className="text-xs font-bold text-text-primary block">{dim.title}</span>
-                      <span className="text-[10px] text-text-secondary font-mono">Weight: {dim.weight}</span>
+                      <span className="text-xs text-text-secondary font-mono">Weight: {dim.weight}</span>
                     </div>
                     <Badge variant="primary" size="sm">
                       {dim.score.toFixed(1)} / 5.0
@@ -191,11 +191,11 @@ export default function SUQConfidenceDashboard({
 
                   {/* Rating Stars & Progress Bar */}
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[10px]">
+                    <div className="flex items-center justify-between text-xs">
                       <span className="text-primary font-semibold">{descriptor}</span>
                       <span className="text-text-secondary font-mono">{Math.round((dim.score / 5) * 100)}%</span>
                     </div>
-                    <div className="w-full h-1.5 rounded-full bg-surface-alt border border-border overflow-hidden">
+                    <div className="w-full h-1.5 rounded-full bg-bg-surface-alt border border-border overflow-hidden">
                       <div
                         className="h-full bg-primary transition-all duration-500"
                         style={{ width: `${(dim.score / 5) * 100}%` }}
@@ -203,7 +203,7 @@ export default function SUQConfidenceDashboard({
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-text-secondary leading-relaxed bg-surface-alt p-2.5 rounded-lg border border-border">
+                  <p className="text-xs text-text-secondary leading-relaxed bg-bg-surface-alt p-2.5 rounded-lg border border-border">
                     {dim.feedback}
                   </p>
                 </div>
@@ -213,15 +213,16 @@ export default function SUQConfidenceDashboard({
                   <button
                     type="button"
                     onClick={() => toggleCoT(dim.key)}
-                    className="w-full flex items-center justify-between text-[10px] text-text-secondary hover:text-text-primary transition cursor-pointer font-mono"
+                    aria-expanded={isExpanded}
+                    className="w-full flex items-center justify-between text-xs text-text-secondary hover:text-text-primary transition cursor-pointer font-mono"
                   >
                     <span>Chain-of-Thought Reasoning</span>
-                    {isExpanded ? <FaChevronUp size={9} /> : <FaChevronDown size={9} />}
+                    {isExpanded ? <FaChevronUp size={9} aria-hidden="true" /> : <FaChevronDown size={9} aria-hidden="true" />}
                   </button>
 
                   {isExpanded && (
-                    <div className="mt-2 p-3 rounded-lg bg-surface-alt border border-border text-[11px] font-mono text-text-secondary leading-relaxed break-words space-y-1">
-                      <span className="text-[9px] text-primary font-bold uppercase block tracking-wider">
+                    <div className="mt-2 p-3 rounded-lg bg-bg-surface-alt border border-border text-xs font-mono text-text-secondary leading-relaxed break-words space-y-1">
+                      <span className="text-xs text-primary font-bold uppercase block tracking-wider">
                         LLM CoT Logic Path
                       </span>
                       <p>{suq.passes[0]?.cotReasoning ?? 'Step-by-step reasoning evaluated across 5 parallel sampling passes.'}</p>
@@ -235,7 +236,7 @@ export default function SUQConfidenceDashboard({
       </div>
 
       {/* 3. Semantic Entropy & Cluster Distribution Visualizer */}
-      <Card variant="glass" className="p-5 space-y-4">
+      <Card variant="default" className="p-5 space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <FaChartPie className="text-primary text-sm" />
@@ -245,8 +246,8 @@ export default function SUQConfidenceDashboard({
           </div>
 
           <div className="flex items-center gap-3 text-xs font-mono">
-            <span className="text-text-secondary text-[10px]">Semantic Entropy (SE):</span>
-            <span className="text-text-primary font-bold px-2 py-0.5 rounded bg-surface-alt border border-border">
+            <span className="text-text-secondary text-xs">Semantic Entropy (SE):</span>
+            <span className="text-text-primary font-bold px-2 py-0.5 rounded bg-bg-surface-alt border border-border">
               {seFormatted}
             </span>
           </div>
@@ -254,7 +255,7 @@ export default function SUQConfidenceDashboard({
 
         {/* Cluster Distribution Grid */}
         <div className="space-y-3">
-          <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wider block font-mono">
+          <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block font-mono">
             Equivalence Clusters (C = {'{c_1, ..., c_k}'}) &bull; Score Variance &delta; &le; 0.5
           </span>
 
@@ -264,9 +265,9 @@ export default function SUQConfidenceDashboard({
               return (
                 <div
                   key={cluster.clusterId}
-                  className="p-3 rounded-xl bg-surface-alt border border-border space-y-2 text-xs"
+                  className="p-3 rounded-xl bg-bg-surface-alt border border-border space-y-2 text-xs"
                 >
-                  <div className="flex justify-between items-center text-[11px]">
+                  <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-text-primary">Cluster {cluster.clusterId}</span>
                     <Badge variant="primary" size="sm">
                       P(c): {probPct}%
@@ -274,11 +275,11 @@ export default function SUQConfidenceDashboard({
                   </div>
 
                   <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-mono text-text-secondary">
+                    <div className="flex justify-between text-xs font-mono text-text-secondary">
                       <span>Representative Score:</span>
                       <span className="text-success font-bold">{cluster.representativeScore.toFixed(1)} / 5.0</span>
                     </div>
-                    <div className="w-full h-1 rounded-full bg-surface border border-border overflow-hidden">
+                    <div className="w-full h-1 rounded-full bg-bg-surface border border-border overflow-hidden">
                       <div
                         className="h-full bg-primary"
                         style={{ width: `${probPct}%` }}
@@ -286,7 +287,7 @@ export default function SUQConfidenceDashboard({
                     </div>
                   </div>
 
-                  <span className="text-[9px] text-text-secondary font-mono block">
+                  <span className="text-xs text-text-secondary font-mono block">
                     Passes assigned: [{cluster.passIndices.map((i) => i + 1).join(', ')}]
                   </span>
                 </div>
@@ -300,23 +301,24 @@ export default function SUQConfidenceDashboard({
           <button
             type="button"
             onClick={() => setShowPassDrawer(!showPassDrawer)}
+            aria-expanded={showPassDrawer}
             className="w-full flex items-center justify-between text-xs text-text-secondary hover:text-text-primary transition cursor-pointer font-mono"
           >
             <span>View All N = 5 Sampling Pass CoT Diagnostics</span>
-            {showPassDrawer ? <FaChevronUp size={10} /> : <FaChevronDown size={10} />}
+            {showPassDrawer ? <FaChevronUp size={10} aria-hidden="true" /> : <FaChevronDown size={10} aria-hidden="true" />}
           </button>
 
           {showPassDrawer && (
             <div className="mt-3 space-y-3">
               {suq.passes.map((pass: SinglePassEvaluation, idx: number) => (
-                <div key={idx} className="p-3 rounded-xl bg-surface-alt border border-border space-y-1.5 text-xs">
+                <div key={idx} className="p-3 rounded-xl bg-bg-surface-alt border border-border space-y-1.5 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-text-primary">Pass {idx + 1}</span>
-                    <span className="text-primary font-mono text-[10px]">
+                    <span className="text-primary font-mono text-xs">
                       Overall: {pass.overallScore.toFixed(2)} / 5.0
                     </span>
                   </div>
-                  <p className="text-[11px] text-text-secondary font-mono bg-surface p-2.5 rounded-lg border border-border">
+                  <p className="text-xs text-text-secondary font-mono bg-bg-surface p-2.5 rounded-lg border border-border">
                     {pass.cotReasoning}
                   </p>
                 </div>

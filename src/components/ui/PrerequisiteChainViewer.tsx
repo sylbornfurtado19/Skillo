@@ -29,9 +29,9 @@ export default function PrerequisiteChainViewer({
 
   if (chainsList.length === 0) {
     return (
-      <div className="p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 text-center">
-        <p className="text-sm text-emerald-400 font-semibold">✓ No skill gaps detected</p>
-        <p className="text-xs text-gray-400 mt-1">Your profile demonstrates complete prerequisite coverage for this role.</p>
+      <div className="p-5 rounded-2xl border border-success/20 bg-success/5 text-center">
+        <p className="text-sm text-success font-semibold">✓ No skill gaps detected</p>
+        <p className="text-xs text-text-secondary mt-1">Your profile demonstrates complete prerequisite coverage for this role.</p>
       </div>
     );
   }
@@ -49,7 +49,7 @@ export default function PrerequisiteChainViewer({
       case 'MODERATE':
         return <Badge variant="warning" size="sm">MODERATE GAP</Badge>;
       case 'MINOR':
-        return <Badge variant="accent" size="sm">MINOR GAP</Badge>;
+        return <Badge variant="secondary" size="sm">MINOR GAP</Badge>;
     }
   };
 
@@ -71,7 +71,7 @@ export default function PrerequisiteChainViewer({
           const isExpanded = !!expandedChains[chainId];
 
           return (
-            <Card variant="glass" key={chainId} className="p-4 space-y-3">
+            <Card variant="default" key={chainId} className="p-4 space-y-3">
               {/* Card Header & Severity */}
               <div className="flex justify-between items-center text-xs">
                 <span className="font-bold text-text-primary font-mono">Chain #{idx + 1}</span>
@@ -79,39 +79,39 @@ export default function PrerequisiteChainViewer({
               </div>
 
               {/* Stepped Dependency Chain Visualizer */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center bg-surface-alt p-3 rounded-xl border border-border text-xs font-mono">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center bg-bg-surface-alt p-3 rounded-xl border border-border text-xs font-mono">
                 {/* Step 1: Missing Foundation */}
                 <div className="p-2 rounded-lg bg-danger/10 border border-danger/20 space-y-0.5">
-                  <span className="text-[9px] text-danger font-bold uppercase block tracking-wider">
+                  <span className="text-xs text-danger font-bold uppercase block tracking-wider">
                     Missing Foundation
                   </span>
-                  <p className="text-text-primary font-medium text-[11px] leading-tight">
+                  <p className="text-text-primary font-medium text-xs leading-tight">
                     {chain.missingFoundation || chain.missingSkill || 'Foundational Skill'}
                   </p>
                 </div>
 
                 {/* Step 2: Blocked Capability */}
                 <div className="p-2 rounded-lg bg-warning/10 border border-warning/20 space-y-0.5 relative">
-                  <div className="hidden md:block absolute -left-2 top-1/2 -translate-y-1/2 text-text-secondary z-10">
+                  <div className="hidden md:block absolute -left-2 top-1/2 -translate-y-1/2 text-text-secondary z-10" aria-hidden="true">
                     <FaArrowRight size={10} />
                   </div>
-                  <span className="text-[9px] text-warning font-bold uppercase block tracking-wider">
+                  <span className="text-xs text-warning font-bold uppercase block tracking-wider">
                     Blocks Capability
                   </span>
-                  <p className="text-text-primary font-medium text-[11px] leading-tight">
+                  <p className="text-text-primary font-medium text-xs leading-tight">
                     {chain.blockedCapability}
                   </p>
                 </div>
 
                 {/* Step 3: Downstream Impact */}
                 <div className="p-2 rounded-lg bg-primary-soft border border-primary/20 space-y-0.5 relative">
-                  <div className="hidden md:block absolute -left-2 top-1/2 -translate-y-1/2 text-text-secondary z-10">
+                  <div className="hidden md:block absolute -left-2 top-1/2 -translate-y-1/2 text-text-secondary z-10" aria-hidden="true">
                     <FaArrowRight size={10} />
                   </div>
-                  <span className="text-[9px] text-primary font-bold uppercase block tracking-wider">
+                  <span className="text-xs text-primary font-bold uppercase block tracking-wider">
                     Downstream Impact
                   </span>
-                  <p className="text-text-primary font-medium text-[11px] leading-tight">
+                  <p className="text-text-primary font-medium text-xs leading-tight">
                     {chain.downstreamImpact || chain.macroDomainImpact || 'System Impact'}
                   </p>
                 </div>
@@ -122,19 +122,20 @@ export default function PrerequisiteChainViewer({
                 <button
                   type="button"
                   onClick={() => toggleExpand(chainId)}
-                  className="w-full flex items-center justify-between text-[10px] text-text-secondary hover:text-text-primary font-mono cursor-pointer transition"
+                  aria-expanded={isExpanded}
+                  className="w-full flex items-center justify-between text-xs text-text-secondary hover:text-text-primary font-mono cursor-pointer transition"
                 >
                   <span className="flex items-center gap-1.5 text-primary font-semibold">
-                    <FaGraduationCap />
+                    <FaGraduationCap aria-hidden="true" />
                     Remediation Learning Path ({chain.remediationPath.length} Action Items)
                   </span>
-                  {isExpanded ? <FaChevronUp size={9} /> : <FaChevronDown size={9} />}
+                  {isExpanded ? <FaChevronUp size={9} aria-hidden="true" /> : <FaChevronDown size={9} aria-hidden="true" />}
                 </button>
 
                 {isExpanded && (
-                  <div className="mt-2.5 space-y-1.5 bg-surface p-3 rounded-lg border border-border text-xs text-left">
+                  <div className="mt-2.5 space-y-1.5 bg-bg-surface p-3 rounded-lg border border-border text-xs text-left">
                     {chain.remediationPath.map((step, sIdx) => (
-                      <div key={sIdx} className="flex gap-2 items-start text-text-secondary leading-relaxed text-[11px]">
+                      <div key={sIdx} className="flex gap-2 items-start text-text-secondary leading-relaxed text-xs">
                         <span className="text-success font-bold shrink-0 mt-0.5">&bull;</span>
                         <span>{step}</span>
                       </div>

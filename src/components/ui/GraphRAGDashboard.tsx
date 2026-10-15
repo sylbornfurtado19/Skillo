@@ -38,8 +38,8 @@ export default function GraphRAGDashboard({
   if (!graphRAGData || !graphRAGData.candidateGraph || graphRAGData.candidateGraph.nodes.length === 0) {
     return (
       <div className={`space-y-4 ${className}`}>
-        <div className="glass-card rounded-2xl p-8 border border-white/5 flex flex-col items-center justify-center gap-3 text-center">
-          <p className="text-sm text-gray-400 font-mono">GraphRAG analysis will appear here after resume upload and job description submission.</p>
+        <div className="bg-bg-surface rounded-2xl p-8 border border-border flex flex-col items-center justify-center gap-3 text-center shadow-soft">
+          <p className="text-sm text-text-secondary font-mono">GraphRAG analysis will appear here after resume upload and job description submission.</p>
         </div>
       </div>
     );
@@ -90,7 +90,7 @@ export default function GraphRAGDashboard({
   return (
     <div className={`space-y-6 text-left ${className}`}>
       {/* 1. Header Bar & Overall Domain Coverage Percentage Gauge */}
-      <div className="bg-surface border border-border p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-soft">
+      <div className="bg-bg-surface border border-border p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-soft">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-primary-soft border border-primary/20 flex items-center justify-center text-primary text-lg shrink-0">
             <FaProjectDiagram />
@@ -106,7 +106,7 @@ export default function GraphRAGDashboard({
         </div>
 
         {/* Overall Domain Coverage Meter */}
-        <div className="flex items-center gap-4 bg-surface-alt px-4 py-2 rounded-xl border border-border w-full sm:w-auto justify-between sm:justify-end">
+        <div className="flex items-center gap-4 bg-bg-surface-alt px-4 py-2 rounded-xl border border-border w-full sm:w-auto justify-between sm:justify-end">
           <div className="space-y-0.5">
             <span className="text-[9px] text-text-secondary font-mono uppercase tracking-wider block">
               Domain Alignment Index
@@ -117,7 +117,7 @@ export default function GraphRAGDashboard({
           </div>
 
           <div className="flex items-center gap-2 font-mono">
-            <div className="w-16 h-2 rounded-full bg-surface border border-border overflow-hidden">
+            <div className="w-16 h-2 rounded-full bg-bg-surface border border-border overflow-hidden">
               <div
                 className="h-full bg-primary transition-all duration-500"
                 style={{ width: `${overallDomainCoverage}%` }}
@@ -131,7 +131,7 @@ export default function GraphRAGDashboard({
       </div>
 
       {/* 2. Interactive Hierarchical Knowledge Graph visualizer */}
-      <Card variant="glass" className="p-5 space-y-4">
+      <Card variant="default" className="p-5 space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <FaLayerGroup className="text-primary text-sm" />
@@ -141,7 +141,7 @@ export default function GraphRAGDashboard({
           </div>
 
           {/* Tier Level Filter Controls */}
-          <div className="flex items-center gap-1 bg-surface-alt p-1 rounded-xl border border-border text-[10px] font-mono">
+          <div className="flex items-center gap-1 bg-bg-surface-alt p-1 rounded-xl border border-border text-[10px] font-mono">
             {(['ALL', 0, 1, 2] as const).map((lvl) => (
               <button
                 key={String(lvl)}
@@ -149,7 +149,7 @@ export default function GraphRAGDashboard({
                 onClick={() => setActiveLevelFilter(lvl)}
                 className={`px-2.5 py-1 rounded-lg uppercase tracking-wider transition cursor-pointer ${
                   activeLevelFilter === lvl
-                    ? 'bg-primary text-white font-bold'
+                    ? 'bg-primary text-text-on-primary font-bold'
                     : 'text-text-secondary hover:text-text-primary'
                 }`}
               >
@@ -204,7 +204,7 @@ export default function GraphRAGDashboard({
 
         {/* Node & Community Detail Sidebar Drawer Overlay */}
         {selectedNode && (
-          <div className="mt-4 p-4 rounded-xl bg-surface border border-border space-y-3 relative text-left font-mono shadow-soft">
+          <div className="mt-4 p-4 rounded-xl bg-bg-surface border border-border space-y-3 relative text-left font-mono shadow-soft">
             <button
               type="button"
               onClick={() => setSelectedNode(null)}
@@ -221,7 +221,7 @@ export default function GraphRAGDashboard({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="space-y-1.5 bg-surface-alt p-3 rounded-lg border border-border">
+              <div className="space-y-1.5 bg-bg-surface-alt p-3 rounded-lg border border-border">
                 <span className="text-[10px] text-text-secondary uppercase font-bold block">Entity Description</span>
                 <p className="text-text-secondary text-[11px] leading-relaxed">{selectedNode.description}</p>
                 <div className="pt-2">
@@ -231,7 +231,7 @@ export default function GraphRAGDashboard({
               </div>
 
               {selectedCommunity && (
-                <div className="space-y-1.5 bg-surface-alt p-3 rounded-lg border border-border">
+                <div className="space-y-1.5 bg-bg-surface-alt p-3 rounded-lg border border-border">
                   <span className="text-[10px] text-primary uppercase font-bold block">
                     Community Summary ({selectedCommunity.name})
                   </span>

@@ -63,11 +63,11 @@ export default function AffectiveHUD({ currentFrame }: AffectiveHUDProps) {
 
       {/* Composure Pill & Metrics */}
       <div className="flex-1 space-y-1 text-left">
-        <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-mono font-bold ${badge.bg} ${badge.color}`}>
-          <span>{badge.icon}</span>
+        <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-mono font-bold ${badge.bg} ${badge.color}`}>
+          <span aria-hidden="true">{badge.icon}</span>
           <span>{badge.label}</span>
         </div>
-        <div className="flex items-center gap-3 text-[9px] text-text-secondary font-mono">
+        <div className="flex items-center gap-3 text-xs text-text-secondary font-mono">
           <span>V: {vaCoordinates.valence >= 0 ? '+' : ''}{vaCoordinates.valence.toFixed(2)}</span>
           <span>A: {vaCoordinates.arousal >= 0 ? '+' : ''}{vaCoordinates.arousal.toFixed(2)}</span>
           <span>Composure: <strong className="text-text-primary">{composureScore.toFixed(0)}%</strong></span>

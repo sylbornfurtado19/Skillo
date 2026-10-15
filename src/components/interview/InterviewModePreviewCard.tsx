@@ -38,14 +38,14 @@ export const InterviewModePreviewCard: React.FC<InterviewModePreviewCardProps> =
     Meta: 'bg-primary-soft text-primary border-primary/25',
     Amazon: 'bg-warning/15 text-warning border-warning/30',
     Stripe: 'bg-secondary/15 text-secondary border-secondary/30',
-    Generic: 'bg-surface-alt text-text-secondary border-border',
+    Generic: 'bg-bg-surface-alt text-text-secondary border-border',
     Custom: 'bg-success/15 text-success border-success/30',
   };
 
   const currentBadgeClass = companyColorMap[activeMode.company] || companyColorMap.Generic;
 
   return (
-    <Card variant="glass" className="p-5 space-y-4 border border-border relative overflow-hidden bg-surface shadow-soft">
+    <Card variant="default" className="p-5 space-y-4 border border-border relative overflow-hidden bg-bg-surface shadow-soft">
       <div className="flex items-center justify-between border-b border-border pb-3">
         <div className="flex items-center gap-2">
           <FaBrain className="text-primary text-sm" />
@@ -60,7 +60,7 @@ export const InterviewModePreviewCard: React.FC<InterviewModePreviewCardProps> =
 
       {/* Primary Details Grid */}
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="p-2.5 rounded-xl bg-surface-alt border border-border space-y-1">
+        <div className="p-2.5 rounded-xl bg-bg-surface-alt border border-border space-y-1">
           <div className="flex items-center gap-1.5 text-text-secondary text-[10px]">
             <FaBuilding className="text-text-secondary" />
             <span>Target Company</span>
@@ -68,7 +68,7 @@ export const InterviewModePreviewCard: React.FC<InterviewModePreviewCardProps> =
           <p className="font-bold text-text-primary font-heading">{activeMode.company}</p>
         </div>
 
-        <div className="p-2.5 rounded-xl bg-surface-alt border border-border space-y-1">
+        <div className="p-2.5 rounded-xl bg-bg-surface-alt border border-border space-y-1">
           <div className="flex items-center gap-1.5 text-text-secondary text-[10px]">
             <FaUserTie className="text-text-secondary" />
             <span>Target Role</span>
@@ -76,7 +76,7 @@ export const InterviewModePreviewCard: React.FC<InterviewModePreviewCardProps> =
           <p className="font-bold text-text-primary font-heading truncate">{activeMode.role}</p>
         </div>
 
-        <div className="p-2.5 rounded-xl bg-surface-alt border border-border space-y-1">
+        <div className="p-2.5 rounded-xl bg-bg-surface-alt border border-border space-y-1">
           <div className="flex items-center gap-1.5 text-text-secondary text-[10px]">
             <FaBullseye className="text-text-secondary" />
             <span>Interview Track</span>
@@ -84,7 +84,7 @@ export const InterviewModePreviewCard: React.FC<InterviewModePreviewCardProps> =
           <p className="font-bold text-primary font-heading">{activeMode.interviewType}</p>
         </div>
 
-        <div className="p-2.5 rounded-xl bg-surface-alt border border-border space-y-1">
+        <div className="p-2.5 rounded-xl bg-bg-surface-alt border border-border space-y-1">
           <div className="flex items-center gap-1.5 text-text-secondary text-[10px]">
             <FaClock className="text-text-secondary" />
             <span>Difficulty & Duration</span>
@@ -105,7 +105,7 @@ export const InterviewModePreviewCard: React.FC<InterviewModePreviewCardProps> =
           {activeMode.skillsEvaluated.map((skill) => (
             <span
               key={skill}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-alt border border-border text-[10px] font-medium text-text-primary"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-bg-surface-alt border border-border text-[10px] font-medium text-text-primary"
             >
               <FaCheckCircle className="text-success text-[9px]" />
               {skill}
