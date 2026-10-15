@@ -50,6 +50,13 @@ export interface InterviewQuestion {
   idealConcepts?: string;
 }
 
+export interface CodeAnswer {
+  language: 'javascript' | 'typescript' | 'python' | 'java';
+  source: string;
+  stdout: string;
+  stderr: string;
+}
+
 export * from './interviewModes';
 export * from './systemDesign';
 export * from './themes';

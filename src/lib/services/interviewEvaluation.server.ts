@@ -29,6 +29,7 @@ import type {
   HeadPoseFrameInput,
   AffectFrameInput,
   SyncWindowInput,
+  CodeAnswer,
 } from '@/types/index';
 
 export interface QuestionItemInput {
@@ -76,6 +77,7 @@ export interface EvaluateInterviewInput {
   affectFrames?: AffectFrameInput[];
   /** Optional: per-window SyncNet audio-visual lip sync data captured during the interview session */
   syncWindows?: SyncWindowInput[];
+  codeAnswer?: CodeAnswer;
 }
 
 
@@ -189,6 +191,10 @@ async function executeSingleCoTPass(
     return `Question ${idx + 1}: ${questionText}\nCandidate Answer: ${answerText}${diagramInfo}\n`;
   }).join('\n');
 
+  const codeSubmission = input.codeAnswer
+    ? `\nCandidate Code (${input.codeAnswer.language}):\n${sanitizeUserText(input.codeAnswer.source, 10000)}\nCode stdout:\n${sanitizeUserText(input.codeAnswer.stdout, 10000)}\nCode stderr:\n${sanitizeUserText(input.codeAnswer.stderr, 10000)}\nEvaluation instruction: Judge the code's time and space complexity, edge-case coverage, and readability alongside the spoken answer.\n`
+    : '';
+
   if (anthropicApiKey) {
     try {
       const systemPrompt = `You are a Prometheus-2 style SOTA AI Evaluator evaluating a candidate mock interview.
@@ -239,7 +245,7 @@ REQUIRED OUTPUT FORMAT: Return ONLY a JSON object matching this schema (do NOT r
         messages: [
           {
             role: 'user',
-            content: `Candidate Role Target: ${setupData.role} (${setupData.experienceLevel}, ${setupData.type})\n\n<candidate_submission_data>\n${combinedSubmission}\n</candidate_submission_data>`,
+            content: `Candidate Role Target: ${setupData.role} (${setupData.experienceLevel}, ${setupData.type})\n\n<candidate_submission_data>\n${combinedSubmission}${codeSubmission}\n</candidate_submission_data>`,
           },
         ],
         maxTokens: AI_CONFIG.maxTokens.singlePass,

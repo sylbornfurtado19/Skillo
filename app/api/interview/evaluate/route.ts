@@ -84,6 +84,13 @@ const syncWindowSchema = z.object({
   confidence: z.number().finite().min(0).max(1).optional(),
 });
 
+const codeAnswerSchema = z.object({
+  language: z.enum(['javascript', 'typescript', 'python', 'java']),
+  source: z.string().max(10 * 1024),
+  stdout: z.string().max(10000),
+  stderr: z.string().max(10000),
+});
+
 const evaluateSchema = z
   .object({
     setupData: setupDataSchema,
@@ -94,6 +101,7 @@ const evaluateSchema = z
     headPoseFrames: z.array(headPoseFrameSchema).max(1000).optional(),
     affectFrames: z.array(affectFrameSchema).max(1000).optional(),
     syncWindows: z.array(syncWindowSchema).max(1000).optional(),
+    codeAnswer: codeAnswerSchema.optional(),
   })
   .refine((data) => data.questionsList.length === data.answersList.length, {
     message: 'questionsList and answersList must have exactly equal lengths to prevent evaluation misalignment',

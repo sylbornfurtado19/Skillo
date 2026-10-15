@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { getAuthToken } from './auth';
+import type { CodeAnswer } from '../types';
 
 export interface InterviewerPersona {
   id: string;
@@ -349,7 +350,8 @@ export const submitInterviewAnswers = async (
     confidence?: number;
     questionId?: string;
     questionIndex?: number;
-  }>
+  }>,
+  codeAnswer?: CodeAnswer
 ) => {
   const token = await getAuthToken();
 
@@ -367,6 +369,7 @@ export const submitInterviewAnswers = async (
       ...(headPoseFrames && headPoseFrames.length > 0 ? { headPoseFrames } : {}),
       ...(affectFrames && affectFrames.length > 0 ? { affectFrames } : {}),
       ...(syncWindows && syncWindows.length > 0 ? { syncWindows } : {}),
+      ...(codeAnswer ? { codeAnswer } : {}),
     }),
   });
 

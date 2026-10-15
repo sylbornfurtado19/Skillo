@@ -32,7 +32,6 @@ import IVPSyncTracker, { type IVPSyncTrackerHandle } from '../components/ui/IVPS
 import { useInterviewCamera } from '../hooks/useInterviewCamera';
 import { useIVPSessionPipeline } from '../hooks/useIVPSessionPipeline';
 import IVPCameraPreview from '../components/ui/IVPCameraPreview';
-import type { SyncWindowResult, InterviewQuestion } from '@/types/index';
 import type { SystemDesignDiagramState } from '../types/systemDesign';
 import { createInitialDiagramState, deserializeDiagram, serializeDiagram } from '../types/systemDesign';
 import {
@@ -44,6 +43,9 @@ import {
 import SessionGradingOverlay from '../components/interview/session/SessionGradingOverlay';
 import SessionInterviewerCard from '../components/interview/session/SessionInterviewerCard';
 import SessionAnswerWorkspace from '../components/interview/session/SessionAnswerWorkspace';
+import CodeWorkspace from '../components/interview/CodeWorkspace';
+import { INTERVIEW_MODE_PRESETS } from '../types/interviewModes';
+import type { SyncWindowResult, InterviewQuestion, CodeAnswer } from '@/types/index';
 
 const SessionBiometricHUDs = dynamic(
   () => import('../components/interview/session/SessionBiometricHUDs'),
@@ -148,6 +150,15 @@ export default function InterviewSession() {
     setupData.type === 'System Design' ||
     currentQuestionText.toLowerCase().includes('system design') ||
     currentQuestionText.toLowerCase().includes('architecture');
+  const isCodingMode =
+    (setupData.interviewModeId ? INTERVIEW_MODE_PRESETS[setupData.interviewModeId]?.interviewType === 'Coding' : false) ||
+    setupData.type === 'Coding';
+  const [codeAnswer, setCodeAnswer] = useState<CodeAnswer>({
+    language: 'javascript',
+    source: '',
+    stdout: '',
+    stderr: '',
+  });
   const [diagramState, setDiagramState] = useState<SystemDesignDiagramState>(() =>
     createInitialDiagramState()
   );
@@ -455,7 +466,8 @@ export default function InterviewSession() {
           capturedGazeFrames,
           capturedPoseFrames,
           capturedAffectFrames,
-          capturedSyncWindows
+          capturedSyncWindows,
+          isCodingMode ? codeAnswer : undefined
         )
 
 
@@ -522,7 +534,8 @@ export default function InterviewSession() {
         capturedGazeFrames,
         capturedPoseFrames,
         capturedAffectFrames,
-        capturedSyncWindows
+        capturedSyncWindows,
+        isCodingMode ? codeAnswer : undefined
       )
 
 
@@ -624,6 +637,8 @@ export default function InterviewSession() {
     setResults,
     router,
     cancelSpeechNarration,
+    codeAnswer,
+    isCodingMode,
   ]);
 
   // Question countdown timer effect
@@ -728,7 +743,8 @@ export default function InterviewSession() {
         capturedGazeFrames,
         capturedPoseFrames,
         capturedAffectFrames,
-        capturedSyncWindows
+        capturedSyncWindows,
+        isCodingMode ? codeAnswer : undefined
       )
 
 
@@ -784,6 +800,8 @@ export default function InterviewSession() {
     setResults,
     router,
     cancelSpeechNarration,
+    codeAnswer,
+    isCodingMode,
   ]);
 
   const handlePrevQuestion = () => {
@@ -990,6 +1008,11 @@ export default function InterviewSession() {
           diagramState={diagramState}
           setDiagramState={setDiagramState}
         />
+        {isCodingMode && (
+          <div className="lg:col-span-12">
+            <CodeWorkspace value={codeAnswer} onChange={setCodeAnswer} />
+          </div>
+        )}
       </div>
     </div>
   );
