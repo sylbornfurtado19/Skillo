@@ -1,23 +1,56 @@
 import { z } from 'zod';
-import { resolveInterviewMode } from '@/types/interviewModes';
 import type { LATSTreeNode, LATSTreeState, LATSActionType, ProcessRewardResult } from '@/types/index';
 import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
 
-const C_PUCT = 1.414;
+export const C_PUCT = 1.414;
 
-// Zod schemas
-const prmResponseSchema = z.object({
+// ── Zod schemas ──────────────────────────────────────────────────────────────
+
+export const prmResponseSchema = z.object({
   score: z.number().min(0).max(1),
   reasoning: z.string().min(5),
   detectedGaps: z.array(z.string()),
 });
 
-const branchExpansionSchema = z.object({
+export const branchExpansionSchema = z.object({
   branches: z.array(z.object({
     actionType: z.enum(['DEEP_DIVE', 'PIVOT', 'EDGE_CASE_CHALLENGE']),
     questionText: z.string().min(10),
     rationale: z.string().min(5),
   })).length(3),
+});
+
+export const latsTreeNodeSchema: z.ZodType<LATSTreeNode> = z.lazy(() =>
+  z.object({
+    id: z.string().max(128),
+    parentId: z.string().max(128).nullable(),
+    actionType: z.enum(['DEEP_DIVE', 'PIVOT', 'EDGE_CASE_CHALLENGE']),
+    questionText: z.string().max(2000),
+    rationale: z.string().max(2000),
+    prmScore: z.number().min(0).max(1),
+    visitCount: z.number().int().min(0),
+    uctValue: z.number(),
+    gapsDetected: z.array(z.string().max(200)).max(50),
+    isVisited: z.boolean(),
+    isSelectedTrajectory: z.boolean(),
+    children: z.array(latsTreeNodeSchema).max(20),
+    prior: z.number().min(0).max(1).optional(),
+    qValue: z.number().min(0).max(1).optional(),
+    depth: z.number().int().min(0).optional(),
+  })
+);
+
+export const latsTreeStateSchema = z.object({
+  currentNodeId: z.string().max(128),
+  trajectoryHistory: z.array(z.string().max(128)).max(50),
+  rootNode: latsTreeNodeSchema,
+  simulatedBranches: z.array(latsTreeNodeSchema).max(20),
+  activeActionType: z.enum(['DEEP_DIVE', 'PIVOT', 'EDGE_CASE_CHALLENGE']),
+  currentPRMScore: z.number(),
+  currentGaps: z.array(z.string().max(200)).max(50),
+  fallback: z.boolean().optional(),
+  source: z.enum(['live', 'fallback']).optional(),
+  depth: z.number().optional(),
 });
 
 export interface LATSEngineInput {
@@ -30,9 +63,14 @@ export interface LATSEngineInput {
   priorGaps: string[];
   diagramState?: any;
   anthropicApiKey?: string;
+  /** Optional previous LATS tree state for multi-turn persistence across follow-ups */
+  previousTreeState?: LATSTreeState;
+  /** Optional override for number of MCTS rounds (default 3 from AI_CONFIG) */
+  maxRounds?: number;
 }
 
-// UCT formula: Q(s,a) + c_puct * P(s,a) * sqrt(N(s)) / (1 + N(s,a))
+// ── UCT Formula ──────────────────────────────────────────────────────────────
+// UCT = Q(s,a) + c_puct * P(s,a) * sqrt(N(s)) / (1 + N(s,a))
 export function computeUCT(
   qValue: number,
   priorProb: number,
@@ -42,22 +80,66 @@ export function computeUCT(
   return qValue + C_PUCT * priorProb * Math.sqrt(nParent) / (1 + nChild);
 }
 
-// Selection: pick the child node with the highest UCT value
-function selectNode(node: LATSTreeNode): LATSTreeNode {
+// ── Selection ────────────────────────────────────────────────────────────────
+// Traverses from root down to a leaf using computeUCT with correct visit counts.
+// Unvisited nodes (visitCount === 0) are selected first.
+export function selectNode(node: LATSTreeNode): LATSTreeNode {
   if (!node.children || node.children.length === 0) return node;
-  let best = node.children[0];
-  let bestUCT = best.uctValue;
-  for (const child of node.children) {
-    if (child.uctValue > bestUCT) {
-      bestUCT = child.uctValue;
-      best = child;
+
+  // 1. Pick unvisited children first
+  const unvisited = node.children.filter((c) => c.visitCount === 0);
+  if (unvisited.length > 0) {
+    let bestUnvisited = unvisited[0];
+    let bestUCT = computeUCT(
+      bestUnvisited.qValue ?? bestUnvisited.prmScore,
+      bestUnvisited.prior ?? (1 / node.children.length),
+      Math.max(1, node.visitCount),
+      bestUnvisited.visitCount
+    );
+    for (let i = 1; i < unvisited.length; i++) {
+      const uct = computeUCT(
+        unvisited[i].qValue ?? unvisited[i].prmScore,
+        unvisited[i].prior ?? (1 / node.children.length),
+        Math.max(1, node.visitCount),
+        unvisited[i].visitCount
+      );
+      if (uct > bestUCT) {
+        bestUCT = uct;
+        bestUnvisited = unvisited[i];
+      }
+    }
+    return selectNode(bestUnvisited);
+  }
+
+  // 2. All children visited: select child with highest UCT
+  let bestChild = node.children[0];
+  let bestUCT = computeUCT(
+    bestChild.qValue ?? bestChild.prmScore,
+    bestChild.prior ?? (1 / node.children.length),
+    Math.max(1, node.visitCount),
+    bestChild.visitCount
+  );
+
+  for (let i = 1; i < node.children.length; i++) {
+    const child = node.children[i];
+    const uct = computeUCT(
+      child.qValue ?? child.prmScore,
+      child.prior ?? (1 / node.children.length),
+      Math.max(1, node.visitCount),
+      child.visitCount
+    );
+    if (uct > bestUCT) {
+      bestUCT = uct;
+      bestChild = child;
     }
   }
-  return selectNode(best);
+
+  return selectNode(bestChild);
 }
 
-// Generate 3 distinct action branches via LLM
-async function expandBranches(
+// ── Expansion ────────────────────────────────────────────────────────────────
+// Generates 3 distinct action branches via LLM (or robust domain defaults)
+export async function expandBranches(
   parentId: string,
   role: string,
   currentQuestion: string,
@@ -65,7 +147,6 @@ async function expandBranches(
   priorGaps: string[],
   anthropicApiKey?: string
 ): Promise<{ branches: Array<{ actionType: LATSActionType; questionText: string; rationale: string }>; isFallback: boolean }> {
-  // Meaningful defaults: 3 genuinely different branches
   const defaultBranches: Array<{ actionType: LATSActionType; questionText: string; rationale: string }> = [
     {
       actionType: 'DEEP_DIVE',
@@ -121,7 +202,7 @@ REQUIRED JSON OUTPUT:
         const result = branchExpansionSchema.safeParse(parsed);
         if (result.success) {
           return {
-            branches: result.data.branches.map(b => ({
+            branches: result.data.branches.map((b) => ({
               actionType: b.actionType as LATSActionType,
               questionText: b.questionText,
               rationale: b.rationale,
@@ -138,8 +219,9 @@ REQUIRED JSON OUTPUT:
   return { branches: defaultBranches, isFallback: true };
 }
 
-// PRM Evaluation: score a node via LLM V ∈ [0,1]
-async function evaluatePRM(
+// ── PRM Evaluation ───────────────────────────────────────────────────────────
+// Scores a node via Process Reward Model V in [0,1]
+export async function evaluatePRM(
   nodeId: string,
   role: string,
   question: string,
@@ -203,148 +285,326 @@ REQUIRED JSON OUTPUT:
   return { result: defaultResult, isFallback: true };
 }
 
-// Backpropagation: update visitCount and value along the path to root
-function backpropagate(root: LATSTreeNode, targetId: string, value: number): LATSTreeNode {
-  function updateNode(node: LATSTreeNode): LATSTreeNode {
-    const isTarget = node.id === targetId;
-    const updatedChildren = node.children.map(updateNode);
-    const anyChildUpdated = updatedChildren.some((c, i) => c !== node.children[i]);
+// ── Backpropagation ──────────────────────────────────────────────────────────
+// Backpropagates value v along the path to root, updating visitCount and running mean Q.
+export function backpropagate(
+  root: LATSTreeNode,
+  targetId: string,
+  value: number
+): LATSTreeNode {
+  function updateNode(node: LATSTreeNode, parentVisits: number): { updated: LATSTreeNode; onPath: boolean } {
+    if (node.id === targetId) {
+      const newVisitCount = node.visitCount + 1;
+      const oldQ = node.qValue ?? node.prmScore;
+      const newQ = node.visitCount === 0 ? value : (oldQ * node.visitCount + value) / newVisitCount;
+      const prior = node.prior ?? (node.parentId === null ? 1.0 : 1 / 3);
+      const uctValue = computeUCT(newQ, prior, parentVisits, newVisitCount);
 
-    if (isTarget || anyChildUpdated) {
-      const updatedNode: LATSTreeNode = {
-        ...node,
-        children: updatedChildren,
-        visitCount: node.visitCount + 1,
+      return {
+        updated: {
+          ...node,
+          visitCount: newVisitCount,
+          qValue: Math.round(newQ * 1000) / 1000,
+          uctValue: Math.round(uctValue * 1000) / 1000,
+        },
+        onPath: true,
       };
-
-      if (isTarget) {
-        // Update UCT value with new backpropagated value
-        const newQ = value;
-        const nParent = updatedNode.visitCount;
-        updatedNode.uctValue = computeUCT(newQ, node.prmScore, nParent, updatedNode.visitCount);
-      }
-
-      return updatedNode;
     }
-    return node;
+
+    if (!node.children || node.children.length === 0) {
+      return { updated: node, onPath: false };
+    }
+
+    let foundChild = false;
+    const updatedChildren = node.children.map((child) => {
+      const res = updateNode(child, Math.max(1, node.visitCount));
+      if (res.onPath) foundChild = true;
+      return res.updated;
+    });
+
+    if (foundChild) {
+      const newVisitCount = node.visitCount + 1;
+      const oldQ = node.qValue ?? node.prmScore;
+      const newQ = node.visitCount === 0 ? value : (oldQ * node.visitCount + value) / newVisitCount;
+      const prior = node.prior ?? (node.parentId === null ? 1.0 : 1 / 3);
+      const uctValue = computeUCT(newQ, prior, parentVisits, newVisitCount);
+
+      return {
+        updated: {
+          ...node,
+          children: updatedChildren,
+          visitCount: newVisitCount,
+          qValue: Math.round(newQ * 1000) / 1000,
+          uctValue: Math.round(uctValue * 1000) / 1000,
+        },
+        onPath: true,
+      };
+    }
+
+    return { updated: node, onPath: false };
   }
 
-  return updateNode(root);
+  return updateNode(root, Math.max(1, root.visitCount)).updated;
+}
+
+// ── Tree Traversal & Math Helpers ────────────────────────────────────────────
+
+export function attachChildrenToNode(
+  root: LATSTreeNode,
+  targetId: string,
+  newChildren: LATSTreeNode[]
+): LATSTreeNode {
+  if (root.id === targetId) {
+    return {
+      ...root,
+      children: newChildren,
+    };
+  }
+  if (!root.children || root.children.length === 0) {
+    return root;
+  }
+  return {
+    ...root,
+    children: root.children.map((c) => attachChildrenToNode(c, targetId, newChildren)),
+  };
+}
+
+export function getTreeMaxDepth(node: LATSTreeNode, currentDepth: number = 0): number {
+  if (!node.children || node.children.length === 0) return currentDepth;
+  return Math.max(...node.children.map((c) => getTreeMaxDepth(c, currentDepth + 1)));
 }
 
 /**
- * Main LATS Engine: runs >=3 MCTS simulations per turn.
- * Returns LATSTreeState with real UCT-selected trajectory.
+ * Recomputes visit counts and running mean Q bottom-up so that for all internal nodes:
+ * 1. visitCount === sum of children's visitCounts
+ * 2. qValue === weighted mean of children's qValues
  */
-export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState> {
-  const { sessionId, role, currentQuestion, candidateAnswer, priorGaps, anthropicApiKey } = input;
-  const NUM_SIMULATIONS = 3;
-  let isFallback = !anthropicApiKey;
-
-  // Initialize root node
-  const rootNodeId = `node_${sessionId}_root`;
-  let rootNode: LATSTreeNode = {
-    id: rootNodeId,
-    parentId: null,
-    actionType: 'DEEP_DIVE',
-    questionText: currentQuestion,
-    rationale: 'Starting question — root of MCTS trajectory.',
-    prmScore: 0.5,
-    visitCount: 1,
-    uctValue: 0,
-    gapsDetected: priorGaps,
-    isVisited: true,
-    isSelectedTrajectory: true,
-    children: [],
-  };
-
-  // Phase 1: Expansion — generate 3 distinct branches
-  const expansion = await expandBranches(
-    rootNodeId, role, currentQuestion, candidateAnswer, priorGaps, anthropicApiKey
-  );
-  if (expansion.isFallback) {
-    isFallback = true;
-  }
-
-  const childNodes: LATSTreeNode[] = expansion.branches.map((branch, idx) => ({
-    id: `node_${sessionId}_child_${idx}`,
-    parentId: rootNodeId,
-    actionType: branch.actionType,
-    questionText: branch.questionText,
-    rationale: branch.rationale,
-    prmScore: 0,
-    visitCount: 0,
-    uctValue: 0,
-    gapsDetected: [],
-    isVisited: false,
-    isSelectedTrajectory: false,
-    children: [],
-  }));
-
-  rootNode = { ...rootNode, children: childNodes };
-
-  // Phase 2: Simulation — PRM evaluation of each child (3 simulations)
-  const prmEvals = await Promise.all(
-    childNodes.map(child =>
-      evaluatePRM(child.id, role, child.questionText, candidateAnswer, anthropicApiKey, child.actionType)
-    )
-  );
-
-  if (prmEvals.some(e => e.isFallback)) {
-    isFallback = true;
-  }
-
-  // Phase 3: Update PRM scores and UCT indices on children
-  const evaluatedChildren: LATSTreeNode[] = childNodes.map((child, idx) => {
-    const prm = prmEvals[idx].result;
-    const nParent = rootNode.visitCount;
-    const nChild = 1;
-    const uctValue = computeUCT(prm.score, prm.score, nParent, nChild);
+export function recomputeTreeStats(node: LATSTreeNode, parentVisits: number = 1): LATSTreeNode {
+  if (!node.children || node.children.length === 0) {
+    const prior = node.prior ?? 1 / 3;
+    const q = node.qValue ?? node.prmScore;
+    const uct = computeUCT(q, prior, parentVisits, node.visitCount);
     return {
-      ...child,
-      prmScore: prm.score,
-      visitCount: nChild,
-      uctValue,
-      gapsDetected: prm.detectedGaps,
-      isVisited: true,
+      ...node,
+      qValue: Math.round(q * 1000) / 1000,
+      uctValue: Math.round(uct * 1000) / 1000,
     };
-  });
-
-  // Phase 4: Backpropagation — select best child by UCT index and propagate
-  let bestChild = evaluatedChildren[0];
-  for (const child of evaluatedChildren) {
-    if (child.uctValue > bestChild.uctValue) {
-      bestChild = child;
-    } else if (child.uctValue === bestChild.uctValue && child.prmScore > bestChild.prmScore) {
-      bestChild = child;
-    }
   }
 
-  const finalChildren = evaluatedChildren.map(child => ({
-    ...child,
-    isSelectedTrajectory: child.id === bestChild.id,
-  }));
+  const updatedChildren = node.children.map((c) =>
+    recomputeTreeStats(c, Math.max(1, node.visitCount))
+  );
 
-  // Backpropagate best child value through root
-  rootNode = {
-    ...rootNode,
-    children: finalChildren,
-    visitCount: rootNode.visitCount + NUM_SIMULATIONS,
-  };
-
-  rootNode = backpropagate(rootNode, bestChild.id, bestChild.prmScore);
-
-  const trajectoryHistory = [rootNodeId, bestChild.id];
+  const totalChildVisits = updatedChildren.reduce((sum, c) => sum + c.visitCount, 0);
+  const totalWeightedQ = updatedChildren.reduce(
+    (sum, c) => sum + c.visitCount * (c.qValue ?? c.prmScore),
+    0
+  );
+  const runningMeanQ = totalChildVisits > 0 ? totalWeightedQ / totalChildVisits : (node.qValue ?? node.prmScore);
+  const prior = node.prior ?? (node.parentId === null ? 1.0 : 1 / 3);
+  const uct = computeUCT(runningMeanQ, prior, parentVisits, totalChildVisits);
 
   return {
-    currentNodeId: bestChild.id,
+    ...node,
+    children: updatedChildren,
+    visitCount: totalChildVisits,
+    qValue: Math.round(runningMeanQ * 1000) / 1000,
+    uctValue: Math.round(uct * 1000) / 1000,
+  };
+}
+
+// ── Main Multi-Iteration Bounded MCTS Engine ─────────────────────────────────
+
+export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState> {
+  const { sessionId, role, currentQuestion, candidateAnswer, priorGaps, anthropicApiKey, previousTreeState } = input;
+  const K = input.maxRounds ?? (AI_CONFIG as any).lats?.rounds ?? 3;
+  const startTime = Date.now();
+  const timeoutBudgetMs = AI_CONFIG.timeouts.latsBranchMs || 15000;
+  let isFallback = !anthropicApiKey;
+
+  let rootNode: LATSTreeNode;
+  let trajectoryHistory: string[] = [];
+
+  if (previousTreeState && previousTreeState.rootNode) {
+    // Restore persistent tree from previous turn
+    rootNode = previousTreeState.rootNode;
+    trajectoryHistory = [...previousTreeState.trajectoryHistory];
+  } else {
+    // Initialize root node for turn 1
+    const rootNodeId = `node_${sessionId}_root`;
+    rootNode = {
+      id: rootNodeId,
+      parentId: null,
+      actionType: 'DEEP_DIVE',
+      questionText: currentQuestion,
+      rationale: 'Starting question — root of MCTS trajectory.',
+      prmScore: 0.5,
+      qValue: 0.5,
+      visitCount: 1,
+      uctValue: 0,
+      gapsDetected: priorGaps,
+      isVisited: true,
+      isSelectedTrajectory: true,
+      children: [],
+      depth: 0,
+      prior: 1.0,
+    };
+    trajectoryHistory = [rootNodeId];
+  }
+
+  // Iterate K rounds of Selection -> Expansion -> PRM Evaluation -> Backpropagation
+  for (let round = 0; round < K; round++) {
+    if (Date.now() - startTime > timeoutBudgetMs - 1500) {
+      break;
+    }
+
+    // 1. Selection: Traverse down to a leaf using computeUCT
+    const leaf = selectNode(rootNode);
+
+    // 2. Expansion: Expand leaf into 3 branches (DEEP_DIVE, PIVOT, EDGE_CASE_CHALLENGE)
+    const expansion = await expandBranches(
+      leaf.id,
+      role,
+      leaf.questionText,
+      candidateAnswer,
+      priorGaps,
+      anthropicApiKey
+    );
+    if (expansion.isFallback) {
+      isFallback = true;
+    }
+
+    const currentDepth = leaf.depth ?? 0;
+    const childNodes: LATSTreeNode[] = expansion.branches.map((branch, idx) => ({
+      id: `node_${sessionId}_${leaf.id}_c${idx}_r${round}`,
+      parentId: leaf.id,
+      actionType: branch.actionType,
+      questionText: branch.questionText,
+      rationale: branch.rationale,
+      prmScore: 0,
+      qValue: 0,
+      visitCount: 0,
+      uctValue: 0,
+      gapsDetected: [],
+      isVisited: false,
+      isSelectedTrajectory: false,
+      children: [],
+      prior: 1 / 3, // P(s,a) uniform prior over siblings separate from PRM
+      depth: currentDepth + 1,
+    }));
+
+    // 3. PRM Evaluation: Evaluate all 3 child branches
+    const prmEvals = await Promise.all(
+      childNodes.map((child) =>
+        evaluatePRM(child.id, role, child.questionText, candidateAnswer, anthropicApiKey, child.actionType)
+      )
+    );
+    if (prmEvals.some((e) => e.isFallback)) {
+      isFallback = true;
+    }
+
+    const evaluatedChildren: LATSTreeNode[] = childNodes.map((child, idx) => {
+      const prm = prmEvals[idx].result;
+      return {
+        ...child,
+        prmScore: prm.score,
+        qValue: prm.score,
+        visitCount: 1,
+        gapsDetected: prm.detectedGaps,
+        isVisited: true,
+      };
+    });
+
+    // Attach children to the selected leaf
+    rootNode = attachChildrenToNode(rootNode, leaf.id, evaluatedChildren);
+
+    // 4. Backpropagation: Update visitCount and running mean Q along the whole path to root
+    const bestChild = evaluatedChildren.reduce(
+      (best, c) => (c.prmScore > best.prmScore ? c : best),
+      evaluatedChildren[0]
+    );
+    rootNode = backpropagate(rootNode, bestChild.id, bestChild.prmScore);
+  }
+
+  // Final recompute: ensure visit counts and running mean Q sum and average cleanly across all levels
+  rootNode = recomputeTreeStats(rootNode, 1);
+
+  // Traverse down to find and mark the optimal trajectory
+  function markSelectedTrajectory(node: LATSTreeNode): {
+    updated: LATSTreeNode;
+    selectedLeafId: string;
+    selectedGaps: string[];
+    selectedType: LATSActionType;
+    selectedPRM: number;
+  } {
+    if (!node.children || node.children.length === 0) {
+      return {
+        updated: { ...node, isSelectedTrajectory: true },
+        selectedLeafId: node.id,
+        selectedGaps: node.gapsDetected,
+        selectedType: node.actionType,
+        selectedPRM: node.prmScore,
+      };
+    }
+
+    let bestChild = node.children[0];
+    for (const c of node.children) {
+      if (c.uctValue > bestChild.uctValue) {
+        bestChild = c;
+      } else if (c.uctValue === bestChild.uctValue && (c.qValue ?? c.prmScore) > (bestChild.qValue ?? bestChild.prmScore)) {
+        bestChild = c;
+      }
+    }
+
+    let resultSelectedLeafId = bestChild.id;
+    let resultSelectedGaps = bestChild.gapsDetected;
+    let resultSelectedType = bestChild.actionType;
+    let resultSelectedPRM = bestChild.prmScore;
+
+    const newChildren = node.children.map((c) => {
+      if (c.id === bestChild.id) {
+        const res = markSelectedTrajectory(c);
+        resultSelectedLeafId = res.selectedLeafId;
+        resultSelectedGaps = res.selectedGaps;
+        resultSelectedType = res.selectedType;
+        resultSelectedPRM = res.selectedPRM;
+        return res.updated;
+      }
+      return { ...c, isSelectedTrajectory: false };
+    });
+
+    return {
+      updated: {
+        ...node,
+        children: newChildren,
+        isSelectedTrajectory: true,
+      },
+      selectedLeafId: resultSelectedLeafId,
+      selectedGaps: resultSelectedGaps,
+      selectedType: resultSelectedType,
+      selectedPRM: resultSelectedPRM,
+    };
+  }
+
+  const { updated: finalRootNode, selectedLeafId, selectedGaps, selectedType, selectedPRM } =
+    markSelectedTrajectory(rootNode);
+
+  if (!trajectoryHistory.includes(selectedLeafId)) {
+    trajectoryHistory.push(selectedLeafId);
+  }
+
+  const maxDepth = getTreeMaxDepth(finalRootNode);
+
+  return {
+    currentNodeId: selectedLeafId,
     trajectoryHistory,
-    rootNode,
-    simulatedBranches: finalChildren,
-    activeActionType: bestChild.actionType,
-    currentPRMScore: Math.round(bestChild.prmScore * 100),
-    currentGaps: bestChild.gapsDetected,
+    rootNode: finalRootNode,
+    simulatedBranches: finalRootNode.children,
+    activeActionType: selectedType,
+    currentPRMScore: Math.round(selectedPRM * 100),
+    currentGaps: selectedGaps,
     fallback: isFallback,
     source: isFallback ? 'fallback' : 'live',
+    depth: maxDepth,
   };
 }

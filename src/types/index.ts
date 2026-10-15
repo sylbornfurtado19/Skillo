@@ -367,6 +367,12 @@ export interface LATSTreeNode {
   isVisited: boolean;
   isSelectedTrajectory: boolean;
   children: LATSTreeNode[];
+  /** Prior probability P(s,a) separate from PRM score (uniform 1/3 over siblings) */
+  prior?: number;
+  /** Running mean Q-value updated via backpropagation */
+  qValue?: number;
+  /** Depth level in the tree (root = 0) */
+  depth?: number;
 }
 
 export interface LATSTreeState {
@@ -379,6 +385,8 @@ export interface LATSTreeState {
   currentGaps: string[];
   fallback?: boolean;
   source?: 'live' | 'fallback';
+  /** Maximum depth of the decision tree */
+  depth?: number;
 }
 
 export interface ProcessRewardResult {

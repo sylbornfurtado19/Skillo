@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase";
 import { checkRateLimit, createRateLimitResponse } from "@/lib/services/rateLimiter.server";
-import { runLATSMCTS } from "@/lib/services/latsEngine.server";
+import { runLATSMCTS, latsTreeStateSchema } from "@/lib/services/latsEngine.server";
 import { sanitizeUserText } from "@/lib/server/sanitize";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +18,10 @@ const followupRequestSchema = z.object({
   sessionId: z.string().max(64).optional(),
   /** Optional: prior gap labels detected in earlier turns */
   priorGaps: z.array(z.string().max(100)).max(20).optional().default([]),
+  /** Optional: persistent tree state from previous turn */
+  previousTreeState: latsTreeStateSchema.optional(),
+  /** Optional alias for persistent tree state */
+  treeState: latsTreeStateSchema.optional(),
 });
 
 // ── Response Schema (for documentation) ──────────────────────────────────────
@@ -99,9 +103,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0 });
     }
 
-    // 5. Run LATS MCTS engine — generates 3 branches, scores via PRM, selects via UCT
+    // 5. Run LATS MCTS engine with persistent tree support
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     const resolvedSessionId = sessionId ?? `followup_${Date.now()}`;
+    const previousTree = rawData.previousTreeState ?? rawData.treeState;
 
     const latsState = await runLATSMCTS({
       sessionId: resolvedSessionId,
@@ -110,6 +115,7 @@ export async function POST(request: Request) {
       candidateAnswer: answerText,
       priorGaps: priorGaps ?? [],
       anthropicApiKey,
+      previousTreeState: previousTree,
     });
 
     const isFallback = !anthropicApiKey || latsState.fallback === true;
@@ -119,10 +125,10 @@ export async function POST(request: Request) {
       ?? latsState.simulatedBranches[0];
 
     if (!selectedNode) {
-      return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0, fallback: isFallback });
+      return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0, fallback: isFallback, treeState: latsState });
     }
 
-    // 7. Build response payload with explicit fallback flag
+    // 7. Build response payload with persistent tree state
     return NextResponse.json({
       needsFollowUp: true,
       followUpQuestion: selectedNode.questionText,
@@ -144,6 +150,7 @@ export async function POST(request: Request) {
       })),
       currentGaps: latsState.currentGaps,
       trajectoryDepth: latsState.trajectoryHistory.length,
+      treeState: latsState,
     });
   } catch (err) {
     console.error("[FollowUp API Error]:", err);
@@ -178,6 +185,7 @@ export async function POST(request: Request) {
         })),
         currentGaps: fallbackState.currentGaps,
         trajectoryDepth: fallbackState.trajectoryHistory.length,
+        treeState: fallbackState,
       });
     } catch {
       return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0, fallback: true });

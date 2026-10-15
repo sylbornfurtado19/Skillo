@@ -38,6 +38,10 @@ export const AI_CONFIG = {
     baseDelayMs: 600,
     retryableStatusCodes: [408, 429, 500, 502, 503, 504],
   },
+  lats: {
+    rounds: 3,
+    c_puct: 1.414,
+  },
 } as const;
 
 export interface AnthropicRequestOptions {
