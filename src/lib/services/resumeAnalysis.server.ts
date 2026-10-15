@@ -1,5 +1,8 @@
+import { z } from 'zod';
 import { executeGraphRAGAnalysis } from './graphRAG.server';
 import { analyzeVisualDocumentLayout } from './documentVision.server';
+import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
+import { safeParseModelJson } from '@/lib/ai/safeJsonParser';
 import { sanitizeUserText } from '@/lib/server/sanitize';
 import type { GraphRAGAnalysisResult, VisualLayoutAnalysisResult } from '@/types/index';
 
@@ -28,6 +31,25 @@ export interface ResumeAnalysisResult {
   graphRAGResult?: GraphRAGAnalysisResult;
   visualLayoutAnalysis?: VisualLayoutAnalysisResult;
 }
+
+export const resumeRewriteItemSchema = z.object({
+  original: z.string().min(1),
+  rewritten: z.string().min(1),
+  reason: z.string().min(1),
+  targetSkill: z.string().min(1),
+  metricPlaceholders: z.array(z.string().regex(/^\[[^\]]+\]$/)).default([]),
+  source: z.enum(['live', 'fallback']),
+});
+
+export const resumeRewriteResultSchema = z.array(resumeRewriteItemSchema).max(5);
+
+export interface ResumeRewriteInput {
+  resumeText: string;
+  jobTitle: string;
+  jobDescription: string;
+}
+
+export type ResumeRewriteItem = z.infer<typeof resumeRewriteItemSchema>;
 
 const STOP_WORDS = new Set([
   'about', 'above', 'after', 'again', 'against', 'all', 'and', 'any', 'are', 'aren',
@@ -110,6 +132,103 @@ export function computeImpactMetricsScore(resumeText?: string): number {
 
   const rawScore = Math.round(volumeScore + densityScore);
   return Math.max(0, Math.min(100, rawScore));
+}
+
+const ACTION_VERBS = new Set([
+  'achieved', 'architected', 'automated', 'built', 'created', 'decreased', 'delivered',
+  'designed', 'developed', 'drove', 'enhanced', 'established', 'generated', 'grew',
+  'implemented', 'improved', 'increased', 'launched', 'led', 'optimized', 'reduced',
+  'scaled', 'streamlined',
+]);
+
+function numericLiterals(text: string): string[] {
+  return text.match(/\b\d+(?:[.,]\d+)?%?|\$[\d.,]+/g) ?? [];
+}
+
+function isBulletLine(line: string): boolean {
+  return /^\s*(?:[-*•‣▪◦]|\d+[.)])\s+\S/.test(line);
+}
+
+function targetSkillFor(jobTitle: string, jobDescription: string): string {
+  const title = jobTitle.trim();
+  if (title) return title;
+  const firstPhrase = jobDescription.split(/[.;,\n]/).map((part) => part.trim()).find(Boolean);
+  return firstPhrase || 'target role';
+}
+
+function fallbackRewrite(original: string, targetSkill: string): ResumeRewriteItem {
+  const withoutMarker = original.replace(/^\s*(?:[-*•‣▪◦]|\d+[.)])\s+/, '').trim();
+  const words = withoutMarker.split(/\s+/);
+  const firstWord = (words[0] ?? '').replace(/[,:;.]$/, '').toLowerCase();
+  const verb = ACTION_VERBS.has(firstWord) ? words[0] : 'Delivered';
+  const body = ACTION_VERBS.has(firstWord) ? words.slice(1).join(' ') : withoutMarker;
+  const rewritten = `${verb} ${body || `high-impact work for ${targetSkill}`}, delivering [X%] measurable improvement.`;
+
+  return {
+    original,
+    rewritten,
+    reason: 'Strengthened the opening action and reserved a measurable outcome for a verified result.',
+    targetSkill,
+    metricPlaceholders: ['[X%]'],
+    source: 'fallback',
+  };
+}
+
+function modelItemsAreGrounded(items: ResumeRewriteItem[], selectedLines: string[]): boolean {
+  const originals = new Map(selectedLines.map((line) => [line, numericLiterals(line)]));
+  return items.every((item) => {
+    const sourceNumbers = originals.get(item.original);
+    if (!sourceNumbers) return false;
+    const rewrittenNumbers = numericLiterals(item.rewritten);
+    return rewrittenNumbers.every((value) => sourceNumbers.includes(value));
+  });
+}
+
+export async function rewriteResumeBullets(input: ResumeRewriteInput): Promise<ResumeRewriteItem[]> {
+  const sanitizedResumeText = sanitizeUserText(input.resumeText, 30000);
+  const sanitizedJobTitle = sanitizeUserText(input.jobTitle, 200);
+  const sanitizedJobDescription = sanitizeUserText(input.jobDescription, 5000);
+  const targetSkill = targetSkillFor(sanitizedJobTitle, sanitizedJobDescription);
+
+  const selectedLines = sanitizedResumeText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length >= 10 && isBulletLine(line))
+    .map((line, index) => ({ line, index, score: computeImpactMetricsScore(line) }))
+    .sort((left, right) => left.score - right.score || left.index - right.index)
+    .slice(0, 5)
+    .map(({ line }) => line);
+
+  if (selectedLines.length === 0) return [];
+
+  const fallback = selectedLines.map((line) => fallbackRewrite(line, targetSkill));
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return fallback;
+
+  const response = await executeAnthropicRequest({
+    apiKey,
+    system: `Rewrite resume bullets for the target role. Return JSON only as an array of at most 5 objects with keys:
+original, rewritten, reason, targetSkill, metricPlaceholders, source.
+Use a strong action verb and a quantified outcome placeholder such as [X%], [N], or [$X].
+Never invent numeric literals. Preserve every number from the original exactly, or use placeholders only.
+Set source to "live" and metricPlaceholders to the placeholders used in rewritten.
+Each original must match one supplied bullet exactly.`,
+    messages: [{
+      role: 'user',
+      content: `Target role: ${sanitizedJobTitle}\nJob description: ${sanitizedJobDescription}\nBullets:\n${selectedLines.join('\n')}`,
+    }],
+    maxTokens: AI_CONFIG.maxTokens.resumeAnalysis,
+    temperature: 0.2,
+    timeoutMs: AI_CONFIG.timeouts.resumeAnalysisMs,
+  });
+
+  if (!response.success || !response.text) return fallback;
+  const parsed = safeParseModelJson(response.text, resumeRewriteResultSchema, {
+    maxCharLength: 30000,
+    logContext: 'resume rewrite',
+  });
+  if (!parsed.success || !parsed.data || !modelItemsAreGrounded(parsed.data, selectedLines)) return fallback;
+  return parsed.data.map((item) => ({ ...item, source: 'live' as const }));
 }
 
 /**

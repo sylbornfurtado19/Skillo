@@ -13,6 +13,8 @@ import {
   FaRedo,
 } from 'react-icons/fa';
 import { simulateResumeAnalysis, extractResumeTextApi } from '../services/constants';
+import { getAuthToken } from '../services/auth';
+import type { ResumeRewriteItem } from '../lib/services/resumeAnalysis.server';
 import { useAuth } from '../hooks/useAuth';
 import { useInterview } from '../context/InterviewContext';
 import { useToast } from '../components/ui/Toast';
@@ -54,6 +56,9 @@ export default function ResumeUpload() {
     resumeData && analysisResult ? 'complete' : 'idle'
   );
   const [analysisStep, setAnalysisStep] = useState(0);
+  const [suggestedRewrites, setSuggestedRewrites] = useState<ResumeRewriteItem[]>([]);
+  const [rewritesLoading, setRewritesLoading] = useState(false);
+  const [copiedRewrite, setCopiedRewrite] = useState<number | null>(null);
 
   // ── LayoutLMv3 visual canvas state ──────────────────────────────────────
   const [activePageNumber, setActivePageNumber] = useState(1);
@@ -214,6 +219,32 @@ export default function ResumeUpload() {
       };
 
       setAnalysisResult(detailedResult);
+      setRewritesLoading(true);
+      try {
+        const token = await getAuthToken();
+        const rewriteResponse = await fetch('/api/resume/rewrite', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            resumeText: extractedText,
+            jobTitle,
+            jobDescription,
+          }),
+        });
+        if (!rewriteResponse.ok) {
+          throw new Error(`Rewrite request failed with status ${rewriteResponse.status}`);
+        }
+        const rewriteBody = await rewriteResponse.json();
+        setSuggestedRewrites(Array.isArray(rewriteBody.data) ? rewriteBody.data : []);
+      } catch (rewriteError) {
+        console.warn('Resume rewrite suggestions unavailable:', rewriteError);
+        setSuggestedRewrites([]);
+      } finally {
+        setRewritesLoading(false);
+      }
       setCurrentState('complete');
     } catch (err: unknown) {
       clearInterval(interval);
@@ -224,6 +255,17 @@ export default function ResumeUpload() {
 
 
   const resultObj = analysisResult as any;
+
+  const copyRewrite = async (rewrite: ResumeRewriteItem, index: number) => {
+    try {
+      await navigator.clipboard.writeText(rewrite.rewritten);
+      setCopiedRewrite(index);
+      window.setTimeout(() => setCopiedRewrite((current) => (current === index ? null : current)), 1500);
+    } catch (error) {
+      console.warn('Could not copy suggested rewrite:', error);
+      showToast('Could not copy rewrite to clipboard.', 'error');
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 text-left">
@@ -541,6 +583,60 @@ export default function ResumeUpload() {
                     </div>
                   ))}
                 </div>
+              </Card>
+
+              <Card variant="default" className="space-y-4 md:col-span-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-2">
+                  <div>
+                    <h4 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider">
+                      Suggested rewrites
+                    </h4>
+                    <p className="text-xs text-text-secondary mt-1">
+                      Suggestions only. Your resume is never changed automatically.
+                    </p>
+                  </div>
+                  <Badge variant="secondary" size="sm">{jobTitle}</Badge>
+                </div>
+
+                {rewritesLoading ? (
+                  <div className="text-xs text-text-secondary font-mono">Generating grounded rewrite suggestions...</div>
+                ) : suggestedRewrites.length > 0 ? (
+                  <div className="space-y-4">
+                    {suggestedRewrites.map((rewrite, index) => (
+                      <div key={`${rewrite.original}-${index}`} className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-border bg-bg-surface-alt p-4 space-y-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Before</span>
+                          <p className="text-xs text-text-primary leading-relaxed">{rewrite.original}</p>
+                        </div>
+                        <div className="rounded-xl border border-primary/20 bg-primary-soft/20 p-4 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">After</span>
+                            <Button
+                              onClick={() => copyRewrite(rewrite, index)}
+                              variant="ghost"
+                              size="sm"
+                              className="px-2 py-1"
+                            >
+                              {copiedRewrite === index ? 'Copied' : 'Copy'}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-text-primary leading-relaxed">{rewrite.rewritten}</p>
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                            <Badge variant="primary" size="sm">{rewrite.targetSkill}</Badge>
+                            {rewrite.metricPlaceholders.map((placeholder) => (
+                              <Badge key={placeholder} variant="neutral" size="sm">{placeholder}</Badge>
+                            ))}
+                          </div>
+                          <p className="text-[11px] text-text-secondary leading-relaxed">{rewrite.reason}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-text-secondary">
+                    No bullet lines were available for rewrite suggestions.
+                  </p>
+                )}
               </Card>
 
               <Card variant="default" className="space-y-4 md:col-span-2">

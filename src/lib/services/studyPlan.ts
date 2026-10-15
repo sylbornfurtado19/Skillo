@@ -61,20 +61,23 @@ function prerequisitePairs(
       continue;
     }
 
-    if ('prerequisites' in prerequisite) {
+    if ('remediationPath' in prerequisite) {
+      const path = prerequisite.remediationPath;
+      const dependentId = idByName.get(normalize(prerequisite.blockedCapability)) ?? prerequisite.blockedCapability;
+      for (let index = 0; index < path.length; index += 1) {
+        const prerequisiteId = idByName.get(normalize(path[index])) ?? path[index];
+        pairs.push([prerequisiteId, index === path.length - 1 ? dependentId : (idByName.get(normalize(path[index + 1])) ?? path[index + 1])]);
+      }
+      continue;
+    }
+
+    if ('id' in prerequisite) {
       const dependentId = prerequisite.id;
       for (const prerequisiteName of prerequisite.prerequisites ?? []) {
         const prerequisiteId = idByName.get(normalize(prerequisiteName)) ?? prerequisiteName;
         pairs.push([prerequisiteId, dependentId]);
       }
       continue;
-    }
-
-    const path = prerequisite.remediationPath;
-    const dependentId = idByName.get(normalize(prerequisite.blockedCapability)) ?? prerequisite.blockedCapability;
-    for (let index = 0; index < path.length; index += 1) {
-      const prerequisiteId = idByName.get(normalize(path[index])) ?? path[index];
-      pairs.push([prerequisiteId, index === path.length - 1 ? dependentId : (idByName.get(normalize(path[index + 1])) ?? path[index + 1])]);
     }
   }
 
