@@ -51,6 +51,7 @@ import type {
   BenchmarkDeltaCard,
 } from '@/types/index';
 import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
+import { retrieveBenchmarkAnswer } from './benchmarkRetrieval.server';
 
 export const DEFAULT_SIMPO_GAMMA = 0.25;
 
@@ -175,6 +176,12 @@ export async function generateSimPOContrastiveEvaluation(
   const beta = 2.0;
   const gamma = input.gamma ?? DEFAULT_SIMPO_GAMMA;
 
+  // Retrieve benchmark using lightweight TF-IDF retriever with domain boost (CRAG idea)
+  const retrieval = retrieveBenchmarkAnswer(question, { role });
+  const benchmarkSource = retrieval.source;
+  const retrievalSimilarity = retrieval.similarity;
+  const retrievedEntry = retrieval.bestMatch;
+
   const isEmptyAnswer = !candidateAnswer || candidateAnswer.trim().length === 0;
   let effectiveScore = score;
   let dispQualityInit = Math.max(0.05, Math.min(0.95, score / 100));
@@ -190,7 +197,52 @@ export async function generateSimPOContrastiveEvaluation(
 
   if (anthropicApiKey) {
     try {
-      const systemPrompt = `You are a SimPO (Simple Preference Optimization) Contrastive Evaluator (Meng et al., ICML 2024).
+      let systemPrompt = '';
+      const userPrompt = `Role: ${role}\nQuestion: ${question}\nCandidate Answer: ${candidateAnswer}\nScore: ${score}/100`;
+
+      if (benchmarkSource === 'corpus' && retrievedEntry) {
+        systemPrompt = `You are a SimPO (Simple Preference Optimization) Contrastive Evaluator (Meng et al., ICML 2024).
+Compare the candidate's answer against the verified FAANG benchmark answer retrieved from our benchmark corpus.
+
+VERIFIED FAANG BENCHMARK (preferredText):
+${retrievedEntry.preferred}
+
+REQUIRED JSON OUTPUT FORMAT:
+{
+  "preferredText": ${JSON.stringify(retrievedEntry.preferred)},
+  "dispreferredText": "<Standardized representation of candidate actual answer>",
+  "structuralDeltas": [
+    {
+      "dimension": "COMPLEXITY" | "SYSTEM_ARCHITECTURE" | "EDGE_CASES" | "TERMINOLOGY",
+      "candidateDeficiency": "<Candidate gap description>",
+      "preferredBenchmark": "<Optimal target pattern>",
+      "impactScore": <0.0 to 10.0>
+    }
+  ]
+}`;
+      } else if (benchmarkSource === 'hybrid' && retrievedEntry) {
+        systemPrompt = `You are a SimPO (Simple Preference Optimization) Contrastive Evaluator (Meng et al., ICML 2024).
+We have retrieved a relevant FAANG benchmark entry from our corpus, but the candidate's question has specific context or nuances.
+Synthesize a hybrid benchmark answer that combines the retrieved corpus entry with refined technical details directly answering the user's specific question.
+
+RETRIEVED CORPUS ENTRY:
+"${retrievedEntry.preferred}"
+
+REQUIRED JSON OUTPUT FORMAT:
+{
+  "preferredText": "<Hybrid benchmark: combine core patterns from retrieved corpus entry with refinements tailored to the candidate's question>",
+  "dispreferredText": "<Standardized representation of candidate actual answer>",
+  "structuralDeltas": [
+    {
+      "dimension": "COMPLEXITY" | "SYSTEM_ARCHITECTURE" | "EDGE_CASES" | "TERMINOLOGY",
+      "candidateDeficiency": "<Candidate gap description>",
+      "preferredBenchmark": "<Optimal target pattern>",
+      "impactScore": <0.0 to 10.0>
+    }
+  ]
+}`;
+      } else {
+        systemPrompt = `You are a SimPO (Simple Preference Optimization) Contrastive Evaluator (Meng et al., ICML 2024).
 Compare the candidate's answer against a FAANG-grade optimal benchmark for the specific question.
 
 REQUIRED JSON OUTPUT FORMAT:
@@ -206,13 +258,14 @@ REQUIRED JSON OUTPUT FORMAT:
     }
   ]
 }`;
+      }
 
       const anthropicRes = await executeAnthropicRequest({
         system: systemPrompt,
         messages: [
           {
             role: 'user',
-            content: `Role: ${role}\nQuestion: ${question}\nCandidate Answer: ${candidateAnswer}\nScore: ${score}/100`,
+            content: userPrompt,
           },
         ],
         maxTokens: AI_CONFIG.maxTokens.simpo,
@@ -226,7 +279,9 @@ REQUIRED JSON OUTPUT FORMAT:
         const jsonMatch = textOutput.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
-          const preferredText = parsed.preferredText ?? '';
+          const preferredText = benchmarkSource === 'corpus' && retrievedEntry
+            ? retrievedEntry.preferred
+            : (parsed.preferredText ?? (retrievedEntry?.preferred ?? ''));
           const dispreferredText = parsed.dispreferredText ?? candidateAnswer;
           const rawDeltas = parsed.structuralDeltas ?? [];
           const validatedDeltas: StructuralDelta[] = [];
@@ -277,6 +332,8 @@ REQUIRED JSON OUTPUT FORMAT:
             summaryDeltaText: `SimPO contrastive evaluation: Quality Margin Δq = ${qualityMargin >= 0 ? '+' : ''}${qualityMargin.toFixed(2)} (${marginSatisfied ? 'Benchmark Target Satisfied' : dispQuality >= prefQuality ? 'Candidate Meets or Exceeds Benchmark' : 'Pending Quality Alignment'}). Identified ${deltas.length} structural delta(s).`,
             benchmarkDeltaCard: deriveBenchmarkDeltaCard(deltas, preferredReward, role),
             source: 'live',
+            benchmarkSource,
+            retrievalSimilarity,
           };
         }
       }
@@ -286,7 +343,13 @@ REQUIRED JSON OUTPUT FORMAT:
   }
 
   // Fallback SimPO Benchmark Generator
-  const preferredText = `Optimal FAANG Target for ${role}: Construct a resilient execution architecture incorporating explicit Big-O bounds, atomic cache-aside mutation locks (e.g. Redlock with auto-lease extension), and comprehensive fallback circuits for network split-brain recovery.`;
+  let preferredText = `Optimal FAANG Target for ${role}: Construct a resilient execution architecture incorporating explicit Big-O bounds, atomic cache-aside mutation locks (e.g. Redlock with auto-lease extension), and comprehensive fallback circuits for network split-brain recovery.`;
+  if (benchmarkSource === 'corpus' && retrievedEntry) {
+    preferredText = retrievedEntry.preferred;
+  } else if (benchmarkSource === 'hybrid' && retrievedEntry) {
+    preferredText = `[Corpus Benchmark (${retrievedEntry.domain})]: ${retrievedEntry.preferred} \n\n[Refined Context for ${role}]: Tailored to address "${question}" with specific architectural safeguards and operational metrics.`;
+  }
+
   const dispreferredText = candidateAnswer.trim().length > 10 ? candidateAnswer : 'Candidate provided a high-level explanation without concrete Big-O bounds or failure circuit specifications.';
 
   const prefQuality = 0.85;
@@ -351,5 +414,7 @@ REQUIRED JSON OUTPUT FORMAT:
     summaryDeltaText: `SimPO contrastive evaluation: Quality Margin Δq = ${qualityMargin >= 0 ? '+' : ''}${qualityMargin.toFixed(2)} (${marginSatisfied ? 'Benchmark Target Satisfied' : dispQuality >= prefQuality ? 'Candidate Meets or Exceeds Benchmark' : 'Pending Quality Alignment'}). Identified ${structuralDeltas.length} structural delta(s).`,
     benchmarkDeltaCard: deriveBenchmarkDeltaCard(structuralDeltas, preferredReward, role),
     source: 'fallback',
+    benchmarkSource,
+    retrievalSimilarity,
   };
 }

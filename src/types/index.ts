@@ -249,6 +249,8 @@ export interface ContrastiveEvaluationResult {
   /** Zod-validated FAANG structural delta card */
   benchmarkDeltaCard: BenchmarkDeltaCard;
   source?: 'live' | 'fallback';
+  benchmarkSource: 'corpus' | 'hybrid' | 'generated';
+  retrievalSimilarity: number;
 }
 
 export interface ResumeAnalysis {

@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "description": "Skillo AI Evaluation Benchmark Corpus — 30 standardised technical interview response pairs",
+  "description": "Skillo AI Evaluation Benchmark Corpus — 50 standardised technical interview response pairs",
   "splits": {
     "calibration": "70%",
     "validation": "15%",
@@ -246,6 +246,166 @@
       "question": "How do you prevent and detect memory leaks in a long-running React single-page application?",
       "preferred": "Common causes: uncleared event listeners, uncleared timers, stale closures retaining large objects, abandoned async operations setting state on unmounted components. Prevention: useEffect cleanup removes subscriptions, timers, and fetch calls (AbortController on unmount). Detection: Chrome DevTools Memory tab — Heap Snapshot before/after suspect action, compare retained size; Allocation Timeline for growing allocation sites. React DevTools Profiler for unnecessary re-renders. Automated: puppeteer-based memory test (heap before/after 50 navigation cycles). Budget alert if JS heap > 200MB via RUM.",
       "dispreferred": "Clean up event listeners and timers in useEffect return functions. Use AbortController to cancel fetch requests when a component unmounts. Profile with Chrome DevTools to find memory leaks."
+    },
+    {
+      "id": "fe_011",
+      "domain": "Frontend Architecture",
+      "split": "calibration",
+      "question": "How would you implement an infinite scroll virtualized list in React from scratch without third-party libraries?",
+      "preferred": "Compute total virtual container height as itemCount * itemHeight. Attach an onScroll listener (or IntersectionObserver on sentinel boundaries) with requestAnimationFrame throttle. Derive visible start index as Math.max(0, Math.floor(scrollTop / itemHeight) - overscan) and end index as Math.min(itemCount - 1, Math.ceil((scrollTop + viewportHeight) / itemHeight) + overscan). Render only slice(startIndex, endIndex + 1) absolutely positioned with transform: translateY(index * itemHeight) to leverage GPU compositing and prevent reflows. Recycle DOM nodes and preserve key stability.",
+      "dispreferred": "Listen to the window scroll event and append more items to the state array when user reaches the bottom of the page."
+    },
+    {
+      "id": "fe_012",
+      "domain": "Frontend Architecture",
+      "split": "calibration",
+      "question": "How do you optimize bundle size and achieve sub-second TTI in a modern single page application?",
+      "preferred": "Employ Route-based and Component-level code splitting using React.lazy and dynamic import(). Analyze bundles via webpack-bundle-analyzer to eliminate duplicate dependencies and heavy libraries (replace moment with date-fns/dayjs or native Intl). Configure tree-shaking with ES modules and sideEffects: false in package.json. Implement Brotli/Gzip compression on CDN edge with aggressive Cache-Control: immutable for hashed chunks. Offload non-critical telemetry and polyfills to dynamic runtime loaders or Web Workers.",
+      "dispreferred": "Minify your JS code, enable Gzip on your server, and use React.lazy to split routes."
+    },
+    {
+      "id": "fe_013",
+      "domain": "Frontend Architecture",
+      "split": "calibration",
+      "question": "Explain how WebSockets and Server-Sent Events (SSE) differ and when you would choose one over the other in frontend architecture.",
+      "preferred": "WebSockets provide bi-directional, full-duplex TCP communication over a single connection with low framing overhead (2-10 bytes), ideal for real-time collaborative editing (CRDT sync), gaming, and bidirectional chat. SSE provides unidirectional server-to-client streaming over standard HTTP/1.1 or HTTP/2, natively supporting automatic reconnections, event IDs, and standard HTTP proxy/auth/firewall traversal with text/event-stream. Choose SSE for financial tickers, live log streaming, and LLM token generation where client-to-server traffic uses standard POST endpoints.",
+      "dispreferred": "WebSockets are two-way and SSE is one-way from server to client. Use WebSockets for chat and SSE for simple notifications."
+    },
+    {
+      "id": "fe_014",
+      "domain": "Frontend Architecture",
+      "split": "validation",
+      "question": "How would you design a client-side offline-first architecture with background synchronization?",
+      "preferred": "Service Worker intercepts fetch requests implementing Cache-First or Stale-While-Revalidate strategies via Cache Storage API. Application data persisted in IndexedDB using Dexie or idb wrappers. Local mutations appended to an IndexedDB outbox queue with optimistic UI updates. When navigator.onLine fires or Service Worker receives a SyncEvent (Background Sync API), queue drains sequentially with idempotency keys. Conflicts resolved via server timestamps or CRDTs. Failed mutations retry with exponential backoff before routing to user error queues.",
+      "dispreferred": "Use localStorage to save user changes when offline, listen to the online event, and post the data to the API when connection is restored."
+    },
+    {
+      "id": "fe_015",
+      "domain": "Frontend Architecture",
+      "split": "test",
+      "question": "What is Cross-Site Scripting (XSS) and what defense-in-depth strategies prevent it in React applications?",
+      "preferred": "XSS occurs when malicious scripts inject into web applications (Stored, Reflected, DOM-based). React inherently escapes JSX string interpolations, mitigating basic injection. Defense-in-depth: 1) Strict Content Security Policy (CSP) header (script-src 'self' 'nonce-...', object-src 'none', base-uri 'self') preventing inline eval/scripts. 2) Never bypass JSX without DOMPurify sanitization (avoid dangerouslySetInnerHTML). 3) Validate URLs before href/src insertion against javascript: schemes. 4) Set HttpOnly, Secure, SameSite=Strict cookies preventing session token theft via document.cookie.",
+      "dispreferred": "React automatically escapes inputs so XSS is not a big issue. Avoid using dangerouslySetInnerHTML and sanitize inputs with regex."
+    },
+    {
+      "id": "ml_001",
+      "domain": "ML Engineering",
+      "split": "calibration",
+      "question": "How would you design an end-to-end real-time recommendation system serving 50M daily active users?",
+      "preferred": "Two-stage pipeline: Retrieval and Ranking. Retrieval (Candidate Generation): Two-tower neural network (User Tower + Item Tower) trained on co-visitation/engagement logs, generating 128-d embeddings. Index items in vector database (FAISS/HNSW or Milvus) for sub-10ms Approximate Nearest Neighbor (ANN) search, retrieving top 500 candidates. Ranking: Multi-task ranking model (MMoE or DeepFM) predicting pCTR and pCVR on candidate features, real-time context (device, time), and user sequence features from low-latency feature store (Feast/Redis). Re-ranking: Apply business logic, diversity filtering (maximal marginal relevance), and frequency capping.",
+      "dispreferred": "Use collaborative filtering to find similar users and recommend items they liked. Rank results using logistic regression."
+    },
+    {
+      "id": "ml_002",
+      "domain": "ML Engineering",
+      "split": "calibration",
+      "question": "How do you detect and mitigate data drift and concept drift in production machine learning pipelines?",
+      "preferred": "Data Drift (P(X) changes): monitor feature distributions against training baseline using Kolmogorov-Smirnov test for continuous features and Population Stability Index (PSI) or Wasserstein Distance. PSI > 0.2 indicates significant shift. Concept Drift (P(Y|X) changes): track online evaluation metrics (pCTR vs observed CTR calibration, F1, log-loss) via sliding time windows. Detection toolchain: Evidently AI or Great Expectations integrated with Prometheus/Grafana. Mitigation: automated retraining triggers on drift thresholds, exponential decay weighting on older training data, and shadow/canary deployments.",
+      "dispreferred": "Check if model accuracy drops over time in Grafana. If it does, retrain the model with fresh data from the last month."
+    },
+    {
+      "id": "ml_003",
+      "domain": "ML Engineering",
+      "split": "calibration",
+      "question": "Explain the architectural difference between LoRA (Low-Rank Adaptation) and full fine-tuning for Large Language Models.",
+      "preferred": "Full fine-tuning updates all model parameters W_0 in R^(d x k), requiring optimizer states (AdamW stores 8 bytes/param) and full gradient checkpoints, demanding massive GPU VRAM (e.g., >160GB for 70B in 16-bit) and producing complete weight checkpoints per task. LoRA freezes W_0 and injects trainable rank-decomposition matrices A in R^(r x k) and B in R^(d x r) where Delta W = B * A with rank r << min(d, k) (typically r=8 to 64) scaled by alpha/r. Memory footprint reduced by up to 75%, zero inference latency overhead when weights merged, and enables serving multiple task adapters on a single base model.",
+      "dispreferred": "LoRA only tunes a small percentage of model weights instead of the whole model so it uses much less memory and trains faster."
+    },
+    {
+      "id": "ml_004",
+      "domain": "ML Engineering",
+      "split": "calibration",
+      "question": "How would you build a low-latency LLM serving pipeline supporting high-concurrency inference?",
+      "preferred": "Utilize vLLM or TensorRT-LLM with PagedAttention to eliminate memory fragmentation in KV cache, managing KV blocks as virtual memory pages. Implement Continuous (Iteration-level) Batching instead of request-level padding. Apply weight quantization: AWQ or FP8 for minimal perplexity degradation with 2x throughput. For multi-GPU: Tensor Parallelism (Megatron-LM style) within a node, Pipeline Parallelism across nodes. Deploy speculative decoding with a draft model for 2-3x token generation speedup. Monitor TTFT (Time to First Token) and TPOT (Time Per Output Token).",
+      "dispreferred": "Run the model with HuggingFace Transformers on a fast GPU and use FastAPI with Uvicorn to handle concurrent requests."
+    },
+    {
+      "id": "ml_005",
+      "domain": "ML Engineering",
+      "split": "calibration",
+      "question": "Explain the bias-variance tradeoff and how regularization techniques (L1, L2, Dropout) address overfitting.",
+      "preferred": "Total expected error decomposes into Bias^2 + Variance + Irreducible Noise. High bias stems from overly simplistic models (underfitting); high variance stems from model sensitivity to training noise (overfitting). Regularization controls model capacity: L2 (Ridge/Weight Decay) adds lambda * ||w||_2^2 penalty to loss, shrinking weights towards zero smoothly and preventing reliance on single features. L1 (Lasso) adds lambda * ||w||_1 penalty, producing sparse weights due to diamond constraint geometry, acting as feature selector. Dropout randomly zeroes activations with probability p during training, preventing co-adaptation of neurons and approximating an ensemble of 2^N sub-networks.",
+      "dispreferred": "Bias is when the model is too simple and variance is when it overfits. L1 makes weights zero, L2 shrinks weights, and Dropout turns off neurons randomly."
+    },
+    {
+      "id": "ml_006",
+      "domain": "ML Engineering",
+      "split": "calibration",
+      "question": "How would you architect a Feature Store for real-time ML inference and offline training?",
+      "preferred": "Dual-storage architecture maintaining training-serving consistency. Offline store: Snowflake/BigQuery or Parquet on S3 optimized for high-throughput batch writes and point-in-time correct (time-travel) feature joins to prevent data leakage during backtesting. Online store: Redis or DynamoDB with sub-10ms key-value lookups indexed by entity_id. Streaming ingestion: Kafka/Flink streaming engine calculates rolling window aggregations (e.g., 10-minute transaction count) and dual-writes to online and offline stores. Centralized registry (Feast/Hopsworks) defines feature schemas, data types, and SLA lineage.",
+      "dispreferred": "Save features in Postgres for training and cache them in Redis so the API can read them quickly during prediction."
+    },
+    {
+      "id": "ml_007",
+      "domain": "ML Engineering",
+      "split": "validation",
+      "question": "Explain how Self-Attention works in Transformer models and derive its computational complexity.",
+      "preferred": "Given input representations X in R^(N x d), project linearly to Queries Q = X*W_Q, Keys K = X*W_K, and Values V = X*W_V. Attention(Q, K, V) = softmax(Q*K^T / sqrt(d_k)) * V. Q*K^T computes pairwise dot-product compatibility matrix in R^(N x N), scaled by 1/sqrt(d_k) to prevent vanishing gradients in softmax for large d_k. Computational complexity: Q*K^T takes O(N^2 * d) operations; Softmax * V takes O(N^2 * d). Overall time and memory complexity is O(N^2 * d) with respect to sequence length N. Mitigations for long context include FlashAttention (tiling IO-aware kernel) and Linear/Sparse Attention.",
+      "dispreferred": "Self-attention computes dot products between queries and keys, passes through softmax, and multiplies by values. The complexity is O(N squared)."
+    },
+    {
+      "id": "ml_008",
+      "domain": "ML Engineering",
+      "split": "test",
+      "question": "How do you evaluate and mitigate hallucinations and toxic outputs in an enterprise RAG system?",
+      "preferred": "Evaluation: Multi-metric Ragas or TruLens framework tracking: 1) Faithfulness (is the answer grounded in context?), 2) Answer Relevance, 3) Context Precision. Implement LLM-as-a-judge with contrastive rubrics. Mitigation: Retrieval guardrails: minimum cosine similarity threshold, re-ranking with cross-encoders (BGE-Reranker) to filter irrelevant chunks. Prompt engineering: strict negative constraints ('Answer only using context, if unknown reply UNKNOWN'). Generation guardrails: NeMo Guardrails or Llama Guard for toxicity classification. Post-generation citation verification: string/semantic alignment between output claims and source chunk offsets.",
+      "dispreferred": "Use a good prompt telling the model not to lie. Check answers with another prompt and set temperature to 0 to prevent hallucinations."
+    },
+    {
+      "id": "star_001",
+      "domain": "Behavioural STAR",
+      "split": "calibration",
+      "question": "Tell me about a time you had to resolve a major architectural disagreement with another senior engineer.",
+      "preferred": "Situation: At my previous company, our team was split on migrating our core processing pipeline to microservices vs modular monolith. Task: As tech lead, I needed to resolve the deadlock and deliver the Q3 scalability milestone without team friction. Action: I scheduled an objective benchmarking spike. Instead of debating philosophies, we defined 4 measurable criteria: p99 latency under 10k RPS, deployment independence, developer onboarding time, and operational cost. Both engineers built a 2-day prototype. When data showed the modular monolith beat latency by 3x and reduced infrastructure cost by 40%, we unanimously aligned on it. Result: Delivered on time, zero production incidents during Black Friday, and established our team's RFC decision framework.",
+      "dispreferred": "I had an argument with an engineer about microservices. I called a meeting, discussed our points of view, and we agreed to go with my suggestion because it was simpler."
+    },
+    {
+      "id": "star_002",
+      "domain": "Behavioural STAR",
+      "split": "calibration",
+      "question": "Describe a situation where a critical production outage occurred under your watch. How did you handle it?",
+      "preferred": "Situation: At 2 PM on a Tuesday, our payment checkout service threw 503 errors for 35% of traffic following a canary deployment. Task: As the incident commander, my priority was immediate mitigation to stop customer impact, followed by root-cause diagnosis. Action: I immediately executed an automated rollback to the previous stable release within 4 minutes, restoring availability. Concurrently, I assigned roles: one engineer on log triage, one drafting status updates for support, and myself coordinating communications. Root cause analysis revealed an unindexed database migration caused connection pool exhaustion. Result: Restored 100% availability in 6 minutes. Post-mortem produced an automated CI gate requiring EXPLAIN plans on all migration PRs and synthetic canary load tests.",
+      "dispreferred": "A deployment broke production. I noticed the error rate spike, rolled back the change right away, and fixed the bug in the code before redeploying."
+    },
+    {
+      "id": "star_003",
+      "domain": "Behavioural STAR",
+      "split": "calibration",
+      "question": "Tell me about a time you had to deliver a high-stakes project under an unrealistic deadline.",
+      "preferred": "Situation: Executive leadership committed to launching a partner integration in 6 weeks when initial engineering estimates projected 14 weeks. Task: As the lead engineer, I had to prevent team burnout while delivering a secure, functional v1 to meet contractual commitments. Action: I led a scope negotiation workshop using MoSCoW prioritization with product and partner teams. We deselect non-critical automated admin workflows in favor of audited internal tools, reducing scope by 50%. We adopted proven off-the-shelf auth (OAuth2 with Auth0) instead of custom identity. I instituted daily 15-minute risk blockers and paired junior engineers with senior leads. Result: Shipped core integration 3 days ahead of deadline with zero P0 security vulnerabilities, enabling a $2M enterprise partnership.",
+      "dispreferred": "We had a strict deadline, so the team worked overtime and weekends. I made sure everyone stayed focused and we successfully delivered on time."
+    },
+    {
+      "id": "star_004",
+      "domain": "Behavioural STAR",
+      "split": "calibration",
+      "question": "Give an example of how you mentored a struggling junior or mid-level engineer to improve their performance.",
+      "preferred": "Situation: A junior engineer on my team was missing sprint commitments and receiving frequent rework requests on PRs due to edge-case bugs. Task: Help them build confidence, improve code quality, and reach independence without micromanagement. Action: Rather than pointing out flaws, I instituted weekly 1-on-1 pairing sessions. We analyzed their PR feedback together and identified that requirements were being coded before edge cases were mapped. I introduced them to Test-Driven Development (TDD), encouraging them to write failing unit tests for error boundaries first. I also had them shadow my code reviews on complex PRs. Result: Within two quarters, their PR cycle time dropped from 4.2 days to 1.1 days, rework rates fell by 70%, and they were promoted to mid-level engineer.",
+      "dispreferred": "I noticed a junior developer was struggling with code quality. I reviewed their PRs more carefully, showed them the right way to write code, and they improved."
+    },
+    {
+      "id": "star_005",
+      "domain": "Behavioural STAR",
+      "split": "calibration",
+      "question": "Tell me about a time you made a significant mistake or bad technical decision. How did you handle the aftermath?",
+      "preferred": "Situation: Early in my career, I chose a NoSQL document database for an inventory management service because of rapid initial prototyping speed. Task: As the business expanded into multi-warehouse reservation and auditing, the lack of ACID multi-document transactions caused ghost inventory anomalies. Action: I owned the mistake transparently in our engineering retrospective rather than blaming requirements churn. I proposed a phased remediation plan: built a reconciliation daemon to detect inconsistencies immediately, then designed a zero-downtime dual-write migration to PostgreSQL with row-level locks. I led the migration over 3 sprints without downtime. Result: Eliminated inventory discrepancies completely and published a post-mortem guide on storage engine trade-offs for the organization.",
+      "dispreferred": "I picked the wrong database for a project and it couldn't handle relational data later on. I admitted my mistake and migrated the data to SQL."
+    },
+    {
+      "id": "star_006",
+      "domain": "Behavioural STAR",
+      "split": "validation",
+      "question": "Describe a situation where you had to influence a product manager or stakeholder without formal authority.",
+      "preferred": "Situation: Product management prioritized 5 new user-facing features over addressing severe technical debt in our checkout caching layer, which had a p99 latency of 1.8s. Task: Convince the PM to allocate 30% of sprint capacity to refactoring without formal executive authority. Action: Instead of arguing technical elegance, I translated latency into business metrics: cited internal analytics showing a 100ms latency increase correlated to a 1.2% drop in conversion ($150k monthly loss). I proposed a timeboxed 1-sprint refactoring spike with agreed KPI targets. Result: The PM approved the allocation. We reduced p99 latency from 1.8s to 240ms, resulting in a measurable 4.5% conversion uplift ($540k annual recurring revenue), earning engineering leadership commendation.",
+      "dispreferred": "The PM wanted new features but we had technical debt. I explained to them why clean code is important and convinced them to give us time to refactor."
+    },
+    {
+      "id": "star_007",
+      "domain": "Behavioural STAR",
+      "split": "test",
+      "question": "Tell me about a time you took the initiative to improve an engineering process or developer experience across teams.",
+      "preferred": "Situation: CI build and test pipelines took 42 minutes across 6 repository microservices, causing developer frustration and slow deployment velocity. Task: Reduce CI turnaround time to under 10 minutes organization-wide as a self-directed initiative. Action: I profiled the GitHub Actions workflows and identified bottlenecks: un-cached Docker layer rebuilds and sequential Jest execution. I implemented Nx distributed task execution with remote cloud caching, containerized test runners, and parallelized test sharding across 4 runners. I created reusable GitHub Actions composite workflows and documented the setup in an internal engineering RFC. Result: Cut CI duration from 42 minutes to 7.5 minutes (82% reduction), saving an estimated 140 developer hours weekly and accelerating daily production deployments by 3x.",
+      "dispreferred": "Our build times were very slow, so I updated GitHub Actions to run tests in parallel and enabled caching, which made the builds much faster for everyone."
     }
   ]
 }

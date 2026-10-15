@@ -125,24 +125,24 @@ describe('P3 — Benchmark corpus split integrity', () => {
     corpus = JSON.parse(raw) as BenchmarkCorpus;
   });
 
-  it('corpus has exactly 30 entries', () => {
-    expect(corpus.entries).toHaveLength(30);
+  it('corpus has at least 50 entries', () => {
+    expect(corpus.entries.length).toBeGreaterThanOrEqual(50);
   });
 
-  it('calibration split has 21 entries (70%)', () => {
-    expect(corpus.entries.filter(e => e.split === 'calibration')).toHaveLength(21);
+  it('calibration split has 35 entries (70%)', () => {
+    expect(corpus.entries.filter(e => e.split === 'calibration')).toHaveLength(35);
   });
 
-  it('validation split has 4-5 entries (~15%)', () => {
+  it('validation split has 7-8 entries (~15%)', () => {
     const count = corpus.entries.filter(e => e.split === 'validation').length;
-    expect(count).toBeGreaterThanOrEqual(4);
-    expect(count).toBeLessThanOrEqual(5);
+    expect(count).toBeGreaterThanOrEqual(7);
+    expect(count).toBeLessThanOrEqual(8);
   });
 
-  it('test split has 4-5 entries (~15%)', () => {
+  it('test split has 7-8 entries (~15%)', () => {
     const count = corpus.entries.filter(e => e.split === 'test').length;
-    expect(count).toBeGreaterThanOrEqual(4);
-    expect(count).toBeLessThanOrEqual(5);
+    expect(count).toBeGreaterThanOrEqual(7);
+    expect(count).toBeLessThanOrEqual(8);
   });
 
   it('zero split leakage: no entry id appears in more than one split', () => {
@@ -153,11 +153,17 @@ describe('P3 — Benchmark corpus split integrity', () => {
     }
   });
 
-  it('all three domains represented with at least 8 entries each', () => {
-    const domains = ['Distributed Systems', 'System Design', 'Frontend Architecture'];
+  it('all five domains represented with at least 7 entries each', () => {
+    const domains = [
+      'Distributed Systems',
+      'System Design',
+      'Frontend Architecture',
+      'ML Engineering',
+      'Behavioural STAR',
+    ];
     for (const domain of domains) {
       const count = corpus.entries.filter(e => e.domain === domain).length;
-      expect(count).toBeGreaterThanOrEqual(8);
+      expect(count).toBeGreaterThanOrEqual(7);
     }
   });
 

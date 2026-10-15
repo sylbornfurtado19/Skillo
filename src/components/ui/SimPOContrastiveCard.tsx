@@ -12,6 +12,7 @@ import {
   FaChartLine,
   FaLightbulb,
   FaBolt,
+  FaDatabase,
 } from 'react-icons/fa';
 
 export interface SimPOContrastiveCardProps {
@@ -49,6 +50,8 @@ export default function SimPOContrastiveCard({
   const candQuality = dispreferredAnswer.qualityScore;
   const benchmarkQuality = preferredAnswer.qualityScore ?? 0.85;
   const candidateMeetsOrExceeds = candQuality !== undefined && candQuality >= benchmarkQuality;
+  const benchmarkSource = data.benchmarkSource ?? 'generated';
+  const retrievalSimilarity = data.retrievalSimilarity ?? 0;
 
   return (
     <div className={`space-y-6 text-left ${className}`}>
@@ -69,7 +72,7 @@ export default function SimPOContrastiveCard({
             </div>
           </div>
 
-          {/* Quality Comparison Margin Badge */}
+          {/* Quality Comparison & Benchmark Source Badges */}
           <div className="flex flex-wrap items-center gap-2">
             {data.source === 'fallback' && (
               <Badge variant="warning" size="sm" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono">
@@ -77,6 +80,18 @@ export default function SimPOContrastiveCard({
                 <span>Offline estimate, not a live AI evaluation</span>
               </Badge>
             )}
+            <Badge
+              variant={benchmarkSource === 'corpus' ? 'success' : benchmarkSource === 'hybrid' ? 'primary' : 'neutral'}
+              size="sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono"
+              data-testid="benchmark-source-badge"
+            >
+              <FaDatabase className="text-xs" aria-hidden="true" />
+              <span>benchmarkSource: {benchmarkSource}</span>
+              {retrievalSimilarity > 0 && (
+                <span className="opacity-80">({Math.round(retrievalSimilarity * 100)}%)</span>
+              )}
+            </Badge>
             <div className="flex items-center gap-2 bg-surface-alt px-3.5 py-2 rounded-xl border border-border text-xs font-mono w-full sm:w-auto justify-between sm:justify-end shadow-soft">
               <FaBolt className="text-primary shrink-0 animate-pulse" aria-hidden="true" />
               <span className="text-text-secondary font-semibold">Quality Margin:</span>
@@ -163,6 +178,12 @@ export default function SimPOContrastiveCard({
               <div className="flex justify-between items-center text-[11px] text-text-secondary/70">
                 <span>Verbosity Penalty (|y|):</span>
                 <span className="font-mono">{preferredAnswer.tokenLength} tokens</span>
+              </div>
+              <div className="flex justify-between items-center text-[11px] text-text-secondary/70 pt-1 border-t border-border/50">
+                <span>Benchmark Source:</span>
+                <span className="font-mono font-semibold text-primary" data-testid="benchmark-source-detail">
+                  {benchmarkSource} ({Math.round(retrievalSimilarity * 100)}% match)
+                </span>
               </div>
             </div>
           </div>
