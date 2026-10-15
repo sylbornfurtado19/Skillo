@@ -29,16 +29,18 @@ import { useAuth } from '../hooks/useAuth';
 import { useChartTheme } from '../hooks/useChartTheme';
 import { useInterview, calculateStreak } from '../context/InterviewContext';
 import type { SessionHistoryItem } from '../context/InterviewContext';
+import { getProfile } from '../services/profile';
+import type { CandidateSkillMemoryStore, EvaluationCategories } from '../types/index';
 
 
 
-import type { EvaluationCategories } from '../types/index';
 import { INTERVIEWER_PERSONAS, getQuestionsForSetup } from '../services/constants';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
 import { OnboardingProgressWidget } from '../components/dashboard/OnboardingProgressWidget';
+import { generateStudyPlan } from '../lib/services/studyPlan';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -59,10 +61,29 @@ export default function Dashboard() {
 
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'highest'>('newest');
   const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [skillMemoryStore, setSkillMemoryStore] = useState<CandidateSkillMemoryStore | undefined>();
 
   const handleRetrySync = () => {
     setDashboardError(null);
   };
+
+  useEffect(() => {
+    if (!user?.id) {
+      setSkillMemoryStore(undefined);
+      return;
+    }
+    getProfile(user.id)
+      .then(({ data, error }) => {
+        if (error) {
+          setDashboardError(typeof error === 'string' ? error : 'Failed to retrieve study plan data.');
+          return;
+        }
+        setSkillMemoryStore(data?.skillMemoryStore);
+      })
+      .catch(() => {
+        setDashboardError('Failed to retrieve study plan data.');
+      });
+  }, [user?.id]);
 
   const finalHistory = sessionHistory || [];
   const totalCompleted = finalHistory.length;
@@ -218,6 +239,9 @@ export default function Dashboard() {
   };
 
   const suggestions = getDynamicSuggestions();
+  const nextBestSession = skillMemoryStore
+    ? generateStudyPlan(skillMemoryStore).flatMap((day) => day.tasks.map((task) => ({ day, task })))[0]
+    : undefined;
 
 
   const candidateName =
@@ -375,6 +399,38 @@ export default function Dashboard() {
           </Button>
         </Card>
       )}
+
+      <Card variant="default" className="p-5 border border-primary/20 bg-bg-surface shadow-soft">
+        {nextBestSession ? (
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="primary" size="sm">Next best session</Badge>
+                <span className="text-[10px] font-mono text-text-secondary">{nextBestSession.day.date}</span>
+              </div>
+              <h3 className="text-base font-heading font-bold text-text-primary">
+                {nextBestSession.task.taskType === 'REVIEW' ? 'Review' : 'Practice'} {nextBestSession.task.skillName}
+              </h3>
+              <p className="text-xs text-text-secondary max-w-2xl">{nextBestSession.task.focus}</p>
+              <span className="text-[10px] font-mono text-text-secondary">{nextBestSession.task.minutes} minutes</span>
+            </div>
+            <Button onClick={() => router.push('/setup?from=plan')} variant="primary" size="sm" icon={FaPlay} className="shrink-0">
+              Start this session
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <Badge variant="neutral" size="sm">Study Plan</Badge>
+              <h3 className="text-base font-heading font-bold text-text-primary">Ready to find your next focus?</h3>
+              <p className="text-xs text-text-secondary">Take an interview to build your skill memory and unlock your next best session.</p>
+            </div>
+            <Button onClick={() => router.push('/setup')} variant="primary" size="sm" icon={FaPlay} className="shrink-0">
+              Take your first interview
+            </Button>
+          </div>
+        )}
+      </Card>
 
       {/* ── INTERACTIVE ONBOARDING PROGRESS TRACKER ── */}
       {totalCompleted === 0 && (

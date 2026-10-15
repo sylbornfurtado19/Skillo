@@ -13,10 +13,13 @@ import { useInterview, type SessionHistoryItem } from '../context/InterviewConte
 import { LogoIcon } from '../components/common/Logo';
 import { Skeleton } from '../components/ui/Skeleton';
 import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
 import { FaExclamationTriangle } from 'react-icons/fa';
 import '../lib/chartSetup';
 import { useChartTheme } from '../hooks/useChartTheme';
 import SkillMemoryGraph from '../components/ui/SkillMemoryGraph';
+import { generateStudyPlan } from '../lib/services/studyPlan';
 
 const Doughnut = dynamic(() => import('react-chartjs-2').then((m) => m.Doughnut), { ssr: false });
 
@@ -265,6 +268,9 @@ export default function Profile() {
     maintainAspectRatio: false,
   };
 
+  const studyPlan = userProfile?.skillMemoryStore
+    ? generateStudyPlan(userProfile.skillMemoryStore)
+    : [];
 
 
   const handleLoadPastReport = (interview: SessionHistoryItem) => {
@@ -379,6 +385,57 @@ export default function Profile() {
       </div>
 
       <SkillMemoryGraph memoryStore={userProfile?.skillMemoryStore} />
+
+      <section aria-labelledby="study-plan-heading" className="space-y-4">
+        <div>
+          <h2 id="study-plan-heading" className="text-lg font-heading font-bold text-text-primary">Study Plan</h2>
+          <p className="text-xs text-text-secondary mt-1">A deterministic seven-day practice cadence based on your skill memory.</p>
+        </div>
+        {studyPlan.length === 0 ? (
+          <Card variant="default" className="p-8 text-center space-y-4">
+            <div className="space-y-1.5">
+              <h3 className="text-base font-heading font-bold text-text-primary">Build your first study plan</h3>
+              <p className="text-xs text-text-secondary max-w-md mx-auto">
+                Complete your first interview to identify skill gaps and generate a personalized practice plan.
+              </p>
+            </div>
+            <Button onClick={() => router.push('/setup')} variant="primary" size="md">
+              Take your first interview
+            </Button>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            {studyPlan.map((day) => (
+              <Card key={day.date} variant="default" className="p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
+                  <h3 className="text-xs font-bold text-text-primary">{day.date}</h3>
+                  <Badge variant={day.tasks.length > 0 ? 'primary' : 'neutral'} size="sm">
+                    {day.tasks.reduce((total, task) => total + task.minutes, 0)} min
+                  </Badge>
+                </div>
+                {day.tasks.length > 0 ? (
+                  <ul className="space-y-3">
+                    {day.tasks.map((task, index) => (
+                      <li key={`${task.skillId}-${task.taskType}-${index}`} className="space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-text-primary truncate">{task.skillName}</span>
+                          <Badge variant={task.taskType === 'REVIEW' ? 'secondary' : 'success'} size="sm">
+                            {task.taskType}
+                          </Badge>
+                        </div>
+                        <p className="text-[11px] text-text-secondary leading-relaxed">{task.focus}</p>
+                        <span className="text-[10px] font-mono text-text-secondary">{task.minutes} minutes</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-text-secondary">Rest or consolidate.</p>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-bg-surface rounded-2xl p-6 border border-border shadow-soft flex flex-col justify-between items-center text-center relative overflow-hidden">

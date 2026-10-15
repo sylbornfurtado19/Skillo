@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useId } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaPlay,
@@ -26,6 +26,7 @@ import { InterviewModePreviewCard } from '../components/interview/InterviewModeP
 import { resolveInterviewMode } from '../types/interviewModes';
 import { supabase } from '../lib/supabase';
 import { getAuthToken } from '../services/auth';
+import { generateStudyPlan } from '../lib/services/studyPlan';
 
 const SETUP_STORAGE_KEY = 'skillo_career_setup_state';
 
@@ -47,6 +48,7 @@ const DURATIONS = [15, 30, 45, 60];
 
 export default function CareerSetup() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const {
     resumeData,
@@ -66,6 +68,7 @@ export default function CareerSetup() {
 
   const [startingSession, setStartingSession] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
+  const fromStudyPlan = searchParams.get('from') === 'plan';
 
   // Wizard Step State & Persistence
   const [currentStep, setCurrentStep] = useState(1);
@@ -105,6 +108,40 @@ export default function CareerSetup() {
   useEffect(() => {
     if (!user?.id) return;
     getProfile(user.id).then(({ data }) => {
+      if (fromStudyPlan && data?.skillMemoryStore) {
+        const nextTask = generateStudyPlan(data.skillMemoryStore)[0]?.tasks[0];
+        const skill = nextTask
+          ? data.skillMemoryStore.nodes[nextTask.skillId]
+          : undefined;
+
+        if (nextTask && skill) {
+          const matchingDomain = Object.entries(CAREER_DOMAINS).find(([, roles]) =>
+            roles.some((role) => role.toLocaleLowerCase() === skill.skillName.toLocaleLowerCase())
+          )?.[0] ?? 'Computer Science';
+          const matchingRole = CAREER_DOMAINS[matchingDomain]?.find(
+            (role) => role.toLocaleLowerCase() === skill.skillName.toLocaleLowerCase()
+          );
+          const difficultyByProficiency = {
+            NOVICE: 'Easy',
+            DEVELOPING: 'Medium',
+            PROFICIENT: 'Hard',
+            MASTERED: 'Expert',
+          } as const;
+          const role = matchingRole ?? 'Custom';
+
+          setSetupData({
+            ...setupData,
+            domain: matchingDomain,
+            role,
+            ...(role === 'Custom' ? { customRole: skill.skillName } : {}),
+            difficulty: difficultyByProficiency[skill.proficiencyLevel],
+            experienceLevel: skill.proficiencyLevel === 'NOVICE' ? 'Junior' : 'Senior',
+            focusAreas: [skill.skillName],
+          });
+          setCurrentStep(2);
+          return;
+        }
+      }
       if (data?.profileSettings) {
         const ps = data.profileSettings;
         setSetupData({
@@ -115,7 +152,7 @@ export default function CareerSetup() {
         });
       }
     });
-  }, [user?.id]);
+  }, [user?.id, fromStudyPlan]);
 
   // Media Diagnostics State
   const videoRef = useRef<HTMLVideoElement | null>(null);
