@@ -1,4 +1,26 @@
 import { DEFAULT_ANTHROPIC_MODEL } from '@/lib/ai/defaultModel';
+import type { InterviewQuestion } from '@/types/index';
+
+/** Stable id for a question: its own id, or a position-based legacy id for plain strings. */
+export function resolveQuestionId(raw: string | InterviewQuestion | undefined, index: number): string {
+  return typeof raw === 'object' && raw?.id ? raw.id : `q_${index + 1}`;
+}
+
+/**
+ * Builds the question object inserted after `parent` for an adaptive follow-up.
+ * The id is derived from the parent's id (never from its position), so it is unique and does
+ * not collide with the next planned question when later items shift by one.
+ */
+export function buildFollowUpQuestion(
+  parent: { id: string; duration?: number },
+  text: string
+): InterviewQuestion {
+  return {
+    id: `${parent.id}_fu`.slice(0, 64),
+    question: String(text).slice(0, 1000),
+    duration: parent.duration,
+  };
+}
 
 export const AUTOSAVE_STORAGE_KEY_PREFIX = 'skillo_draft_ans_';
 
@@ -25,7 +47,8 @@ export function generateFallbackEvaluationReport(
   setup: any,
   questList: Array<{ id: string; question: string; hint?: string; idealConcepts?: string }>,
   ansList: Array<any>,
-  modelId?: string
+  modelId?: string,
+  fallbackReason?: string
 ) {
   const avgScore = 60;
   const resolvedModelId = modelId || setup?.modelId || setup?.model || DEFAULT_ANTHROPIC_MODEL;
@@ -53,7 +76,10 @@ export function generateFallbackEvaluationReport(
         suggestions: ['Incorporate concrete system design trade-offs and quantitative metrics.'],
       };
     }),
-    interviewerComments: 'Evaluation completed via resilient fallback mode due to transient network conditions.',
+    interviewerComments: fallbackReason
+      ? `Offline estimate (not a live AI evaluation). ${fallbackReason}`
+      : 'Evaluation completed via resilient fallback mode due to transient network conditions.',
+    fallbackReason: fallbackReason ?? null,
     personaId: setup?.persona || 'sarah',
     setupData: setup,
     evaluatedAt: new Date().toISOString(),

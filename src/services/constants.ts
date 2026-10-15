@@ -2,6 +2,81 @@
 import { getAuthToken } from './auth';
 import type { CodeAnswer } from '../types';
 import type { SpeechAnalytics } from '../lib/services/speechAnalytics';
+import { downsampleByGroup } from '../lib/utils/downsample';
+
+// ── Evaluation request limits (mirror app/api/interview/evaluate/route.ts) ──
+const MAX_ANSWER_CHARS = 10000;
+const MAX_QUESTION_CHARS = 1000;
+const MAX_HINT_CHARS = 500;
+const MAX_IDEAL_CONCEPTS_CHARS = 1000;
+const MAX_WEAKNESS_CHARS = 500;
+const MAX_CODE_SOURCE_CHARS = 10 * 1024;
+const MAX_CODE_OUTPUT_CHARS = 10000;
+const MAX_TELEMETRY_FRAMES = 1000;
+
+export type EvaluationFailureKind = 'network' | 'auth' | 'rate-limit' | 'validation' | 'server';
+
+/** Typed failure from POST /api/interview/evaluate so callers can explain what happened. */
+export class EvaluationRequestError extends Error {
+  readonly kind: EvaluationFailureKind;
+  readonly status?: number;
+
+  constructor(message: string, kind: EvaluationFailureKind, status?: number) {
+    super(message);
+    this.name = 'EvaluationRequestError';
+    this.kind = kind;
+    this.status = status;
+  }
+}
+
+/**
+ * Human-readable explanation of why a live evaluation was not produced.
+ * `toast` is shown to the candidate; `reason` is stored on the fallback report.
+ */
+export function describeEvaluationFailure(err: unknown): { toast: string; reason: string } {
+  const kind: EvaluationFailureKind = err instanceof EvaluationRequestError ? err.kind : 'network';
+  const detail = err instanceof Error ? err.message : '';
+
+  switch (kind) {
+    case 'auth':
+      return {
+        toast: 'Your session has expired. Showing an offline estimate; sign in again for a full evaluation.',
+        reason: 'Evaluation request was not authenticated (session expired).',
+      };
+    case 'rate-limit':
+      return {
+        toast: 'Too many evaluation requests. Showing an offline estimate; please try again in a minute.',
+        reason: 'Evaluation request was rate limited.',
+      };
+    case 'validation':
+      return {
+        toast: 'The evaluation request was rejected. Showing an offline estimate.',
+        reason: `Evaluation request was rejected by validation${detail ? `: ${detail}` : '.'}`,
+      };
+    case 'server':
+      return {
+        toast: 'The evaluation service had a problem. Showing an offline estimate.',
+        reason: `Evaluation service error${detail ? `: ${detail}` : '.'}`,
+      };
+    case 'network':
+    default:
+      return {
+        toast: "Couldn't reach the evaluation service. Showing an offline estimate.",
+        reason: 'Evaluation service could not be reached (network error or timeout).',
+      };
+  }
+}
+
+function classifyStatus(status: number): EvaluationFailureKind {
+  if (status === 401 || status === 403) return 'auth';
+  if (status === 429) return 'rate-limit';
+  if (status >= 500) return 'server';
+  return 'validation';
+}
+
+function clip(value: string | undefined, max: number): string | undefined {
+  return typeof value === 'string' ? value.slice(0, max) : value;
+}
 
 export interface InterviewerPersona {
   id: string;
@@ -357,27 +432,75 @@ export const submitInterviewAnswers = async (
 ) => {
   const token = await getAuthToken();
 
-  const response = await fetch('/api/interview/evaluate', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({
-      setupData,
-      questionsList,
-      answersList,
-      ...(gazeFrames && gazeFrames.length > 0 ? { gazeFrames } : {}),
-      ...(headPoseFrames && headPoseFrames.length > 0 ? { headPoseFrames } : {}),
-      ...(affectFrames && affectFrames.length > 0 ? { affectFrames } : {}),
-      ...(syncWindows && syncWindows.length > 0 ? { syncWindows } : {}),
-      ...(codeAnswer ? { codeAnswer } : {}),
-      ...(speechAnalytics && Object.keys(speechAnalytics).length > 0 ? { speechAnalytics } : {}),
-    }),
-  });
+  // Keep the payload inside the server's limits: clip text fields and keep a
+  // question-balanced sample of the ~10 FPS telemetry streams.
+  const safeQuestions = questionsList.map((q) => ({
+    ...q,
+    id: clip(q.id, 64) as string,
+    question: clip(q.question, MAX_QUESTION_CHARS) as string,
+    hint: clip(q.hint, MAX_HINT_CHARS),
+    idealConcepts: clip(q.idealConcepts, MAX_IDEAL_CONCEPTS_CHARS),
+    targetedWeakness: clip(q.targetedWeakness, MAX_WEAKNESS_CHARS),
+  }));
+  const safeAnswers = answersList.map((a) =>
+    typeof a === 'string'
+      ? a.slice(0, MAX_ANSWER_CHARS)
+      : { ...a, answerText: clip(a?.answerText ?? '', MAX_ANSWER_CHARS) as string }
+  );
+  const sample = <T extends { questionId?: string }>(frames?: T[]) =>
+    frames && frames.length > 0
+      ? downsampleByGroup(frames, MAX_TELEMETRY_FRAMES, (f) => f.questionId)
+      : undefined;
+  const sampledGaze = sample(gazeFrames);
+  const sampledPose = sample(headPoseFrames);
+  const sampledAffect = sample(affectFrames);
+  const sampledSync = sample(syncWindows);
+  const safeCode = codeAnswer
+    ? {
+        ...codeAnswer,
+        source: codeAnswer.source.slice(0, MAX_CODE_SOURCE_CHARS),
+        stdout: codeAnswer.stdout.slice(0, MAX_CODE_OUTPUT_CHARS),
+        stderr: codeAnswer.stderr.slice(0, MAX_CODE_OUTPUT_CHARS),
+      }
+    : undefined;
 
+  const coreBody = { setupData, questionsList: safeQuestions, answersList: safeAnswers };
+  const fullBody = {
+    ...coreBody,
+    ...(sampledGaze ? { gazeFrames: sampledGaze } : {}),
+    ...(sampledPose ? { headPoseFrames: sampledPose } : {}),
+    ...(sampledAffect ? { affectFrames: sampledAffect } : {}),
+    ...(sampledSync ? { syncWindows: sampledSync } : {}),
+    ...(safeCode ? { codeAnswer: safeCode } : {}),
+    ...(speechAnalytics && Object.keys(speechAnalytics).length > 0 ? { speechAnalytics } : {}),
+  };
+  const hasOptionalPayload = Object.keys(fullBody).length > Object.keys(coreBody).length;
 
+  const post = async (body: unknown): Promise<Response> => {
+    try {
+      return await fetch('/api/interview/evaluate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      throw new EvaluationRequestError(
+        err instanceof Error ? err.message : 'Network request failed',
+        'network'
+      );
+    }
+  };
 
+  let response = await post(fullBody);
+
+  // A validation rejection caused by optional telemetry should not cost the candidate
+  // their whole evaluation: retry once with just the questions and answers.
+  if (!response.ok && (response.status === 400 || response.status === 422) && hasOptionalPayload) {
+    response = await post(coreBody);
+  }
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
@@ -385,7 +508,7 @@ export const submitInterviewAnswers = async (
     if (showToast) {
       showToast(message, 'error');
     }
-    throw new Error(message);
+    throw new EvaluationRequestError(message, classifyStatus(response.status), response.status);
   }
 
   const result = await response.json();

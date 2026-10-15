@@ -5,6 +5,7 @@ import { dispatchReflexionWorker } from '@/lib/services/reflexionService';
 import { performInterviewEvaluation } from '@/lib/services/interviewEvaluation.server';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
 import { systemDesignDiagramStateSchema } from '@/lib/schemas/diagramSchema';
+import { downsampleByGroup } from '@/lib/utils/downsample';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,19 +107,47 @@ const speechAnalyticsSchema = z.object({
   }),
 });
 
+/**
+ * Up to 10 planned questions plus at most one adaptive follow-up per question.
+ */
+const MAX_INTERVIEW_QUESTIONS = 20;
+
+/** Telemetry is sampled at ~10 FPS, so real sessions exceed the budget we keep. */
+const MAX_TELEMETRY_INPUT = 20000; // hard ceiling: reject beyond this (abuse guard)
+const MAX_TELEMETRY_KEPT = 1000; // what the evaluators actually receive
+
+function telemetryArray<T extends z.ZodTypeAny>(frameSchema: T) {
+  return z
+    .array(frameSchema)
+    .max(MAX_TELEMETRY_INPUT, `Telemetry exceeds ${MAX_TELEMETRY_INPUT} frames limit`)
+    .transform((frames) =>
+      downsampleByGroup(frames, MAX_TELEMETRY_KEPT, (frame) => (frame as { questionId?: string }).questionId)
+    )
+    .optional();
+}
+
 const evaluateSchema = z
   .object({
     setupData: setupDataSchema,
-    questionsList: z.array(questionSchema).min(1, 'questionsList must contain at least one question').max(10, 'Cannot exceed 10 questions'),
-    answersList: z.array(z.union([z.string().max(10000, 'Answer exceeds 10,000 characters limit'), answerSchema])).min(1).max(10, 'Cannot exceed 10 answers'),
+    questionsList: z
+      .array(questionSchema)
+      .min(1, 'questionsList must contain at least one question')
+      .max(MAX_INTERVIEW_QUESTIONS, `Cannot exceed ${MAX_INTERVIEW_QUESTIONS} questions`),
+    answersList: z
+      .array(z.union([z.string().max(10000, 'Answer exceeds 10,000 characters limit'), answerSchema]))
+      .min(1)
+      .max(MAX_INTERVIEW_QUESTIONS, `Cannot exceed ${MAX_INTERVIEW_QUESTIONS} answers`),
     deepAnalysisMode: z.boolean().optional(),
-    gazeFrames: z.array(gazeFrameSchema).max(1000).optional(),
-    headPoseFrames: z.array(headPoseFrameSchema).max(1000).optional(),
-    affectFrames: z.array(affectFrameSchema).max(1000).optional(),
-    syncWindows: z.array(syncWindowSchema).max(1000).optional(),
+    gazeFrames: telemetryArray(gazeFrameSchema),
+    headPoseFrames: telemetryArray(headPoseFrameSchema),
+    affectFrames: telemetryArray(affectFrameSchema),
+    syncWindows: telemetryArray(syncWindowSchema),
     codeAnswer: codeAnswerSchema.optional(),
     speechAnalytics: z.record(z.string().max(64), speechAnalyticsSchema)
-      .refine((value) => Object.keys(value).length <= 10, 'Cannot exceed 10 speech analytics entries')
+      .refine(
+        (value) => Object.keys(value).length <= MAX_INTERVIEW_QUESTIONS,
+        `Cannot exceed ${MAX_INTERVIEW_QUESTIONS} speech analytics entries`
+      )
       .optional(),
   })
   .refine((data) => data.questionsList.length === data.answersList.length, {

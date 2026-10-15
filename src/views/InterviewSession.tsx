@@ -10,7 +10,7 @@ import {
   FaChevronLeft,
   FaStepForward,
 } from 'react-icons/fa';
-import { INTERVIEWER_PERSONAS, submitInterviewAnswers } from '../services/constants';
+import { INTERVIEWER_PERSONAS, submitInterviewAnswers, describeEvaluationFailure } from '../services/constants';
 import { saveMockInterview, mapEvaluationToMockInterviewPayload } from '../services/interview';
 import { useInterview } from '../context/InterviewContext';
 import { useAuth } from '../hooks/useAuth';
@@ -35,6 +35,8 @@ import {
   generateFallbackEvaluationReport,
   handleRetryEvaluationSuccess,
   handleRetryEvaluationFailure,
+  buildFollowUpQuestion,
+  resolveQuestionId,
 } from '../components/interview/session/sessionHelpers';
 import SessionGradingOverlay from '../components/interview/session/SessionGradingOverlay';
 import SessionInterviewerCard from '../components/interview/session/SessionInterviewerCard';
@@ -215,10 +217,13 @@ export default function InterviewSession() {
     };
   }, [stopCamera]);
 
-  // Active question attribution context (REM-4)
+  // Active question attribution context (REM-4).
+  // Ids come from the question objects themselves (follow-ups get their own unique id), so
+  // telemetry, speech analytics and the evaluation payload all agree after a follow-up is
+  // inserted. Index-based ids are only a fallback for legacy string questions.
   const activeQuestionId = isRetry && retryQuestionIndex !== null
-    ? `q_${retryQuestionIndex + 1}`
-    : `q_${currentQuestionIndex + 1}`;
+    ? resolveQuestionId(questions[retryQuestionIndex], retryQuestionIndex)
+    : currentQuestion.id;
   const activeQuestionIndex = isRetry && retryQuestionIndex !== null
     ? retryQuestionIndex
     : currentQuestionIndex;
@@ -572,7 +577,8 @@ export default function InterviewSession() {
           })
           .catch((err) => {
             console.warn('[InterviewSession] Server evaluation failed, using resilient offline fallback:', err);
-            showToast('Network timeout. Generated resilient assessment fallback.', 'info');
+            const failure = describeEvaluationFailure(err);
+            showToast(failure.toast, 'info');
             const fallback = generateFallbackEvaluationReport(
               setupData,
               updatedQuestions.map((q, idx) => {
@@ -586,7 +592,9 @@ export default function InterviewSession() {
                 }
                 return { id: `q_${idx + 1}`, question: q };
               }),
-              updatedAnswers
+              updatedAnswers,
+              undefined,
+              failure.reason
             );
             setResults(fallback);
             setGrading(false);
@@ -669,8 +677,9 @@ export default function InterviewSession() {
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify({
-              question: currentQuestionText,
-              answerText: finalAnswer,
+              // Clip to the route's limits so a long transcript can't turn into a 400
+              question: currentQuestionText.slice(0, 1000),
+              answerText: finalAnswer.slice(0, 10000),
               role: setupData.role,
               difficulty: setupData.experienceLevel,
               type: setupData.type,
@@ -698,7 +707,13 @@ export default function InterviewSession() {
         if (data && data.needsFollowUp && followUpText) {
           const newQuestionsList = [...questions];
           const insertIdx = currentQuestionIndex + 1;
-          newQuestionsList.splice(insertIdx, 0, followUpText);
+          // Follow-ups are real question objects with their own unique id (not index-derived),
+          // so ids stay stable when later questions shift by one position.
+          newQuestionsList.splice(
+            insertIdx,
+            0,
+            buildFollowUpQuestion({ id: currentQuestion.id, duration: currentQuestion.duration }, followUpText)
+          );
           followUpBadgeSet.add(insertIdx);
           followUpTrackedIndices.add(insertIdx); // Prevent nested follow-up on the follow-up question itself
 
@@ -736,27 +751,58 @@ export default function InterviewSession() {
     codeAnswer,
     isCodingMode,
     currentQuestion.id,
+    currentQuestion.question,
+    currentQuestion.hint,
+    currentQuestion.duration,
+    currentQuestion.idealConcepts,
+    currentQuestion.targetedWeakness,
+    currentQuestionText,
+    activeQuestionId,
+    isRetry,
+    retryQuestionIndex,
+    diagramState,
+    user?.id,
+    showToast,
+    getCapturedTelemetry,
+    stopCamera,
+    updateQuestionScore,
+    setQuestions,
+    setIsRetry,
+    followUpBadgeSet,
+    followUpTrackedIndices,
     finalizeSpeechAnalytics,
   ]);
 
-  // Question countdown timer effect
+  // Question countdown timer.
+  // handleNextQuestion changes identity on every keystroke / interim transcript update, so it is
+  // read through a ref: the timer must not restart (and the limit must not be pushed back) while
+  // the candidate is typing or speaking. It is deadline-based, and the expiry side effect runs
+  // outside any state updater so it fires exactly once (also under React Strict Mode).
+  const handleNextQuestionRef = useRef(handleNextQuestion);
   useEffect(() => {
-    if (interviewerSpeaking) return;
+    handleNextQuestionRef.current = handleNextQuestion;
+  }, [handleNextQuestion]);
 
-    setTimeLeft(currentQuestion.duration);
+  useEffect(() => {
+    if (interviewerSpeaking || checkingFollowUp || grading) return;
+
+    const durationSec = currentQuestion.duration;
+    const deadline = Date.now() + durationSec * 1000;
+    setTimeLeft(durationSec);
+
+    let fired = false;
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleNextQuestion();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0 && !fired) {
+        fired = true;
+        clearInterval(timer);
+        handleNextQuestionRef.current();
+      }
+    }, 250);
 
     return () => clearInterval(timer);
-  }, [currentQuestionIndex, interviewerSpeaking, currentQuestion.duration, handleNextQuestion]);
+  }, [currentQuestionIndex, interviewerSpeaking, checkingFollowUp, grading, currentQuestion.duration]);
 
   // Unsaved Content Navigation Guard (Tab close / refresh)
   const activeAnswerContent = responseMode === 'type' ? typedAnswer : transcriptText;
@@ -870,7 +916,8 @@ export default function InterviewSession() {
         })
         .catch((err) => {
           console.warn('[InterviewSession] Server evaluation failed on skip, using resilient fallback:', err);
-          showToast('Network timeout. Generated resilient assessment fallback.', 'info');
+          const failure = describeEvaluationFailure(err);
+          showToast(failure.toast, 'info');
           const fallback = generateFallbackEvaluationReport(
             setupData,
             questions.map((q, idx) => {
@@ -884,7 +931,9 @@ export default function InterviewSession() {
               }
               return { id: `q_${idx + 1}`, question: q };
             }),
-            newAnswers
+            newAnswers,
+            undefined,
+            failure.reason
           );
           setResults(fallback);
           setGrading(false);
@@ -906,6 +955,11 @@ export default function InterviewSession() {
     codeAnswer,
     isCodingMode,
     currentQuestion.id,
+    diagramState,
+    user?.id,
+    showToast,
+    getCapturedTelemetry,
+    stopCamera,
     finalizeSpeechAnalytics,
   ]);
 
