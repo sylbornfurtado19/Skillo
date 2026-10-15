@@ -22,132 +22,33 @@ import { getProfile } from '../services/profile';
 import { supabase } from '../lib/supabase';
 import { getAuthToken } from '../services/auth';
 
+import dynamic from 'next/dynamic';
 import { LogoIcon } from '../components/common/Logo';
 import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
-import AdaptiveHUDHeader from '../components/ui/AdaptiveHUDHeader';
-import { SystemDesignCanvas } from '../components/interview/SystemDesignCanvas';
-import { SystemDesignDiagramState, createInitialDiagramState, deserializeDiagram, serializeDiagram } from '../types/systemDesign';
-import EyeContactHUD from '../components/ui/EyeContactHUD';
-import PostureHUD from '../components/ui/PostureHUD';
-import AffectiveHUD from '../components/ui/AffectiveHUD';
 import IVPSyncTracker, { type IVPSyncTrackerHandle } from '../components/ui/IVPSyncTracker';
-import LipSyncHUD from '../components/ui/LipSyncHUD';
 import { useInterviewCamera } from '../hooks/useInterviewCamera';
 import { useIVPSessionPipeline } from '../hooks/useIVPSessionPipeline';
 import IVPCameraPreview from '../components/ui/IVPCameraPreview';
 import type { SyncWindowResult, InterviewQuestion } from '@/types/index';
+import type { SystemDesignDiagramState } from '../types/systemDesign';
+import { createInitialDiagramState, deserializeDiagram, serializeDiagram } from '../types/systemDesign';
+import {
+  AUTOSAVE_STORAGE_KEY_PREFIX,
+  AUDIO_BAR_PROFILES,
+  generateFallbackEvaluationReport,
+  formatTime,
+} from '../components/interview/session/sessionHelpers';
+import SessionGradingOverlay from '../components/interview/session/SessionGradingOverlay';
+import SessionInterviewerCard from '../components/interview/session/SessionInterviewerCard';
+import SessionAnswerWorkspace from '../components/interview/session/SessionAnswerWorkspace';
 
-
-
-
-
-const AUTOSAVE_STORAGE_KEY_PREFIX = 'skillo_draft_ans_';
-
-const AUDIO_BAR_PROFILES = [
-  { min: 10, max: 28, duration: 0.65, delay: 0 },
-  { min: 12, max: 36, duration: 0.55, delay: 0.1 },
-  { min: 8, max: 22, duration: 0.75, delay: 0.2 },
-  { min: 14, max: 34, duration: 0.6, delay: 0.05 },
-  { min: 16, max: 38, duration: 0.5, delay: 0.15 },
-  { min: 12, max: 30, duration: 0.7, delay: 0.25 },
-  { min: 14, max: 36, duration: 0.58, delay: 0.08 },
-  { min: 10, max: 24, duration: 0.62, delay: 0.18 },
-  { min: 12, max: 34, duration: 0.52, delay: 0.12 },
-  { min: 8, max: 26, duration: 0.68, delay: 0.22 },
-];
-
-function generateFallbackEvaluationReport(
-  setup: any,
-  questList: Array<{ id: string; question: string; hint?: string; idealConcepts?: string }>,
-  ansList: Array<any>
-) {
-  const avgScore = 78;
-  return {
-    overallScore: avgScore,
-    categories: {
-      technicalAccuracy: 76,
-      communication: 80,
-      depth: 78,
-      timeManagement: 78,
-      systemDesignLogic: 78,
-      edgeCaseHandling: 78,
-    },
-    breakdown: questList.map((q, idx) => {
-      const rawAns = ansList[idx];
-      const ansStr = typeof rawAns === 'string' ? rawAns : rawAns?.answerText ?? '';
-      return {
-        id: q.id,
-        question: q.question,
-        userAnswer: ansStr || 'Answer recorded.',
-        score: ansStr.trim().length > 30 ? 80 : 55,
-        idealConcepts: q.idealConcepts || (q.hint ? q.hint.trim() : 'Standard domain principles & practices.'),
-        feedback: 'Evaluated with resilient client-side assessment fallback.',
-        strengths: ['Structured response organization', 'Clear communication'],
-        suggestions: ['Incorporate concrete system design trade-offs and quantitative metrics.'],
-      };
-    }),
-    interviewerComments: 'Evaluation completed via resilient fallback mode due to transient network conditions.',
-    personaId: setup?.persona || 'sarah',
-    setupData: setup,
-    evaluatedAt: new Date().toISOString(),
-    suqEvaluation: {
-      confidenceLevel: 'MEDIUM' as const,
-      semanticEntropy: 0.42,
-      clusters: [],
-      passes: [],
-      aggregatedRubricFeedback: {
-        technicalAccuracy: 'Solid baseline principles demonstrated.',
-        systemDesignLogic: 'Logical architecture organization.',
-        edgeCaseHandling: 'Addressed common failure paths.',
-        communicationClarity: 'Clear and structured articulation.',
-      },
-      requiresValidationPass: false,
-      latencyMs: 320,
-    },
-    simpoContrastiveResult: {
-      evaluationId: `simpo_fb_${Date.now()}`,
-      contrastivePair: {
-        preferredAnswer: {
-          text: 'FAANG-level response demonstrates granular trade-off analysis, concurrency models, and resilient error recovery.',
-          tokenLength: 120,
-          implicitReward: 2.15,
-        },
-        dispreferredAnswer: {
-          text: 'Under-elaborated response omitted boundary error conditions and quantitative complexity figures.',
-          tokenLength: 70,
-          implicitReward: 0.85,
-        },
-        rewardMargin: 1.30,
-        marginSatisfied: true,
-        structuralDeltas: [
-          {
-            dimension: 'SYSTEM_ARCHITECTURE' as const,
-            deltaSummary: 'Incorporate explicit concurrency locks and caching policies.',
-            preferredStrength: 'Explicit lock-free architectures',
-            dispreferredWeakness: 'High-level abstraction without concurrency',
-            impactScore: 0.8,
-          },
-        ],
-      },
-      summaryDeltaText: 'FAANG target highlights deeper concurrency models and boundary failure mitigation.',
-      benchmarkDeltaCard: {
-        architecturalGap: ['Omitted distributed caching tier and replication topologies.'],
-        edgeCaseOversights: ['Boundary null-check and connection timeout recovery.'],
-        faangComparison: 'Candidate demonstrated good foundational logic; adding explicit concurrency models will reach FAANG benchmark.',
-        rewardScore: 2.15,
-      },
-    },
-    benchmarkDeltaCard: {
-      architecturalGap: ['Omitted distributed caching tier and replication topologies.'],
-      edgeCaseOversights: ['Boundary null-check and connection timeout recovery.'],
-      faangComparison: 'Candidate demonstrated good foundational logic; adding explicit concurrency models will reach FAANG benchmark.',
-      rewardScore: 2.15,
-    },
-  };
-}
+const SessionBiometricHUDs = dynamic(
+  () => import('../components/interview/session/SessionBiometricHUDs'),
+  { ssr: false }
+);
 
 export default function InterviewSession() {
   const router = useRouter();
@@ -947,12 +848,6 @@ export default function InterviewSession() {
     }
   };
 
-  const formatTime = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const remaining = secs % 60;
-    return `${mins}:${remaining < 10 ? '0' : ''}${remaining}`;
-  };
-
   const activeAnswer = responseMode === 'type' ? typedAnswer : transcriptText;
   const wordCount = activeAnswer ? activeAnswer.trim().split(/\s+/).filter(Boolean).length : 0;
   const charCount = activeAnswer ? activeAnswer.length : 0;
@@ -994,540 +889,94 @@ export default function InterviewSession() {
   }
 
   if (grading) {
-
-    return (
-      <div className="bg-bg-surface rounded-2xl p-10 border border-border shadow-soft flex flex-col items-center justify-center min-h-[420px] text-center max-w-xl mx-auto mt-16">
-        <div className="relative mb-8">
-          <motion.div
-            animate={{
-              scale: [0.95, 1.05, 0.95],
-              filter: [
-                'drop-shadow(0 0 10px rgba(155, 34, 24, 0.15))',
-                'drop-shadow(0 0 25px rgba(155, 34, 24, 0.35))',
-                'drop-shadow(0 0 10px rgba(155, 34, 24, 0.15))',
-              ],
-            }}
-            transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
-          >
-            <LogoIcon size={72} />
-          </motion.div>
-        </div>
-        <h3 className="text-xl font-heading font-bold text-text-primary mb-2">Grading Live Assessment</h3>
-        <p className="text-xs text-text-secondary font-mono mb-6">Evaluating communication parameters and accuracy standards...</p>
-        <div className="w-full h-1.5 bg-bg-surface-alt rounded-full max-w-xs overflow-hidden border border-border">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: '100%' }}
-            transition={{ duration: 2.8 }}
-            className="h-full bg-secondary"
-          />
-        </div>
-      </div>
-    );
+    return <SessionGradingOverlay />;
   }
 
   return (
     <div className="max-w-6xl mx-auto pb-12 text-left">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-        <div className="lg:col-span-5 space-y-6 flex flex-col justify-between">
-          <Card variant="default" className="space-y-4 flex-1 flex flex-col justify-between">
-            <div>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="relative shrink-0">
-                    <AnimatePresence mode="popLayout">
-                      {interviewerSpeaking ? (
-                        <motion.span
-                          key="speaking-ring"
-                          initial={{ scale: 0.8, opacity: 0.5 }}
-                          animate={{ scale: [1, 1.25, 1], opacity: [0.5, 0, 0.5] }}
-                          exit={{ opacity: 0 }}
-                          transition={{ repeat: Infinity, duration: 1.8 }}
-                          className={`absolute inset-0 rounded-2xl border-2 ${persona.borderColor} pointer-events-none`}
-                        />
-                      ) : (
-                        <motion.span
-                          key="listening-ring"
-                          initial={{ scale: 0.8, opacity: 0.6 }}
-                          animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
-                          exit={{ opacity: 0 }}
-                          transition={{ repeat: Infinity, duration: 2.0 }}
-                          className="absolute inset-0 rounded-2xl border-2 border-success pointer-events-none"
-                        />
-                      )}
-                    </AnimatePresence>
-                    <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-border shadow-soft z-10 shrink-0">
-                      <Image
-                        src={persona.avatar}
-                        alt={persona.name}
-                        width={64}
-                        height={64}
-                        className="object-cover h-full w-full"
-                      />
-                    </div>
-                  </div>
+        <SessionInterviewerCard
+          persona={persona}
+          interviewerSpeaking={interviewerSpeaking}
+          followUpBadgeSet={followUpBadgeSet}
+          currentQuestionIndex={currentQuestionIndex}
+          pastCritiques={pastCritiques}
+          recalledMemoryNotice={recalledMemoryNotice}
+          cancelSpeechNarration={cancelSpeechNarration}
+          voiceRate={voiceRate}
+          subtitlesEnabled={subtitlesEnabled}
+          questionSentences={questionSentences}
+          spokenSentenceIndex={spokenSentenceIndex}
+          currentQuestion={currentQuestion}
+          showHint={showHint}
+          setShowHint={setShowHint}
+          focusAreasList={focusAreasList}
+          setupData={setupData}
+        >
+          {/* Biometric HUDs (Lazy-loaded with ssr: false) */}
+          <SessionBiometricHUDs
+            liveGazeFrame={liveGazeFrame}
+            gazeEyeContactPct={gazeEyeContactPct}
+            showGazeWarning={showGazeWarning}
+            livePoseFrame={livePoseFrame}
+            latestGestureToast={latestGestureToast}
+            liveAffectFrame={liveAffectFrame}
+            liveSyncWindow={liveSyncWindow}
+          />
 
-                  <div className="space-y-1">
-                    <h3 className="font-heading font-bold text-text-primary leading-none">{persona.name}</h3>
-                    <p className="text-xs text-text-secondary font-mono uppercase">
-                      {persona.role} &bull; {persona.company}
-                    </p>
-                    <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
-                      <Badge variant={interviewerSpeaking ? 'primary' : 'neutral'} size="sm">
-                        {interviewerSpeaking ? 'Speaking Voice...' : 'Listening'}
-                      </Badge>
-                      {followUpBadgeSet.has(currentQuestionIndex) && (
-                        <Badge variant="warning" size="sm" className="bg-warning/15 border-warning/30 text-warning font-mono font-bold">
-                          ⚡ AI Real-Time Follow-up
-                        </Badge>
-                      )}
-                      {pastCritiques && pastCritiques.length > 0 && (
-                        <Badge variant="primary" size="sm" className="bg-primary-soft border-primary/30 text-primary font-mono font-bold flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" aria-hidden="true" />
-                          <span>🧠 Memory Active ({pastCritiques.length})</span>
-                        </Badge>
-                      )}
-                    </div>
-                    {recalledMemoryNotice && (
-                      <p className="text-xs text-primary font-mono bg-primary-soft/50 border border-primary/20 rounded px-1.5 py-0.5 mt-1 truncate max-w-[240px]" title={recalledMemoryNotice}>
-                        🧠 Recalled: {pastCritiques?.[0]?.summary || recalledMemoryNotice}
-                      </p>
-                    )}
-                  </div>
-                </div>
+          {/* Audio Sync Tracker for AV latency & speech energy */}
+          <IVPSyncTracker
+            ref={syncTrackerRef}
+            mediaStream={cameraStream}
+            videoSource={videoRef.current}
+            questionId={activeQuestionId}
+            questionIndex={activeQuestionIndex}
+            onWindow={handleSyncWindow}
+            visible={!interviewerSpeaking}
+          />
 
+          {/* Modern Unified Vision Worker + ONNX Camera HUD (REM-3) */}
+          <IVPCameraPreview
+            videoRef={videoRef}
+            mediaStream={cameraStream}
+            gazeResult={liveGazeFrame}
+            poseResult={livePoseFrame}
+            isVisionReady={isVisionReady}
+            isONNXReady={isONNXReady}
+            visible={!interviewerSpeaking}
+            className="mt-3"
+          />
+        </SessionInterviewerCard>
 
-                {/* Skip Narration / Mute Button */}
-                {interviewerSpeaking && (
-                  <button
-                    type="button"
-                    onClick={cancelSpeechNarration}
-                    title="Skip voice narration"
-                    aria-label="Skip voice narration"
-                    className="flex items-center gap-1 text-xs font-mono text-text-secondary hover:text-text-primary bg-bg-surface-alt border border-border hover:bg-border/40 px-2 py-1 rounded-lg transition cursor-pointer shrink-0"
-                  >
-                    <FaStepForward size={10} aria-hidden="true" />
-                    <span>Skip Voice</span>
-                  </button>
-                )}
-              </div>
-
-              {/* LATS Adaptive Questioning HUD Indicator */}
-              <AdaptiveHUDHeader className="mt-4" />
-
-              {/* L2CS-Net Live Gaze HUD */}
-              <div className="mt-3">
-                <EyeContactHUD
-                  currentFrame={liveGazeFrame}
-                  eyeContactPercentage={gazeEyeContactPct}
-                  showDistraction={showGazeWarning}
-                />
-              </div>
-
-              {/* HopeNet Live Posture HUD */}
-              <div className="mt-2">
-                <PostureHUD
-                  currentFrame={livePoseFrame}
-                  latestGestureToast={latestGestureToast}
-                />
-              </div>
-
-              {/* AffectNet Live Affective HUD */}
-              <div className="mt-2">
-                <AffectiveHUD currentFrame={liveAffectFrame} />
-              </div>
-
-              {/* SyncNet Live Anti-Spoofing HUD */}
-              <div className="mt-2">
-                <LipSyncHUD currentWindow={liveSyncWindow} />
-              </div>
-
-              {/* Audio Sync Tracker for AV latency & speech energy */}
-              <IVPSyncTracker
-                ref={syncTrackerRef}
-                mediaStream={cameraStream}
-                videoSource={videoRef.current}
-                questionId={activeQuestionId}
-                questionIndex={activeQuestionIndex}
-                onWindow={handleSyncWindow}
-                visible={!interviewerSpeaking}
-              />
-
-              {/* Modern Unified Vision Worker + ONNX Camera HUD (REM-3) */}
-              <IVPCameraPreview
-                videoRef={videoRef}
-                mediaStream={cameraStream}
-                gazeResult={liveGazeFrame}
-                poseResult={livePoseFrame}
-                isVisionReady={isVisionReady}
-                isONNXReady={isONNXReady}
-                visible={!interviewerSpeaking}
-                className="mt-3"
-              />
-
-
-              <div className="bg-bg-surface-alt rounded-xl p-5 border border-border mt-4 min-h-[120px] flex flex-col justify-center">
-                <AnimatePresence mode="wait">
-                  {interviewerSpeaking ? (
-                    <motion.div
-                      key="speaking"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="space-y-3 w-full"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="flex space-x-1">
-                          <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
-                          <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
-                          <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce" />
-                        </div>
-                        <span className="text-xs text-primary font-mono font-bold uppercase">
-                          AI Voice Narration Active ({voiceRate}x Speed)
-                        </span>
-                      </div>
-
-                      {/* Subtitles Animation (If enabled in settings) */}
-                      {subtitlesEnabled ? (
-                        <div className="text-xs sm:text-sm font-heading font-medium leading-relaxed">
-                          {questionSentences.map((sentence, idx) => (
-                            <span
-                              key={idx}
-                              className={`transition-all duration-300 ${
-                                idx === spokenSentenceIndex
-                                  ? 'text-primary font-bold bg-primary-soft px-1 rounded border-b border-primary'
-                                  : 'text-text-secondary opacity-70'
-                              }`}
-                            >
-                              {sentence}{' '}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs sm:text-sm font-heading font-medium text-text-primary leading-relaxed">
-                          {currentQuestion.question}
-                        </p>
-                      )}
-                    </motion.div>
-                  ) : (
-                    <div className="space-y-3 w-full">
-                      <motion.p
-                        key="question"
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-xs sm:text-sm font-heading font-medium text-text-primary leading-relaxed"
-                      >
-                        {currentQuestion.question}
-                      </motion.p>
-
-                      {currentQuestion.hint && (
-                        <div className="pt-2 border-t border-border">
-                          <button
-                            type="button"
-                            onClick={() => setShowHint(!showHint)}
-                            aria-expanded={showHint}
-                            className="text-xs text-primary hover:text-primary-hover font-semibold uppercase tracking-wider transition cursor-pointer"
-                          >
-                            {showHint ? 'Hide Hint' : 'Show Hint'}
-                          </button>
-                          <AnimatePresence>
-                            {showHint && (
-                              <motion.p
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{
-                                  height: { duration: 0.3, ease: 'easeInOut' },
-                                  opacity: { duration: 0.2, ease: 'linear' },
-                                }}
-                                className="text-xs text-text-secondary mt-2 leading-relaxed bg-bg-surface p-2.5 rounded-lg border border-border font-mono overflow-hidden"
-                              >
-                                {currentQuestion.hint}
-                              </motion.p>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-
-            <div className="pt-6 border-t border-border space-y-2">
-              <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block">
-                Question Focus Elements
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {focusAreasList.map((focus) => (
-                  <Badge key={focus} variant="primary" size="sm">
-                    {focus}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </Card>
-
-          <Card variant="default" className="p-4 border-l-2 border-l-secondary bg-bg-surface-alt space-y-1.5">
-            <span className="text-xs text-secondary font-bold uppercase tracking-wider block flex items-center gap-1.5">
-              <FaInfoCircle aria-hidden="true" />
-              <span>Assessor Pacing Notes</span>
-            </span>
-            <p className="text-xs text-text-secondary leading-relaxed">
-              {setupData.type === 'Technical'
-                ? 'Elaborate on coding trade-offs, space/time Big O complexities, and error-handling conditions. Do not state high-level design only.'
-                : 'Structure answers using the STAR framework. Clearly define the quantitative results and what metrics changed.'}
-            </p>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-7 flex flex-col justify-between bg-bg-surface border border-border rounded-2xl p-6 relative space-y-6 shadow-soft">
-          <div>
-            <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-primary font-bold uppercase tracking-wider block">Candidate Studio Workspace</span>
-                  {isRetry && (
-                    <Badge variant="warning" size="sm" className="bg-warning/15 border-warning/30 text-warning font-mono font-bold">
-                      Focused Question Retry
-                    </Badge>
-                  )}
-                </div>
-                <span className="text-xs text-text-secondary font-mono">
-                  {isRetry ? 'Single Question Target Practice' : `Question ${currentQuestionIndex + 1} of ${questions.length}`}
-                </span>
-              </div>
-
-
-              <div className="bg-bg-surface-alt p-1 rounded-xl border border-border flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResponseMode('type');
-                    setTranscriptText('');
-                    setRecording(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition duration-200 cursor-pointer ${
-                    responseMode === 'type' ? 'bg-primary text-text-on-primary shadow-soft' : 'text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  <FaKeyboard size={10} />
-                  <span>Editor</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResponseMode('speak');
-                    setTypedAnswer('');
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition duration-200 cursor-pointer ${
-                    responseMode === 'speak' ? 'bg-primary text-text-on-primary shadow-soft' : 'text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  <FaMicrophone size={10} />
-                  <span>Speech</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 30-Second Early Warning Banner */}
-            {timeLeft <= 30 && timeLeft > 10 && !interviewerSpeaking && (
-              <div className="bg-warning/15 border border-warning/30 text-warning text-xs px-4 py-2 rounded-xl font-medium mb-3 flex items-center gap-2">
-                <span>⏱️</span>
-                <span>Pacing Warning: 30 seconds remaining. Wrap up your main points before automatic submission.</span>
-              </div>
-            )}
-
-            {/* 10-Second Critical Red Warning Banner */}
-            {timeLeft <= 10 && !interviewerSpeaking && (
-              <div className="bg-danger/15 border border-danger/30 text-danger text-xs px-4 py-2.5 rounded-xl font-medium animate-pulse mb-3 text-left">
-                ⚠️ 10 seconds remaining — your answer will be submitted automatically.
-              </div>
-            )}
-
-            <div className="min-h-[220px] relative">
-              {responseMode === 'type' ? (
-                <div className="space-y-2">
-                  <textarea
-                    value={typedAnswer}
-                    onChange={(e) => setTypedAnswer(e.target.value)}
-                    disabled={interviewerSpeaking}
-                    placeholder="Provide your response here..."
-                    className="w-full h-56 rounded-xl bg-bg-surface border border-border p-4 text-xs sm:text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/25 transition duration-200 resize-none font-mono disabled:opacity-40"
-                  />
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center space-y-6 py-8">
-                  {!isSpeechSupported ? (
-                    <div className="text-center p-6 bg-danger/10 border border-danger/20 rounded-xl space-y-3 max-w-sm mx-auto">
-                      <div className="h-10 w-10 bg-danger/20 border border-danger/30 rounded-full flex items-center justify-center text-danger mx-auto">
-                        <FaExclamationTriangle />
-                      </div>
-                      <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
-                        Web Speech API Unsupported
-                      </h4>
-                      <p className="text-xs text-text-secondary leading-relaxed">
-                        Speech recognition is not supported in this browser. Please try Google Chrome or Microsoft Edge, or switch back to the text Editor mode.
-                      </p>
-                    </div>
-                  ) : recording ? (
-                    <div className="w-full flex flex-col items-center space-y-4">
-                      <div className="h-10 flex items-end justify-center gap-1.5 px-4">
-                        {AUDIO_BAR_PROFILES.map((bar, idx) => (
-                          <motion.div
-                            key={idx}
-                            animate={{ height: [bar.min, bar.max, bar.min] }}
-                            transition={{ repeat: Infinity, duration: bar.duration, delay: bar.delay, ease: 'easeInOut' }}
-                            className="w-1.5 bg-primary rounded-full"
-                            style={{ height: `${bar.min}px` }}
-                          />
-                        ))}
-                      </div>
-
-                      <Button onClick={handleToggleRecord} variant="danger" size="sm" icon={FaPauseCircle}>
-                        Pause Voice Recording
-                      </Button>
-
-                      <div className="w-full bg-bg-surface-alt border border-border rounded-xl p-4 text-xs font-mono text-text-secondary leading-relaxed min-h-[60px] text-left">
-                        {transcriptText || 'Awaiting voice inputs... speak to compile transcript logs.'}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center space-y-4">
-                      <button
-                        type="button"
-                        onClick={handleToggleRecord}
-                        disabled={interviewerSpeaking}
-                        aria-label="Capture speech via microphone"
-                        className="h-16 w-16 rounded-full bg-primary-soft border border-primary/30 hover:border-primary flex items-center justify-center text-primary text-2xl hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition duration-200 cursor-pointer shadow-soft"
-                      >
-                        <FaMicrophone aria-hidden="true" />
-                      </button>
-                      <div className="space-y-1">
-                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Capture Speech</p>
-                        <p className="text-xs text-text-secondary">Audio captures are transcribed locally in real-time.</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-between items-center text-xs text-text-secondary font-mono mt-3 pb-3 border-b border-border">
-              <span>
-                Words:{' '}
-                <span
-                  className={
-                    wordCount > 100
-                      ? 'text-success font-bold'
-                      : wordCount >= 50
-                      ? 'text-warning font-bold'
-                      : 'text-text-secondary'
-                  }
-                >
-                  {wordCount}
-                </span>{' '}
-                &bull; Characters: {charCount}
-              </span>
-              <span>Formatting: plain text structure</span>
-            </div>
-          </div>
-
-          {/* System Design Architectural Canvas (Conditional per System Design question) */}
-          {isSystemDesignQuestion && (
-            <div className="pt-4 border-t border-border">
-              <SystemDesignCanvas
-                initialState={diagramState}
-                onChange={setDiagramState}
-              />
-            </div>
-          )}
-
-
-          <div className="flex justify-between items-center mt-6 pt-4 border-t border-border">
-            <div className="flex gap-2 items-center">
-              {!confirmSkip ? (
-                <>
-                  <Button
-                    onClick={() => {
-                      setConfirmSkip(false);
-                      handlePrevQuestion();
-                    }}
-                    disabled={currentQuestionIndex === 0}
-                    variant="ghost"
-                    size="sm"
-                    icon={FaChevronLeft}
-                  >
-                    Prev
-                  </Button>
-                  <Button
-                    onClick={() => setConfirmSkip(true)}
-                    variant="ghost"
-                    size="sm"
-                    className="text-text-secondary hover:text-text-primary"
-                  >
-                    Skip
-                  </Button>
-                </>
-              ) : (
-                <div className="flex items-center gap-2 bg-bg-surface-alt px-3 py-1.5 rounded-lg border border-border text-xs text-text-secondary">
-                  <span>Skip this question? Your answer won't be scored.</span>
-                  <button
-                    type="button"
-                    onClick={handleConfirmSkip}
-                    className="text-danger hover:text-danger/80 font-bold px-1.5 py-0.5 rounded cursor-pointer transition"
-                  >
-                    Confirm
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmSkip(false)}
-                    className="text-text-secondary hover:text-text-primary font-bold px-1.5 py-0.5 rounded cursor-pointer transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block">Timer</span>
-                <span
-                  className={`text-xs font-mono font-bold ${
-                    timeLeft <= 10
-                      ? 'text-danger animate-pulse'
-                      : timeLeft <= 30
-                      ? 'text-warning'
-                      : 'text-text-primary'
-                  }`}
-                >
-                  {formatTime(timeLeft)}
-                </span>
-              </div>
-              <div className="w-16 h-1 bg-bg-surface-alt rounded-full overflow-hidden shrink-0 border border-border">
-                <div
-                  className={`h-full transition-all duration-1000 ${
-                    timeLeft <= 10 ? 'bg-danger' : timeLeft <= 30 ? 'bg-warning' : 'bg-primary'
-                  }`}
-                  style={{ width: `${(timeLeft / currentQuestion.duration) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            <Button
-              onClick={handleNextQuestion}
-              disabled={interviewerSpeaking || !activeAnswer?.trim()}
-              variant="primary"
-              size="sm"
-              icon={FaArrowRight}
-            >
-              {currentQuestionIndex + 1 === questions.length ? 'Finish' : 'Next'}
-            </Button>
-
-          </div>
-        </div>
+        <SessionAnswerWorkspace
+          isRetry={isRetry}
+          currentQuestionIndex={currentQuestionIndex}
+          totalQuestions={questions.length}
+          responseMode={responseMode}
+          setResponseMode={setResponseMode}
+          typedAnswer={typedAnswer}
+          setTypedAnswer={setTypedAnswer}
+          transcriptText={transcriptText}
+          setTranscriptText={setTranscriptText}
+          recording={recording}
+          setRecording={setRecording}
+          interviewerSpeaking={interviewerSpeaking}
+          timeLeft={timeLeft}
+          currentQuestionDuration={currentQuestion.duration}
+          isSpeechSupported={isSpeechSupported}
+          handleToggleRecord={handleToggleRecord}
+          wordCount={wordCount}
+          charCount={charCount}
+          confirmSkip={confirmSkip}
+          setConfirmSkip={setConfirmSkip}
+          handlePrevQuestion={handlePrevQuestion}
+          handleConfirmSkip={handleConfirmSkip}
+          handleNextQuestion={handleNextQuestion}
+          activeAnswer={activeAnswer}
+          isSystemDesignQuestion={isSystemDesignQuestion}
+          diagramState={diagramState}
+          setDiagramState={setDiagramState}
+        />
       </div>
     </div>
   );

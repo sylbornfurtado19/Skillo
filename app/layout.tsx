@@ -18,8 +18,17 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Skillo | Intelligent Resume Screening & AI Interview Assistant',
+  metadataBase: new URL('https://skillo-theta.vercel.app'),
+  title: {
+    default: 'Skillo | Intelligent Resume Screening & AI Interview Assistant',
+    template: '%s | Skillo',
+  },
   description: 'Practice realistic, AI-driven behavioral and technical interviews tailored to your exact industry, role, and experience level.',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
   openGraph: {
     title: 'Skillo | Intelligent Resume Screening & AI Interview Assistant',
     description: 'Practice realistic, AI-driven behavioral and technical interviews tailored to your exact industry, role, and experience level.',
@@ -27,7 +36,7 @@ export const metadata: Metadata = {
     siteName: 'Skillo',
     images: [
       {
-        url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&h=630&q=80',
+        url: '/og.png',
         width: 1200,
         height: 630,
         alt: 'Skillo AI Interview Assistant',
@@ -40,10 +49,22 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Skillo | Intelligent Resume Screening & AI Interview Assistant',
     description: 'Practice realistic, AI-driven behavioral and technical interviews tailored to your exact industry, role, and experience level.',
-    images: ['https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&h=630&q=80'],
+    images: ['/og.png'],
   },
 };
 
+const themeInitScript = `(function() {
+  try {
+    var saved = localStorage.getItem('iq_theme');
+    if (saved) {
+      try { saved = JSON.parse(saved); } catch (e) {}
+      if (saved) {
+        document.documentElement.dataset.theme = saved;
+        document.documentElement.setAttribute('data-theme', saved);
+      }
+    }
+  } catch (e) {}
+})();`;
 
 export default function RootLayout({
   children,
@@ -51,7 +72,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${sora.variable}`}>
+    <html lang="en" className={`${inter.variable} ${sora.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="bg-[var(--bg-page)] text-[var(--text-primary)] min-h-screen">
         <Providers>
           {children}

@@ -5,7 +5,16 @@ import type { AuthContextValue } from '../context/AuthContext';
 export const useAuth = (): AuthContextValue => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    return {
+      user: null,
+      session: null,
+      loading: false,
+      isAuthenticated: false,
+      signIn: async () => ({ data: null, error: null }),
+      signUp: async () => ({ data: null, error: null }),
+      signOut: async () => ({ data: null, error: null }),
+      signInWithGoogle: async () => ({ data: null, error: null }),
+    };
   }
   return context;
 };

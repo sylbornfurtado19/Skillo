@@ -50,4 +50,11 @@ __pycache__/
 # training and research artifacts
 scripts/train/data/
 scripts/train/checkpoints/
+scripts/train/exports/
 scripts/review1/data/
+
+# test and benchmark outputs
+test-results/
+replay_report.json
+microtrack_perf_benchmark.json
+startup_handoff_failures.json

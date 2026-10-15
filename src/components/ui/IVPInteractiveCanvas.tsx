@@ -46,72 +46,32 @@ import {
   type IVPFeatureFlags,
 } from '../../lib/services/ivpFeatureFlags';
 
-// ---------------------------------------------------------------------------
-// Internal canvas dimensions for the diagnostic processing pipeline.
-// All heavy pixel math runs on this 320×240 scratch buffer. The result is
-// upscaled to the display canvas via drawImage (GPU-accelerated bilinear).
-// ---------------------------------------------------------------------------
-const PROC_W = 320;
-const PROC_H = 240;
+import dynamic from 'next/dynamic';
+import {
+  PROC_W,
+  PROC_H,
+  type DiagnosticMode,
+  type DiagnosticMetrics,
+  type TrackingLifecycleState,
+  type CanvasTimelineTelemetry,
+  type IVPInteractiveCanvasProps,
+  MODE_TITLES,
+} from '../ivp/canvas/types';
+import CanvasHeaderControls from '../ivp/canvas/CanvasHeaderControls';
+import CanvasMetricHUD from '../ivp/canvas/CanvasMetricHUD';
+import WarmupWarningBanner from '../ivp/canvas/WarmupWarningBanner';
+import { getMicroTrackPercentiles as calcMicroTrackPercentiles, exportTelemetryPayload } from '../ivp/canvas/telemetryHelpers';
 
-export type DiagnosticMode =
-  | 'SOBEL_GRADIENTS'
-  | 'YCRCB_SKIN_OTSU'
-  | 'LUMINANCE_HISTEQ'
-  | 'TEMPORAL_MAD';
+const CalibrationModal = dynamic(() => import('../ivp/canvas/CalibrationModal'), { ssr: false });
 
-export interface DiagnosticMetrics {
-  histStats?: LuminanceHistogramResult;
-  otsuStats?: OtsuSegmentationResult;
-  sobelStats?: SobelGradientResult;
-  madStats?: TemporalMADResult;
-  ear: number;
-  mar: number;
-  fps: number;
-  targetLost: boolean;
-}
-
-export type TrackingLifecycleState = 'BOOTSTRAPPING' | 'MODEL_PENDING' | 'MODEL_READY';
-
-export interface CanvasTimelineTelemetry {
-  pageLoadTs: number;
-  workerSpawnTs: number;
-  modelInitStartTs: number;
-  modelInitDoneTs: number;
-  firstFrameSentTs: number;
-  firstModelPacketTs: number;
-  firstTemplatesCreatedTs: number;
-  firstMicroAcceptedTs: number;
-  firstSmoothedRenderTs: number;
-}
-
-export interface IVPInteractiveCanvasProps {
-  sourceElement: HTMLVideoElement | HTMLImageElement | null;
-  activeMode?: DiagnosticMode;
-  onModeChange?: (mode: DiagnosticMode) => void;
-  show3DAxes?: boolean;
-  showHistogram?: boolean;
-  showBoundingBox?: boolean;
-  showLandmarks?: boolean;
-  showDebugHUD?: boolean;
-  mirrored?: boolean;
-  workerLandmarks?: { envelope: DenseLandmarksEnvelope; buffer: Float32Array } | null;
-  workerTimeline?: WorkerTimelineTelemetry;
-  poseAngles?: { yaw: number; pitch: number; roll: number };
-  gazeCoords?: { x: number; y: number };
-  trackingPreset?: TrackingPreset;
-  workerStats?: VisionWorkerStats;
-  onMetricsUpdate?: (metrics: DiagnosticMetrics) => void;
-  className?: string;
-}
-
-// Static academic syllabus titles
-const MODE_TITLES: Record<DiagnosticMode, string> = {
-  SOBEL_GRADIENTS:  'UNIT 4/5: SOBEL 3x3 GRADIENT VECTOR FIELD',
-  YCRCB_SKIN_OTSU:   'UNIT 6/7: YCrCb CHROMINANCE & MORPHOLOGICAL OTSU MASK',
-  LUMINANCE_HISTEQ:  'UNIT 2: CLAHE RADIOMETRIC HISTOGRAM EQUALIZATION',
-  TEMPORAL_MAD:      'UNIT 8: INTER-FRAME TEMPORAL MAD MOTION HEATMAP',
+export type {
+  DiagnosticMode,
+  DiagnosticMetrics,
+  TrackingLifecycleState,
+  CanvasTimelineTelemetry,
+  IVPInteractiveCanvasProps,
 };
+export { MODE_TITLES, PROC_W, PROC_H };
 
 export default function IVPInteractiveCanvas({
   sourceElement,
@@ -312,78 +272,28 @@ export default function IVPInteractiveCanvas({
     }
   }, []);
 
-  const getMicroTrackPercentiles = () => {
-    const samples = microTrackMsSamplesRef.current;
-    if (samples.length === 0) return { p50: 0, p95: 0 };
-    const sorted = [...samples].sort((a, b) => a - b);
-    const p50 = sorted[Math.floor(sorted.length * 0.50)];
-    const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
-    return { p50, p95 };
-  };
+  const getMicroTrackPercentiles = () => calcMicroTrackPercentiles(microTrackMsSamplesRef.current);
 
   const handleFreezeAndExport = (includeImage: boolean = false) => {
-    let allowImage = includeImage;
-    if (allowImage && typeof window !== 'undefined') {
-      const confirmed = window.confirm(
-        'Privacy Notice: You requested to include a visual camera screenshot in the exported telemetry JSON. Do you provide explicit consent to export visual data?'
-      );
-      if (!confirmed) {
-        allowImage = false;
-      }
-    }
-    const { p50, p95 } = getMicroTrackPercentiles();
-    let imageDataUrl: string | undefined;
-    if (allowImage && canvasRef.current) {
-      try {
-        imageDataUrl = canvasRef.current.toDataURL('image/png');
-      } catch {}
-    }
-    const currentActiveFace = denseSmootherRef.current?.getFaceId() ?? (workerLandmarks?.envelope?.faceDetected ? 'active_face' : null);
-    const warmupT = microMatchesTriedRef.current;
-    const warmupA = microMatchesAcceptedRef.current;
-    const payload = {
-      sessionId: `session_${Date.now()}`,
-      timestamp: Date.now(),
-      timeline: { ...timelineRef.current },
+    exportTelemetryPayload({
+      includeImage,
+      canvas: canvasRef.current,
+      microTrackMsSamples: microTrackMsSamplesRef.current,
+      currentActiveFace: denseSmootherRef.current?.getFaceId() ?? (workerLandmarks?.envelope?.faceDetected ? 'active_face' : null),
+      warmupTried: microMatchesTriedRef.current,
+      warmupAccepted: microMatchesAcceptedRef.current,
+      timeline: timelineRef.current,
       trackingState: trackingStateRef.current,
-      isWarmup: featureFlags.enableWarmup && (performance.now() - appMountTsRef.current < 4000) && (trackingStateRef.current !== 'MODEL_READY'),
-      warmupAcceptance: {
-        tried: warmupT,
-        accepted: warmupA,
-        ratePercent: warmupT > 0 ? (warmupA / warmupT) * 100 : 100,
-        isPoorLighting: featureFlags.enableWarmup && warmupT > 50 && (warmupA / warmupT) < 0.05,
-      },
-      deviceProfile: deviceProfileRef.current,
-      activeFaceId: currentActiveFace,
-      frameNumber: frameCountRef.current,
-      envelope: {
-        faceBox: workerLandmarks?.envelope?.faceBox ?? null,
-        confidence: workerLandmarks?.envelope?.regionConfidences?.overall ?? 0,
-      },
-      landmarksRaw: (lastRawNormPtsRef.current ?? []).slice(0, 70),
-      landmarksSmoothed: (denseSmootherRef.current?.getCurrentResult()?.points ?? []).slice(0, 70),
-      microEvents: microEventHistoryRef.current.map(evt => ({
-        idx: evt.idx,
-        tried: true,
-        ncc: evt.ncc,
-        method: evt.method,
-        accepted: evt.accepted,
-        latencyMs: lastMicroTrackMsRef.current,
-        delta: evt.delta,
-      })),
-      microTrackMs: { p50, p95 },
       featureFlags,
-      ...(includeImage && imageDataUrl ? { image: imageDataUrl } : {}),
-    };
-    if (typeof window !== 'undefined') {
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ivp_telemetry_${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
+      appMountTs: appMountTsRef.current,
+      deviceProfile: deviceProfileRef.current,
+      frameCount: frameCountRef.current,
+      workerLandmarks,
+      lastRawNormPts: lastRawNormPtsRef.current,
+      smoothedLandmarks: (denseSmootherRef.current?.getCurrentResult()?.points ?? []).slice(0, 70),
+      microEventHistory: microEventHistoryRef.current,
+      lastMicroTrackMs: lastMicroTrackMsRef.current,
+    });
   };
 
   // Synchronize tracking preset with dense smoother
@@ -1930,153 +1840,40 @@ export default function IVPInteractiveCanvas({
 
   return (
     <div className={`space-y-3 text-left ${className}`}>
-      {/* Diagnostic Mode Tabs (All 4 Academic Units) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {(
-            [
-              ['SOBEL_GRADIENTS',  'Unit 4/5: Sobel Vector Field'],
-              ['YCRCB_SKIN_OTSU',  'Unit 6/7: YCrCb Otsu Mask'],
-              ['LUMINANCE_HISTEQ', 'Unit 2: CLAHE Equalization'],
-              ['TEMPORAL_MAD',     'Unit 8: Temporal MAD Heatmap'],
-            ] as [DiagnosticMode, string][]
-          ).map(([mode, label]) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => onModeChange?.(mode)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition cursor-pointer ${
-                activeMode === mode
-                  ? 'bg-primary text-text-on-primary shadow-soft'
-                  : 'bg-surface-alt text-text-secondary hover:text-text-primary hover:bg-surface-alt/80 border border-border'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* FPS & Target Status */}
-        <div className="flex items-center gap-3 text-[11px] font-mono">
-          {trackingState !== 'MODEL_READY' && (
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-warning/15 text-warning border border-warning/30 animate-pulse">
-              ⚡ WARMING UP ({trackingState})
-            </span>
-          )}
-          {liveMetrics.targetLost && (
-            <span className="text-danger font-bold animate-pulse">⚠ TARGET LOST</span>
-          )}
-          <span className="text-text-secondary">
-            Render:{' '}
-            <strong className={liveMetrics.fps >= 30 ? 'text-success' : 'text-warning'}>
-              {liveMetrics.fps} FPS
-            </strong>
-          </span>
-          <span className="text-text-secondary">Split: {Math.round(splitPercent)}%</span>
-
-          {/* Multi-Face Selector Pills */}
-          <div id="face-selector-list" className="flex items-center gap-1">
-            <span className="text-text-secondary text-[10px]">Face:</span>
-            {(faceList.length > 0 ? faceList : [{ id: String(selectedFaceId || '1'), x: 0, y: 0, w: 0, h: 0 }]).map((f, i) => {
-              const isActive = (selectedFaceId === f.id) || (!selectedFaceId && i === 0);
-              return (
-                <button
-                  key={f.id}
-                  id={`select-face-btn-${f.id}`}
-                  type="button"
-                  onClick={() => {
-                    setSelectedFaceId(f.id);
-                    denseSmootherRef.current?.setFaceId(f.id);
-                    microTrackerRef.current?.setFaceId(f.id);
-                  }}
-                  className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors cursor-pointer ${
-                    isActive
-                      ? 'bg-primary-soft border-primary/30 text-primary font-bold'
-                      : 'bg-surface-alt border-border text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  Face #{i + 1} {f.id.length > 8 ? f.id.slice(0, 6) : f.id} {isActive ? '★' : ''}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Warmup Mode Toggle */}
-          <button
-            id="warmup-mode-btn"
-            type="button"
-            onClick={() => {
-              const next = !featureFlags.enableWarmup;
-              setIVPFeatureFlag('enableWarmup', next);
-            }}
-            className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors ${
-              featureFlags.enableWarmup
-                ? 'bg-warning/15 border-warning/30 text-warning'
-                : 'bg-surface-alt border-border text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            {featureFlags.enableWarmup ? '⚡ WARMUP: ON' : '⚡ WARMUP: OFF'}
-          </button>
-
-          {/* Calibrate Face Button */}
-          <button
-            id="calibrate-face-btn"
-            type="button"
-            onClick={() => {
-              setCalibrationStep(1);
-              setIsCalibrating(true);
-            }}
-            className="px-2 py-0.5 rounded border border-border bg-surface-alt text-text-primary hover:bg-surface-alt/80 text-[10px] font-mono transition-colors"
-          >
-            🎯 CALIBRATE
-          </button>
-
-          {/* Freeze & Export Button */}
-          <button
-            id="freeze-export-btn"
-            type="button"
-            onClick={() => handleFreezeAndExport(false)}
-            className="px-2 py-0.5 rounded border border-border bg-surface-alt text-text-primary hover:bg-surface-alt/80 text-[10px] font-mono transition-colors"
-          >
-            💾 EXPORT TELEMETRY
-          </button>
-
-          {/* Safe Mode Toggle */}
-          <button
-            id="safe-mode-btn"
-            type="button"
-            onClick={() => {
-              const next = !featureFlags.enableSafeMode;
-              setIVPFeatureFlag('enableSafeMode', next);
-            }}
-            className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors ${
-              featureFlags.enableSafeMode
-                ? 'bg-danger/15 border-danger/30 text-danger'
-                : 'bg-surface-alt border-border text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            {featureFlags.enableSafeMode ? '🛡 SAFE MODE: ON' : '🛡 SAFE MODE: OFF'}
-          </button>
-
-          {/* Pause Micro Updates Button */}
-          <button
-            id="pause-micro-btn"
-            type="button"
-            onClick={() => {
-              const next = !isMicroPaused;
-              isMicroPausedRef.current = next;
-              setIsMicroPaused(next);
-            }}
-            className={`px-2 py-0.5 rounded border text-[10px] font-mono transition-colors ${
-              isMicroPaused
-                ? 'bg-warning/15 border-warning/30 text-warning'
-                : 'bg-surface-alt border-border text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            {isMicroPaused ? '▶ RESUME MICRO' : '⏸ PAUSE MICRO'}
-          </button>
-        </div>
-      </div>
+      <CanvasHeaderControls
+        activeMode={activeMode}
+        onModeChange={onModeChange}
+        trackingState={trackingState}
+        liveMetrics={liveMetrics}
+        splitPercent={splitPercent}
+        faceList={faceList}
+        selectedFaceId={selectedFaceId}
+        onSelectFace={(faceId) => {
+          setSelectedFaceId(faceId);
+          denseSmootherRef.current?.setFaceId(faceId);
+          microTrackerRef.current?.setFaceId(faceId);
+        }}
+        featureFlags={featureFlags}
+        onToggleWarmup={() => {
+          const next = !featureFlags.enableWarmup;
+          setIVPFeatureFlag('enableWarmup', next);
+        }}
+        onOpenCalibration={() => {
+          setCalibrationStep(1);
+          setIsCalibrating(true);
+        }}
+        onExportTelemetry={() => handleFreezeAndExport(false)}
+        onToggleSafeMode={() => {
+          const next = !featureFlags.enableSafeMode;
+          setIVPFeatureFlag('enableSafeMode', next);
+        }}
+        isMicroPaused={isMicroPaused}
+        onToggleMicroPause={() => {
+          const next = !isMicroPaused;
+          isMicroPausedRef.current = next;
+          setIsMicroPaused(next);
+        }}
+      />
 
       {/* Main Dual-Viewport Inspection Canvas */}
       <div
@@ -2092,177 +1889,27 @@ export default function IVPInteractiveCanvas({
           style={{ width: '640px', height: '480px' }}
         />
 
-        {/* Warmup Protection & Low SNR HUD Warning Banner */}
-        {warmupWarning && (
-          <div
-            id="warmup-warning-banner"
-            className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-warning/15 border border-warning/40 text-warning text-xs font-mono px-4 py-2 rounded-xl shadow-soft backdrop-blur-md flex items-center gap-2 animate-bounce max-w-[90%]"
-          >
-            <span className="text-warning font-bold">⚠</span>
-            <span>{warmupWarning}</span>
-            <button
-              type="button"
-              onClick={() => setWarmupWarning(null)}
-              className="ml-2 text-warning/80 hover:text-text-primary text-[10px] cursor-pointer"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+        <WarmupWarningBanner
+          warning={warmupWarning}
+          onDismiss={() => setWarmupWarning(null)}
+        />
 
-        {/* Dynamic Metric HUD Pill */}
-        <div className="absolute bottom-3 right-3 bg-surface/95 backdrop-blur-md border border-border shadow-soft px-3 py-1.5 rounded-xl text-[10px] font-mono flex items-center gap-3">
-          {activeMode === 'SOBEL_GRADIENTS' && liveMetrics.sobelStats && (
-            <>
-              <span className="text-text-secondary">
-                Max |∇|: <strong className="text-success">{liveMetrics.sobelStats.maxMagnitude} px</strong>
-              </span>
-              <span className="text-text-secondary">
-                Edge Coverage: <strong className="text-warning">{liveMetrics.sobelStats.edgePixelRatio.toFixed(1)}%</strong>
-              </span>
-            </>
-          )}
-
-          {activeMode === 'YCRCB_SKIN_OTSU' && liveMetrics.otsuStats && (
-            <>
-              <span className="text-text-secondary">
-                Otsu Threshold t*: <strong className="text-success">{liveMetrics.otsuStats.otsuThreshold}</strong>
-              </span>
-              <span className="text-text-secondary">
-                Skin Area: <strong className="text-secondary">{liveMetrics.otsuStats.skinPixelRatio.toFixed(1)}%</strong>
-              </span>
-            </>
-          )}
-
-          {activeMode === 'LUMINANCE_HISTEQ' && liveMetrics.histStats && (
-            <>
-              <span className="text-text-secondary">
-                Mean Luma: <strong className="text-success">{liveMetrics.histStats.meanVal.toFixed(1)}</strong>
-              </span>
-              <span className="text-text-secondary">
-                Range: <strong className="text-text-primary">[{liveMetrics.histStats.minVal}..{liveMetrics.histStats.maxVal}]</strong>
-              </span>
-            </>
-          )}
-
-          {activeMode === 'TEMPORAL_MAD' && liveMetrics.madStats && (
-            <>
-              <span className="text-text-secondary">
-                MAD Score: <strong className="text-danger">{liveMetrics.madStats.madScore.toFixed(2)}</strong>
-              </span>
-              <span className="text-text-secondary">
-                Motion Area: <strong className="text-warning">{liveMetrics.madStats.motionAreaRatio.toFixed(1)}%</strong>
-              </span>
-            </>
-          )}
-        </div>
+        <CanvasMetricHUD
+          activeMode={activeMode}
+          liveMetrics={liveMetrics}
+        />
       </div>
 
-      {/* Calibration Modal */}
       {isCalibrating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-surface border border-border rounded-2xl p-6 max-w-md w-full shadow-soft space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-sm font-mono font-bold text-text-primary flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
-                Personal Face Calibration
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsCalibrating(false)}
-                className="text-text-secondary hover:text-text-primary text-xs font-mono cursor-pointer"
-              >
-                ✕ CLOSE
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs text-text-secondary">
-              <div className="flex items-center justify-center py-4">
-                <div className="w-24 h-24 rounded-full border-2 border-dashed border-primary/40 flex items-center justify-center animate-pulse">
-                  <span className="text-2xl">👤</span>
-                </div>
-              </div>
-
-              {calibrationStep === 1 && (
-                <div className="text-center space-y-2">
-                  <p className="font-semibold text-text-primary">Step 1: Neutral Gaze Alignment</p>
-                  <p className="text-text-secondary text-[11px]">
-                    Look straight ahead into the webcam with a relaxed, neutral expression.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setCalibrationStep(2)}
-                    className="w-full mt-3 py-2 bg-primary hover:bg-primary-hover text-text-on-primary rounded-lg font-mono text-xs font-bold transition cursor-pointer"
-                  >
-                    CONTINUE TO STEP 2 ▶
-                  </button>
-                </div>
-              )}
-
-              {calibrationStep === 2 && (
-                <div className="text-center space-y-2">
-                  <p className="font-semibold text-text-primary">Step 2: Natural Smile & Speech</p>
-                  <p className="text-text-secondary text-[11px]">
-                    Smile gently or speak a short sentence to register your natural lip corner dynamics.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (lastRawNormPtsRef.current && lastRawNormPtsRef.current.length >= 70) {
-                        const lp = lastRawNormPtsRef.current[68];
-                        const rp = lastRawNormPtsRef.current[69];
-                        const midX = (lp.x + rp.x) / 2;
-                        const midY = (lp.y + rp.y) / 2;
-                        const bias = {
-                          x: (midX - 0.5) * 0.05,
-                          y: (midY - 0.45) * 0.05,
-                        };
-                        setCalibrationBias(bias);
-                        try {
-                          window.localStorage.setItem('ivp_user_calibration', JSON.stringify({ bias, calibratedAt: Date.now() }));
-                        } catch {}
-                      }
-                      setCalibrationStep(3);
-                    }}
-                    className="w-full mt-3 py-2 bg-primary hover:bg-primary-hover text-text-on-primary rounded-lg font-mono text-xs font-bold transition cursor-pointer"
-                  >
-                    FINALIZE CALIBRATION ▶
-                  </button>
-                </div>
-              )}
-
-              {calibrationStep === 3 && (
-                <div className="text-center space-y-3">
-                  <div className="text-success font-bold text-sm">✓ Calibration Complete!</div>
-                  <p className="text-text-secondary text-[11px]">
-                    Personalized anchor bias saved: ({calibrationBias.x.toFixed(4)}, {calibrationBias.y.toFixed(4)}).
-                    Additive offsets will cling tightly to your unique facial geometry.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCalibrationBias({ x: 0, y: 0 });
-                        try { window.localStorage.removeItem('ivp_user_calibration'); } catch {}
-                        setIsCalibrating(false);
-                      }}
-                      className="flex-1 py-2 bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 rounded-lg font-mono text-xs transition cursor-pointer"
-                    >
-                      RESET TO DEFAULTS
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsCalibrating(false)}
-                      className="flex-1 py-2 bg-primary hover:bg-primary-hover text-text-on-primary rounded-lg font-mono text-xs font-bold transition cursor-pointer"
-                    >
-                      DONE
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <CalibrationModal
+          isOpen={isCalibrating}
+          onClose={() => setIsCalibrating(false)}
+          calibrationStep={calibrationStep}
+          setCalibrationStep={setCalibrationStep}
+          calibrationBias={calibrationBias}
+          setCalibrationBias={setCalibrationBias}
+          lastRawNormPts={lastRawNormPtsRef.current}
+        />
       )}
     </div>
   );

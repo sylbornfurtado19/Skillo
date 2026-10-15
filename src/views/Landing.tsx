@@ -60,6 +60,10 @@ export default function Landing() {
       a: 'Yes — there are separate tracks for technical questions, behavioral (STAR method), and system design. You can also do a mixed session.',
     },
     {
+      q: 'Is there a backend I can connect?',
+      a: 'The application uses a built-in Next.js App Router backend with API routes under app/api/. It natively handles AI evaluation, rate limiting, and Supabase persistence without needing a separate backend server.',
+    },
+    {
       q: 'Is my data private?',
       a: 'Yes. Video telemetry, gaze tracking, and facial analysis run entirely client-side in your browser using local edge models — no raw video or webcam feeds are ever uploaded or stored. Your interview history and resume analysis are encrypted and accessible only to your authenticated account.',
     },
