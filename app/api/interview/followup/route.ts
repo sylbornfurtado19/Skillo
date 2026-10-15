@@ -100,7 +100,8 @@ export async function POST(request: Request) {
 
     // 4. Short-circuit: empty / trivial answers never need follow-up
     if (!answerText || answerText.trim().length < 20) {
-      return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0 });
+      const priorTree = rawData.previousTreeState ?? rawData.treeState;
+      return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0, treeState: priorTree ?? null });
     }
 
     // 5. Run LATS MCTS engine with persistent tree support

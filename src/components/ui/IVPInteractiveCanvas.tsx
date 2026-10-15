@@ -36,8 +36,6 @@ import {
   type SmoothedLandmarksResult,
   type TrackingPreset,
 } from '../../lib/services/temporalSmoothing';
-import type { DenseLandmarksEnvelope } from '@/types/workerMessages';
-import type { VisionWorkerStats, WorkerTimelineTelemetry } from '@/hooks/useVisionWorker';
 import { MicroPatchTracker, type TrackedFeature } from '../../lib/services/microPatchTracker';
 import {
   getIVPFeatureFlags,
@@ -114,29 +112,6 @@ export default function IVPInteractiveCanvas({
     minY: 100,
     maxX: 430,
     maxY: 360,
-    initialized: false,
-  });
-
-  // ── Persistent Landmark EMA State (Zero-Jitter Optical Clinging) ──────────
-  const smoothedLandmarksRef = useRef<{
-    leftEyePts: Point2D[];
-    rightEyePts: Point2D[];
-    mouthPts: Point2D[];
-    noseBridge: Point2D[];
-    noseTip: Point2D;
-    leftPupil: Point2D;
-    rightPupil: Point2D;
-    mouthCenter: Point2D;
-    initialized: boolean;
-  }>({
-    leftEyePts: [],
-    rightEyePts: [],
-    mouthPts: [],
-    noseBridge: [],
-    noseTip: { x: 320, y: 240 },
-    leftPupil: { x: 260, y: 200 },
-    rightPupil: { x: 380, y: 200 },
-    mouthCenter: { x: 320, y: 300 },
     initialized: false,
   });
 
@@ -1135,7 +1110,6 @@ export default function IVPInteractiveCanvas({
     const leftPupil: Point2D = canvasPts[68];
     const rightPupil: Point2D = canvasPts[69];
     const mouthPts: Point2D[] = canvasPts.slice(48, 60);
-    const mouthInnerPts: Point2D[] = canvasPts.slice(60, 68);
     const rawMouthX = mouthPts.length >= 7 ? (mouthPts[0].x + mouthPts[6].x) / 2 : CSS_W / 2;
     const rawMouthY = mouthPts.length >= 10 ? (mouthPts[3].y + mouthPts[9].y) / 2 : CSS_H / 2;
 
@@ -1682,7 +1656,6 @@ export default function IVPInteractiveCanvas({
       ctx.fillText(`REQ: ${reqIdStr} | DROPPED: ${droppedStr} | UNLOCKS: ${workerStats?.watchdogUnlocks ?? 0}`, dbgX + 8, dbgY + 22);
 
       const rttStr = workerLandmarks ? `${workerLandmarks.envelope.inferenceTimeMs.toFixed(1)} ms` : '< 1.5 ms';
-      const inFlightStr = workerStats ? `${workerStats.inFlightMs} ms` : '-';
       const throttleStr = isThrottled ? `[THROTTLED: ${workerStats?.suggestedCadenceFps ?? 15} FPS]` : `[${workerStats?.suggestedCadenceFps ?? 30} FPS]`;
       ctx.fillText(`INFER: ${rttStr} | DRAW: ${fpsRef.current} FPS | CADENCE: ${throttleStr}`, dbgX + 8, dbgY + 36);
 
@@ -1691,16 +1664,12 @@ export default function IVPInteractiveCanvas({
       ctx.fillText(`CONF: EYES ${(rc.eyes * 100).toFixed(0)}% | NOSE ${(rc.nose * 100).toFixed(0)}% | LIP ${(rc.mouth * 100).toFixed(0)}%`, dbgX + 8, dbgY + 50);
 
       ctx.fillStyle = '#FBBF24';
-      const relocStr = denseRes.isRelocalizing ? `GLIDE (${Math.round(denseRes.relocalizationProgress * 100)}%)` : 'LOCKED';
       const engineStr = workerLandmarks?.envelope.trackingMode === 'LEARNED_FACELANDMARKER' ? 'LEARNED (MediaPipe)' : 'OPTICAL TRACKER';
-      const microCount = lastMicroTrackedRef.current?.size ?? 0;
       const tmplCount = microTrackerRef.current.templateCount();
       const tried = microMatchesTriedRef.current;
       const accepted = microMatchesAcceptedRef.current;
       const evictions = microTrackerRef.current.getEvictionCount();
       const { p50, p95 } = getMicroTrackPercentiles();
-      const pausedTag = isMicroPausedRef.current ? ' [PAUSED]' : '';
-      const safeTag = featureFlags.enableSafeMode ? ' [SAFE MODE]' : '';
       const warmupTag = isWarmup ? ` [WARMUP: ${warmupRate.toFixed(0)}% acc]` : '';
       ctx.fillText(`ENGINE: ${engineStr} | MICRO: ${accepted}/${tried} acc | EVICT: ${evictions}${warmupTag}`, dbgX + 8, dbgY + 64);
       ctx.fillText(`PRESET: ${denseRes.activePreset} | α: ${denseRes.meanAlpha.toFixed(2)} | OCCLUSION: ${denseRes.occludedDurationSec.toFixed(1)}s`, dbgX + 8, dbgY + 78);

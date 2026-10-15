@@ -26,6 +26,7 @@ import React, {
 } from 'react';
 import { classifyFocusZone, evaluateEyeContact } from '@/lib/services/ivpGazeEngine';
 import { GazeAngleEMA } from '@/lib/services/temporalSmoothing';
+import { getThemeColor } from '@/lib/themeColors';
 import type { GazeFrameInput, GazeFrameResult } from '@/types/index';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -45,14 +46,22 @@ const MAX_DEVIATION_PX = 120;
 const RAY_LENGTH = 80;
 
 // ── Color palette by focus zone ───────────────────────────────────────────────
-const ZONE_RAY_COLORS: Record<GazeFrameResult['screenFocusZone'], { ray: string; glow: string }> = {
-  CENTER_SCREEN:  { ray: '#3F7D58', glow: 'rgba(63,125,88,0.35)' },
-  LOOKING_UP:     { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)'  },
-  LOOKING_DOWN:   { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)'  },
-  LOOKING_LEFT:   { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)'  },
-  LOOKING_RIGHT:  { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)'  },
-  OFF_SCREEN:     { ray: '#B3261E', glow: 'rgba(179,38,30,0.35)'   },
-};
+function getZoneRayColors(zone: GazeFrameResult['screenFocusZone']): { ray: string; glow: string } {
+  switch (zone) {
+    case 'CENTER_SCREEN': {
+      const ray = getThemeColor('--success', '#3F7D58');
+      return { ray, glow: 'color-mix(in srgb, var(--success, #3F7D58) 35%, transparent)' };
+    }
+    case 'OFF_SCREEN': {
+      const ray = getThemeColor('--danger', '#B3261E');
+      return { ray, glow: 'color-mix(in srgb, var(--danger, #B3261E) 35%, transparent)' };
+    }
+    default: {
+      const ray = getThemeColor('--warning', '#C98A1B');
+      return { ray, glow: 'color-mix(in srgb, var(--warning, #C98A1B) 30%, transparent)' };
+    }
+  }
+}
 
 // ── Public Handle (via ref) ───────────────────────────────────────────────────
 export interface IVPGazeTrackerHandle {
@@ -201,7 +210,7 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
         pitchDeg: number,
         zone: GazeFrameResult['screenFocusZone']
       ) => {
-        const colors = ZONE_RAY_COLORS[zone];
+        const colors = getZoneRayColors(zone);
         const yawRad = (yawDeg * Math.PI) / 180;
         const pitchRad = (pitchDeg * Math.PI) / 180;
 
@@ -351,7 +360,7 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
 
               // Zone label
               displayCtx.save();
-              displayCtx.fillStyle = ZONE_RAY_COLORS[zone].ray;
+              displayCtx.fillStyle = getZoneRayColors(zone).ray;
               displayCtx.font = 'bold 10px monospace';
               displayCtx.fillText(zone.replace(/_/g, ' '), 8, h - 8);
               displayCtx.restore();

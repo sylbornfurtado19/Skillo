@@ -445,7 +445,9 @@ describe('B2: Real Multi-Iteration LATS with Persistent Tree', () => {
       const treeStateTurn2: LATSTreeState = turn2Data.treeState;
       const depthTurn2 = getTreeMaxDepth(treeStateTurn2.rootNode);
 
-      // Done when: two consecutive follow-up calls produce a tree of depth 2+ with visit counts that sum correctly
+      // Two consecutive followup calls produce a tree whose rootNode.visitCount and trajectoryHistory length grow
+      expect(treeStateTurn2.rootNode.visitCount).toBeGreaterThan(treeStateTurn1.rootNode.visitCount);
+      expect(treeStateTurn2.trajectoryHistory.length).toBeGreaterThan(treeStateTurn1.trajectoryHistory.length);
       expect(depthTurn2).toBeGreaterThanOrEqual(2);
 
       // Verify visit counts sum correctly
@@ -485,6 +487,26 @@ describe('B2: Real Multi-Iteration LATS with Persistent Tree', () => {
       // Shows selected path breadcrumb
       expect(html).toContain('selected-path-breadcrumb');
       expect(html).toContain('Selected Path');
+    });
+  });
+
+  describe('7. Wall-Clock Budget Enforcement', () => {
+    it('returns a valid result with at least one expansion and does not throw with wallClockBudgetMs ~0', async () => {
+      const state = await runLATSMCTS({
+        sessionId: 'zero_budget_session',
+        role: 'Distributed Systems Engineer',
+        currentQuestion: 'How does Raft handle leader partition split-brain?',
+        candidateAnswer: 'Raft requires a majority quorum (N/2 + 1) to commit log entries, so a partitioned minority leader cannot commit.',
+        priorGaps: [],
+        wallClockBudgetMs: 0,
+      });
+
+      expect(state).toBeDefined();
+      expect(state.rootNode).toBeDefined();
+      expect(state.rootNode.children.length).toBe(3);
+      expect(state.depth).toBeGreaterThanOrEqual(1);
+      expect(state.simulatedBranches.length).toBe(3);
+      expect(state.currentNodeId).toBeDefined();
     });
   });
 });

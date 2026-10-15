@@ -198,6 +198,8 @@ export function verifyPassGrounding(
 
     if (typeof val === 'object' && val !== null && 'claim' in val) {
       const evidence = val as GroundedEvidence;
+      // Skip empty filler evidence ({ claim: '', quote: '' }) to avoid skewing quote counts
+      if (!evidence.quote && !evidence.claim) continue;
       totalQuotes++;
       const res = verifyQuoteInText(evidence.quote, candidateSubmission, threshold);
       evidence.verified = res.verified;
@@ -209,6 +211,7 @@ export function verifyPassGrounding(
         evidence.flagged = true;
       }
     } else if (typeof val === 'string') {
+      if (!val.trim()) continue;
       // For string format, look for embedded quotes in quotation marks
       const match = val.match(/"([^"]{4,})"/);
       if (match) {
@@ -253,6 +256,7 @@ export function verifyMultiPassGrounding(
       for (const key of CRITERION_KEYS) {
         const val = ce[key];
         if (typeof val === 'object' && val !== null && 'quote' in val) {
+          if (!val.quote && !('claim' in val && (val as any).claim)) continue;
           totalQuotes++;
           if (val.verified) totalVerified++;
         }

@@ -92,7 +92,9 @@ interface SplitCalibrationResult {
   meanConfidencePerTier: Record<'HIGH' | 'MEDIUM' | 'LOW', number | null>;
   confidenceTierCounts: Record<'HIGH' | 'MEDIUM' | 'LOW', number>;
   expectedCalibrationError: number;
+  ECE: number;
   calibrationBins: CalibrationBin[];
+  warning?: string;
 }
 
 interface CalibrationOutput {
@@ -245,8 +247,11 @@ async function evaluateSplit(
     ])
   ) as Record<'HIGH' | 'MEDIUM' | 'LOW', number | null>;
 
+  const splitEntries = entries.filter((candidate) => candidate.split === split);
+  const warning = splitEntries.length < 20 ? 'Small sample: metrics are indicative only' : undefined;
+
   return {
-    entries: entries.filter((candidate) => candidate.split === split).length,
+    entries: splitEntries.length,
     pairwiseAccuracy: round(preferredWins / observations.length),
     preferredWins,
     ties,
@@ -258,7 +263,9 @@ async function evaluateSplit(
       tierNames.map((tier) => [tier, confidenceByTier[tier].length])
     ) as Record<'HIGH' | 'MEDIUM' | 'LOW', number>,
     expectedCalibrationError,
+    ECE: expectedCalibrationError,
     calibrationBins: bins,
+    warning,
   };
 }
 
@@ -267,12 +274,9 @@ async function writeCalibrationResults(entries: BenchmarkEntry[]): Promise<void>
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
   if (!process.env.ANTHROPIC_API_KEY?.trim()) {
-    fs.writeFileSync(outputPath, `${JSON.stringify({
-      skipped: true,
-      reason: 'ANTHROPIC_API_KEY is not configured; live calibration was not run.',
-    }, null, 2)}\n`);
-    console.log(`\nCalibration skipped; wrote ${outputPath}`);
-    return;
+    console.error(`\n${RED}${BOLD}Error: ANTHROPIC_API_KEY is required to run live calibration benchmarks.${RESET}`);
+    console.error(`${RED}Missing ANTHROPIC_API_KEY environment variable. Refusing to write skipped output in CI.${RESET}\n`);
+    process.exit(1);
   }
 
   try {

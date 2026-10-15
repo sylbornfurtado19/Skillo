@@ -17,17 +17,17 @@ const TYPE_STYLES: Record<
   VisualLayoutElement['type'],
   { stroke: string; fill: string; strokeWidth: number }
 > = {
-  HEADER:        { stroke: '#9B2218', fill: 'rgba(155,34,24,0.12)', strokeWidth: 1.5 },
-  SECTION_TITLE: { stroke: '#7F1B13', fill: 'rgba(127,27,19,0.08)', strokeWidth: 1.5 },
-  BODY_TEXT:     { stroke: '#6A625E', fill: 'rgba(106,98,94,0.05)',   strokeWidth: 0.8 },
-  COLUMN_BLOCK:  { stroke: '#6B6E70', fill: 'rgba(107,110,112,0.08)', strokeWidth: 1.2 },
-  LIST_ITEM:     { stroke: '#55585A', fill: 'rgba(85,88,90,0.04)',   strokeWidth: 0.8 },
+  HEADER:        { stroke: 'var(--primary)', fill: 'color-mix(in srgb, var(--primary) 12%, transparent)', strokeWidth: 1.5 },
+  SECTION_TITLE: { stroke: 'var(--primary-hover)', fill: 'color-mix(in srgb, var(--primary-hover) 8%, transparent)', strokeWidth: 1.5 },
+  BODY_TEXT:     { stroke: 'var(--text-secondary)', fill: 'color-mix(in srgb, var(--text-secondary) 5%, transparent)', strokeWidth: 0.8 },
+  COLUMN_BLOCK:  { stroke: 'var(--secondary)', fill: 'color-mix(in srgb, var(--secondary) 8%, transparent)', strokeWidth: 1.2 },
+  LIST_ITEM:     { stroke: 'var(--secondary)', fill: 'color-mix(in srgb, var(--secondary) 4%, transparent)', strokeWidth: 0.8 },
 };
 
 const SEVERITY_COLORS: Record<string, { stroke: string; fill: string; glow: string }> = {
-  CRITICAL: { stroke: '#B3261E', fill: 'rgba(179,38,30,0.18)', glow: '#B3261E' },
-  MODERATE: { stroke: '#C98A1B', fill: 'rgba(201,138,27,0.15)', glow: '#C98A1B' },
-  MINOR:    { stroke: '#4A6B8A', fill: 'rgba(74,107,138,0.12)', glow: '#4A6B8A' },
+  CRITICAL: { stroke: 'var(--danger)', fill: 'color-mix(in srgb, var(--danger) 18%, transparent)', glow: 'var(--danger)' },
+  MODERATE: { stroke: 'var(--warning)', fill: 'color-mix(in srgb, var(--warning) 15%, transparent)', glow: 'var(--warning)' },
+  MINOR:    { stroke: 'var(--info)', fill: 'color-mix(in srgb, var(--info) 12%, transparent)', glow: 'var(--info)' },
 };
 
 // ── Tooltip state ─────────────────────────────────────────────────────────────
@@ -166,11 +166,11 @@ export default function VisualDocumentCanvas({
           </defs>
 
           {/* Page background */}
-          <rect x="0" y="0" width="1000" height="1000" fill="#FBF9F6" stroke="#E2DDD5" strokeWidth="2" />
+          <rect x="0" y="0" width="1000" height="1000" fill="var(--bg-surface)" stroke="var(--border)" strokeWidth="2" />
 
           {/* Margin safety guide lines */}
-          <line x1="20" y1="0" x2="20" y2="1000" stroke="rgba(179,38,30,0.15)" strokeWidth="1" strokeDasharray="4 6" />
-          <line x1="980" y1="0" x2="980" y2="1000" stroke="rgba(179,38,30,0.15)" strokeWidth="1" strokeDasharray="4 6" />
+          <line x1="20" y1="0" x2="20" y2="1000" stroke="color-mix(in srgb, var(--danger) 15%, transparent)" strokeWidth="1" strokeDasharray="4 6" />
+          <line x1="980" y1="0" x2="980" y2="1000" stroke="color-mix(in srgb, var(--danger) 15%, transparent)" strokeWidth="1" strokeDasharray="4 6" />
 
           {/* Render all elements */}
           {elements.map(el => {
@@ -201,8 +201,8 @@ export default function VisualDocumentCanvas({
               fill = SEVERITY_COLORS[pen.severity].fill;
               strokeWidth = 1.8;
             } else if (isSelected) {
-              stroke = '#9B2218';
-              fill = 'rgba(155,34,24,0.18)';
+              stroke = 'var(--primary)';
+              fill = 'color-mix(in srgb, var(--primary) 18%, transparent)';
               strokeWidth = 2;
             }
 
@@ -253,7 +253,7 @@ export default function VisualDocumentCanvas({
               y={highlightedPenaltyBBox.y0 - 4}
               width={Math.max(highlightedPenaltyBBox.width + 8, 40)}
               height={Math.max(highlightedPenaltyBBox.height + 8, 16)}
-              stroke="#B3261E"
+              stroke="var(--danger)"
               fill="none"
               strokeWidth="3"
               strokeDasharray="6 3"

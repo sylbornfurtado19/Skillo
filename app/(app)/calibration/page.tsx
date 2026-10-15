@@ -23,6 +23,8 @@ interface SplitCalibrationResult {
   entries: number;
   pairwiseAccuracy: number;
   expectedCalibrationError: number;
+  ECE?: number;
+  warning?: string;
   calibrationBins: CalibrationBin[];
 }
 
@@ -119,6 +121,7 @@ export default async function CalibrationPage() {
           <div className="grid gap-6 md:grid-cols-2">
             {(['validation', 'test'] as const).map((split) => {
               const result = artifact.splits![split];
+              const warning = result.warning || (result.entries < 20 ? 'Small sample: metrics are indicative only' : undefined);
               return (
                 <section
                   key={split}
@@ -140,6 +143,11 @@ export default async function CalibrationPage() {
                       </dd>
                     </div>
                   </dl>
+                  {warning && (
+                    <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-500">
+                      {warning}
+                    </div>
+                  )}
                 </section>
               );
             })}

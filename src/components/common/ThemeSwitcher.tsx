@@ -43,15 +43,15 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ className = '' }) 
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-bold text-[var(--text-primary)] font-heading">{preset.name}</span>
                     {preset.isLight && (
-                      <span className="px-1.5 py-0.5 rounded bg-[var(--warning)]/20 text-[var(--warning)] border border-[var(--warning)]/30 text-[9px] font-mono font-bold">
+                      <span className="px-1.5 py-0.5 rounded bg-[var(--warning)]/20 text-[var(--warning)] border border-[var(--warning)]/30 text-xs font-mono font-bold">
                         Light
                       </span>
                     )}
                   </div>
                   {isActive && <FaCheckCircle className="text-[var(--primary)] text-sm shrink-0" />}
                 </div>
-                <p className="text-[10px] text-[var(--text-secondary)] font-mono leading-tight">{preset.subtitle}</p>
-                <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed pt-1">{preset.description}</p>
+                <p className="text-xs text-[var(--text-secondary)] font-mono leading-tight">{preset.subtitle}</p>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed pt-1">{preset.description}</p>
               </div>
 
               {/* Color Swatches Preview */}

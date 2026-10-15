@@ -67,6 +67,8 @@ export interface LATSEngineInput {
   previousTreeState?: LATSTreeState;
   /** Optional override for number of MCTS rounds (default 3 from AI_CONFIG) */
   maxRounds?: number;
+  /** Optional total wall-clock budget in ms (default from AI_CONFIG.timeouts.latsWallClockMs or 10000 ms) */
+  wallClockBudgetMs?: number;
 }
 
 // ── UCT Formula ──────────────────────────────────────────────────────────────
@@ -419,8 +421,8 @@ export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState
   const { sessionId, role, currentQuestion, candidateAnswer, priorGaps, anthropicApiKey, previousTreeState } = input;
   const K = input.maxRounds ?? (AI_CONFIG as any).lats?.rounds ?? 3;
   const startTime = Date.now();
-  const timeoutBudgetMs = AI_CONFIG.timeouts.latsBranchMs || 15000;
-  let isFallback = !anthropicApiKey;
+  const totalBudgetMs = input.wallClockBudgetMs ?? (AI_CONFIG as any).timeouts?.latsWallClockMs ?? 10000;
+  let liveCallsSucceeded = 0;
 
   let rootNode: LATSTreeNode;
   let trajectoryHistory: string[] = [];
@@ -454,7 +456,8 @@ export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState
 
   // Iterate K rounds of Selection -> Expansion -> PRM Evaluation -> Backpropagation
   for (let round = 0; round < K; round++) {
-    if (Date.now() - startTime > timeoutBudgetMs - 1500) {
+    // Skip remaining rounds if total wall-clock budget has been exceeded, but ensure at least round 0 executes
+    if (round > 0 && Date.now() - startTime >= totalBudgetMs) {
       break;
     }
 
@@ -470,8 +473,8 @@ export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState
       priorGaps,
       anthropicApiKey
     );
-    if (expansion.isFallback) {
-      isFallback = true;
+    if (!expansion.isFallback) {
+      liveCallsSucceeded++;
     }
 
     const currentDepth = leaf.depth ?? 0;
@@ -499,8 +502,10 @@ export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState
         evaluatePRM(child.id, role, child.questionText, candidateAnswer, anthropicApiKey, child.actionType)
       )
     );
-    if (prmEvals.some((e) => e.isFallback)) {
-      isFallback = true;
+    for (const ev of prmEvals) {
+      if (!ev.isFallback) {
+        liveCallsSucceeded++;
+      }
     }
 
     const evaluatedChildren: LATSTreeNode[] = childNodes.map((child, idx) => {
@@ -594,6 +599,7 @@ export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState
   }
 
   const maxDepth = getTreeMaxDepth(finalRootNode);
+  const hasLiveSuccess = liveCallsSucceeded > 0;
 
   return {
     currentNodeId: selectedLeafId,
@@ -603,8 +609,8 @@ export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState
     activeActionType: selectedType,
     currentPRMScore: Math.round(selectedPRM * 100),
     currentGaps: selectedGaps,
-    fallback: isFallback,
-    source: isFallback ? 'fallback' : 'live',
+    fallback: !hasLiveSuccess,
+    source: hasLiveSuccess ? 'live' : 'fallback',
     depth: maxDepth,
   };
 }

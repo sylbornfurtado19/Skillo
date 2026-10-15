@@ -46,16 +46,16 @@ export default function AffectiveHUD({ currentFrame }: AffectiveHUDProps) {
       <div className="relative shrink-0">
         <svg width="48" height="48" viewBox="0 0 48 48" className="bg-surface-alt rounded-lg border border-border">
           {/* Axis lines */}
-          <line x1="24" y1="0" x2="24" y2="48" stroke="rgba(43,37,35,0.12)" strokeWidth="1" />
-          <line x1="0" y1="24" x2="48" y2="24" stroke="rgba(43,37,35,0.12)" strokeWidth="1" />
+          <line x1="24" y1="0" x2="24" y2="48" stroke="color-mix(in srgb, var(--text-primary) 12%, transparent)" strokeWidth="1" />
+          <line x1="0" y1="24" x2="48" y2="24" stroke="color-mix(in srgb, var(--text-primary) 12%, transparent)" strokeWidth="1" />
           {/* Ideal target zone dot */}
-          <circle cx="32" cy="20" r="3" fill="rgba(63,125,88,0.25)" />
+          <circle cx="32" cy="20" r="3" fill="color-mix(in srgb, var(--success) 25%, transparent)" />
           {/* Current V-A coordinate dot */}
           <circle
             cx={dotX}
             cy={dotY}
             r="3.5"
-            fill={badge.color.includes('success') ? '#3F7D58' : badge.color.includes('danger') ? '#B3261E' : badge.color.includes('warning') ? '#C98A1B' : '#9B2218'}
+            fill={badge.color.includes('success') ? 'var(--success)' : badge.color.includes('danger') ? 'var(--danger)' : badge.color.includes('warning') ? 'var(--warning)' : 'var(--primary)'}
             className="transition-all duration-300"
           />
         </svg>

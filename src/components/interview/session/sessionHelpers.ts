@@ -22,9 +22,11 @@ export function formatTime(secs: number): string {
 export function generateFallbackEvaluationReport(
   setup: any,
   questList: Array<{ id: string; question: string; hint?: string; idealConcepts?: string }>,
-  ansList: Array<any>
+  ansList: Array<any>,
+  modelId?: string
 ) {
   const avgScore = 60;
+  const resolvedModelId = modelId || setup?.modelId || setup?.model || 'claude-sonnet-5-5';
   return {
     overallScore: avgScore,
     categories: {
@@ -72,7 +74,7 @@ export function generateFallbackEvaluationReport(
       passCount: 3,
       evaluationMode: 'fallback' as const,
       providerStatus: 'unconfigured' as const,
-      modelId: 'claude-sonnet-5-5',
+      modelId: resolvedModelId,
       source: 'fallback' as const,
     },
     simpoContrastiveResult: {
@@ -119,5 +121,33 @@ export function generateFallbackEvaluationReport(
       faangComparison: 'Candidate demonstrated good foundational logic; adding explicit concurrency models will reach FAANG benchmark.',
       rewardScore: 2.15,
     },
+  };
+}
+
+export interface RetryEvaluationSuccessResult {
+  newScore: number;
+  feedback: string;
+}
+
+export function handleRetryEvaluationSuccess(
+  finalReport: { overallScore: number; breakdown?: Array<{ feedback?: string }> }
+): RetryEvaluationSuccessResult {
+  return {
+    newScore: finalReport.overallScore,
+    feedback: finalReport.breakdown?.[0]?.feedback || 'Demonstrated improved response clarity.',
+  };
+}
+
+export interface RetryEvaluationFailureResult {
+  toastMessage: string;
+  toastType: 'error';
+  grading: boolean;
+}
+
+export function handleRetryEvaluationFailure(_error?: unknown): RetryEvaluationFailureResult {
+  return {
+    toastMessage: 'Retry evaluation failed. Your previous score was kept.',
+    toastType: 'error',
+    grading: false,
   };
 }

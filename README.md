@@ -34,16 +34,28 @@ npm install
 ```
 
 ### 2. Environment Configuration
-Create a `.env.local` file at the root of the project:
+Create a `.env.local` file at the root of the project (see `.env.example` for full reference):
 ```env
+# Backend Provider ('supabase' or 'firebase')
+NEXT_PUBLIC_BACKEND_PROVIDER=supabase
+
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
-# LLM API Keys
+# Anthropic Configuration (Core Reasoning & Evaluation Engines)
 ANTHROPIC_API_KEY=your-anthropic-api-key
-OPENAI_API_KEY=your-openai-api-key
+ANTHROPIC_MODEL=claude-sonnet-5-5
+
+# Code Execution Engine (Optional Piston-compatible endpoint; unset returns 501)
+CODE_RUNNER_URL=https://emkc.org/api/v2/piston
+
+# Admin Access Control (Comma-separated admin emails; gates /calibration route)
+ADMIN_EMAILS=admin@example.com,lead@example.com
+
+# Site Configuration
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 ### 3. Local Execution & Quality Verification

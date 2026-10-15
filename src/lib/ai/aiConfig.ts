@@ -16,6 +16,7 @@ export const AI_CONFIG = {
     singlePassMs: 4500,
     simpoMs: 12000,
     latsBranchMs: 15000,
+    latsWallClockMs: 10000,
     reflexionMs: 12000,
     resumeAnalysisMs: 18000,
   },

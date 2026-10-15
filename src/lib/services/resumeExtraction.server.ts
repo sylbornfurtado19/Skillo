@@ -115,23 +115,6 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<{ text: string
         : result.text || '';
     const pageCount = result.total || result.pages?.length || 1;
     return { text: rawPagesText, pageCount };
-  } catch (parseErr) {
-    try {
-      const { extractText: extractPdfText } = await import('unpdf');
-      const uint8 = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-      const pdfResult = await extractPdfText(uint8, { mergePages: true });
-      const rawResult = pdfResult.text as string | string[] | undefined;
-      const rawText =
-        typeof rawResult === 'string'
-          ? rawResult
-          : Array.isArray(rawResult)
-            ? (rawResult as string[]).join('\n\n')
-            : '';
-      const pageCount = pdfResult.totalPages || 1;
-      return { text: rawText, pageCount };
-    } catch {
-      throw parseErr;
-    }
   } finally {
     if (parser && typeof parser.destroy === 'function') {
       try {

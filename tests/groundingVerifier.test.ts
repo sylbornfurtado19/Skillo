@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { SinglePassEvaluation, SUQEvaluationResult } from '../src/types/index';
+import type { SinglePassEvaluation, SUQEvaluationResult, CriterionEvidence } from '../src/types/index';
 import {
   normalizeForGrounding,
   levenshteinDistance,
@@ -18,6 +18,37 @@ import {
   verifyMultiPassGrounding,
 } from '../src/lib/services/groundingVerifier.server';
 import SUQConfidenceDashboard from '../src/components/ui/SUQConfidenceDashboard';
+
+function makeCriterionEvidence(
+  partial: Partial<CriterionEvidence>
+): CriterionEvidence {
+  return {
+    technicalAccuracy: partial.technicalAccuracy ?? { claim: '', quote: '' },
+    systemDesignLogic: partial.systemDesignLogic ?? { claim: '', quote: '' },
+    edgeCaseHandling: partial.edgeCaseHandling ?? { claim: '', quote: '' },
+    communicationClarity: partial.communicationClarity ?? { claim: '', quote: '' },
+  };
+}
+
+function makeSuqResult(partial: Partial<SUQEvaluationResult>): SUQEvaluationResult {
+  return {
+    finalScore: 4.0,
+    confidenceLevel: 'HIGH',
+    semanticEntropy: 0.15,
+    clusters: [],
+    passes: [],
+    aggregatedRubricFeedback: {},
+    requiresValidationPass: false,
+    latencyMs: 1000,
+    passCount: partial.passes?.length ?? 1,
+    evaluationMode: 'live',
+    providerStatus: 'available',
+    clusteringMethod: 'score-variance',
+    modelId: 'claude-sonnet-5-5',
+    source: 'live',
+    ...partial,
+  };
+}
 
 describe('B4: Evidence-Grounded Feedback Guard', () => {
   const sampleCandidateSubmission = `
@@ -95,7 +126,7 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
       const pass: SinglePassEvaluation = {
         overallScore: 4.5,
         scores: { technicalAccuracy: 4.5, systemDesignLogic: 4.5, edgeCaseHandling: 4.5, communicationClarity: 4.5 },
-        criterionEvidence: {
+        criterionEvidence: makeCriterionEvidence({
           technicalAccuracy: {
             claim: 'Implemented Redis locks for idempotency',
             quote: 'Redis locks with a 30-second TTL to prevent double charges',
@@ -104,7 +135,7 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
             claim: 'Handled Stripe network timeouts with exponential backoff',
             quote: 'implemented exponential backoff with jitter',
           },
-        },
+        }),
         decisionSummary: 'Strong response with practical idempotency mechanism.',
         feedback: 'Good use of Redis and exponential backoff.',
       };
@@ -124,7 +155,7 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
       const pass: SinglePassEvaluation = {
         overallScore: 4.0,
         scores: { technicalAccuracy: 4, systemDesignLogic: 4, edgeCaseHandling: 4, communicationClarity: 4 },
-        criterionEvidence: {
+        criterionEvidence: makeCriterionEvidence({
           technicalAccuracy: {
             claim: 'Claimed to use CockroachDB multi-region transactions',
             quote: 'configured CockroachDB distributed transactions with Raft protocol',
@@ -137,7 +168,7 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
             claim: 'Mentioned dead letter queue',
             quote: 'stored failed events in a dead letter queue',
           },
-        },
+        }),
         decisionSummary: 'Evaluator hallucinated high-scale distributed systems features.',
         feedback: 'Candidate showed advanced C++ and CockroachDB skills.',
       };
@@ -165,10 +196,10 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
       const pass: SinglePassEvaluation = {
         overallScore: 3.5,
         scores: { technicalAccuracy: 3.5, systemDesignLogic: 3.5, edgeCaseHandling: 3.5, communicationClarity: 3.5 },
-        criterionEvidence: {
+        criterionEvidence: makeCriterionEvidence({
           technicalAccuracy: 'Candidate mentioned "dead letter queue for manual reconciliation" effectively.',
           edgeCaseHandling: 'Candidate said "fabricated quantum encryption layer" for edge cases.',
-        },
+        }),
         decisionSummary: 'Moderate response.',
         feedback: 'Feedback here.',
       };
@@ -185,24 +216,24 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
       const pass1: SinglePassEvaluation = {
         overallScore: 4.5,
         scores: { technicalAccuracy: 4.5, systemDesignLogic: 4.5, edgeCaseHandling: 4.5, communicationClarity: 4.5 },
-        criterionEvidence: {
+        criterionEvidence: makeCriterionEvidence({
           technicalAccuracy: {
             claim: 'Redis locks for idempotency',
             quote: 'Redis locks with a 30-second TTL to prevent double charges',
           },
-        },
+        }),
         feedback: 'Pass 1 feedback',
       };
 
       const pass2: SinglePassEvaluation = {
         overallScore: 4.2,
         scores: { technicalAccuracy: 4.2, systemDesignLogic: 4.2, edgeCaseHandling: 4.2, communicationClarity: 4.2 },
-        criterionEvidence: {
+        criterionEvidence: makeCriterionEvidence({
           edgeCaseHandling: {
             claim: 'Exponential backoff with jitter',
             quote: 'implemented exponential backoff with jitter',
           },
-        },
+        }),
         feedback: 'Pass 2 feedback',
       };
 
@@ -210,12 +241,12 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
       const pass3: SinglePassEvaluation = {
         overallScore: 1.5,
         scores: { technicalAccuracy: 1.5, systemDesignLogic: 1.5, edgeCaseHandling: 1.5, communicationClarity: 1.5 },
-        criterionEvidence: {
+        criterionEvidence: makeCriterionEvidence({
           technicalAccuracy: {
             claim: 'Candidate talked about quantum computing',
             quote: 'we wired up a D-Wave quantum annealer for transaction routing',
           },
-        },
+        }),
         feedback: 'Pass 3 hallucinated feedback',
       };
 
@@ -233,12 +264,12 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
       const pass: SinglePassEvaluation = {
         overallScore: 2.0,
         scores: { technicalAccuracy: 2, systemDesignLogic: 2, edgeCaseHandling: 2, communicationClarity: 2 },
-        criterionEvidence: {
+        criterionEvidence: makeCriterionEvidence({
           technicalAccuracy: {
             claim: 'Fabricated',
             quote: 'completely invented claim not in text',
           },
-        },
+        }),
         feedback: 'Feedback',
       };
 
@@ -251,27 +282,27 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
 
   describe('5. SUQ Confidence Dashboard Rendering', () => {
     it('renders grounding badge and excluded passes badge and alert banner when passes are excluded', () => {
-      const mockSuq: SUQEvaluationResult = {
+      const mockSuq: SUQEvaluationResult = makeSuqResult({
         semanticEntropy: 0.15,
         confidenceLevel: 'HIGH',
         requiresValidationPass: false,
         latencyMs: 1450,
         groundingScore: 0.67,
         excludedPassesCount: 1,
-        source: 'llm',
+        source: 'live',
         passes: [
           {
             overallScore: 4.5,
             scores: { technicalAccuracy: 4.5, systemDesignLogic: 4.5, edgeCaseHandling: 4.5, communicationClarity: 4.5 },
             groundingScore: 1.0,
             isUngrounded: false,
-            criterionEvidence: {
+            criterionEvidence: makeCriterionEvidence({
               technicalAccuracy: {
                 claim: 'Idempotency with Redis',
                 quote: 'Redis locks with a 30-second TTL',
                 verified: true,
               },
-            },
+            }),
             feedback: 'Great response',
           },
           {
@@ -279,18 +310,18 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
             scores: { technicalAccuracy: 2, systemDesignLogic: 2, edgeCaseHandling: 2, communicationClarity: 2 },
             groundingScore: 0.0,
             isUngrounded: true,
-            criterionEvidence: {
+            criterionEvidence: makeCriterionEvidence({
               technicalAccuracy: {
                 claim: 'Fabricated claim',
                 quote: 'quantum annealer',
                 verified: false,
                 flagged: true,
               },
-            },
+            }),
             feedback: 'Hallucinated pass',
           },
         ],
-      };
+      });
 
       const html = renderToStaticMarkup(
         React.createElement(SUQConfidenceDashboard, { suqEvaluation: mockSuq })
@@ -309,14 +340,14 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
     });
 
     it('renders clean state with no excluded passes banner when all passes are grounded', () => {
-      const cleanSuq: SUQEvaluationResult = {
+      const cleanSuq: SUQEvaluationResult = makeSuqResult({
         semanticEntropy: 0.12,
         confidenceLevel: 'HIGH',
         requiresValidationPass: false,
         latencyMs: 1200,
         groundingScore: 1.0,
         excludedPassesCount: 0,
-        source: 'llm',
+        source: 'live',
         passes: [
           {
             overallScore: 4.5,
@@ -326,7 +357,7 @@ describe('B4: Evidence-Grounded Feedback Guard', () => {
             feedback: 'Verified feedback',
           },
         ],
-      };
+      });
 
       const html = renderToStaticMarkup(
         React.createElement(SUQConfidenceDashboard, { suqEvaluation: cleanSuq })

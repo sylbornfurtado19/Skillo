@@ -39,6 +39,8 @@ import {
   AUDIO_BAR_PROFILES,
   generateFallbackEvaluationReport,
   formatTime,
+  handleRetryEvaluationSuccess,
+  handleRetryEvaluationFailure,
 } from '../components/interview/session/sessionHelpers';
 import SessionGradingOverlay from '../components/interview/session/SessionGradingOverlay';
 import SessionInterviewerCard from '../components/interview/session/SessionInterviewerCard';
@@ -52,6 +54,33 @@ const SessionBiometricHUDs = dynamic(
   () => import('../components/interview/session/SessionBiometricHUDs'),
   { ssr: false }
 );
+
+function getClientTreeDepth(node: any, currentDepth = 0): number {
+  if (!node || !node.children || !Array.isArray(node.children) || node.children.length === 0) {
+    return currentDepth;
+  }
+  return Math.max(...node.children.map((c: any) => getClientTreeDepth(c, currentDepth + 1)));
+}
+
+function getSafePreviousTreeState(treeState: any): any | undefined {
+  if (!treeState || !treeState.rootNode) return undefined;
+
+  const depth = getClientTreeDepth(treeState.rootNode);
+  if (depth > 6) {
+    return undefined;
+  }
+
+  try {
+    const serialized = JSON.stringify(treeState);
+    if (new TextEncoder().encode(serialized).length > 100 * 1024) {
+      return undefined;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return treeState;
+}
 
 export default function InterviewSession() {
   const router = useRouter();
@@ -145,6 +174,19 @@ export default function InterviewSession() {
   const [checkingFollowUp, setCheckingFollowUp] = useState(false);
   const [followUpTrackedIndices] = useState<Set<number>>(() => new Set());
   const [followUpBadgeSet] = useState<Set<number>>(() => new Set());
+
+  // Persistent LATS Tree State across Follow-Ups (Issue 1 & 2)
+  const sessionKeyRef = useRef<string>(`session_${Date.now()}`);
+  const latestTreeStateRef = useRef<any>(null);
+  const skipFollowUpRef = useRef<(() => void) | null>(null);
+
+  // Reset persistent tree when a new interview session begins
+  useEffect(() => {
+    if (currentQuestionIndex === 0 && answers.length === 0) {
+      sessionKeyRef.current = `session_${Date.now()}`;
+      latestTreeStateRef.current = null;
+    }
+  }, [currentQuestionIndex, answers.length]);
 
   // System Design Diagram state
   const isSystemDesignQuestion =
@@ -590,22 +632,17 @@ export default function InterviewSession() {
 
 
         .then((finalReport) => {
-          const newScore = finalReport.overallScore;
-          const feedback = finalReport.breakdown?.[0]?.feedback || 'Demonstrated improved response clarity.';
+          const { newScore, feedback } = handleRetryEvaluationSuccess(finalReport);
           updateQuestionScore(retryQuestionIndex, finalAnswer || 'No response provided.', newScore, feedback);
           setIsRetry(false);
           setGrading(false);
           router.push('/results');
         })
         .catch((err) => {
-          console.warn('[InterviewSession] Retry evaluation error, applying safe fallback:', err);
-          showToast('Retry evaluation completed with calibrated score.', 'info');
-          const newScore = 80;
-          const feedback = 'Demonstrated improved response clarity.';
-          updateQuestionScore(retryQuestionIndex, finalAnswer || 'No response provided.', newScore, feedback);
-          setIsRetry(false);
-          setGrading(false);
-          router.push('/results');
+          console.warn('[InterviewSession] Retry evaluation error, keeping previous score:', err);
+          const failure = handleRetryEvaluationFailure(err);
+          showToast(failure.toastMessage, failure.toastType);
+          setGrading(failure.grading);
         });
       return;
     }
@@ -615,14 +652,24 @@ export default function InterviewSession() {
       followUpTrackedIndices.add(currentQuestionIndex);
       setCheckingFollowUp(true);
 
-      // 4-second timeout promise protection to ensure smooth live session pacing
+      let isCancelled = false;
+      skipFollowUpRef.current = () => {
+        if (isCancelled) return;
+        isCancelled = true;
+        setCheckingFollowUp(false);
+        skipFollowUpRef.current = null;
+        proceedToNext(questions, newAnswers, currentSpeechAnalytics);
+      };
+
+      // 12-second timeout promise protection to allow K MCTS rounds while ensuring bounded pacing
       const timeoutPromise = new Promise<{ needsFollowUp: false }>((resolve) =>
-        setTimeout(() => resolve({ needsFollowUp: false }), 4000)
+        setTimeout(() => resolve({ needsFollowUp: false }), 12000)
       );
 
       const fetchPromise = (async () => {
         try {
           const token = await getAuthToken();
+          const safePreviousTree = getSafePreviousTreeState(latestTreeStateRef.current);
           const res = await fetch('/api/interview/followup', {
             method: 'POST',
             headers: {
@@ -635,10 +682,16 @@ export default function InterviewSession() {
               role: setupData.role,
               difficulty: setupData.experienceLevel,
               type: setupData.type,
+              sessionId: sessionKeyRef.current,
+              ...(safePreviousTree ? { previousTreeState: safePreviousTree } : {}),
             }),
           });
           if (res.ok) {
-            return await res.json();
+            const data = await res.json();
+            if (data?.treeState) {
+              latestTreeStateRef.current = data.treeState;
+            }
+            return data;
           }
         } catch (e) {
           console.warn('Follow-up check error:', e);
@@ -647,6 +700,8 @@ export default function InterviewSession() {
       })();
 
       Promise.race([fetchPromise, timeoutPromise]).then((data) => {
+        if (isCancelled) return;
+        skipFollowUpRef.current = null;
         const followUpText = data?.followUpQuestion || data?.selectedBranch?.questionText;
         if (data && data.needsFollowUp && followUpText) {
           const newQuestionsList = [...questions];
@@ -964,6 +1019,20 @@ export default function InterviewSession() {
         </div>
         <h3 className="text-base font-heading font-bold text-text-primary">Reviewing your answer...</h3>
         <p className="text-xs text-text-secondary font-mono">Real-time AI checking for depth and technical specificity...</p>
+        <Button
+          onClick={() => {
+            if (skipFollowUpRef.current) {
+              skipFollowUpRef.current();
+            } else {
+              setCheckingFollowUp(false);
+            }
+          }}
+          variant="secondary"
+          size="sm"
+          className="mt-4"
+        >
+          Skip Follow-up & Proceed
+        </Button>
       </div>
     );
   }

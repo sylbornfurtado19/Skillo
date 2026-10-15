@@ -10,17 +10,26 @@
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';
+import { getThemeColor } from '@/lib/themeColors';
 import type { GazeFrameResult, HeadPoseFrameResult } from '@/types/index';
 
 const RAY_LENGTH = 75;
-const ZONE_COLORS: Record<GazeFrameResult['screenFocusZone'], { ray: string; glow: string }> = {
-  CENTER_SCREEN: { ray: '#3F7D58', glow: 'rgba(63,125,88,0.35)' },
-  LOOKING_UP:    { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)' },
-  LOOKING_DOWN:  { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)' },
-  LOOKING_LEFT:  { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)' },
-  LOOKING_RIGHT: { ray: '#C98A1B', glow: 'rgba(201,138,27,0.3)' },
-  OFF_SCREEN:    { ray: '#B3261E', glow: 'rgba(179,38,30,0.35)' },
-};
+function getCameraZoneColors(zone: GazeFrameResult['screenFocusZone']): { ray: string; glow: string } {
+  switch (zone) {
+    case 'CENTER_SCREEN': {
+      const ray = getThemeColor('--success', '#3F7D58');
+      return { ray, glow: 'color-mix(in srgb, var(--success, #3F7D58) 35%, transparent)' };
+    }
+    case 'OFF_SCREEN': {
+      const ray = getThemeColor('--danger', '#B3261E');
+      return { ray, glow: 'color-mix(in srgb, var(--danger, #B3261E) 35%, transparent)' };
+    }
+    default: {
+      const ray = getThemeColor('--warning', '#C98A1B');
+      return { ray, glow: 'color-mix(in srgb, var(--warning, #C98A1B) 30%, transparent)' };
+    }
+  }
+}
 
 function project3D(
   x: number,
@@ -102,7 +111,7 @@ export default function IVPCameraPreview({
       const eyeCx = w / 2;
       const eyeCy = h * 0.42;
 
-      const colors = ZONE_COLORS[screenFocusZone] || ZONE_COLORS.CENTER_SCREEN;
+      const colors = getCameraZoneColors(screenFocusZone);
       const yawRad = (gazeAngles.yawDegrees * Math.PI) / 180;
       const pitchRad = (gazeAngles.pitchDegrees * Math.PI) / 180;
 
@@ -190,7 +199,7 @@ export default function IVPCameraPreview({
         return [headCx + px, headCy + py] as [number, number];
       });
 
-      ctx.strokeStyle = 'rgba(155, 34, 24, 0.7)';
+      ctx.strokeStyle = 'color-mix(in srgb, var(--primary, #9B2218) 70%, transparent)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       for (const [i, j] of CUBE_EDGES) {
@@ -205,7 +214,7 @@ export default function IVPCameraPreview({
       ctx.beginPath();
       ctx.moveTo(headCx, headCy);
       ctx.lineTo(headCx + pxX, headCy + pyX);
-      ctx.strokeStyle = '#ef4444'; // Red: Pitch/X
+      ctx.strokeStyle = getThemeColor('--danger', '#ef4444'); // Red: Pitch/X
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
@@ -213,7 +222,7 @@ export default function IVPCameraPreview({
       ctx.beginPath();
       ctx.moveTo(headCx, headCy);
       ctx.lineTo(headCx + pxY, headCy + pyY);
-      ctx.strokeStyle = '#10b981'; // Green: Yaw/Y
+      ctx.strokeStyle = getThemeColor('--success', '#10b981'); // Green: Yaw/Y
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
@@ -221,12 +230,12 @@ export default function IVPCameraPreview({
       ctx.beginPath();
       ctx.moveTo(headCx, headCy);
       ctx.lineTo(headCx + pxZ, headCy + pyZ);
-      ctx.strokeStyle = '#3b82f6'; // Blue: Roll/Z
+      ctx.strokeStyle = getThemeColor('--info', '#3b82f6'); // Blue: Roll/Z
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
       // Pose Label
-      ctx.fillStyle = '#9B2218';
+      ctx.fillStyle = getThemeColor('--primary', '#9B2218');
       ctx.font = 'bold 9px monospace';
       ctx.fillText(`Y:${angles.yawDegrees.toFixed(0)}° P:${angles.pitchDegrees.toFixed(0)}° R:${angles.rollDegrees.toFixed(0)}°`, 8, h - 8);
 

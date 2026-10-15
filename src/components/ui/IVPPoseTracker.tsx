@@ -24,6 +24,7 @@ import React, {
 import { processPoseFrame } from '@/lib/services/ivpPoseEngine';
 import { TemporalMotionDetector } from '@/lib/services/temporalMotion';
 import { HeadPoseEMA } from '@/lib/services/temporalSmoothing';
+import { getThemeColor } from '@/lib/themeColors';
 import type { HeadPoseFrameInput, HeadPoseFrameResult } from '@/types/index';
 
 const SAMPLE_FPS = 10;
@@ -181,7 +182,7 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
         ctx.save();
 
         // 1. Draw 3D Bounding Box Wireframe
-        ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
+        ctx.strokeStyle = 'color-mix(in srgb, var(--primary, #6366f1) 40%, transparent)';
         ctx.lineWidth = 1.5;
 
         const projectedVerts = CUBE_VERTICES.map(([vx, vy, vz]) => {
@@ -201,38 +202,38 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
         // 2. Draw 3D Coordinate Axes (Red = Pitch/X, Green = Yaw/Y, Blue = Roll/Z)
         const axisLength = 55;
 
-        // X-Axis (Red - Pitch / Up-Down Tilt)
+        // X-Axis (Pitch / Up-Down Tilt)
         const [rx, ry] = project3D(axisLength, 0, 0, yawRad, pitchRad, rollRad);
         ctx.beginPath();
         ctx.moveTo(headCx, headCy);
         ctx.lineTo(headCx + rx, headCy + ry);
-        ctx.strokeStyle = '#ef4444'; // Red
+        ctx.strokeStyle = getThemeColor('--danger', '#ef4444');
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // Y-Axis (Green - Yaw / Left-Right Turn)
+        // Y-Axis (Yaw / Left-Right Turn)
         const [gx, gy] = project3D(0, -axisLength, 0, yawRad, pitchRad, rollRad);
         ctx.beginPath();
         ctx.moveTo(headCx, headCy);
         ctx.lineTo(headCx + gx, headCy + gy);
-        ctx.strokeStyle = '#10b981'; // Green
+        ctx.strokeStyle = getThemeColor('--success', '#10b981');
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // Z-Axis (Blue - Roll / Side Tilt)
+        // Z-Axis (Roll / Side Tilt)
         const [bx, by] = project3D(0, 0, axisLength, yawRad, pitchRad, rollRad);
         ctx.beginPath();
         ctx.moveTo(headCx, headCy);
         ctx.lineTo(headCx + bx, headCy + by);
-        ctx.strokeStyle = '#3b82f6'; // Blue
+        ctx.strokeStyle = getThemeColor('--info', '#3b82f6');
         ctx.lineWidth = 3;
         ctx.stroke();
 
         // Center origin point
         ctx.beginPath();
         ctx.arc(headCx, headCy, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#6366f1';
+        ctx.fillStyle = getThemeColor('--text-on-primary', '#ffffff');
+        ctx.shadowColor = getThemeColor('--primary', '#6366f1');
         ctx.shadowBlur = 10;
         ctx.fill();
 
