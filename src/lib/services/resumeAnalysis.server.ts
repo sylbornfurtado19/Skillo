@@ -1,5 +1,6 @@
 import { executeGraphRAGAnalysis } from './graphRAG.server';
 import { analyzeVisualDocumentLayout } from './documentVision.server';
+import { sanitizeUserText } from '@/lib/server/sanitize';
 import type { GraphRAGAnalysisResult, VisualLayoutAnalysisResult } from '@/types/index';
 
 export interface ResumeAnalysisInput {
@@ -180,19 +181,22 @@ export async function performResumeAnalysis(
   input: ResumeAnalysisInput,
   userId: string
 ): Promise<ResumeAnalysisResult> {
-  const sanitizedJobTitle = input.jobTitle.trim().replace(/[<>]/g, '');
+  const sanitizedJobTitle = sanitizeUserText(input.jobTitle, 200);
+  const sanitizedJobDescription = sanitizeUserText(input.jobDescription, 5000);
+  const sanitizedResumeText = sanitizeUserText(input.resumeText, 15000);
+  const sanitizedFileName = sanitizeUserText(input.fileName, 255);
 
   const graphRAGResult = await executeGraphRAGAnalysis({
     jobTitle: sanitizedJobTitle,
-    jobDescription: input.jobDescription,
-    fileName: input.fileName,
-    resumeText: input.resumeText,
+    jobDescription: sanitizedJobDescription,
+    fileName: sanitizedFileName,
+    resumeText: sanitizedResumeText,
   });
 
   // Run LayoutLMv3 visual document layout analysis in parallel
   const visualLayoutAnalysis = analyzeVisualDocumentLayout(
-    input.resumeText ?? '',
-    input.fileName
+    sanitizedResumeText,
+    sanitizedFileName
   );
 
   // Derive skillsMatched from VERIFIED nodes

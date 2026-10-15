@@ -58,6 +58,7 @@ jest.mock('../src/lib/server/supabaseAdmin', () => ({
 
 import { POST as evaluateHandler } from '../app/api/interview/evaluate/route';
 import { POST as followupHandler } from '../app/api/interview/followup/route';
+import { POST as setupHandler } from '../app/api/interview/setup/route';
 import { POST as analyzeHandler } from '../app/api/resume/analyze/route';
 import { POST as extractHandler } from '../app/api/resume/extract/route';
 
@@ -65,6 +66,16 @@ const AUTH_HEADER = { Authorization: 'Bearer valid_test_token' };
 
 describe('API Validation & Abuse Prevention Suite', () => {
   describe('Authentication Enforcement', () => {
+    it('rejects setup request without authorization header with HTTP 401', async () => {
+      const req = new Request('http://localhost:3000/api/interview/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const res = await setupHandler(req);
+      expect(res.status).toBe(401);
+    });
+
     it('rejects evaluate request without authorization header with HTTP 401', async () => {
       const req = new Request('http://localhost:3000/api/interview/evaluate', {
         method: 'POST',

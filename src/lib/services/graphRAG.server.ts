@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { normalizeEntityName } from '@/lib/schemas/graphSchema';
+import { normalizeEntityName, graphRelationshipTypeSchema } from '@/lib/schemas/graphSchema';
 import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
 import { safeParseModelJson } from '@/lib/ai/safeJsonParser';
+import { sanitizeUserText } from '@/lib/server/sanitize';
 import type {
   GraphEntity,
   GraphRelationship,
@@ -10,6 +11,7 @@ import type {
   GraphRAGAnalysisResult,
   GraphRAGLevel,
   GraphNodeStatus,
+  RelationType,
 } from '@/types/index';
 
 // 1. Zod Validation Schemas for Graph Extraction
@@ -22,7 +24,7 @@ export const entityExtractionSchema = z.object({
 export const relationshipExtractionSchema = z.object({
   source: z.string().min(1),
   target: z.string().min(1),
-  relationshipType: z.enum(['DEPENDS_ON', 'APPLIED_IN', 'EXPANDS_UPON']),
+  relationshipType: graphRelationshipTypeSchema,
   weight: z.number().min(0.1).max(1.0),
   description: z.string().min(3),
 });
@@ -150,8 +152,7 @@ export function executeLeidenHierarchicalClustering(
     return {
       sourceId: srcNode?.id ?? `src_${idx}`,
       targetId: tgtNode?.id ?? `tgt_${idx}`,
-      relationshipType: rel.relationshipType as 'DEPENDS_ON' | 'APPLIED_IN' | 'EXPANDS_UPON',
-
+      relationshipType: rel.relationshipType as RelationType,
       weight: rel.weight,
       description: rel.description,
     };
@@ -229,9 +230,17 @@ export function executeLeidenHierarchicalClustering(
  * Traverses missing leaf nodes (Level 2) upwards to identify blocked core capabilities (Level 1)
  * and macro domain impacts (Level 0).
  */
+/**
+ * 3. Hierarchical Gap Synthesis Engine
+ * Traverses missing leaf nodes (Level 2) upwards to identify blocked core capabilities (Level 1)
+ * and macro domain impacts (Level 0).
+ * - REQUIRES is traversed like DEPENDS_ON for prerequisite chains.
+ * - BLOCKS is treated as a reverse blocking edge shown directly in the gap chain.
+ */
 export function synthesizePrerequisiteGapChains(
   nodes: GraphEntity[],
-  jobTitle: string
+  jobTitle: string,
+  relationships?: Array<{ source: string; target: string; relationshipType: string }>
 ): PrerequisiteGapChain[] {
   const missingNodes = nodes.filter(n => n.status === 'MISSING' || n.status === 'PARTIAL');
 
@@ -286,23 +295,47 @@ export function synthesizePrerequisiteGapChains(
       }) ?? `${jobTitle} Architecture`;
     }
 
-    // Determine blocked capability: the node's downstream impact (if any)
-    const blockedCapability =
-      (node.downstreamImpacts && node.downstreamImpacts.length > 0)
+    // Check if an explicit BLOCKS edge exists:
+    // 1) node is source of a BLOCKS edge: "node BLOCKS target" -> reverse blocking edge
+    const blockingRel = relationships?.find(
+      r => r.relationshipType === 'BLOCKS' &&
+           (r.source.toLowerCase() === node.name.toLowerCase() ||
+            normalizeEntityName(r.source).toLowerCase() === node.name.toLowerCase())
+    );
+
+    // 2) or node is target of a BLOCKS edge: "blocker BLOCKS node"
+    const blockedByRel = relationships?.find(
+      r => r.relationshipType === 'BLOCKS' &&
+           (r.target.toLowerCase() === node.name.toLowerCase() ||
+            normalizeEntityName(r.target).toLowerCase() === node.name.toLowerCase())
+    );
+
+    // Determine blocked capability: from explicit BLOCKS edge or node's downstream impact
+    const blockedCapability = blockingRel
+      ? blockingRel.target
+      : (node.downstreamImpacts && node.downstreamImpacts.length > 0)
         ? node.downstreamImpacts[0]
         : `Advanced ${node.name} Integration`;
+
+    const missingFoundation = blockedByRel
+      ? `${blockedByRel.source} (Blocking Dependency) → ${node.name}`
+      : bestChain.length > 1
+        ? bestChain.slice(1).join(' → ')
+        : node.name;
 
     return {
       id: `gap_${idx + 1}_${node.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
       missingSkill: node.name,
-      missingFoundation: bestChain.length > 1 ? bestChain.slice(1).join(' → ') : node.name,
+      missingFoundation,
       blockedCapability,
       macroDomainImpact: macroAncestorName,
       downstreamImpact: `${jobTitle} Architecture Resilience`,
       severity,
       remediationPath: [
         `Master foundational principles of ${node.name}.`,
-        `Practice ${blockedCapability} integration patterns aligned with ${jobTitle} requirements.`,
+        blockingRel
+          ? `Resolve blocking dependency preventing ${blockedCapability} deployment.`
+          : `Practice ${blockedCapability} integration patterns aligned with ${jobTitle} requirements.`,
         `Build automated verification tests covering ${node.name} boundary conditions.`,
       ],
     };
@@ -316,7 +349,10 @@ export function synthesizePrerequisiteGapChains(
 export async function executeGraphRAGAnalysis(
   input: BuildGraphRAGInput
 ): Promise<GraphRAGAnalysisResult> {
-  const { jobTitle, jobDescription, fileName, resumeText } = input;
+  const jobTitle = sanitizeUserText(input.jobTitle, 200);
+  const jobDescription = sanitizeUserText(input.jobDescription, 5000);
+  const fileName = sanitizeUserText(input.fileName, 255);
+  const resumeText = sanitizeUserText(input.resumeText, 15000);
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
   let rawEntities = [
@@ -329,8 +365,9 @@ export async function executeGraphRAGAnalysis(
 
   let rawRelationships = [
     { source: `${jobTitle} Architecture`, target: 'Distributed Caching & Storage', relationshipType: 'DEPENDS_ON', weight: 0.9, description: 'Architecture depends on data storage.' },
-    { source: 'Distributed Caching & Storage', target: 'Redis Redlock Protocol', relationshipType: 'APPLIED_IN', weight: 0.85, description: 'Caching applies lock protocols.' },
+    { source: 'Distributed Caching & Storage', target: 'Redis Redlock Protocol', relationshipType: 'REQUIRES', weight: 0.85, description: 'Caching requires atomic lock protocols.' },
     { source: 'React 19 & Next.js App Router', target: 'TypeScript Strict Types', relationshipType: 'EXPANDS_UPON', weight: 0.8, description: 'Framework relies on strict type system.' },
+    { source: 'Redis Redlock Protocol', target: 'React 19 & Next.js App Router', relationshipType: 'BLOCKS', weight: 0.75, description: 'Concurrency oversights block reliable UI state synchronization.' },
   ];
 
   let providerStatus: 'available' | 'fallback_heuristic' | 'unconfigured' | 'error' = 'fallback_heuristic';
@@ -380,7 +417,7 @@ REQUIRED JSON OUTPUT FORMAT:
     { "name": "<Entity Name>", "type": "SKILL" | "FRAMEWORK" | "CONCEPT" | "DOMAIN", "description": "<Description>" }
   ],
   "relationships": [
-    { "source": "<Source Entity Name>", "target": "<Target Entity Name>", "relationshipType": "DEPENDS_ON" | "APPLIED_IN" | "EXPANDS_UPON", "weight": <0.1-1.0>, "description": "<Relationship Description>" }
+    { "source": "<Source Entity Name>", "target": "<Target Entity Name>", "relationshipType": "DEPENDS_ON" | "APPLIED_IN" | "EXPANDS_UPON" | "REQUIRES" | "BLOCKS", "weight": <0.1-1.0>, "description": "<Relationship Description>" }
   ]
 }`;
 
@@ -392,7 +429,7 @@ Job Description: ${jobDescription}
 <resume_document_data>
 Filename: ${fileName}
 Content:
-${resumeText.slice(0, 15000)}
+${resumeText}
 </resume_document_data>`;
 
       const response = await executeAnthropicRequest({
@@ -447,7 +484,7 @@ ${resumeText.slice(0, 15000)}
   );
 
   // Synthesize Prerequisite Gap Chains
-  const missingPrerequisiteChains = synthesizePrerequisiteGapChains(nodes, jobTitle);
+  const missingPrerequisiteChains = synthesizePrerequisiteGapChains(nodes, jobTitle, rawRelationships);
 
   // Calculate Overall Domain Coverage Index truthfully without artificial min-clamp
   const verifiedCount = nodes.filter((n) => n.status === 'VERIFIED').length;

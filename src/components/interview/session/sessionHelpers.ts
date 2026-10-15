@@ -83,14 +83,18 @@ export function generateFallbackEvaluationReport(
           text: 'FAANG-level response demonstrates granular trade-off analysis, concurrency models, and resilient error recovery.',
           tokenLength: 120,
           implicitReward: 2.15,
+          qualityScore: 0.85,
         },
         dispreferredAnswer: {
           text: 'Under-elaborated response omitted boundary error conditions and quantitative complexity figures.',
           tokenLength: 70,
           implicitReward: 0.85,
+          qualityScore: 0.50,
         },
-        rewardMargin: 1.30,
+        qualityMargin: 0.35,
+        rewardMargin: 0.35,
         marginSatisfied: true,
+        gamma: 0.25,
         structuralDeltas: [
           {
             dimension: 'SYSTEM_ARCHITECTURE' as const,

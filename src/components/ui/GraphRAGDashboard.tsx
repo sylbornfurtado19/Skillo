@@ -132,7 +132,8 @@ export default function GraphRAGDashboard({
 
       {/* 2. Interactive Hierarchical Knowledge Graph visualizer */}
       <Card variant="default" className="p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border pb-3">
+        {/* Tier Level Filter Controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <FaLayerGroup className="text-primary text-sm" />
             <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
@@ -140,7 +141,6 @@ export default function GraphRAGDashboard({
             </h4>
           </div>
 
-          {/* Tier Level Filter Controls */}
           <div className="flex items-center gap-1 bg-bg-surface-alt p-1 rounded-xl border border-border text-[10px] font-mono">
             {(['ALL', 0, 1, 2] as const).map((lvl) => (
               <button
@@ -156,6 +156,38 @@ export default function GraphRAGDashboard({
                 {lvl === 'ALL' ? 'All Tiers' : `L${lvl}`}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Edge Relationship Types Legend */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 p-3 rounded-xl bg-bg-surface-alt border border-border text-[11px] font-mono">
+          <span className="text-text-secondary uppercase font-bold text-[10px] tracking-wider">
+            Edge Relationship Legend:
+          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-primary" />
+            <span className="text-text-primary font-semibold">DEPENDS_ON</span>
+            <span className="text-text-secondary/70">(Prerequisite)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-accent" />
+            <span className="text-text-primary font-semibold">REQUIRES</span>
+            <span className="text-text-secondary/70">(Strict Prereq)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-success" />
+            <span className="text-text-primary font-semibold">APPLIED_IN</span>
+            <span className="text-text-secondary/70">(Contextual)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-secondary" />
+            <span className="text-text-primary font-semibold">EXPANDS_UPON</span>
+            <span className="text-text-secondary/70">(Extension)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-danger animate-pulse" />
+            <span className="text-danger font-semibold">BLOCKS</span>
+            <span className="text-text-secondary/70">(Reverse Blocker)</span>
           </div>
         </div>
 

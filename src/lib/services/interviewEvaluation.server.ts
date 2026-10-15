@@ -14,6 +14,7 @@ import { resolveInterviewMode } from '@/types/interviewModes';
 import { summarizeDiagramTopology, SystemDesignDiagramState } from '@/types/systemDesign';
 import { AI_CONFIG, executeAnthropicRequest } from '@/lib/ai/aiConfig';
 import { safeParseModelJson } from '@/lib/ai/safeJsonParser';
+import { sanitizeUserText } from '@/lib/server/sanitize';
 import type {
   RubricCriterion,
   SinglePassEvaluation,
@@ -167,11 +168,13 @@ async function executeSingleCoTPass(
 
   const combinedSubmission = questionsList.map((q, idx) => {
     const rawAns = answersList[idx];
-    const answerText = typeof rawAns === 'string' ? rawAns : rawAns?.answerText ?? 'No response provided.';
+    const rawAnswerText = typeof rawAns === 'string' ? rawAns : rawAns?.answerText ?? 'No response provided.';
+    const answerText = sanitizeUserText(rawAnswerText, 5000);
+    const questionText = sanitizeUserText(q.question, 5000);
     const diagramInfo = (typeof rawAns === 'object' && rawAns?.diagramState)
       ? `\nArchitecture Whiteboard Diagram: ${summarizeDiagramTopology(rawAns.diagramState)}\n`
       : '';
-    return `Question ${idx + 1}: ${q.question}\nCandidate Answer: ${answerText}${diagramInfo}\n`;
+    return `Question ${idx + 1}: ${questionText}\nCandidate Answer: ${answerText}${diagramInfo}\n`;
   }).join('\n');
 
   if (anthropicApiKey) {
@@ -564,8 +567,8 @@ export async function performInterviewEvaluation(
   const questionFeedbacks: AnswerBreakdown[] = questionsList.map((q, index) => {
     const rawAns = answersList[index];
     const answerStr = typeof rawAns === 'string' ? rawAns : rawAns?.answerText ?? 'No answer provided.';
-    const sanitizedAns = answerStr.trim().replace(/[<>]/g, '').slice(0, 5000);
-    const sanitizedQuestion = q.question.trim().replace(/[<>]/g, '');
+    const sanitizedAns = sanitizeUserText(answerStr, 5000);
+    const sanitizedQuestion = sanitizeUserText(q.question, 5000);
     const qId = q.id ?? `q_${index + 1}`;
 
     // Isolate telemetry strictly attributed to this question
@@ -628,12 +631,15 @@ export async function performInterviewEvaluation(
   });
 
   const selectedQuestionItem = questionsList[selectedQuestionIndex];
-  const selectedQuestion = selectedQuestionItem?.question ?? 'Technical Assessment Question';
+  const selectedQuestion = sanitizeUserText(selectedQuestionItem?.question ?? 'Technical Assessment Question', 5000);
   const selectedQuestionId = selectedQuestionItem?.id ?? `q_${selectedQuestionIndex + 1}`;
   const rawSelectedAns = answersList[selectedQuestionIndex];
-  const selectedAns = typeof rawSelectedAns === 'string'
-    ? rawSelectedAns
-    : rawSelectedAns?.answerText ?? '';
+  const selectedAns = sanitizeUserText(
+    typeof rawSelectedAns === 'string'
+      ? rawSelectedAns
+      : rawSelectedAns?.answerText ?? '',
+    5000
+  );
 
   // Retrieve historical memory BEFORE generating new reflection
   const existingMemoryStore = await retrieveSkillMemoryStore(userId);

@@ -59,27 +59,60 @@ describe('POST /api/interview/setup Rate Limiting', () => {
     jest.clearAllMocks();
   });
 
-  it('rejects unauthenticated requests that exceed the configured limit with HTTP 429', async () => {
-    const testIp = '198.51.100.42';
+  it('rejects unauthenticated requests without authorization header with HTTP 401', async () => {
+    const unauthReq = new Request('http://localhost:3000/api/interview/setup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(validSetupPayload),
+    });
 
-    const makeRequest = () =>
+    const res = await setupHandler(unauthReq);
+    expect(res.status).toBe(401);
+
+    const data = await res.json();
+    expect(data.status).toBe('error');
+    expect(data.message).toMatch(/Authentication required/i);
+  });
+
+  it('rejects requests with invalid authorization token with HTTP 401', async () => {
+    const invalidAuthReq = new Request('http://localhost:3000/api/interview/setup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer invalid_token_xyz',
+      },
+      body: JSON.stringify(validSetupPayload),
+    });
+
+    const res = await setupHandler(invalidAuthReq);
+    expect(res.status).toBe(401);
+
+    const data = await res.json();
+    expect(data.status).toBe('error');
+    expect(data.message).toMatch(/Authentication required/i);
+  });
+
+  it('enforces rate limiting per authenticated user ID (rejects 11th request with HTTP 429)', async () => {
+    const makeAuthRequest = () =>
       new Request('http://localhost:3000/api/interview/setup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-forwarded-for': testIp,
+          Authorization: 'Bearer valid_test_token',
         },
         body: JSON.stringify(validSetupPayload),
       });
 
     // Send 10 allowed requests (maxRequests = 10)
     for (let i = 0; i < 10; i++) {
-      const res = await setupHandler(makeRequest());
+      const res = await setupHandler(makeAuthRequest());
       expect(res.status).toBe(200);
     }
 
-    // 11th request must be rejected with HTTP 429
-    const blockedRes = await setupHandler(makeRequest());
+    // 11th request by the same authenticated user must be rejected with HTTP 429
+    const blockedRes = await setupHandler(makeAuthRequest());
     expect(blockedRes.status).toBe(429);
 
     const data = await blockedRes.json();
@@ -91,31 +124,5 @@ describe('POST /api/interview/setup Rate Limiting', () => {
     expect(blockedRes.headers.get('Retry-After')).toBeDefined();
     expect(blockedRes.headers.get('X-RateLimit-Limit')).toBe('10');
     expect(blockedRes.headers.get('X-RateLimit-Remaining')).toBe('0');
-  });
-
-  it('enforces rate limiting per authenticated user ID', async () => {
-    const makeAuthRequest = () =>
-      new Request('http://localhost:3000/api/interview/setup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer valid_test_token',
-        },
-        body: JSON.stringify(validSetupPayload),
-      });
-
-    // Send 10 allowed requests
-    for (let i = 0; i < 10; i++) {
-      const res = await setupHandler(makeAuthRequest());
-      expect(res.status).toBe(200);
-    }
-
-    // 11th request by the same authenticated user must be rejected
-    const blockedRes = await setupHandler(makeAuthRequest());
-    expect(blockedRes.status).toBe(429);
-
-    const data = await blockedRes.json();
-    expect(data.status).toBe('error');
-    expect(data.message).toContain('Rate limit exceeded');
   });
 });

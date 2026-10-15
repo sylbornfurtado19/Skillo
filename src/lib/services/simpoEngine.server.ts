@@ -1,3 +1,48 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * SimPO Contrastive Preference Optimization Engine (Meng et al., ICML 2024)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * CONTRASTIVE SCORING DESIGN & REDESIGN FORMULATION:
+ *
+ * 1. Background & The Length Inversion Problem:
+ *    SimPO defines length-normalized implicit reward as:
+ *      r(x, y) = (beta / |y|) * log(pi_theta(y | x))
+ *    Because token log-probabilities are unavailable via standard model APIs, an
+ *    early heuristic substituted the quality score q in [0, 1] directly into:
+ *      r(x, y) = (beta * q) / max(1, |y|)
+ *    However, FAANG-level benchmark answers (y_preferred) are systematically more
+ *    detailed and comprehensive than candidate answers (|y_preferred| >> |y_dispreferred|).
+ *    Consequently, dividing by length heavily penalized the benchmark, resulting in
+ *    r_preferred < r_dispreferred (rewardMargin < 0), causing marginSatisfied (gamma = 0.5)
+ *    to almost never evaluate to true even when the benchmark was vastly superior.
+ *
+ * 2. Redesigned Separation of Quality Margin vs. Verbosity Penalty:
+ *    To produce mathematically meaningful and intuitive contrastive evaluations:
+ *
+ *    a) Quality-Scale Comparison Margin:
+ *       margin = q_preferred - q_candidate   (both bounded in [0, 1])
+ *       - q_preferred: Target FAANG benchmark quality (default 0.85).
+ *       - q_candidate: Evaluated quality score from judge/rubric (clamped [0.05, 0.95],
+ *         with empty answers capped at <= 0.35 floor).
+ *       - qualityMargin = q_preferred - q_candidate
+ *
+ *    b) Margin Satisfaction Condition:
+ *       marginSatisfied is true if and only if the benchmark is meaningfully better
+ *       than the candidate by at least gamma on the quality scale:
+ *         marginSatisfied = (q_candidate < q_preferred) && (qualityMargin >= gamma)
+ *       - Default threshold: gamma = 0.25 (DEFAULT_SIMPO_GAMMA).
+ *       - When candidate >= benchmark (q_candidate >= q_preferred), marginSatisfied
+ *         is strictly FALSE because the candidate already meets or exceeds the target.
+ *
+ *    c) Length-Normalized Reward as an Exposed Verbosity-Penalty Metric:
+ *       The SimPO surrogate implicit reward r(x, y) = (beta * q) / max(1, |y|)
+ *       remains preserved and exposed on both candidate and benchmark answers.
+ *       It serves as a separate token-density / verbosity penalty indicator,
+ *       rewarding high-information density without skewing the primary quality margin.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 import { z } from 'zod';
 import type {
   StructuralDelta,
@@ -6,6 +51,8 @@ import type {
   BenchmarkDeltaCard,
 } from '@/types/index';
 import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
+
+export const DEFAULT_SIMPO_GAMMA = 0.25;
 
 // ── Zod Schema: FAANG BenchmarkDeltaCard ────────────────────────────────────
 export const benchmarkDeltaCardSchema = z.object({
@@ -77,6 +124,7 @@ export interface GenerateSimPOInput {
   candidateAnswer: string;
   role: string;
   score: number; // 0..100
+  gamma?: number; // Target quality margin threshold (default DEFAULT_SIMPO_GAMMA = 0.25)
 }
 
 /**
@@ -85,6 +133,8 @@ export interface GenerateSimPOInput {
  * True SimPO uses log π_θ(y|x)/|y|. Since LLM log-probs are unavailable via API,
  * we substitute an LLM-judged quality score as the surrogate for log-probability.
  * beta = 2.0 controls the reward scale.
+ * Note: Length-normalized reward is exposed as an information-density / verbosity-penalty
+ * metric, while contrastive margin evaluation is performed on the quality scale.
  */
 export function calculateLengthNormalizedReward(
   text: string,
@@ -112,8 +162,10 @@ export function calculateLengthNormalizedReward(
 
 /**
  * SimPO Contrastive Pair Generator.
- * Generates length-normalized preferred (y_preferred) vs dispreferred (y_dispreferred) pairs,
- * checks if implicit reward margin r_w - r_l >= gamma (0.5), and emits structural deltas.
+ * Generates preferred (y_preferred) vs candidate (y_dispreferred) pairs,
+ * computes the comparison margin on quality (q_preferred - q_candidate in [0, 1]),
+ * checks if margin satisfies gamma (default 0.25), and exposes length-normalized
+ * rewards as separate verbosity penalty metrics alongside structural deltas.
  */
 export async function generateSimPOContrastiveEvaluation(
   input: GenerateSimPOInput
@@ -121,16 +173,16 @@ export async function generateSimPOContrastiveEvaluation(
   const { evaluationId = `simpo_${Date.now()}`, question, candidateAnswer, role, score } = input;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
   const beta = 2.0;
-  const gamma = 0.5; // Target reward margin constant
+  const gamma = input.gamma ?? DEFAULT_SIMPO_GAMMA;
 
   const isEmptyAnswer = !candidateAnswer || candidateAnswer.trim().length === 0;
   let effectiveScore = score;
   let dispQualityInit = Math.max(0.05, Math.min(0.95, score / 100));
 
   if (isEmptyAnswer) {
-    // Empty-answer floor: <= 2.0 / 5.0, score <= 35%, r <= 0.1
+    // Empty-answer floor: <= 2.0 / 5.0, score <= 35%, q <= 0.35, r <= 0.1
     effectiveScore = Math.min(effectiveScore, 35);
-    dispQualityInit = Math.min(dispQualityInit, 2.0 / 5.0);
+    dispQualityInit = Math.min(dispQualityInit, 0.35);
   }
 
   const dispreferredTokenInfo = calculateLengthNormalizedReward(candidateAnswer, dispQualityInit, beta);
@@ -185,14 +237,20 @@ REQUIRED JSON OUTPUT FORMAT:
           const deltas = validatedDeltas;
 
           const prefQuality = 0.85; // FAANG target benchmark quality
-          const dispQuality = Math.max(0.05, Math.min(0.95, score / 100)); // from evaluation score
+          const dispQuality = isEmptyAnswer
+            ? Math.min(0.35, Math.max(0.05, score / 100))
+            : Math.max(0.05, Math.min(0.95, score / 100)); // from evaluation score
           const prefTokenInfo = calculateLengthNormalizedReward(preferredText, prefQuality, beta);
           const dispTokenInfo = calculateLengthNormalizedReward(dispreferredText, dispQuality, beta);
 
           const preferredReward = prefTokenInfo.implicitReward;
-          const dispreferredRewardFinal = dispTokenInfo.implicitReward;
-          const rewardMargin = Math.round((preferredReward - dispreferredRewardFinal) * 100) / 100;
-          const marginSatisfied = rewardMargin >= gamma;
+          const dispreferredRewardFinal = isEmptyAnswer ? Math.min(0.1, dispTokenInfo.implicitReward) : dispTokenInfo.implicitReward;
+          
+          // Quality comparison margin: margin = q_preferred - q_candidate in [-1, 1]
+          const qualityMargin = Math.round((prefQuality - dispQuality) * 100) / 100;
+          // Benchmark must be meaningfully better by gamma, strictly false when candidate >= benchmark
+          const marginSatisfied = dispQuality < prefQuality && qualityMargin >= gamma;
+          const rewardMargin = qualityMargin;
 
           return {
             evaluationId,
@@ -202,17 +260,21 @@ REQUIRED JSON OUTPUT FORMAT:
                 text: dispreferredText,
                 tokenLength: dispTokenInfo.tokenLength,
                 implicitReward: dispreferredRewardFinal,
+                qualityScore: dispQuality,
               },
               preferredAnswer: {
                 text: preferredText,
                 tokenLength: prefTokenInfo.tokenLength,
                 implicitReward: preferredReward,
+                qualityScore: prefQuality,
               },
+              qualityMargin,
               rewardMargin,
               marginSatisfied,
+              gamma,
               structuralDeltas: deltas,
             },
-            summaryDeltaText: `SimPO contrastive evaluation verified preference margin Δr = +${rewardMargin} (${marginSatisfied ? 'Target Margin Satisfied' : 'Pending Margin Alignment'}). Identified ${deltas.length} structural delta(s).`,
+            summaryDeltaText: `SimPO contrastive evaluation: Quality Margin Δq = ${qualityMargin >= 0 ? '+' : ''}${qualityMargin.toFixed(2)} (${marginSatisfied ? 'Benchmark Target Satisfied' : dispQuality >= prefQuality ? 'Candidate Meets or Exceeds Benchmark' : 'Pending Quality Alignment'}). Identified ${deltas.length} structural delta(s).`,
             benchmarkDeltaCard: deriveBenchmarkDeltaCard(deltas, preferredReward, role),
             source: 'live',
           };
@@ -228,14 +290,20 @@ REQUIRED JSON OUTPUT FORMAT:
   const dispreferredText = candidateAnswer.trim().length > 10 ? candidateAnswer : 'Candidate provided a high-level explanation without concrete Big-O bounds or failure circuit specifications.';
 
   const prefQuality = 0.85;
-  const dispQuality = isEmptyAnswer ? Math.min(0.4, effectiveScore / 100) : Math.max(0.05, Math.min(0.95, effectiveScore / 100));
+  const dispQuality = isEmptyAnswer
+    ? Math.min(0.35, Math.max(0.05, effectiveScore / 100))
+    : Math.max(0.05, Math.min(0.95, effectiveScore / 100));
   const prefTokenInfo = calculateLengthNormalizedReward(preferredText, prefQuality, beta);
   const dispTokenInfo = calculateLengthNormalizedReward(dispreferredText, dispQuality, beta);
 
   const preferredReward = prefTokenInfo.implicitReward;
   const dispreferredRewardFinal = isEmptyAnswer ? Math.min(0.1, dispTokenInfo.implicitReward) : dispTokenInfo.implicitReward;
-  const rewardMargin = Math.round((preferredReward - dispreferredRewardFinal) * 100) / 100;
-  const marginSatisfied = rewardMargin >= gamma;
+  
+  // Quality comparison margin: margin = q_preferred - q_candidate in [-1, 1]
+  const qualityMargin = Math.round((prefQuality - dispQuality) * 100) / 100;
+  // Benchmark must be meaningfully better by gamma, strictly false when candidate >= benchmark
+  const marginSatisfied = dispQuality < prefQuality && qualityMargin >= gamma;
+  const rewardMargin = qualityMargin;
 
   const structuralDeltas: StructuralDelta[] = [
     {
@@ -266,17 +334,21 @@ REQUIRED JSON OUTPUT FORMAT:
         text: dispreferredText,
         tokenLength: dispTokenInfo.tokenLength,
         implicitReward: dispreferredRewardFinal,
+        qualityScore: dispQuality,
       },
       preferredAnswer: {
         text: preferredText,
         tokenLength: prefTokenInfo.tokenLength,
         implicitReward: preferredReward,
+        qualityScore: prefQuality,
       },
+      qualityMargin,
       rewardMargin,
       marginSatisfied,
+      gamma,
       structuralDeltas,
     },
-    summaryDeltaText: `SimPO contrastive evaluation verified preference margin Δr = +${rewardMargin} (${marginSatisfied ? 'Target Margin Satisfied' : 'Pending Margin Alignment'}). Identified ${structuralDeltas.length} structural delta(s).`,
+    summaryDeltaText: `SimPO contrastive evaluation: Quality Margin Δq = ${qualityMargin >= 0 ? '+' : ''}${qualityMargin.toFixed(2)} (${marginSatisfied ? 'Benchmark Target Satisfied' : dispQuality >= prefQuality ? 'Candidate Meets or Exceeds Benchmark' : 'Pending Quality Alignment'}). Identified ${structuralDeltas.length} structural delta(s).`,
     benchmarkDeltaCard: deriveBenchmarkDeltaCard(structuralDeltas, preferredReward, role),
     source: 'fallback',
   };

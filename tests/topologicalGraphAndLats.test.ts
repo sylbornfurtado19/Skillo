@@ -4,8 +4,8 @@
  * and LATS UCT branch selection.
  */
 
-import { normalizeEntityName, ENTITY_ALIAS_MAP, validateEntityAliasMap } from '../src/lib/schemas/graphSchema';
-import { executeLeidenHierarchicalClustering, synthesizePrerequisiteGapChains, executeGraphRAGAnalysis } from '../src/lib/services/graphRAG.server';
+import { normalizeEntityName, ENTITY_ALIAS_MAP, validateEntityAliasMap, graphRelationshipTypeSchema } from '../src/lib/schemas/graphSchema';
+import { executeLeidenHierarchicalClustering, synthesizePrerequisiteGapChains, executeGraphRAGAnalysis, relationshipExtractionSchema } from '../src/lib/services/graphRAG.server';
 import { computeUCT, runLATSMCTS } from '../src/lib/services/latsEngine.server';
 
 // === Entity Normalization ===
@@ -245,6 +245,77 @@ describe('DAG Cycle Protection & Visualizer Schema', () => {
     expect(gapChains).toBeDefined();
     expect(gapChains.length).toBe(2);
     expect(gapChains[0].missingSkill).toBe('ServiceA');
+  });
+
+  it('validates extended relationship types including REQUIRES and BLOCKS via Zod schemas', () => {
+    const validRels = [
+      { source: 'A', target: 'B', relationshipType: 'REQUIRES', weight: 0.9, description: 'A requires B' },
+      { source: 'C', target: 'D', relationshipType: 'BLOCKS', weight: 0.8, description: 'C blocks D' },
+      { source: 'E', target: 'F', relationshipType: 'DEPENDS_ON', weight: 1.0, description: 'E depends on F' },
+      { source: 'G', target: 'H', relationshipType: 'APPLIED_IN', weight: 0.7, description: 'G applied in H' },
+      { source: 'I', target: 'J', relationshipType: 'EXPANDS_UPON', weight: 0.6, description: 'I expands upon J' },
+    ];
+
+    for (const rel of validRels) {
+      expect(relationshipExtractionSchema.safeParse(rel).success).toBe(true);
+      expect(graphRelationshipTypeSchema.safeParse(rel.relationshipType).success).toBe(true);
+    }
+
+    expect(graphRelationshipTypeSchema.safeParse('INVALID_RELATION').success).toBe(false);
+  });
+
+  it('treats REQUIRES identically to DEPENDS_ON for prerequisite topological level assignment', () => {
+    const entities = [
+      { name: 'Architecture Domain', type: 'DOMAIN' as const, description: 'Macro root' },
+      { name: 'Storage Layer', type: 'CONCEPT' as const, description: 'Pillar' },
+      { name: 'Cache Lock', type: 'SKILL' as const, description: 'Leaf' },
+    ];
+
+    const relationshipsWithRequires = [
+      { source: 'Architecture Domain', target: 'Storage Layer', relationshipType: 'REQUIRES', weight: 0.9, description: 'Root requires storage' },
+      { source: 'Storage Layer', target: 'Cache Lock', relationshipType: 'REQUIRES', weight: 0.85, description: 'Storage requires cache lock' },
+    ];
+
+    const { nodes } = executeLeidenHierarchicalClustering(entities, relationshipsWithRequires, 'Engineer');
+    const root = nodes.find(n => n.name === 'Architecture Domain');
+    const pillar = nodes.find(n => n.name === 'Storage Layer');
+    const leaf = nodes.find(n => n.name === 'Cache Lock');
+
+    expect(root?.level).toBe(0);
+    expect(pillar?.level).toBe(1);
+    expect(leaf?.level).toBe(2);
+    expect(leaf?.prerequisites).toContain('Storage Layer');
+  });
+
+  it('treats BLOCKS as a reverse blocking edge shown in the gap chain (blockedCapability)', () => {
+    const nodes: any[] = [
+      {
+        id: 'node_concurrency',
+        name: 'Redis Concurrency Lock',
+        level: 2,
+        status: 'MISSING',
+        description: 'Leaf tool',
+        prerequisites: ['State Sync Architecture'],
+        downstreamImpacts: [],
+      },
+    ];
+
+    const relationships = [
+      {
+        source: 'Redis Concurrency Lock',
+        target: 'Realtime WebSocket State Sync',
+        relationshipType: 'BLOCKS',
+        weight: 0.8,
+        description: 'Unresolved concurrency lock blocks state synchronization',
+      },
+    ];
+
+    const gapChains = synthesizePrerequisiteGapChains(nodes, 'Full Stack Engineer', relationships);
+    expect(gapChains).toHaveLength(1);
+    expect(gapChains[0].missingSkill).toBe('Redis Concurrency Lock');
+    // Reverse blocking edge should set blockedCapability to the BLOCKS target
+    expect(gapChains[0].blockedCapability).toBe('Realtime WebSocket State Sync');
+    expect(gapChains[0].remediationPath[1]).toContain('Realtime WebSocket State Sync');
   });
 
   it('executeGraphRAGAnalysis returns valid visualizer schema (nodes, edges, blockedPrerequisites, macroDomain)', async () => {

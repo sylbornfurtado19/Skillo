@@ -41,7 +41,14 @@ export interface GeneratedQuestionItem {
 
 export async function POST(request: Request) {
   try {
-    // 1. Auth check (optional for guest sessions, active for authenticated users)
+    // 1. Auth check: enforce 401 authentication like /api/interview/evaluate and /api/interview/followup.
+    // DECISION RATIONALE:
+    // The interview setup flow (CareerSetup.tsx) is rendered strictly at app/(app)/setup/page.tsx,
+    // which is wrapped inside <ProtectedRoute> in app/(app)/layout.tsx. The route is therefore only
+    // reachable when the user is logged in. Furthermore, generating customized questions invokes
+    // candidate historical skill retrieval and paid LLM inference. Allowing anonymous IP fallback
+    // exposes the paid model to unauthenticated denial-of-wallet and abuse. Enforcing HTTP 401
+    // aligns this route with evaluate, followup, resume analyze, and resume extract endpoints.
     const authHeader = request.headers.get('authorization');
     let user = null;
 
@@ -53,15 +60,16 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. Rate limiting check (10 requests per minute for setup)
-    const clientIp =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'anonymous_user';
-    const rateLimitIdentifier = user?.id || `anon_${clientIp}`;
+    if (!user) {
+      return NextResponse.json(
+        { status: 'error', message: 'Authentication required. Please sign in.' },
+        { status: 401 }
+      );
+    }
 
+    // 2. Rate limiting check (10 requests per minute per authenticated user)
     const rateLimit = await checkRateLimit({
-      userId: rateLimitIdentifier,
+      userId: user.id,
       action: 'interview_setup',
       maxRequests: 10,
       windowSeconds: 60,

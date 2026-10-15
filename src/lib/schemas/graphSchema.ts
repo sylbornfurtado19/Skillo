@@ -166,3 +166,16 @@ export const entityAliasMapSchema = z.record(z.string().min(1), z.string().min(1
 export function validateEntityAliasMap(): boolean {
   return entityAliasMapSchema.safeParse(ENTITY_ALIAS_MAP).success;
 }
+
+// ── Graph Relationship Types ──────────────────────────────────────────────────
+export const GRAPH_RELATIONSHIP_TYPES = [
+  'DEPENDS_ON',
+  'APPLIED_IN',
+  'EXPANDS_UPON',
+  'REQUIRES',
+  'BLOCKS',
+] as const;
+
+export type GraphRelationshipType = typeof GRAPH_RELATIONSHIP_TYPES[number];
+export const graphRelationshipTypeSchema = z.enum(GRAPH_RELATIONSHIP_TYPES);
+

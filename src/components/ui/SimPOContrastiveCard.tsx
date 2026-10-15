@@ -45,10 +45,15 @@ export default function SimPOContrastiveCard({
   const { dispreferredAnswer, preferredAnswer, rewardMargin, marginSatisfied, structuralDeltas } =
     contrastivePair;
 
+  const qualityMargin = contrastivePair.qualityMargin ?? rewardMargin;
+  const candQuality = dispreferredAnswer.qualityScore;
+  const benchmarkQuality = preferredAnswer.qualityScore ?? 0.85;
+  const candidateMeetsOrExceeds = candQuality !== undefined && candQuality >= benchmarkQuality;
+
   return (
     <div className={`space-y-6 text-left ${className}`}>
       <Card variant="solid" className="p-6 space-y-5">
-        {/* Header Bar & Reward Margin Badge */}
+        {/* Header Bar & Quality Margin Badge */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary-soft border border-primary/20 flex items-center justify-center text-primary text-lg shrink-0">
@@ -64,7 +69,7 @@ export default function SimPOContrastiveCard({
             </div>
           </div>
 
-          {/* Preference Reward Margin Badge */}
+          {/* Quality Comparison Margin Badge */}
           <div className="flex flex-wrap items-center gap-2">
             {data.source === 'fallback' && (
               <Badge variant="warning" size="sm" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono">
@@ -74,12 +79,19 @@ export default function SimPOContrastiveCard({
             )}
             <div className="flex items-center gap-2 bg-surface-alt px-3.5 py-2 rounded-xl border border-border text-xs font-mono w-full sm:w-auto justify-between sm:justify-end shadow-soft">
               <FaBolt className="text-primary shrink-0 animate-pulse" aria-hidden="true" />
-              <span className="text-text-secondary font-semibold">Preference Reward Margin:</span>
+              <span className="text-text-secondary font-semibold">Quality Margin:</span>
               <span className="text-success font-extrabold">
-                &Delta;r = {rewardMargin >= 0 ? '+' : ''}{rewardMargin.toFixed(2)}
+                &Delta;q = {qualityMargin >= 0 ? '+' : ''}{qualityMargin.toFixed(2)}
               </span>
-              <Badge variant={marginSatisfied ? 'success' : 'warning'} size="sm">
-                {marginSatisfied ? 'Target Satisfied' : 'Pending Margin'}
+              <Badge
+                variant={marginSatisfied ? 'success' : candidateMeetsOrExceeds ? 'primary' : 'warning'}
+                size="sm"
+              >
+                {marginSatisfied
+                  ? 'Target Satisfied'
+                  : candidateMeetsOrExceeds
+                  ? 'Meets Benchmark'
+                  : 'Pending Alignment'}
               </Badge>
             </div>
           </div>
@@ -101,9 +113,23 @@ export default function SimPOContrastiveCard({
               </p>
             </div>
 
-            <div className="pt-2 border-t border-border flex justify-between items-center text-xs text-text-secondary">
-              <span>Implicit Reward (r_SimPO):</span>
-              <span className="text-warning font-bold">{dispreferredAnswer.implicitReward}</span>
+            <div className="pt-2 border-t border-border space-y-1.5 text-xs text-text-secondary">
+              <div className="flex justify-between items-center">
+                <span>Evaluated Quality (q):</span>
+                <span className="text-warning font-bold">
+                  {dispreferredAnswer.qualityScore !== undefined
+                    ? `${Math.round(dispreferredAnswer.qualityScore * 100)}%`
+                    : 'N/A'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-[11px] text-text-secondary/80">
+                <span>SimPO Surrogate Reward (r):</span>
+                <span className="font-mono">{dispreferredAnswer.implicitReward}</span>
+              </div>
+              <div className="flex justify-between items-center text-[11px] text-text-secondary/70">
+                <span>Verbosity Penalty (|y|):</span>
+                <span className="font-mono">{dispreferredAnswer.tokenLength} tokens</span>
+              </div>
             </div>
           </div>
 
@@ -121,16 +147,35 @@ export default function SimPOContrastiveCard({
               </p>
             </div>
 
-            <div className="pt-2 border-t border-border flex justify-between items-center text-xs text-text-secondary">
-              <span>Implicit Reward (r_SimPO):</span>
-              <span className="text-success font-bold">{preferredAnswer.implicitReward}</span>
+            <div className="pt-2 border-t border-border space-y-1.5 text-xs text-text-secondary">
+              <div className="flex justify-between items-center">
+                <span>Target Quality (q):</span>
+                <span className="text-success font-bold">
+                  {preferredAnswer.qualityScore !== undefined
+                    ? `${Math.round(preferredAnswer.qualityScore * 100)}%`
+                    : '85%'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-[11px] text-text-secondary/80">
+                <span>SimPO Surrogate Reward (r):</span>
+                <span className="font-mono text-success font-semibold">{preferredAnswer.implicitReward}</span>
+              </div>
+              <div className="flex justify-between items-center text-[11px] text-text-secondary/70">
+                <span>Verbosity Penalty (|y|):</span>
+                <span className="font-mono">{preferredAnswer.tokenLength} tokens</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Structural Summary Text */}
-        <div className="bg-surface-alt p-3.5 rounded-xl border border-border text-xs text-text-secondary font-mono">
-          {summaryDeltaText}
+        {/* Structural Summary Text & SimPO Formulation Footnote */}
+        <div className="space-y-2">
+          <div className="bg-surface-alt p-3.5 rounded-xl border border-border text-xs text-text-secondary font-mono">
+            {summaryDeltaText}
+          </div>
+          <p className="text-[11px] text-text-secondary/70 italic font-mono px-1">
+            * Comparison margin is computed on quality (&Delta;q = q_preferred - q_candidate). Length-normalised reward r(x,y) = &beta;&middot;q/|y| is exposed separately as an information-density / verbosity-penalty surrogate metric.
+          </p>
         </div>
 
         {/* FAANG Benchmark Delta Card */}

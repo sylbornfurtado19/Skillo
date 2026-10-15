@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabase } from "@/lib/supabase";
 import { checkRateLimit, createRateLimitResponse } from "@/lib/services/rateLimiter.server";
 import { runLATSMCTS } from "@/lib/services/latsEngine.server";
+import { sanitizeUserText } from "@/lib/server/sanitize";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +88,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const { question, answerText, role, sessionId, priorGaps } = parseResult.data;
+    const rawData = parseResult.data;
+    const question = sanitizeUserText(rawData.question, 1000);
+    const answerText = sanitizeUserText(rawData.answerText, 5000);
+    const role = sanitizeUserText(rawData.role, 100);
+    const { sessionId, priorGaps } = rawData;
 
     // 4. Short-circuit: empty / trivial answers never need follow-up
     if (!answerText || answerText.trim().length < 20) {

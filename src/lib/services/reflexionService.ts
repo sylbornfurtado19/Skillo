@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/server/supabaseAdmin';
 import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
+import { sanitizeUserText } from '@/lib/server/sanitize';
 import type {
   VerbalReflection,
   SkillMemoryNode,
@@ -51,7 +52,10 @@ export interface PastCritique {
 export async function generateVerbalSelfReflection(
   input: GenerateReflectionInput
 ): Promise<VerbalReflection> {
-  const { sessionId, question, candidateAnswer, score, role, historicalReflections } = input;
+  const { sessionId, score, historicalReflections } = input;
+  const question = sanitizeUserText(input.question, 5000);
+  const candidateAnswer = sanitizeUserText(input.candidateAnswer, 5000);
+  const role = sanitizeUserText(input.role, 100);
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
   const timestamp = new Date().toISOString();
 

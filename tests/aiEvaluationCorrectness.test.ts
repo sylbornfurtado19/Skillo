@@ -204,7 +204,7 @@ describe('AI Evaluation Correctness & Grounding Suite', () => {
   });
 
   describe('SimPO Length-Normalized Contrastive Evaluation', () => {
-    it('enforces empty answer floor: <= 2.0/5.0, score <= 35%, r <= 0.1 and valid Zod delta card', async () => {
+    it('enforces empty answer floor: <= 2.0/5.0, score <= 35%, q <= 0.35, r <= 0.1, marginSatisfied: true, and valid Zod delta card', async () => {
       const result = await generateSimPOContrastiveEvaluation({
         question: 'Explain distributed locks.',
         candidateAnswer: '   ',
@@ -213,6 +213,11 @@ describe('AI Evaluation Correctness & Grounding Suite', () => {
       });
 
       expect(result.contrastivePair.dispreferredAnswer.implicitReward).toBeLessThanOrEqual(0.1);
+      expect(result.contrastivePair.dispreferredAnswer.qualityScore).toBeLessThanOrEqual(0.35);
+      expect(result.contrastivePair.preferredAnswer.qualityScore).toBe(0.85);
+      expect(result.contrastivePair.qualityMargin).toBeGreaterThanOrEqual(0.50);
+      expect(result.contrastivePair.marginSatisfied).toBe(true);
+
       expect(result.benchmarkDeltaCard).toBeDefined();
       const parsedCard = benchmarkDeltaCardSchema.safeParse(result.benchmarkDeltaCard);
       expect(parsedCard.success).toBe(true);
@@ -220,6 +225,63 @@ describe('AI Evaluation Correctness & Grounding Suite', () => {
       expect(parsedCard.data?.edgeCaseOversights.length).toBeGreaterThan(0);
       expect(typeof parsedCard.data?.faangComparison).toBe('string');
       expect(parsedCard.data?.rewardScore).toBeGreaterThan(0);
+    });
+
+    it('evaluates weak candidate: benchmark is meaningfully better by gamma on quality scale (marginSatisfied: true)', async () => {
+      const result = await generateSimPOContrastiveEvaluation({
+        question: 'Design a scalable rate limiter.',
+        candidateAnswer: 'I would store user IDs in MySQL and count requests with a SQL query.',
+        role: 'Senior Backend Engineer',
+        score: 30,
+      });
+
+      const { dispreferredAnswer, preferredAnswer, qualityMargin, rewardMargin, marginSatisfied } =
+        result.contrastivePair;
+
+      // Candidate quality score is 0.30, benchmark is 0.85
+      expect(dispreferredAnswer.qualityScore).toBeCloseTo(0.30, 2);
+      expect(preferredAnswer.qualityScore).toBeCloseTo(0.85, 2);
+
+      // Quality margin = 0.85 - 0.30 = 0.55
+      expect(qualityMargin).toBeCloseTo(0.55, 2);
+      expect(rewardMargin).toBeCloseTo(0.55, 2);
+
+      // Benchmark is meaningfully better by gamma (0.25) -> marginSatisfied must be true
+      expect(marginSatisfied).toBe(true);
+
+      // Exposed length-normalized rewards (SimPO surrogate) exist as separate metrics
+      expect(typeof dispreferredAnswer.implicitReward).toBe('number');
+      expect(typeof preferredAnswer.implicitReward).toBe('number');
+      expect(dispreferredAnswer.tokenLength).toBeGreaterThan(0);
+      expect(preferredAnswer.tokenLength).toBeGreaterThan(0);
+    });
+
+    it('evaluates strong candidate: candidate >= benchmark yields marginSatisfied: false', async () => {
+      const result = await generateSimPOContrastiveEvaluation({
+        question: 'Design a distributed consensus mechanism.',
+        candidateAnswer:
+          'Implement Raft consensus using leader election with randomized election timeouts, log replication with term IDs, persistent write-ahead logging (WAL), quorum ACKs, and commit index advancement for linearizable consistency with O(log N) state transfer.',
+        role: 'Staff Infrastructure Engineer',
+        score: 90,
+      });
+
+      const { dispreferredAnswer, preferredAnswer, qualityMargin, rewardMargin, marginSatisfied } =
+        result.contrastivePair;
+
+      // Candidate quality score is 0.90, benchmark is 0.85
+      expect(dispreferredAnswer.qualityScore).toBeCloseTo(0.90, 2);
+      expect(preferredAnswer.qualityScore).toBeCloseTo(0.85, 2);
+
+      // Quality margin = 0.85 - 0.90 = -0.05 (candidate meets or exceeds benchmark)
+      expect(qualityMargin).toBeLessThanOrEqual(0);
+      expect(rewardMargin).toBeLessThanOrEqual(0);
+
+      // Crucial requirement: marginSatisfied must be strictly false when candidate >= benchmark
+      expect(marginSatisfied).toBe(false);
+
+      // Both answers still expose length-normalized SimPO surrogate rewards
+      expect(dispreferredAnswer.implicitReward).toBeGreaterThan(0);
+      expect(preferredAnswer.implicitReward).toBeGreaterThan(0);
     });
   });
 

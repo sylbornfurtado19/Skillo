@@ -203,15 +203,27 @@ export interface SimPOContrastivePair {
   dispreferredAnswer: {
     text: string;
     tokenLength: number;
+    /** Length-normalized SimPO surrogate implicit reward r = (beta * quality) / tokenLength */
     implicitReward: number;
+    /** Evaluated candidate quality score q in [0, 1] */
+    qualityScore?: number;
   };
   preferredAnswer: {
     text: string;
     tokenLength: number;
+    /** Length-normalized SimPO surrogate implicit reward r = (beta * quality) / tokenLength */
     implicitReward: number;
+    /** Target benchmark quality score q in [0, 1] */
+    qualityScore?: number;
   };
+  /** Comparison margin on quality: q_preferred - q_candidate in [-1, 1] */
+  qualityMargin?: number;
+  /** Primary comparison margin on quality scale */
   rewardMargin: number;
+  /** True when benchmark is meaningfully better by gamma, false when candidate >= benchmark */
   marginSatisfied: boolean;
+  /** Target margin threshold constant gamma */
+  gamma?: number;
   structuralDeltas: StructuralDelta[];
 }
 
