@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { supabase } from '@/lib/supabase';
+import { authenticateRequest, authFailureResponse } from '@/lib/server/authenticateRequest';
 import { dispatchReflexionWorker } from '@/lib/services/reflexionService';
 import { performInterviewEvaluation } from '@/lib/services/interviewEvaluation.server';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
@@ -132,24 +132,10 @@ const evaluateSchema = z
 
 export async function POST(request: Request) {
   try {
-    // 1. Auth check
-    const authHeader = request.headers.get('authorization');
-    let user = null;
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const { data, error } = await supabase.auth.getUser(token);
-      if (!error && data?.user) {
-        user = data.user;
-      }
-    }
-
-    if (!user) {
-      return NextResponse.json(
-        { status: 'error', message: 'Authentication required. Please sign in.' },
-        { status: 401 }
-      );
-    }
+    // 1. Auth check (Firebase or Supabase, fails closed)
+    const auth = await authenticateRequest(request);
+    if (!auth.ok) return authFailureResponse(auth);
+    const user = auth.user;
 
     // 2. Rate limiting check (5 requests per minute for deep evaluation)
     const rateLimit = await checkRateLimit({

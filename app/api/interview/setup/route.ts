@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { supabase } from '@/lib/supabase';
+import { authenticateRequest, authFailureResponse } from '@/lib/server/authenticateRequest';
 import {
   retrievePastCritiques,
   formatHistoricalMemoryPrompt,
@@ -49,23 +49,9 @@ export async function POST(request: Request) {
     // candidate historical skill retrieval and paid LLM inference. Allowing anonymous IP fallback
     // exposes the paid model to unauthenticated denial-of-wallet and abuse. Enforcing HTTP 401
     // aligns this route with evaluate, followup, resume analyze, and resume extract endpoints.
-    const authHeader = request.headers.get('authorization');
-    let user = null;
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const { data, error } = await supabase.auth.getUser(token);
-      if (!error && data?.user) {
-        user = data.user;
-      }
-    }
-
-    if (!user) {
-      return NextResponse.json(
-        { status: 'error', message: 'Authentication required. Please sign in.' },
-        { status: 401 }
-      );
-    }
+    const auth = await authenticateRequest(request);
+    if (!auth.ok) return authFailureResponse(auth);
+    const user = auth.user;
 
     // 2. Rate limiting check (10 requests per minute per authenticated user)
     const rateLimit = await checkRateLimit({

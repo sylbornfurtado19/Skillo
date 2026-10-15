@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { supabase } from '@/lib/supabase';
+import { authenticateRequest, authFailureResponse } from '@/lib/server/authenticateRequest';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
 
 export const dynamic = 'force-dynamic';
@@ -20,23 +20,9 @@ const codeRunSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get('authorization');
-    let user = null;
-
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const { data, error } = await supabase.auth.getUser(token);
-      if (!error && data?.user) {
-        user = data.user;
-      }
-    }
-
-    if (!user) {
-      return NextResponse.json(
-        { status: 'error', message: 'Authentication required. Please sign in.' },
-        { status: 401 }
-      );
-    }
+    const auth = await authenticateRequest(request);
+    if (!auth.ok) return authFailureResponse(auth);
+    const user = auth.user;
 
     const rateLimit = await checkRateLimit({
       userId: user.id,

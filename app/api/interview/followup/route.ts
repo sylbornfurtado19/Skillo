@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabase } from "@/lib/supabase";
+import { authenticateRequest, authFailureResponse } from "@/lib/server/authenticateRequest";
 import { checkRateLimit, createRateLimitResponse } from "@/lib/services/rateLimiter.server";
 import { runLATSMCTS, latsTreeStateSchema } from "@/lib/services/latsEngine.server";
 import { sanitizeUserText } from "@/lib/server/sanitize";
@@ -42,24 +42,11 @@ const followupRequestSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    // 1. Auth check
-    const authHeader = request.headers.get("authorization");
-    let user = null;
-
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.substring(7);
-      const { data, error } = await supabase.auth.getUser(token);
-      if (!error && data?.user) {
-        user = data.user;
-      }
-    }
-
-    if (!user) {
-      return NextResponse.json(
-        { status: "error", message: "Authentication required. Please sign in." },
-        { status: 401 }
-      );
-    }
+    // 1. Auth check (Firebase or Supabase). Fails closed: an auth-service problem returns 500,
+    // never a canned follow-up served to an unverified caller.
+    const auth = await authenticateRequest(request);
+    if (!auth.ok) return authFailureResponse(auth);
+    const user = auth.user;
 
     // 2. Rate limiting (10 requests per minute for follow-ups)
     const rateLimit = await checkRateLimit({
@@ -154,42 +141,13 @@ export async function POST(request: Request) {
       treeState: latsState,
     });
   } catch (err) {
+    // No canned/generic follow-up: it would be unrelated to the candidate's answer and, for
+    // auth-path failures, would be served without verification. The client treats a non-OK
+    // response as "no follow-up" and simply moves to the next question.
     console.error("[FollowUp API Error]:", err);
-    try {
-      const fallbackState = await runLATSMCTS({
-        sessionId: `fallback_${Date.now()}`,
-        role: "Software Engineer",
-        currentQuestion: "Technical System Design Question",
-        candidateAnswer: "Standard technical candidate answer",
-        priorGaps: [],
-      });
-      const selectedNode = fallbackState.simulatedBranches.find(b => b.isSelectedTrajectory)
-        ?? fallbackState.simulatedBranches[0];
-      return NextResponse.json({
-        needsFollowUp: true,
-        followUpQuestion: selectedNode.questionText,
-        fallback: true,
-        selectedBranch: {
-          actionType: selectedNode.actionType,
-          questionText: selectedNode.questionText,
-          rationale: selectedNode.rationale,
-          prmScore: Math.round(selectedNode.prmScore * 1000) / 1000,
-          uctValue: Math.round(selectedNode.uctValue * 1000) / 1000,
-        },
-        allBranches: fallbackState.simulatedBranches.map(b => ({
-          actionType: b.actionType,
-          questionText: b.questionText,
-          rationale: b.rationale,
-          prmScore: Math.round(b.prmScore * 1000) / 1000,
-          uctValue: Math.round(b.uctValue * 1000) / 1000,
-          isSelected: b.isSelectedTrajectory,
-        })),
-        currentGaps: fallbackState.currentGaps,
-        trajectoryDepth: fallbackState.trajectoryHistory.length,
-        treeState: fallbackState,
-      });
-    } catch {
-      return NextResponse.json({ needsFollowUp: false, trajectoryDepth: 0, fallback: true });
-    }
+    return NextResponse.json(
+      { status: "error", message: "Something went wrong generating a follow-up question." },
+      { status: 500 }
+    );
   }
 }
