@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import type { LATSTreeState, LATSActionType } from '@/types/index';
 import Badge from './Badge';
 import LATSTreeVisualizer from './LATSTreeVisualizer';
-import { FaBolt, FaRandom, FaShieldAlt, FaSitemap, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaRandom, FaSitemap, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 
 export interface AdaptiveHUDHeaderProps {
   latsState?: LATSTreeState;

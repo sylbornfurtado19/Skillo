@@ -7,7 +7,6 @@ import Badge from './Badge';
 import ReflectionTimelineDrawer from './ReflectionTimelineDrawer';
 import {
   FaBrain,
-  FaCheckCircle,
   FaExclamationTriangle,
   FaFire,
   FaHistory,

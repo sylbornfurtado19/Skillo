@@ -61,7 +61,7 @@ export default function ResumeUpload() {
   const [copiedRewrite, setCopiedRewrite] = useState<number | null>(null);
 
   // ── LayoutLMv3 visual canvas state ──────────────────────────────────────
-  const [activePageNumber, setActivePageNumber] = useState(1);
+  const [activePageNumber] = useState(1);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [highlightedPenaltyIndex, setHighlightedPenaltyIndex] = useState<number | null>(null);
   const [visualLayoutTab, setVisualLayoutTab] = useState<'canvas' | 'penalties'>('canvas');

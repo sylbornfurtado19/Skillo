@@ -22,7 +22,7 @@ const ctx: Worker = (typeof self !== 'undefined' ? self : (typeof globalThis !==
 
 let ortModulePromise: Promise<any> | null = null;
 const sessionCache: Partial<Record<ONNXModelType, any>> = {};
-let isInitialized = false;
+let _isInitialized = false;
 let isBusy = false;
 let latestProcessedFrameId = 0;
 let cancelledFrameId = 0;
@@ -123,7 +123,7 @@ if (typeof self !== 'undefined') {
             })
           );
 
-          isInitialized = true;
+          _isInitialized = true;
           postResponse({
             type: 'INIT_SUCCESS',
             payload: {
@@ -314,7 +314,7 @@ if (typeof self !== 'undefined') {
       }
 
       case 'DISPOSE': {
-        isInitialized = false;
+        _isInitialized = false;
         isBusy = false;
         Object.keys(sessionCache).forEach((key) => {
           const mKey = key as ONNXModelType;

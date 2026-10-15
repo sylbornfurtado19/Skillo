@@ -174,7 +174,7 @@ export default function VisualDocumentCanvas({
 
           {/* Render all elements */}
           {elements.map(el => {
-            const { x0, y0, x1, y1, width, height } = el.boundingBox;
+            const { x0, y0, y1, width, height } = el.boundingBox;
             const isAffected = isPenaltyAffected(el);
             const pen = isAffected ? penaltyForEl(el) : null;
             const isSelected = selectedElementId === el.id;

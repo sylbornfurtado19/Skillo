@@ -21,7 +21,6 @@
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.111.0",
     "@types/node": "^26.1.2",
-    "@types/pdf-parse": "^1.1.5",
     "chart.js": "^4.5.1",
     "firebase": "^13.0.0",
     "firebase-admin": "^14.5.0",
@@ -50,6 +49,7 @@
     "oxlint": "^1.69.0",
     "postcss": "^8.5.15",
     "ts-jest": "^29.4.12",
+    "tsx": "^4.23.15",
     "typescript": "^5.8.2"
   }
 }

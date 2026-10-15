@@ -76,7 +76,7 @@ export const deleteResume = async (
       try {
         const storageRef = ref(storage, filePath);
         await deleteObject(storageRef);
-      } catch (storageErr) {
+      } catch  {
         // Silently ignore if file didn't exist in storage bucket
       }
     }

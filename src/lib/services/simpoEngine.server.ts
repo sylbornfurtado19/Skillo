@@ -46,7 +46,6 @@
 import { z } from 'zod';
 import type {
   StructuralDelta,
-  SimPOContrastivePair,
   ContrastiveEvaluationResult,
   BenchmarkDeltaCard,
 } from '@/types/index';
@@ -193,7 +192,7 @@ export async function generateSimPOContrastiveEvaluation(
   }
 
   const dispreferredTokenInfo = calculateLengthNormalizedReward(candidateAnswer, dispQualityInit, beta);
-  let dispreferredReward = isEmptyAnswer ? Math.min(0.1, dispreferredTokenInfo.implicitReward) : dispreferredTokenInfo.implicitReward;
+  
 
   if (anthropicApiKey) {
     try {

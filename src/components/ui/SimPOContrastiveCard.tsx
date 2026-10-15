@@ -10,7 +10,6 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
   FaChartLine,
-  FaLightbulb,
   FaBolt,
   FaDatabase,
 } from 'react-icons/fa';

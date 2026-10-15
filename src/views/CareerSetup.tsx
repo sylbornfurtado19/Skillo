@@ -18,13 +18,13 @@ import { useInterview } from '../context/InterviewContext';
 import { getProfile } from '../services/profile';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import Badge from '../components/ui/Badge';
+
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import { Progress } from '../components/ui/Loader';
 import { Skeleton } from '../components/ui/Skeleton';
 import { InterviewModePreviewCard } from '../components/interview/InterviewModePreviewCard';
 import { resolveInterviewMode } from '../types/interviewModes';
-import { supabase } from '../lib/supabase';
+
 import { getAuthToken } from '../services/auth';
 import { generateStudyPlan } from '../lib/services/studyPlan';
 
@@ -59,7 +59,6 @@ export default function CareerSetup() {
     setAnswers,
     setPastCritiques,
     setRecalledMemoryNotice,
-    pastCritiques,
     recalledMemoryNotice,
   } = useInterview();
 
@@ -358,12 +357,12 @@ export default function CareerSetup() {
     );
   }
 
-  const domains = Object.keys(CAREER_DOMAINS);
-  const roles = CAREER_DOMAINS[setupData.domain as keyof typeof CAREER_DOMAINS] || [];
-  const experienceLevels = ['Junior', 'Mid-Level', 'Senior', 'Tech Lead'];
-  const interviewTypes = ['Technical', 'Behavioral', 'System Design', 'Mixed Track'];
-  const difficulties = ['Adaptive AI', 'Easy', 'Medium', 'Hard', 'Expert'];
-  const questionCounts = [3, 5, 7, 10];
+  
+  
+  
+  
+  
+  
 
   const selectOption = (field: string, value: unknown) => {
     let updatedSetup = { ...setupData, [field]: value };

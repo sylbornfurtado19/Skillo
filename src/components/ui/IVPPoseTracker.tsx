@@ -66,7 +66,7 @@ function project3D(
   // Pitch rotation around X
   const x2 = x1;
   const y2 = y1 * Math.cos(pitchRad) - z1 * Math.sin(pitchRad);
-  const z2 = y1 * Math.sin(pitchRad) + z1 * Math.cos(pitchRad);
+  
 
   // Roll rotation around Z
   const x3 = x2 * Math.cos(rollRad) - y2 * Math.sin(rollRad);
@@ -375,7 +375,7 @@ const IVPPoseTracker = forwardRef<IVPPoseTrackerHandle, IVPPoseTrackerProps>(
             setIsStarted(true);
             setCameraError(null);
             runSamplingLoop();
-          } catch (err: unknown) {
+          } catch  {
             setCameraError('Failed to start head pose tracker on active camera stream.');
           }
         },

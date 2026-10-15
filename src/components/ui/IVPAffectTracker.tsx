@@ -66,7 +66,7 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
       questionIndexRef.current = questionIndex;
     }, [questionId, questionIndex]);
 
-    const [isStarted, setIsStarted] = useState(false);
+    const [,setIsStarted] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
     const runSamplingLoop = useCallback(() => {
@@ -161,7 +161,7 @@ const IVPAffectTracker = forwardRef<IVPAffectTrackerHandle, IVPAffectTrackerProp
             setIsStarted(true);
             setCameraError(null);
             runSamplingLoop();
-          } catch (err: unknown) {
+          } catch  {
             setCameraError('Failed to start affect tracker on active camera stream.');
             setIsStarted(false);
           }

@@ -34,7 +34,7 @@ import type { CandidateSkillMemoryStore, EvaluationCategories } from '../types/i
 
 
 
-import { INTERVIEWER_PERSONAS, getQuestionsForSetup } from '../services/constants';
+import { getQuestionsForSetup } from '../services/constants';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -54,7 +54,6 @@ export default function Dashboard() {
     setSetupData,
     setQuestions,
     setAnswers,
-    setResumeData,
     setupData,
     sessionHistory,
   } = useInterview();

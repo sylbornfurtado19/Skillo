@@ -58,8 +58,7 @@ export default function IVPLab() {
   const {
     submitFrame: submitONNXFrame,
     telemetry: onnxTelemetry,
-    isWorkerActive: isONNXWorkerActive,
-  } = useONNXWorker({
+    } = useONNXWorker({
     autoStart: true,
   });
 
@@ -71,7 +70,7 @@ export default function IVPLab() {
   const [speechActivePct, setSpeechActivePct] = useState<number>(32);
 
   // Diagnostic Canvas Metrics
-  const [canvasMetrics, setCanvasMetrics] = useState<DiagnosticMetrics>({
+  const [,setCanvasMetrics] = useState<DiagnosticMetrics>({
     ear: 0.285,
     mar: 0.145,
     fps: 60,

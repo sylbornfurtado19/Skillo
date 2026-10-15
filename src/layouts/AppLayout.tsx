@@ -15,7 +15,6 @@ import {
   FaBars,
   FaTimes,
   FaBell,
-  FaChevronRight,
   FaUserTie,
   FaFlask,
 } from 'react-icons/fa';
@@ -134,7 +133,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const pageInfo = matchedRoute
     ? ROUTE_INFO[matchedRoute]
     : { title: 'Product Workspace', subtitle: 'Practice and refine your professional interview skills.' };
-  const pageTitle = pageInfo.title;
+  
 
   const avatarUrl =
     (user?.user_metadata?.avatar_url as string | undefined) ??

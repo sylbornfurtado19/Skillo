@@ -3,10 +3,10 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { FaFileAlt, FaSlidersH, FaUserTie, FaCheckCircle, FaRocket, FaArrowRight } from 'react-icons/fa';
+import { FaFileAlt, FaSlidersH, FaUserTie, FaCheckCircle, FaArrowRight } from 'react-icons/fa';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
-import Button from '../ui/Button';
+
 
 export interface OnboardingProgressWidgetProps {
   hasResume: boolean;

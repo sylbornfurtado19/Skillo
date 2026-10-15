@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+
 import { getAuthToken } from './auth';
 import type { CodeAnswer } from '../types';
 import type { SpeechAnalytics } from '../lib/services/speechAnalytics';

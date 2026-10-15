@@ -40,7 +40,7 @@ const RAF_SKIP = Math.round(60 / SAMPLE_FPS);
 const EYE_Y_RATIO = 0.38;
 
 /** Max absolute deviation (px) from frame center for full off-screen classification */
-const MAX_DEVIATION_PX = 120;
+
 
 /** Gaze ray length in canvas pixels */
 const RAY_LENGTH = 80;
@@ -408,7 +408,7 @@ const IVPGazeTracker = forwardRef<IVPGazeTrackerHandle, IVPGazeTrackerProps>(
             setIsStarted(true);
             setCameraError(null);
             runSamplingLoop();
-          } catch (err: unknown) {
+          } catch  {
             setCameraError('Failed to start gaze tracker on active camera stream.');
           }
         },

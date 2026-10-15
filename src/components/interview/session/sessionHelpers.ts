@@ -1,3 +1,5 @@
+import { DEFAULT_ANTHROPIC_MODEL } from '@/lib/ai/defaultModel';
+
 export const AUTOSAVE_STORAGE_KEY_PREFIX = 'skillo_draft_ans_';
 
 export const AUDIO_BAR_PROFILES = [
@@ -26,7 +28,7 @@ export function generateFallbackEvaluationReport(
   modelId?: string
 ) {
   const avgScore = 60;
-  const resolvedModelId = modelId || setup?.modelId || setup?.model || 'claude-sonnet-5-5';
+  const resolvedModelId = modelId || setup?.modelId || setup?.model || DEFAULT_ANTHROPIC_MODEL;
   return {
     overallScore: avgScore,
     categories: {

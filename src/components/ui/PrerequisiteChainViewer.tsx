@@ -5,12 +5,10 @@ import type { PrerequisiteGapChain } from '@/types/index';
 import Card from './Card';
 import Badge from './Badge';
 import {
-  FaExclamationTriangle,
   FaArrowRight,
   FaGraduationCap,
   FaChevronDown,
   FaChevronUp,
-  FaCheckCircle,
   FaLayerGroup,
 } from 'react-icons/fa';
 

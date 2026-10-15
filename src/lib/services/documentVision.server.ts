@@ -127,7 +127,7 @@ function normalizeBBox(
   return { x0, y0, x1, y1, width: x1 - x0, height: y1 - y0 };
 }
 
-function buildElement(block: RawBlock, index: number, pageCount: number): VisualLayoutElement {
+function buildElement(block: RawBlock, index: number, _pageCount: number): VisualLayoutElement {
   const type = classifyType(block);
   const level = hierarchyLevel(type);
 
@@ -319,7 +319,7 @@ function detectLayoutType(
  */
 export function analyzeVisualDocumentLayout(
   resumeText: string,
-  fileName: string = ''
+  _fileName: string = ''
 ): VisualLayoutAnalysisResult {
   // Handle empty / minimal input gracefully
   if (!resumeText || resumeText.trim().length < 10) {

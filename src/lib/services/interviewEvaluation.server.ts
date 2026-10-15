@@ -10,7 +10,7 @@ import { processGazeFrames } from './ivpGazeEngine';
 import { analyzeHeadPoseAndGestures } from './ivpPoseEngine';
 import { processAffectFrames } from './ivpAffectEngine';
 import { processLipSyncWindows } from './ivpSyncEngine';
-import { resolveInterviewMode } from '@/types/interviewModes';
+
 import { summarizeDiagramTopology, SystemDesignDiagramState } from '@/types/systemDesign';
 import { verifyMultiPassGrounding } from './groundingVerifier.server';
 import { AI_CONFIG, executeAnthropicRequest } from '@/lib/ai/aiConfig';
@@ -947,7 +947,7 @@ export async function performInterviewEvaluation(
 
   // Retrieve historical memory BEFORE generating new reflection
   const existingMemoryStore = await retrieveSkillMemoryStore(userId);
-  const historicalContext = getRelevantReflexionContext(setupData.role, existingMemoryStore);
+  
 
   // Historical memory retrieved for evaluation context and LATS prior gaps
   // Reflexion generation and persistence is dispatched exclusively via dispatchReflexionWorker

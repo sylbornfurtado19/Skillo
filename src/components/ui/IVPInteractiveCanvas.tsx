@@ -10,7 +10,6 @@ import {
   drawProjected3DAxes,
   ensureKernelBuffers,
   histogramMax,
-  calculateEAR,
   calculateMAR,
   type Point2D,
   type LuminanceHistogramResult,
@@ -27,14 +26,11 @@ import {
   detectDeviceProfile,
   detectFastFaceBootstrap,
   OnlineCalibrationEstimator,
-  type CoordinateMappingMetrics,
   type DeviceProfile,
-  type FastFaceBootstrapResult,
 } from '../../lib/services/visionPipeline';
 import {
   DenseLandmarksSmoother,
   type SmoothedLandmarksResult,
-  type TrackingPreset,
 } from '../../lib/services/temporalSmoothing';
 import { MicroPatchTracker, type TrackedFeature } from '../../lib/services/microPatchTracker';
 import {

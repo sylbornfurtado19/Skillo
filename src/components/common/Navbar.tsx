@@ -9,7 +9,7 @@ import { FaBars, FaTimes, FaUser, FaSignOutAlt, FaRocket, FaPalette } from 'reac
 import { LogoFull } from './Logo';
 import { useAuth } from '../../hooks/useAuth';
 import { useInterview } from '../../context/InterviewContext';
-import { THEME_PRESETS, ThemeId, getThemePreset } from '../../types/themes';
+import { ThemeId, getThemePreset } from '../../types/themes';
 
 export default function Navbar() {
   const router = useRouter();

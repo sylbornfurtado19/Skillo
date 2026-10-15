@@ -5,7 +5,6 @@ import {
   FaEye,
   FaHeartbeat,
   FaUserTie,
-  FaMicrophone,
   FaExclamationTriangle,
   FaCheckCircle,
   FaClock,

@@ -5,10 +5,8 @@ import type { StructuralDelta } from '@/types/index';
 import Card from './Card';
 import Badge from './Badge';
 import {
-  FaLayerGroup,
   FaCheckCircle,
   FaTimesCircle,
-  FaExclamationTriangle,
   FaArrowRight,
   FaSlidersH,
 } from 'react-icons/fa';

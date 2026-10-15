@@ -5,10 +5,12 @@
  * (retrying only transient network errors, rate limits 429, and provider 5xx, never 4xx client errors).
  */
 
+import { DEFAULT_ANTHROPIC_MODEL } from './defaultModel';
+
 export const AI_CONFIG = {
   provider: 'anthropic',
   get model(): string {
-    return process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
+    return process.env.ANTHROPIC_MODEL || DEFAULT_ANTHROPIC_MODEL;
   },
   apiVersion: '2023-06-01',
   endpoint: 'https://api.anthropic.com/v1/messages',

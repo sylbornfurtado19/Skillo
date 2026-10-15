@@ -310,7 +310,7 @@ function scheduleModelRetry(backend: VisionModelBackend, initStartTs: number): v
   }, delayMs);
 }
 
-export async function tryInitModelWithBackoff(backend: VisionModelBackend = 'WEBGL', initStartTs?: number): Promise<boolean> {
+export async function tryInitModelWithBackoff(backend: VisionModelBackend = 'WEBGL', _initStartTs?: number): Promise<boolean> {
   return initFaceLandmarker(backend);
 }
 

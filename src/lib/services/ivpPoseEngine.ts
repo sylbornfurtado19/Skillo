@@ -140,7 +140,7 @@ export function analyzeGesturalEvents(frames: HeadPoseFrameResult[]): {
 
     // Check for Nodding (Pitch oscillations: deltaPitch >= 6 deg within 250ms - 800ms)
     let peakPitch = startFrame.angles.pitchDegrees;
-    let troughPitch = startFrame.angles.pitchDegrees;
+    
     let peakIdx = i;
 
     for (let j = i + 1; j < Math.min(i + 15, frames.length); j++) {

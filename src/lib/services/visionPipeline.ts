@@ -482,7 +482,7 @@ function _edgeDensityInBox(
   for (let y = y0; y <= y1; y += step) {
     for (let x = x0; x <= x1; x += step) {
       // Sample luma only
-      const i    = (y * imgW + x) << 2;
+      
       const iN   = ((y - 1) * imgW + x) << 2;
       const iS   = ((y + 1) * imgW + x) << 2;
       const iE   = (y * imgW + (x + 1)) << 2;

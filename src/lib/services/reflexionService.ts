@@ -4,7 +4,6 @@ import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
 import { sanitizeUserText } from '@/lib/server/sanitize';
 import type {
   VerbalReflection,
-  SkillMemoryNode,
   CandidateSkillMemoryStore,
 } from '@/types/index';
 

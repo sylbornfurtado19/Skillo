@@ -219,7 +219,7 @@ export function useVisionWorker(options: UseVisionWorkerOptions = {}): UseVision
     // Safe startup cadence guard: for first 5000ms from spawn or before first model packet,
     // guard against premature throttling and preserve startupTargetFps (High:30, Mid:20, Low:15)
     const cpuTier = deviceProfileRef.current.cpuTier;
-    const startupTargetFps = cpuTier === 'HIGH' ? 30 : (cpuTier === 'MID' ? 20 : 15);
+    
     const isStartupWarmup = (now - spawnTsRef.current < 5000) || (!firstModelPacketTsRef.current && (now - spawnTsRef.current < 8000));
 
     if (isOverloaded) {

@@ -184,7 +184,7 @@ export function calculateStreak(history: SessionHistoryItem[]): StreakInfo {
   const todayStr = new Date().toISOString().split('T')[0];
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  
 
   const practicedToday = uniqueDates.includes(todayStr);
 

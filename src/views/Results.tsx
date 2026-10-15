@@ -39,7 +39,7 @@ import { calculateDeliveryComposite } from '../lib/services/deliveryComposite';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
-import { Skeleton } from '../components/ui/Skeleton';
+
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import SUQConfidenceDashboard from '../components/ui/SUQConfidenceDashboard';
 import SimPOContrastiveCard from '../components/ui/SimPOContrastiveCard';
@@ -141,7 +141,7 @@ export default function Results() {
 
 
 
-  const [mounted, setMounted] = useState(false);
+  const [,setMounted] = useState(false);
   const [resultsError, setResultsError] = useState<string | null>(null);
 
   useEffect(() => {

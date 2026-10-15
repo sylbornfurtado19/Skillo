@@ -32,7 +32,6 @@ import {
   FaSave,
   FaTimes,
   FaPlug,
-  FaCheckCircle,
 } from 'react-icons/fa';
 
 interface SystemDesignCanvasProps {

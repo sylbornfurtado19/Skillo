@@ -45,7 +45,7 @@ function project3D(
 
   const x2 = x1;
   const y2 = y1 * Math.cos(pitchRad) - z1 * Math.sin(pitchRad);
-  const z2 = y1 * Math.sin(pitchRad) + z1 * Math.cos(pitchRad);
+  
 
   const x3 = x2 * Math.cos(rollRad) - y2 * Math.sin(rollRad);
   const y3 = x2 * Math.sin(rollRad) + y2 * Math.cos(rollRad);

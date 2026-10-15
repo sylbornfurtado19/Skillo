@@ -1,17 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import Image from 'next/image';
+
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import {
-  FaMicrophone,
   FaKeyboard,
-  FaPauseCircle,
   FaExclamationTriangle,
-  FaArrowRight,
   FaChevronLeft,
-  FaInfoCircle,
   FaStepForward,
 } from 'react-icons/fa';
 import { INTERVIEWER_PERSONAS, submitInterviewAnswers } from '../services/constants';
@@ -19,14 +15,14 @@ import { saveMockInterview, mapEvaluationToMockInterviewPayload } from '../servi
 import { useInterview } from '../context/InterviewContext';
 import { useAuth } from '../hooks/useAuth';
 import { getProfile } from '../services/profile';
-import { supabase } from '../lib/supabase';
+
 import { getAuthToken } from '../services/auth';
 
 import dynamic from 'next/dynamic';
-import { LogoIcon } from '../components/common/Logo';
+
 import { useToast } from '../components/ui/Toast';
 import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
+
 import Badge from '../components/ui/Badge';
 import IVPSyncTracker, { type IVPSyncTrackerHandle } from '../components/ui/IVPSyncTracker';
 import { useInterviewCamera } from '../hooks/useInterviewCamera';
@@ -36,9 +32,7 @@ import type { SystemDesignDiagramState } from '../types/systemDesign';
 import { createInitialDiagramState, deserializeDiagram, serializeDiagram } from '../types/systemDesign';
 import {
   AUTOSAVE_STORAGE_KEY_PREFIX,
-  AUDIO_BAR_PROFILES,
   generateFallbackEvaluationReport,
-  formatTime,
   handleRetryEvaluationSuccess,
   handleRetryEvaluationFailure,
 } from '../components/interview/session/sessionHelpers';
@@ -211,9 +205,7 @@ export default function InterviewSession() {
   // ── Authoritative Centralized Camera Management (REM-2) ──────────────
   const {
     stream: cameraStream,
-    isCameraActive,
     cameraError,
-    startCamera,
     stopCamera,
   } = useInterviewCamera({ autoStart: true, enableAudio: true });
 

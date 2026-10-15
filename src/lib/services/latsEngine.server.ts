@@ -419,9 +419,9 @@ export function recomputeTreeStats(node: LATSTreeNode, parentVisits: number = 1)
 
 export async function runLATSMCTS(input: LATSEngineInput): Promise<LATSTreeState> {
   const { sessionId, role, currentQuestion, candidateAnswer, priorGaps, anthropicApiKey, previousTreeState } = input;
-  const K = input.maxRounds ?? (AI_CONFIG as any).lats?.rounds ?? 3;
+  const K = input.maxRounds ?? AI_CONFIG.lats.rounds;
   const startTime = Date.now();
-  const totalBudgetMs = input.wallClockBudgetMs ?? (AI_CONFIG as any).timeouts?.latsWallClockMs ?? 10000;
+  const totalBudgetMs = input.wallClockBudgetMs ?? AI_CONFIG.timeouts.latsWallClockMs;
   let liveCallsSucceeded = 0;
 
   let rootNode: LATSTreeNode;

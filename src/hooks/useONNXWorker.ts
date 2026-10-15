@@ -239,7 +239,7 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
 
         workerRef.current.postMessage(inferCmd, [bitmap]);
         return true;
-      } catch (err) {
+      } catch  {
         frameMetadataMapRef.current.delete(frameId);
         inFlightRef.current = false;
         return false;

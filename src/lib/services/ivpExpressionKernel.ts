@@ -506,12 +506,12 @@ function createDefaultExpressionResult(
   height: number,
   faceDetected: boolean
 ): FacialExpressionResult {
-  const cx = width * 0.5;
+  
   const cy = height * 0.46;
-  const eyeY = cy - height * 0.10;
-  const eyeDist = width * 0.15;
-  const mouthY = cy + height * 0.18;
-  const mouthHalfW = width * 0.12;
+  
+  
+  
+  
 
   return {
     faceDetected,

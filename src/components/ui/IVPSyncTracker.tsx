@@ -14,7 +14,6 @@ import React, {
   useCallback,
   useImperativeHandle,
   forwardRef,
-  useState,
 } from 'react';
 import { processSyncWindow } from '@/lib/services/ivpSyncEngine';
 import type { SyncWindowInput, SyncWindowResult } from '@/types/index';

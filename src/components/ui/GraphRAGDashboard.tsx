@@ -9,7 +9,7 @@ import type {
 } from '@/types/index';
 import Card from './Card';
 import Badge from './Badge';
-import Button from './Button';
+
 import PrerequisiteChainViewer from './PrerequisiteChainViewer';
 import {
   FaProjectDiagram,
@@ -19,7 +19,6 @@ import {
   FaTimes,
   FaInfoCircle,
   FaLayerGroup,
-  FaChartBar,
 } from 'react-icons/fa';
 
 export interface GraphRAGDashboardProps {

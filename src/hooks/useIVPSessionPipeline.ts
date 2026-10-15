@@ -142,7 +142,7 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
   const [liveGazeFrame, setLiveGazeFrame] = useState<GazeFrameResult | null>(null);
   const [gazeEyeContactPct, setGazeEyeContactPct] = useState(0);
   const [gazeFrameCount, setGazeFrameCount] = useState(0);
-  const [gazeContactCount, setGazeContactCount] = useState(0);
+  const [,setGazeContactCount] = useState(0);
   const [showGazeWarning, setShowGazeWarning] = useState(false);
   const gazeWarningTimerRef = useRef<NodeJS.Timeout | null>(null);
 
