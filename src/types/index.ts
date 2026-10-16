@@ -338,6 +338,11 @@ export interface SinglePassEvaluation {
   decisionSummary?: string;
   /** Deprecated optional alias preserved for test compatibility */
   cotReasoning?: string;
+  /**
+   * True when this pass came from the offline heuristic generator instead of a successful
+   * model call. Used to report the true evaluation mode (never "live" for fabricated passes).
+   */
+  fromFallback?: boolean;
   scores: {
     technicalAccuracy: number;
     systemDesignLogic: number;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/server/supabaseAdmin';
-import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
+import { executeAnthropicRequest, AI_CONFIG, getAiApiKey } from '@/lib/ai/aiConfig';
 import { sanitizeUserText } from '@/lib/server/sanitize';
 import type {
   VerbalReflection,
@@ -55,7 +55,7 @@ export async function generateVerbalSelfReflection(
   const question = sanitizeUserText(input.question, 5000);
   const candidateAnswer = sanitizeUserText(input.candidateAnswer, 5000);
   const role = sanitizeUserText(input.role, 100);
-  const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+  const anthropicApiKey = getAiApiKey();
   const timestamp = new Date().toISOString();
 
   // If score is high (>88), generate positive mastery reflection trace

@@ -49,7 +49,7 @@ import type {
   ContrastiveEvaluationResult,
   BenchmarkDeltaCard,
 } from '@/types/index';
-import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
+import { executeAnthropicRequest, AI_CONFIG, getAiApiKey } from '@/lib/ai/aiConfig';
 import { retrieveBenchmarkAnswer } from './benchmarkRetrieval.server';
 
 export const DEFAULT_SIMPO_GAMMA = 0.25;
@@ -171,7 +171,7 @@ export async function generateSimPOContrastiveEvaluation(
   input: GenerateSimPOInput
 ): Promise<ContrastiveEvaluationResult> {
   const { evaluationId = `simpo_${Date.now()}`, question, candidateAnswer, role, score } = input;
-  const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+  const anthropicApiKey = getAiApiKey();
   const beta = 2.0;
   const gamma = input.gamma ?? DEFAULT_SIMPO_GAMMA;
 

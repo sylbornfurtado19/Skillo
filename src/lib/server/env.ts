@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { getAiKeyEnvName, isAiConfigured } from '@/lib/ai/aiConfig';
 
 // Guard against browser execution
 if (typeof window !== 'undefined') {
@@ -10,6 +11,8 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url('NEXT_PUBLIC_SUPABASE_URL must be a valid URL').optional(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20, 'NEXT_PUBLIC_SUPABASE_ANON_KEY must be at least 20 characters').optional(),
   ANTHROPIC_API_KEY: z.string().min(10, 'ANTHROPIC_API_KEY is too short').optional(),
+  GROQ_API_KEY: z.string().min(10, 'GROQ_API_KEY is too short').optional(),
+  AI_PROVIDER: z.enum(['anthropic', 'groq']).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20, 'SUPABASE_SERVICE_ROLE_KEY is too short').optional(),
 });
 
@@ -33,6 +36,7 @@ export function validateEnvironment(env: Record<string, string | undefined> = pr
   // 1. Check for dangerous accidental public secret leaks
   const dangerousPrefixes = [
     'NEXT_PUBLIC_ANTHROPIC_API_KEY',
+    'NEXT_PUBLIC_GROQ_API_KEY',
     'NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY',
     'NEXT_PUBLIC_SERVICE_ROLE_KEY',
     'NEXT_PUBLIC_SECRET',
@@ -66,21 +70,21 @@ export function validateEnvironment(env: Record<string, string | undefined> = pr
     if (!env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       errors.NEXT_PUBLIC_SUPABASE_ANON_KEY = ['NEXT_PUBLIC_SUPABASE_ANON_KEY is strictly required in production.'];
     }
-    if (!env.ANTHROPIC_API_KEY) {
-      warnings.push('ANTHROPIC_API_KEY is not set in production. AI evaluation endpoints will operate in degraded fallback mode.');
+    if (!isAiConfigured(env)) {
+      warnings.push(`${getAiKeyEnvName(env)} is not set in production. AI evaluation endpoints will operate in degraded fallback mode.`);
     }
   } else {
     // Development/test notices
     if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       warnings.push('Supabase is not configured. Running with mock/local state.');
     }
-    if (!env.ANTHROPIC_API_KEY) {
-      warnings.push('ANTHROPIC_API_KEY is not configured. AI evaluations will use deterministic analytical fallbacks.');
+    if (!isAiConfigured(env)) {
+      warnings.push(`${getAiKeyEnvName(env)} is not configured. AI evaluations will use deterministic analytical fallbacks.`);
     }
   }
 
   const isValid = Object.keys(errors).length === 0;
-  const isProductionReady = isValid && Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY && env.ANTHROPIC_API_KEY);
+  const isProductionReady = isValid && Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY && isAiConfigured(env));
 
   return {
     isValid,
@@ -103,6 +107,8 @@ export function getServerEnv(): ServerEnv {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    GROQ_API_KEY: process.env.GROQ_API_KEY,
+    AI_PROVIDER: process.env.AI_PROVIDER as ServerEnv['AI_PROVIDER'],
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   };
 }

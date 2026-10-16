@@ -25,10 +25,25 @@ import {
   performInterviewEvaluation,
 } from '../../src/lib/services/interviewEvaluation.server';
 import { calculateLengthNormalizedReward } from '../../src/lib/services/simpoEngine.server';
+import { AI_CONFIG, getAiKeyEnvName, isAiConfigured } from '../../src/lib/ai/aiConfig';
 import type { SinglePassEvaluation } from '../../src/types/index';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/** Loads .env.local / .env (without overriding real environment variables), like Next.js does. */
+function loadLocalEnv(): void {
+  for (const name of ['.env.local', '.env']) {
+    const file = path.resolve(__dirname, '..', '..', name);
+    if (!fs.existsSync(file)) continue;
+    for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/.exec(line);
+      if (!match || line.trim().startsWith('#')) continue;
+      const value = match[2].replace(/^(['"])(.*)\1$/, '$2');
+      if (process.env[match[1]] === undefined) process.env[match[1]] = value;
+    }
+  }
+}
 
 // ── ANSI colours ─────────────────────────────────────────────────────────────
 const GREEN = '\x1b[32m';
@@ -273,16 +288,18 @@ async function writeCalibrationResults(entries: BenchmarkEntry[]): Promise<void>
   const outputPath = path.resolve(__dirname, '..', '..', 'docs', 'calibration-latest.json');
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
-  if (!process.env.ANTHROPIC_API_KEY?.trim()) {
-    console.error(`\n${RED}${BOLD}Error: ANTHROPIC_API_KEY is required to run live calibration benchmarks.${RESET}`);
-    console.error(`${RED}Missing ANTHROPIC_API_KEY environment variable. Refusing to write skipped output in CI.${RESET}\n`);
+  loadLocalEnv();
+  if (!isAiConfigured()) {
+    const keyName = getAiKeyEnvName();
+    console.error(`\n${RED}${BOLD}Error: ${keyName} is required to run live calibration benchmarks.${RESET}`);
+    console.error(`${RED}Missing ${keyName} environment variable. Refusing to write skipped output in CI.${RESET}\n`);
     process.exit(1);
   }
 
   try {
     const output: CalibrationOutput = {
       generatedAt: new Date().toISOString(),
-      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
+      model: `${AI_CONFIG.provider}:${AI_CONFIG.model}`,
       splits: {
         validation: await evaluateSplit('validation', entries),
         test: await evaluateSplit('test', entries),

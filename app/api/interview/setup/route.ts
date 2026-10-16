@@ -7,7 +7,7 @@ import {
 } from '@/lib/services/reflexionService';
 import { getQuestionsForSetup } from '@/services/constants';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
-import { executeAnthropicRequest } from '@/lib/ai/aiConfig';
+import { executeAnthropicRequest, getAiApiKey } from '@/lib/ai/aiConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     }
 
     // 5. Question Generation: Generate questions adaptively conditioned on historical memory
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    const anthropicApiKey = getAiApiKey();
     let generatedQuestions: GeneratedQuestionItem[] = [];
 
     if (anthropicApiKey && hasHistoricalMemory) {

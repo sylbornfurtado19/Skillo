@@ -13,7 +13,7 @@ import { processLipSyncWindows } from './ivpSyncEngine';
 
 import { summarizeDiagramTopology, SystemDesignDiagramState } from '@/types/systemDesign';
 import { verifyMultiPassGrounding } from './groundingVerifier.server';
-import { AI_CONFIG, executeAnthropicRequest } from '@/lib/ai/aiConfig';
+import { AI_CONFIG, executeAnthropicRequest, getAiApiKey } from '@/lib/ai/aiConfig';
 import { safeParseModelJson } from '@/lib/ai/safeJsonParser';
 import { sanitizeUserText } from '@/lib/server/sanitize';
 import type {
@@ -261,6 +261,7 @@ REQUIRED OUTPUT FORMAT: Return ONLY a JSON object matching this schema (do NOT r
           return {
             ...parsed.data,
             cotReasoning: parsed.data.cotReasoning || parsed.data.decisionSummary,
+            fromFallback: false,
           };
         }
       }
@@ -383,6 +384,7 @@ function generateAnalyticalCoTPass(
     criterionEvidence,
     decisionSummary,
     cotReasoning: decisionSummary,
+    fromFallback: true,
     scores: {
       technicalAccuracy: techScore,
       systemDesignLogic: sysScore,
@@ -575,7 +577,7 @@ export function computeSemanticEquivalenceAndEntropy(
   options?: { anthropicApiKey?: string; timeoutMs?: number }
 ): Promise<SemanticEntropyResult> & SemanticEntropyResult {
   const fallbackResult = computeScoreVarianceClustering(passes, scoreVarianceThreshold);
-  const apiKey = options?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+  const apiKey = options?.anthropicApiKey || getAiApiKey();
 
   if (passes.length < 2 || !apiKey) {
     const syncPromise = Promise.resolve(fallbackResult);
@@ -740,7 +742,7 @@ export async function performInterviewEvaluation(
 ): Promise<EvaluationReport> {
   const startTime = Date.now();
   const { setupData, questionsList, answersList } = input;
-  const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+  const anthropicApiKey = getAiApiKey();
 
   // Execute N Parallel Sampling Passes (strictly N=3 default <=4.5s per pass, or N=5 deep mode)
   const targetN = input.deepAnalysisMode ? 5 : 3;
@@ -811,13 +813,16 @@ export async function performInterviewEvaluation(
     }/5. Key focus: STAR framework structure and executive brevity.`,
   };
 
-  const isFallback = !anthropicApiKey || completedPasses.length === 0;
-  const evaluationMode: 'live' | 'fallback' | 'partial' = !anthropicApiKey || completedPasses.length === 0
+  // Report the TRUE mode: a pass produced by the offline heuristic generator is never "live",
+  // even when an API key is configured (bad key/model, quota, timeout, unparseable output).
+  const livePassCount = passes.filter((pass) => !pass.fromFallback).length;
+  const isFallback = !anthropicApiKey || livePassCount === 0;
+  const evaluationMode: 'live' | 'fallback' | 'partial' = isFallback
     ? 'fallback'
-    : completedPasses.length < targetN
+    : livePassCount < targetN
     ? 'partial'
     : 'live';
-  const providerStatus = anthropicApiKey ? (completedPasses.length > 0 ? 'available' : 'error') : 'unconfigured';
+  const providerStatus = anthropicApiKey ? (livePassCount > 0 ? 'available' : 'error') : 'unconfigured';
 
   const effectiveConfidenceLevel = isFallback ? 'LOW' : confidenceLevel;
   const effectiveFinalScore = isFallback ? Math.min(3.0, finalScore) : finalScore;

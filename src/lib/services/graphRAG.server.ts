@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { normalizeEntityName, graphRelationshipTypeSchema } from '@/lib/schemas/graphSchema';
-import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
+import { executeAnthropicRequest, AI_CONFIG, getAiApiKey } from '@/lib/ai/aiConfig';
 import { safeParseModelJson } from '@/lib/ai/safeJsonParser';
 import { sanitizeUserText } from '@/lib/server/sanitize';
 import type {
@@ -353,7 +353,7 @@ export async function executeGraphRAGAnalysis(
   const jobDescription = sanitizeUserText(input.jobDescription, 5000);
   const fileName = sanitizeUserText(input.fileName, 255);
   const resumeText = sanitizeUserText(input.resumeText, 15000);
-  const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+  const anthropicApiKey = getAiApiKey();
 
   let rawEntities = [
     { name: `${jobTitle} Architecture`, type: 'DOMAIN' as const, description: `Macro architecture domain for ${jobTitle}.` },

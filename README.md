@@ -44,9 +44,19 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
-# Anthropic Configuration (Core Reasoning & Evaluation Engines)
+# AI provider for the reasoning & evaluation engines: anthropic | groq
+# (If unset, whichever key below is present is used, Anthropic first.)
+AI_PROVIDER=anthropic
+
+# Anthropic Configuration
 ANTHROPIC_API_KEY=your-anthropic-api-key
 ANTHROPIC_MODEL=claude-sonnet-5-5
+
+# Groq Configuration (OpenAI-compatible API; free tier is rate limited per minute)
+GROQ_API_KEY=your-groq-api-key
+# Groq retires models over time; list yours with GET https://api.groq.com/openai/v1/models
+GROQ_MODEL=openai/gpt-oss-120b
+# Optional: AI_LATS_ROUNDS=1 (follow-up search rounds), AI_MAX_CONCURRENCY=2 (parallel calls, Groq)
 
 # Code Execution Engine (Optional Piston-compatible endpoint; unset returns 501)
 CODE_RUNNER_URL=https://emkc.org/api/v2/piston

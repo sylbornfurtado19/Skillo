@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAiApiKey } from '@/lib/ai/aiConfig';
 import { z } from "zod";
 import { authenticateRequest, authFailureResponse } from "@/lib/server/authenticateRequest";
 import { checkRateLimit, createRateLimitResponse } from "@/lib/services/rateLimiter.server";
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
     }
 
     // 5. Run LATS MCTS engine with persistent tree support
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    const anthropicApiKey = getAiApiKey();
     const resolvedSessionId = sessionId ?? `followup_${Date.now()}`;
     const previousTree = rawData.previousTreeState ?? rawData.treeState;
 

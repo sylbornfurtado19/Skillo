@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { executeGraphRAGAnalysis } from './graphRAG.server';
 import { analyzeVisualDocumentLayout } from './documentVision.server';
-import { executeAnthropicRequest, AI_CONFIG } from '@/lib/ai/aiConfig';
+import { executeAnthropicRequest, AI_CONFIG, getAiApiKey } from '@/lib/ai/aiConfig';
 import { safeParseModelJson } from '@/lib/ai/safeJsonParser';
 import { sanitizeUserText } from '@/lib/server/sanitize';
 import type { GraphRAGAnalysisResult, VisualLayoutAnalysisResult } from '@/types/index';
@@ -202,7 +202,7 @@ export async function rewriteResumeBullets(input: ResumeRewriteInput): Promise<R
   if (selectedLines.length === 0) return [];
 
   const fallback = selectedLines.map((line) => fallbackRewrite(line, targetSkill));
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = getAiApiKey();
   if (!apiKey) return fallback;
 
   const response = await executeAnthropicRequest({
