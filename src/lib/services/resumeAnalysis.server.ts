@@ -37,7 +37,13 @@ export const resumeRewriteItemSchema = z.object({
   rewritten: z.string().min(1),
   reason: z.string().min(1),
   targetSkill: z.string().min(1),
-  metricPlaceholders: z.array(z.string().regex(/^\[[^\]]+\]$/)).default([]),
+  metricPlaceholders: z
+    .preprocess((val) => {
+      if (typeof val === 'string') return [val];
+      if (Array.isArray(val)) return val;
+      return [];
+    }, z.array(z.string().regex(/^\[[^\]]+\]$/)))
+    .default([]),
   source: z.enum(['live', 'fallback']),
 });
 

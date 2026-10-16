@@ -110,34 +110,83 @@ export function detectFileType(buffer: Buffer, fileName?: string): DetectedFileT
   );
 }
 
+import zlib from 'zlib';
+
+function extractPdfTextFallback(buffer: Buffer): { text: string; pageCount: number } {
+  let text = '';
+  const content = buffer.toString('binary');
+  const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  let match: RegExpExecArray | null;
+  while ((match = streamRegex.exec(content)) !== null) {
+    const rawStream = Buffer.from(match[1], 'binary');
+    let decompressed = '';
+    try {
+      decompressed = zlib.inflateSync(rawStream).toString('utf-8');
+    } catch {
+      decompressed = rawStream.toString('utf-8');
+    }
+
+    // Match strings in ( ... ) Tj
+    const tjRegex = /\(([^)]+)\)\s*Tj/g;
+    let tjMatch: RegExpExecArray | null;
+    while ((tjMatch = tjRegex.exec(decompressed)) !== null) {
+      text += tjMatch[1] + ' ';
+    }
+
+    // Match strings in [ ( ... ) ] TJ
+    const tjArrayRegex = /\[(.*?)\]\s*TJ/g;
+    let arrayMatch: RegExpExecArray | null;
+    while ((arrayMatch = tjArrayRegex.exec(decompressed)) !== null) {
+      const innerTj = /\(([^)]+)\)/g;
+      let innerMatch: RegExpExecArray | null;
+      while ((innerMatch = innerTj.exec(arrayMatch[1])) !== null) {
+        text += innerMatch[1];
+      }
+      text += ' ';
+    }
+  }
+
+  const pageMatches = content.match(/\/Type\s*\/Page\b/g);
+  const pageCount = Math.max(1, pageMatches ? pageMatches.length : 1);
+  return { text: text.trim(), pageCount };
+}
+
 export async function extractTextFromPdf(buffer: Buffer): Promise<{ text: string; pageCount: number }> {
   const pdfHeaderIndex = buffer.indexOf(Buffer.from('%PDF'));
   const effectiveBuffer = pdfHeaderIndex > 0 ? buffer.subarray(pdfHeaderIndex) : buffer;
 
   let parser: any = null;
   try {
-    let PDFParse: any;
     try {
-      ({ PDFParse } = await import('pdf-parse'));
-    } catch (loadErr) {
-      console.error('[resumeExtraction] pdf-parse failed to load:', loadErr);
-      throw new ResumeExtractionError(
-        'PDF reading is temporarily unavailable on the server. Please upload a .docx or .txt version of your resume.',
-        'PARSE_FAILED',
-        503
-      );
+      const { PDFParse } = await import('pdf-parse');
+      parser = new PDFParse({ data: effectiveBuffer });
+      await parser.load();
+      const result = await parser.getText();
+      const pagesJoined = (result.pages || [])
+        .map((p: { text?: string }) => (p?.text || '').trim())
+        .filter(Boolean)
+        .join('\n\n');
+      const fullText = (result.text || '').trim();
+      const rawPagesText = pagesJoined.length >= fullText.length ? pagesJoined : fullText || pagesJoined;
+      const pageCount = result.total || result.pages?.length || 1;
+      if (rawPagesText && rawPagesText.length >= 50) {
+        return { text: rawPagesText, pageCount };
+      }
+    } catch (loadOrParseErr) {
+      console.warn('[resumeExtraction] PDFParse primary parsing warning, attempting stream fallback:', loadOrParseErr);
     }
-    parser = new PDFParse({ data: effectiveBuffer });
-    await parser.load();
-    const result = await parser.getText();
-    const pagesJoined = (result.pages || [])
-      .map((p: { text?: string }) => (p?.text || '').trim())
-      .filter(Boolean)
-      .join('\n\n');
-    const fullText = (result.text || '').trim();
-    const rawPagesText = pagesJoined.length >= fullText.length ? pagesJoined : fullText || pagesJoined;
-    const pageCount = result.total || result.pages?.length || 1;
-    return { text: rawPagesText, pageCount };
+
+    // Fallback stream extraction for documents where PDFParse worker or font table fails
+    const fallback = extractPdfTextFallback(effectiveBuffer);
+    if (fallback.text && fallback.text.length >= 50) {
+      return fallback;
+    }
+
+    throw new ResumeExtractionError(
+      'scanned PDF, no selectable text',
+      'SHORT_TEXT',
+      422
+    );
   } finally {
     if (parser && typeof parser.destroy === 'function') {
       try {

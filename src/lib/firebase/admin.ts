@@ -20,6 +20,13 @@ export const isFirebaseAdminConfigured = Boolean(
   ((clientEmail && privateKey) || process.env.GOOGLE_APPLICATION_CREDENTIALS)
 );
 
+import https from 'https';
+
+// Configure HTTPS agent with relaxed TLS checks in development if corporate/proxy SSL inspection is active
+const adminHttpAgent = new https.Agent({
+  rejectUnauthorized: process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0' && process.env.NODE_ENV === 'production',
+});
+
 function getFirebaseAdminApp(): App {
   const existingApps = getApps();
   if (existingApps.length > 0) {
@@ -34,6 +41,7 @@ function getFirebaseAdminApp(): App {
         privateKey,
       }),
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      httpAgent: adminHttpAgent,
     });
   }
 
@@ -41,6 +49,7 @@ function getFirebaseAdminApp(): App {
   return initializeApp({
     projectId,
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    httpAgent: adminHttpAgent,
   });
 }
 

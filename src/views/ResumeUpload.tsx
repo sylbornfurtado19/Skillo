@@ -192,7 +192,7 @@ export default function ResumeUpload() {
     } catch (extractErr: unknown) {
       console.warn('Server text extraction failed, attempting client fallback:', extractErr);
 
-      // Client-side fallback for plain text files
+      // Client-side fallback for text files and docx
       const fileNameLower = file.name.toLowerCase();
       if (file.type.startsWith('text/') || fileNameLower.endsWith('.txt') || fileNameLower.endsWith('.text')) {
         try {
@@ -203,16 +203,31 @@ export default function ResumeUpload() {
         } catch (clientReadErr) {
           console.warn('Client-side text read error:', clientReadErr);
         }
+      } else if (fileNameLower.endsWith('.docx') || file.type.includes('wordprocessingml')) {
+        try {
+          const { default: mammoth } = await import('mammoth');
+          const arrayBuffer = await file.arrayBuffer();
+          const docxResult = await mammoth.extractRawText({ arrayBuffer });
+          if (docxResult?.value && docxResult.value.trim().length >= 100) {
+            extractedText = docxResult.value.trim();
+          }
+        } catch (docxErr) {
+          console.warn('Client-side docx extraction error:', docxErr);
+        }
       }
 
       if (!extractedText || extractedText.length < 100) {
         clearInterval(interval);
-        const errMsg =
-          extractErr instanceof Error && extractErr.message.includes('scanned PDF')
-            ? 'Resume text is too short or could not be extracted (scanned PDF without selectable text). Please upload a text-selectable document.'
-            : extractErr instanceof Error
-            ? extractErr.message
-            : 'Could not extract text from the resume file.';
+        let errMsg = 'Could not extract text from the resume file.';
+        if (extractErr instanceof Error) {
+          if (extractErr.message.includes('scanned PDF') || extractErr.message.includes('too short')) {
+            errMsg = 'Resume text is too short or could not be extracted (scanned PDF without selectable text). Please upload a text-selectable document.';
+          } else if (extractErr.message.toLowerCase().includes('authentication') || extractErr.message.toLowerCase().includes('sign in')) {
+            errMsg = 'Your session has expired or authentication is required. Please sign in again to analyze your resume.';
+          } else {
+            errMsg = extractErr.message;
+          }
+        }
         setErrorMessage(errMsg);
         setCurrentState('failed');
         return;

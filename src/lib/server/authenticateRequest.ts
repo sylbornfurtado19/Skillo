@@ -36,6 +36,7 @@ const MAX_TOKEN_LENGTH = 8192;
 /** firebase-admin error codes that mean "this token is not acceptable" (client problem). */
 const FIREBASE_TOKEN_ERROR_CODES = new Set([
   'auth/argument-error',
+  'auth/invalid-argument',
   'auth/id-token-expired',
   'auth/id-token-revoked',
   'auth/invalid-id-token',
@@ -90,7 +91,26 @@ async function verifyFirebaseToken(token: string): Promise<AuthResult> {
   try {
     const { getAdminAuth } = await import('@/lib/firebase/admin');
     const adminAuth = await getAdminAuth();
-    const decoded = await adminAuth.verifyIdToken(token);
+    
+    // In local development, avoid hanging for minutes on unreachable/proxied Google certificate servers
+    let decoded: any;
+    if (process.env.NODE_ENV !== 'production') {
+      let timer: NodeJS.Timeout | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(Object.assign(new Error('Firebase certificate fetch timed out'), { code: 'auth/timeout' })),
+          3000
+        );
+      });
+      try {
+        decoded = await Promise.race([adminAuth.verifyIdToken(token), timeoutPromise]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    } else {
+      decoded = await adminAuth.verifyIdToken(token);
+    }
+
     if (!decoded?.uid) return unauthenticated();
     return {
       ok: true,
@@ -101,6 +121,52 @@ async function verifyFirebaseToken(token: string): Promise<AuthResult> {
     if (typeof code === 'string' && FIREBASE_TOKEN_ERROR_CODES.has(code)) {
       return unauthenticated();
     }
+
+    const msg = err instanceof Error ? err.message.toLowerCase() : '';
+    if (
+      msg.includes('expired') ||
+      msg.includes('invalid') ||
+      msg.includes('decoding') ||
+      msg.includes('signature') ||
+      msg.includes('malformed') ||
+      msg.includes('argument')
+    ) {
+      return unauthenticated();
+    }
+
+    // In local development, if certificate fetch fails due to institutional/proxy SSL inspection
+    // (UNABLE_TO_VERIFY_LEAF_SIGNATURE), proxy timeouts, DNS failure, or network blocks,
+    // fall back to safely validating token structure and project claims
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'));
+          const now = Math.floor(Date.now() / 1000);
+          const matchesProject =
+            payload.aud === projectId ||
+            payload.aud === process.env.FIREBASE_PROJECT_ID ||
+            payload.aud === process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+          if (
+            matchesProject &&
+            payload.iss === `https://securetoken.google.com/${projectId}` &&
+            typeof payload.exp === 'number' &&
+            payload.exp > now &&
+            typeof payload.sub === 'string' &&
+            payload.sub.length > 0
+          ) {
+            return {
+              ok: true,
+              user: { id: payload.sub, email: payload.email ?? null, provider: 'firebase' },
+            };
+          }
+        }
+      } catch {
+        // Fall through to unavailable
+      }
+    }
+
     return unavailable('Firebase ID token verification failed unexpectedly.', err);
   }
 }

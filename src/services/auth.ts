@@ -148,6 +148,9 @@ export const getAuthToken = async (): Promise<string | undefined> => {
   if (isFirebaseActive()) {
     try {
       const { auth } = await import('../lib/firebase/config');
+      if (!auth.currentUser && typeof (auth as any).authStateReady === 'function') {
+        await (auth as any).authStateReady();
+      }
       return (await auth.currentUser?.getIdToken()) || undefined;
     } catch {
       return undefined;
