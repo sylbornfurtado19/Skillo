@@ -1,6 +1,5 @@
-import { PDFParse } from 'pdf-parse';
-import mammoth from 'mammoth';
-
+// Parsers are imported lazily: a parser that fails to load must not crash the whole route
+// (that produced a bare HTTP 500 with no message) and TXT uploads should never depend on them.
 export const MAX_RESUME_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 export const MIN_RESUME_TEXT_CHARS = 100; // < 100 characters rejection threshold
 export const MAX_RESUME_TEXT_CHARS = 15000; // GraphRAG cap
@@ -117,6 +116,17 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<{ text: string
 
   let parser: any = null;
   try {
+    let PDFParse: any;
+    try {
+      ({ PDFParse } = await import('pdf-parse'));
+    } catch (loadErr) {
+      console.error('[resumeExtraction] pdf-parse failed to load:', loadErr);
+      throw new ResumeExtractionError(
+        'PDF reading is temporarily unavailable on the server. Please upload a .docx or .txt version of your resume.',
+        'PARSE_FAILED',
+        503
+      );
+    }
     parser = new PDFParse({ data: effectiveBuffer });
     await parser.load();
     const result = await parser.getText();
@@ -140,6 +150,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<{ text: string
 }
 
 export async function extractTextFromDocx(buffer: Buffer): Promise<{ text: string; pageCount: number }> {
+  const { default: mammoth } = await import('mammoth');
   const result = await mammoth.extractRawText({ buffer });
   const rawText = result.value || '';
   const pageCount = Math.max(1, Math.ceil(rawText.length / 3000));
