@@ -1,0 +1,99 @@
+{
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "scoring_only": {
+    "runs": 3,
+    "ms": [
+      5344,
+      6785,
+      5426
+    ],
+    "mean_ms": 5852,
+    "sd_ms": 809,
+    "modes": [
+      "live",
+      "live",
+      "live"
+    ],
+    "entropy": [
+      0,
+      0,
+      0
+    ],
+    "grounding": [
+      1,
+      0.92,
+      1
+    ],
+    "clustering": [
+      "semantic-llm",
+      "semantic-llm",
+      "semantic-llm"
+    ],
+    "confidence": [
+      "HIGH",
+      "HIGH",
+      "HIGH"
+    ]
+  },
+  "full_evaluation": {
+    "runs": 2,
+    "ms": [
+      40237,
+      35679
+    ],
+    "mean_ms": 37958,
+    "modes": [
+      "live",
+      "live"
+    ],
+    "simpo": [
+      "live/corpus",
+      "live/corpus"
+    ],
+    "lats": [
+      "live",
+      "live"
+    ]
+  },
+  "followup_turn": {
+    "runs": 3,
+    "ms": [
+      11547,
+      11279,
+      9424
+    ],
+    "mean_ms": 10750,
+    "sources": [
+      "live",
+      "live",
+      "live"
+    ],
+    "final_visits": 9,
+    "depth_history": 3
+  },
+  "graph_extraction": {
+    "runs": 2,
+    "ms": [
+      7842,
+      10323
+    ],
+    "mean_ms": 9083,
+    "sources": [
+      "live",
+      "live"
+    ],
+    "nodes": [
+      26,
+      32
+    ],
+    "gap_chains": [
+      3,
+      3
+    ],
+    "coverage": [
+      4,
+      28
+    ]
+  }
+}
