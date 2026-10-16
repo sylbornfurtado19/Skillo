@@ -1,0 +1,23 @@
+Job title: Senior Backend Engineer (Distributed Systems)
+
+About the role
+We are building a high-throughput payments platform and are looking for a Senior Backend Engineer to design, build and operate distributed services that process millions of events per day.
+
+Responsibilities
+- Design and own scalable, fault-tolerant backend services using Node.js or Go and TypeScript.
+- Build event-driven systems with Kafka and manage caching layers with Redis.
+- Design PostgreSQL schemas and optimise queries for high-volume workloads.
+- Deploy and operate services on Kubernetes and AWS; improve observability with metrics, tracing and alerting.
+- Define API standards, rate limiting and idempotency patterns; review designs and mentor engineers.
+- Lead incident response and drive reliability improvements (SLOs, retries, circuit breakers).
+
+Requirements
+- 4+ years of backend engineering experience.
+- Strong knowledge of distributed systems concepts: consistency, partitioning, replication, queues.
+- Hands-on experience with Kafka, Redis, PostgreSQL and Kubernetes.
+- Experience with CI/CD, Docker and cloud infrastructure (AWS preferred).
+- Strong system design and communication skills.
+
+Nice to have
+- Experience with gRPC, GraphQL or Go.
+- Open-source contributions.

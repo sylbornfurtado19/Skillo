@@ -7,7 +7,7 @@ import {
 } from '@/lib/services/reflexionService';
 import { getQuestionsForSetup } from '@/services/constants';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
-import { executeAnthropicRequest, getAiApiKey } from '@/lib/ai/aiConfig';
+import { AI_CONFIG, executeAnthropicRequest, getAiApiKey } from '@/lib/ai/aiConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -146,6 +146,8 @@ Output strict JSON with format:
           apiKey: anthropicApiKey,
           maxTokens: 1200,
           temperature: 0.4,
+          // Generating several structured questions takes far longer than the 4.5s default
+          timeoutMs: AI_CONFIG.timeouts.setupMs,
           system: systemPrompt,
           messages: [
             {

@@ -15,18 +15,52 @@ import type {
 } from '@/types/index';
 
 // 1. Zod Validation Schemas for Graph Extraction
+//
+// Models routinely invent labels outside our small vocabulary (e.g. entity type "LANGUAGE" or
+// "TOOL"). Rejecting the whole response for one unknown label threw away a good graph and
+// silently replaced it with a static template, so labels are coerced to the nearest known one.
+function coerceEntityType(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const v = value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+  if (v === 'SKILL' || v === 'FRAMEWORK' || v === 'CONCEPT' || v === 'DOMAIN') return v;
+  if (/FRAMEWORK|LIBRARY|PLATFORM|RUNTIME|SDK/.test(v)) return 'FRAMEWORK';
+  if (/CONCEPT|PATTERN|PRACTICE|METHOD|PRINCIPLE|ARCHITECT|PARADIGM/.test(v)) return 'CONCEPT';
+  if (/DOMAIN|FIELD|INDUSTRY|ROLE|AREA/.test(v)) return 'DOMAIN';
+  return 'SKILL'; // LANGUAGE, TOOL, DATABASE, TECHNOLOGY, CERTIFICATION, ...
+}
+
+function coerceRelationshipType(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const v = value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+  if (['DEPENDS_ON', 'APPLIED_IN', 'EXPANDS_UPON', 'REQUIRES', 'BLOCKS'].includes(v)) return v;
+  if (/BLOCK/.test(v)) return 'BLOCKS';
+  if (/REQUIR|NEED|PREREQ/.test(v)) return 'REQUIRES';
+  if (/APPLI|USE|UTILI|IMPLEMENT/.test(v)) return 'APPLIED_IN';
+  if (/EXPAND|EXTEND|BUILD|RELAT/.test(v)) return 'EXPANDS_UPON';
+  return 'DEPENDS_ON';
+}
+
 export const entityExtractionSchema = z.object({
   name: z.string().min(1),
-  type: z.enum(['SKILL', 'FRAMEWORK', 'CONCEPT', 'DOMAIN']),
-  description: z.string().min(3),
+  type: z.preprocess(coerceEntityType, z.enum(['SKILL', 'FRAMEWORK', 'CONCEPT', 'DOMAIN'])),
+  description: z.preprocess(
+    (v) => (typeof v === 'string' && v.trim().length >= 3 ? v : 'Extracted from the resume or job description.'),
+    z.string().min(3)
+  ),
 });
 
 export const relationshipExtractionSchema = z.object({
   source: z.string().min(1),
   target: z.string().min(1),
-  relationshipType: graphRelationshipTypeSchema,
-  weight: z.number().min(0.1).max(1.0),
-  description: z.string().min(3),
+  relationshipType: z.preprocess(coerceRelationshipType, graphRelationshipTypeSchema),
+  weight: z.preprocess(
+    (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0.1, v)) : v),
+    z.number().min(0.1).max(1.0)
+  ),
+  description: z.preprocess(
+    (v) => (typeof v === 'string' && v.trim().length >= 3 ? v : 'Related concepts.'),
+    z.string().min(3)
+  ),
 });
 
 export const graphRAGOutputSchema = z.object({
@@ -438,6 +472,9 @@ ${resumeText}
         messages: [{ role: 'user', content: userContent }],
         maxTokens: 1800,
         temperature: 0.2,
+        // Extracting a whole knowledge graph is a ~1.5k-token response: the 4.5s default always
+        // timed out and silently replaced the real analysis with a static template.
+        timeoutMs: AI_CONFIG.timeouts.resumeAnalysisMs,
       });
 
       if (response.success && response.text) {
@@ -453,11 +490,13 @@ ${resumeText}
             target: normalizeEntityName(r.target),
           }));
           providerStatus = 'available';
-          analysisMethod = `Anthropic ${AI_CONFIG.model} GraphRAG extraction + Leiden clustering`;
+          analysisMethod = `${AI_CONFIG.provider} ${AI_CONFIG.model} GraphRAG extraction + Leiden clustering`;
         } else {
+          console.warn('[GraphRAG] Model output rejected, using the heuristic graph:', parsed.error);
           providerStatus = 'fallback_heuristic';
         }
       } else {
+        console.warn('[GraphRAG] Model call failed, using the heuristic graph:', response.error);
         providerStatus = 'fallback_heuristic';
       }
     } catch (err) {

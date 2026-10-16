@@ -78,6 +78,7 @@ export const AI_CONFIG = {
     latsWallClockMs: 10000,
     reflexionMs: 12000,
     resumeAnalysisMs: 18000,
+    setupMs: 15000,
   },
   maxTokens: {
     singlePass: 1000,

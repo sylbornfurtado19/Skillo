@@ -1,0 +1,47 @@
+Aarav Mehta
+Backend Engineer | Node.js, TypeScript, PostgreSQL | 3 years experience
+Pune, India  |  aarav.mehta.test@example.com  |  +91 00000 00000  |  linkedin.com/in/aarav-mehta-test  |  github.com/aarav-mehta-test
+
+SUMMARY
+Backend engineer with 3 years of experience building and scaling REST APIs for fintech and e-commerce products. Strong in Node.js, TypeScript and PostgreSQL, with hands-on work on caching, background jobs and API performance. Looking for a role where I can design reliable, high-throughput distributed services.
+
+EXPERIENCE
+Backend Engineer - PayLoop Technologies, Pune (Jun 2023 - Present)
+- Designed and shipped a payments reconciliation service in Node.js and PostgreSQL that processes 1.2 million transactions per day with 99.95% uptime.
+- Reduced p95 API latency from 820 ms to 240 ms (71% faster) by adding query indexes, connection pooling and response caching.
+- Built an idempotent webhook processor with retry and dead-letter handling, cutting duplicate payouts by 98% and saving about $45,000 per year in manual refunds.
+- Introduced rate limiting and request validation across 40+ endpoints, blocking roughly 15,000 abusive requests per day.
+- Led migration of 12 REST services to TypeScript and added contract tests, lowering production bugs by 35% within two quarters.
+- Mentored 2 junior engineers and ran weekly code reviews for a team of 6.
+
+Software Engineering Intern - ShopSphere Retail, Mumbai (Jan 2023 - May 2023)
+- Implemented a product search API with pagination and filters that served 50,000 queries per day.
+- Wrote 120+ unit and integration tests with Jest, raising coverage from 48% to 82%.
+- Automated deployments with GitHub Actions and Docker, reducing release time from 40 minutes to 12 minutes.
+
+
+PROJECTS
+URL Shortener with Analytics - Personal project (2024)
+- Built a URL shortening service handling 500 requests per second in load tests (k6) using Node.js, PostgreSQL and in-memory caching.
+- Added click analytics, expiry rules and API keys; deployed on AWS EC2 behind Nginx.
+
+Task Queue Library - Open source (2023)
+- Created a small job queue with retries, exponential backoff and scheduled jobs; 180 GitHub stars and 6 external contributors.
+
+
+TECHNICAL SKILLS
+Languages: JavaScript, TypeScript, Python, SQL
+Backend: Node.js, Express, NestJS, REST APIs, WebSockets, JWT authentication
+Databases: PostgreSQL, MongoDB
+Cloud and DevOps: AWS (EC2, S3, RDS), Docker, GitHub Actions, Nginx, Linux
+Testing and tools: Jest, Supertest, k6, Postman, Git
+Frontend (basic): React, HTML, CSS
+
+EDUCATION
+B.E. in Computer Engineering - Savitribai Phule Pune University (2019 - 2023)
+- CGPA 8.4 / 10. Coursework: Data Structures, Operating Systems, Databases, Computer Networks.
+
+
+CERTIFICATIONS
+AWS Certified Cloud Practitioner (2024)
+Meta Back-End Developer Professional Certificate (2023)
