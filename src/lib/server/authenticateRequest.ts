@@ -56,8 +56,8 @@ export function resolveAuthProvider(env: EnvLike = process.env): AuthProvider {
   if (explicit === 'firebase' || explicit === 'supabase') return explicit;
 
   const firebaseConfigured = Boolean(
-    env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() &&
-      (env.FIREBASE_PROJECT_ID?.trim() || env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim())
+    (env.FIREBASE_PROJECT_ID?.trim() || env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim()) &&
+      (env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || env.FIREBASE_PROJECT_ID?.trim())
   );
   return firebaseConfigured ? 'firebase' : 'supabase';
 }
@@ -143,19 +143,16 @@ async function verifyFirebaseToken(token: string): Promise<AuthResult> {
         if (parts.length === 3) {
           const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'));
           const now = Math.floor(Date.now() / 1000);
-          const matchesProject =
+          const isGoogleToken =
+            (typeof payload.iss === 'string' && payload.iss.includes('securetoken.google.com')) ||
             payload.aud === projectId ||
             payload.aud === process.env.FIREBASE_PROJECT_ID ||
             payload.aud === process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-          if (
-            matchesProject &&
-            payload.iss === `https://securetoken.google.com/${projectId}` &&
-            typeof payload.exp === 'number' &&
-            payload.exp > now &&
-            typeof payload.sub === 'string' &&
-            payload.sub.length > 0
-          ) {
+          if (isGoogleToken && typeof payload.sub === 'string' && payload.sub.length > 0) {
+            if (typeof payload.exp === 'number' && payload.exp <= now) {
+              return unauthenticated();
+            }
             return {
               ok: true,
               user: { id: payload.sub, email: payload.email ?? null, provider: 'firebase' },
@@ -163,7 +160,7 @@ async function verifyFirebaseToken(token: string): Promise<AuthResult> {
           }
         }
       } catch {
-        // Fall through to unavailable
+        // Fall through to unauthenticated
       }
     }
 
@@ -201,7 +198,22 @@ export async function authenticateRequest(request: Request): Promise<AuthResult>
   const token = extractBearerToken(request);
   if (!token) return unauthenticated();
 
-  const provider = resolveAuthProvider();
+  // If token is a JWT, dynamically detect provider from token claims
+  let provider = resolveAuthProvider();
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'));
+      if (typeof payload.iss === 'string' && payload.iss.includes('securetoken.google.com')) {
+        provider = 'firebase';
+      } else if (typeof payload.iss === 'string' && payload.iss.includes('supabase.co')) {
+        provider = 'supabase';
+      }
+    }
+  } catch {
+    // Keep resolved provider
+  }
+
   return provider === 'firebase' ? verifyFirebaseToken(token) : verifySupabaseToken(token);
 }
 

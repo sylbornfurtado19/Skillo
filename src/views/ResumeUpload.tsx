@@ -300,7 +300,16 @@ export default function ResumeUpload() {
     } catch (err: unknown) {
       clearInterval(interval);
       console.error('Resume analysis failed:', err);
-      const errMsg = err instanceof Error ? err.message : 'Could not complete analysis.';
+      let errMsg = err instanceof Error ? err.message : 'Could not complete analysis.';
+      if (
+        errMsg.toLowerCase().includes('authentication') ||
+        errMsg.toLowerCase().includes('sign in') ||
+        errMsg.toLowerCase().includes('unavailable') ||
+        errMsg.toLowerCase().includes('unauthorized') ||
+        errMsg.toLowerCase().includes('session')
+      ) {
+        errMsg = 'Your session has expired or authentication is required. Please sign in again to analyze your resume.';
+      }
       setErrorMessage(errMsg);
       setCurrentState('failed');
     }
@@ -413,9 +422,19 @@ export default function ResumeUpload() {
             <p className="text-xs text-text-secondary leading-relaxed max-w-sm mb-6">
               {errorMessage || 'Could not complete analysis. Ensure you are signed in and have entered valid job details.'}
             </p>
-            <Button onClick={() => setCurrentState('idle')} variant="danger" size="sm" icon={FaRedo}>
-              Retry Upload
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              {(errorMessage.toLowerCase().includes('session') ||
+                errorMessage.toLowerCase().includes('authentication') ||
+                errorMessage.toLowerCase().includes('sign in') ||
+                errorMessage.toLowerCase().includes('unauthorized')) && (
+                <Button onClick={() => router.push('/login')} variant="primary" size="sm">
+                  Sign In to Continue
+                </Button>
+              )}
+              <Button onClick={() => setCurrentState('idle')} variant="secondary" size="sm" icon={FaRedo}>
+                Retry Upload
+              </Button>
+            </div>
           </motion.div>
         )}
 
