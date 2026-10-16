@@ -69,6 +69,12 @@ export interface EvaluateInterviewInput {
   answersList: Array<string | AnswerItemInput>;
   /** When true, runs deep N=5 sampling passes instead of default latency-bounded N=3 passes */
   deepAnalysisMode?: boolean;
+  /**
+   * When true, only the rubric scoring + Semantic Entropy engine runs; the follow-up search,
+   * SimPO benchmark and Reflexion memory lookups are skipped. Used by the calibration harness to
+   * measure scoring quality with far fewer model calls.
+   */
+  scoringOnly?: boolean;
   /** Optional: per-frame gaze data captured during the interview session */
   gazeFrames?: GazeFrameInput[];
   /** Optional: per-frame 3D head pose data captured during the interview session */
@@ -951,8 +957,9 @@ export async function performInterviewEvaluation(
   );
 
   // Retrieve historical memory BEFORE generating new reflection
-  const existingMemoryStore = await retrieveSkillMemoryStore(userId);
-  
+  const scoringOnly = input.scoringOnly === true;
+  const existingMemoryStore = scoringOnly ? undefined : await retrieveSkillMemoryStore(userId);
+
 
   // Historical memory retrieved for evaluation context and LATS prior gaps
   // Reflexion generation and persistence is dispatched exclusively via dispatchReflexionWorker
@@ -961,6 +968,7 @@ export async function performInterviewEvaluation(
   // Run LATS MCTS engine to generate adaptive follow-up tree
   let latsTreeState: LATSTreeState | undefined;
   try {
+    if (scoringOnly) throw new Error('scoringOnly: LATS search skipped');
     latsTreeState = await runLATSMCTS({
       sessionId,
       role: setupData.role,
@@ -974,17 +982,19 @@ export async function performInterviewEvaluation(
       anthropicApiKey,
     });
   } catch (err) {
-    console.warn('[LATS] MCTS engine failed, latsTreeState will be undefined:', err);
+    if (!scoringOnly) console.warn('[LATS] MCTS engine failed, latsTreeState will be undefined:', err);
   }
 
   // Trigger SimPO Length-Normalized Contrastive Evaluation Engine (Meng et al., ICML 2024)
-  const simpoContrastiveResult = await generateSimPOContrastiveEvaluation({
-    evaluationId: `simpo_${sessionId}`,
-    question: selectedQuestion,
-    candidateAnswer: selectedAns,
-    role: setupData.role,
-    score: overallScore100,
-  });
+  const simpoContrastiveResult = scoringOnly
+    ? undefined
+    : await generateSimPOContrastiveEvaluation({
+        evaluationId: `simpo_${sessionId}`,
+        question: selectedQuestion,
+        candidateAnswer: selectedAns,
+        role: setupData.role,
+        score: overallScore100,
+      });
 
   // L2CS-Net: Process gaze frame data into eye contact session metrics
   // Runs synchronously — pure math, no I/O, negligible latency impact

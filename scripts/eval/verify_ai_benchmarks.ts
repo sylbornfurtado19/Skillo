@@ -186,7 +186,34 @@ async function evaluateSplit(
   let preferredWins = 0;
   let ties = 0;
 
-  for (const entry of entries.filter((candidate) => candidate.split === split)) {
+  const maxPairs = Number.parseInt(process.env.CALIBRATION_MAX_PAIRS_PER_SPLIT ?? '', 10);
+  const splitAll = entries.filter((candidate) => candidate.split === split);
+  const splitSelected = Number.isFinite(maxPairs) && maxPairs > 0 ? splitAll.slice(0, maxPairs) : splitAll;
+
+  const isLive = (report: Awaited<ReturnType<typeof performInterviewEvaluation>>) =>
+    report.evaluationMode === 'live' &&
+    report.suqEvaluation?.evaluationMode === 'live' &&
+    report.source === 'live';
+
+  /**
+   * Free-tier providers rate limit bursts. A non-live result means some model calls failed,
+   * so retry with backoff and only ever report scores from fully live evaluations.
+   */
+  const evaluateLive = async (input: Parameters<typeof performInterviewEvaluation>[0], userId: string) => {
+    const maxAttempts = 5;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const report = await performInterviewEvaluation(input, userId);
+      if (isLive(report)) return report;
+      if (attempt < maxAttempts) {
+        const waitMs = Math.min(60000, 12000 * attempt);
+        console.warn(`[calibration] ${userId}: non-live result (attempt ${attempt}); retrying in ${waitMs / 1000}s`);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      }
+    }
+    throw new Error(`Evaluator returned a non-live result for ${userId}; refusing to report fallback scores`);
+  };
+
+  for (const entry of splitSelected) {
     const baseInput = {
       setupData: {
         role: 'Technical Interview Candidate',
@@ -195,27 +222,21 @@ async function evaluateSplit(
       },
       questionsList: [{ id: entry.id, question: entry.question }],
       deepAnalysisMode: false,
+      scoringOnly: true,
     };
 
-    const [preferredReport, dispreferredReport] = await Promise.all([
-      performInterviewEvaluation(
-        { ...baseInput, answersList: [entry.preferred] },
-        `benchmark-${entry.id}-preferred`
-      ),
-      performInterviewEvaluation(
-        { ...baseInput, answersList: [entry.dispreferred] },
-        `benchmark-${entry.id}-dispreferred`
-      ),
-    ]);
+    // Sequential (not parallel) to stay under per-minute provider limits.
+    const preferredReport = await evaluateLive(
+      { ...baseInput, answersList: [entry.preferred] },
+      `benchmark-${entry.id}-preferred`
+    );
+    const dispreferredReport = await evaluateLive(
+      { ...baseInput, answersList: [entry.dispreferred] },
+      `benchmark-${entry.id}-dispreferred`
+    );
+    console.log(`[calibration] ${split} ${entry.id}: preferred=${preferredReport.suqEvaluation?.finalScore} dispreferred=${dispreferredReport.suqEvaluation?.finalScore}`);
 
     const reports = [preferredReport, dispreferredReport];
-    if (reports.some((report) =>
-      report.evaluationMode !== 'live' ||
-      report.suqEvaluation?.evaluationMode !== 'live' ||
-      report.source !== 'live'
-    )) {
-      throw new Error(`Evaluator returned a non-live result for ${entry.id}; refusing to report fallback scores`);
-    }
     if (reports.some((report) => !report.suqEvaluation)) {
       throw new Error(`Evaluator returned no structured result for ${entry.id}`);
     }
@@ -262,8 +283,13 @@ async function evaluateSplit(
     ])
   ) as Record<'HIGH' | 'MEDIUM' | 'LOW', number | null>;
 
-  const splitEntries = entries.filter((candidate) => candidate.split === split);
-  const warning = splitEntries.length < 20 ? 'Small sample: metrics are indicative only' : undefined;
+  const splitEntries = splitSelected;
+  const warning =
+    splitEntries.length < splitAll.length
+      ? `Subset: ${splitEntries.length} of ${splitAll.length} pairs evaluated (CALIBRATION_MAX_PAIRS_PER_SPLIT). Small sample: metrics are indicative only`
+      : splitEntries.length < 20
+      ? 'Small sample: metrics are indicative only'
+      : undefined;
 
   return {
     entries: splitEntries.length,

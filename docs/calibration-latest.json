@@ -1,4 +1,190 @@
 {
-  "skipped": true,
-  "reason": "ANTHROPIC_API_KEY is not configured; live calibration was not run."
+  "generatedAt": "2026-10-16T03:30:30.905Z",
+  "model": "groq:openai/gpt-oss-120b",
+  "splits": {
+    "validation": {
+      "entries": 3,
+      "pairwiseAccuracy": 1,
+      "preferredWins": 3,
+      "ties": 0,
+      "meanConfidence": 1,
+      "meanConfidencePerTier": {
+        "HIGH": 1,
+        "MEDIUM": null,
+        "LOW": null
+      },
+      "confidenceTierCounts": {
+        "HIGH": 6,
+        "MEDIUM": 0,
+        "LOW": 0
+      },
+      "expectedCalibrationError": 0,
+      "ECE": 0,
+      "calibrationBins": [
+        {
+          "lowerBound": 0,
+          "upperBound": 0.1,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.1,
+          "upperBound": 0.2,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.2,
+          "upperBound": 0.3,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.3,
+          "upperBound": 0.4,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.4,
+          "upperBound": 0.5,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.5,
+          "upperBound": 0.6,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.6,
+          "upperBound": 0.7,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.7,
+          "upperBound": 0.8,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.8,
+          "upperBound": 0.9,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.9,
+          "upperBound": 1,
+          "count": 3,
+          "meanConfidence": 1,
+          "accuracy": 1
+        }
+      ],
+      "warning": "Subset: 3 of 7 pairs evaluated (CALIBRATION_MAX_PAIRS_PER_SPLIT). Small sample: metrics are indicative only"
+    },
+    "test": {
+      "entries": 3,
+      "pairwiseAccuracy": 1,
+      "preferredWins": 3,
+      "ties": 0,
+      "meanConfidence": 1,
+      "meanConfidencePerTier": {
+        "HIGH": 1,
+        "MEDIUM": null,
+        "LOW": null
+      },
+      "confidenceTierCounts": {
+        "HIGH": 6,
+        "MEDIUM": 0,
+        "LOW": 0
+      },
+      "expectedCalibrationError": 0,
+      "ECE": 0,
+      "calibrationBins": [
+        {
+          "lowerBound": 0,
+          "upperBound": 0.1,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.1,
+          "upperBound": 0.2,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.2,
+          "upperBound": 0.3,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.3,
+          "upperBound": 0.4,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.4,
+          "upperBound": 0.5,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.5,
+          "upperBound": 0.6,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.6,
+          "upperBound": 0.7,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.7,
+          "upperBound": 0.8,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.8,
+          "upperBound": 0.9,
+          "count": 0,
+          "meanConfidence": 0,
+          "accuracy": 0
+        },
+        {
+          "lowerBound": 0.9,
+          "upperBound": 1,
+          "count": 3,
+          "meanConfidence": 1,
+          "accuracy": 1
+        }
+      ],
+      "warning": "Subset: 3 of 8 pairs evaluated (CALIBRATION_MAX_PAIRS_PER_SPLIT). Small sample: metrics are indicative only"
+    }
+  }
 }

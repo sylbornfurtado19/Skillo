@@ -1,0 +1,68 @@
+{
+  "pairs": 6,
+  "pref_mean": 3.723333333333333,
+  "pref_sd": 0.15002222057637551,
+  "disp_mean": 2.64,
+  "disp_sd": 0.33358657047309326,
+  "diff_mean": 1.083333333333333,
+  "diff_sd": 0.25889508814704576,
+  "diff_min": 0.6000000000000001,
+  "diff_max": 1.3699999999999997,
+  "wins": 6,
+  "wilson95": [
+    0.6096569663469354,
+    0.9999999999999999
+  ],
+  "per_pair": [
+    {
+      "id": "fe_001",
+      "preferred": 3.8,
+      "dispreferred": 2.43
+    },
+    {
+      "id": "fe_002",
+      "preferred": 3.8,
+      "dispreferred": 2.7
+    },
+    {
+      "id": "fe_003",
+      "preferred": 3.5,
+      "dispreferred": 2.43
+    },
+    {
+      "id": "fe_006",
+      "preferred": 3.8,
+      "dispreferred": 2.63
+    },
+    {
+      "id": "fe_007",
+      "preferred": 3.87,
+      "dispreferred": 3.27
+    },
+    {
+      "id": "fe_008",
+      "preferred": 3.57,
+      "dispreferred": 2.38
+    }
+  ],
+  "tiers": {
+    "validation": {
+      "HIGH": 6,
+      "MEDIUM": 0,
+      "LOW": 0
+    },
+    "test": {
+      "HIGH": 6,
+      "MEDIUM": 0,
+      "LOW": 0
+    }
+  },
+  "ece": {
+    "validation": 0,
+    "test": 0
+  },
+  "acc": {
+    "validation": 1,
+    "test": 1
+  }
+}

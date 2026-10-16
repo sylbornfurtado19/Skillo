@@ -1,0 +1,96 @@
+{
+  "learning_curves": {
+    "pose": {
+      "epochs": 20,
+      "best_val_epoch": 12,
+      "best_val_loss": 35.9227,
+      "final_train_loss": 33.6429,
+      "final_val_loss": 36.1282,
+      "first_train_loss": 37.9229,
+      "first_val_loss": 40.5744
+    },
+    "gaze": {
+      "epochs": 20,
+      "best_val_epoch": 7,
+      "best_val_loss": 13.4077,
+      "final_train_loss": 10.1835,
+      "final_val_loss": 13.8873,
+      "first_train_loss": 10.9809,
+      "first_val_loss": 13.572
+    },
+    "affect": {
+      "epochs": 20,
+      "best_val_epoch": 1,
+      "best_val_loss": 1.9634,
+      "final_train_loss": 0.7868,
+      "final_val_loss": 2.2252,
+      "first_train_loss": 1.9887,
+      "first_val_loss": 1.9634
+    }
+  },
+  "jitter_reduction_pct": {
+    "Head yaw (deg)": 26.2,
+    "Gaze pitch (deg)": 35.6,
+    "Valence [-1,1]": 81.4,
+    "Composure [%]": 83.8
+  },
+  "simpo_margin": [
+    {
+      "q_disp": 0.2,
+      "mean_r_pref": 0.01802667459199603,
+      "mean_r_disp": 0.013695761800718109,
+      "old_margin_mean": 0.004330912791277919,
+      "old_pct_positive": 88.0,
+      "old_pct_ge_gamma": 0.0,
+      "new_margin": 0.6499999999999999,
+      "new_satisfied": true
+    },
+    {
+      "q_disp": 0.4,
+      "mean_r_pref": 0.01802667459199603,
+      "mean_r_disp": 0.027391523601436218,
+      "old_margin_mean": -0.009364849009440193,
+      "old_pct_positive": 2.0,
+      "old_pct_ge_gamma": 0.0,
+      "new_margin": 0.44999999999999996,
+      "new_satisfied": true
+    },
+    {
+      "q_disp": 0.6,
+      "mean_r_pref": 0.01802667459199603,
+      "mean_r_disp": 0.041087285402154325,
+      "old_margin_mean": -0.0230606108101583,
+      "old_pct_positive": 0.0,
+      "old_pct_ge_gamma": 0.0,
+      "new_margin": 0.25,
+      "new_satisfied": true
+    },
+    {
+      "q_disp": 0.8,
+      "mean_r_pref": 0.01802667459199603,
+      "mean_r_disp": 0.054783047202872436,
+      "old_margin_mean": -0.036756372610876414,
+      "old_pct_positive": 0.0,
+      "old_pct_ge_gamma": 0.0,
+      "new_margin": 0.04999999999999993,
+      "new_satisfied": false
+    }
+  ],
+  "corpus": {
+    "pairs": 50,
+    "avg_words_preferred": 75.98,
+    "avg_words_dispreferred": 23.12,
+    "splits": {
+      "calibration": 35,
+      "validation": 7,
+      "test": 8
+    },
+    "domains": {
+      "Behavioural STAR": 7,
+      "Distributed Systems": 10,
+      "Frontend Architecture": 15,
+      "ML Engineering": 8,
+      "System Design": 10
+    }
+  }
+}
