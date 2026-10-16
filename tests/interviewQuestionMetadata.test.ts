@@ -27,15 +27,31 @@ jest.mock('../src/hooks/useAuth', () => ({
   }),
 }));
 
-jest.mock('../src/hooks/useInterviewCamera', () => ({
-  useInterviewCamera: () => ({
-    cameraStream: null,
-    isCameraActive: false,
-    cameraError: null,
-    startCamera: jest.fn(),
-    stopCamera: jest.fn(),
-  }),
-}));
+// The interview only runs with camera AND microphone on, so these tests supply a ready stream.
+jest.mock('../src/hooks/useInterviewCamera', () => {
+  const liveTrack = {
+    readyState: 'live',
+    enabled: true,
+    muted: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  };
+  const stream = {
+    getVideoTracks: () => [liveTrack],
+    getAudioTracks: () => [liveTrack],
+    getTracks: () => [liveTrack, liveTrack],
+  };
+  return {
+    useInterviewCamera: () => ({
+      stream,
+      isCameraActive: true,
+      cameraError: null,
+      cameraErrorName: null,
+      startCamera: jest.fn(),
+      stopCamera: jest.fn(),
+    }),
+  };
+});
 
 jest.mock('../src/hooks/useIVPSessionPipeline', () => ({
   useIVPSessionPipeline: () => ({

@@ -17,6 +17,9 @@ import { useAuth } from '../hooks/useAuth';
 import { getProfile } from '../services/profile';
 
 import { getAuthToken } from '../services/auth';
+import { useMediaReadiness } from '../hooks/useMediaReadiness';
+import { splitIntoSentences, estimateNarrationMs, pickEnglishVoice } from '../lib/media/narration';
+import SessionDeviceGate from '../components/interview/session/SessionDeviceGate';
 
 import dynamic from 'next/dynamic';
 
@@ -205,11 +208,29 @@ export default function InterviewSession() {
 
 
   // ── Authoritative Centralized Camera Management (REM-2) ──────────────
+  // Camera AND microphone are mandatory: no silent video-only fallback, and the interview is
+  // blocked (SessionDeviceGate) until both are live, and paused again if either drops out.
   const {
     stream: cameraStream,
-    cameraError,
+    cameraErrorName,
+    startCamera,
     stopCamera,
-  } = useInterviewCamera({ autoStart: true, enableAudio: true });
+  } = useInterviewCamera({ autoStart: true, enableAudio: true, requireAudio: true });
+  const { readiness: mediaReadiness, devicesReady } = useMediaReadiness(cameraStream);
+  const [requestingDevices, setRequestingDevices] = useState(false);
+  const hasBeenReadyRef = useRef(false);
+  if (devicesReady) hasBeenReadyRef.current = true;
+
+  const handleEnableDevices = useCallback(async () => {
+    setRequestingDevices(true);
+    try {
+      await startCamera();
+    } catch {
+      // The hook exposes the failure through cameraErrorName; the gate explains what to do.
+    } finally {
+      setRequestingDevices(false);
+    }
+  }, [startCamera]);
 
   useEffect(() => {
     return () => {
@@ -275,71 +296,125 @@ export default function InterviewSession() {
 
 
 
-  // Web Speech Synthesis Utterance Ref
+  // Web Speech Synthesis Utterance Ref (keeps the active utterance referenced so it is not GC'd)
   const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  // Bumped to invalidate in-flight narration callbacks (skip, replay, question change)
+  const narrationRunRef = useRef(0);
+  const [narrationNonce, setNarrationNonce] = useState(0);
+  const [narrationBlocked, setNarrationBlocked] = useState(false);
+  const [ttsSupported, setTtsSupported] = useState(true);
 
   // Cancel any ongoing speech narration
   const cancelSpeechNarration = useCallback(() => {
+    narrationRunRef.current += 1;
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
     setInterviewerSpeaking(false);
   }, []);
 
-  // Split current question into sentences for animated subtitle highlighting
-  const questionSentences = currentQuestionText.match(/[^.!?]+[.!?]+/g) || [currentQuestionText];
+  // Read the current question aloud again (also the fallback when the browser blocks autoplay)
+  const replayQuestion = useCallback(() => {
+    setNarrationBlocked(false);
+    setNarrationNonce((n) => n + 1);
+  }, []);
 
-  // Speech Synthesis Narration Effect
+  // Sentences used both for the spoken chunks and the animated subtitle highlighting
+  const questionSentences = splitIntoSentences(currentQuestionText);
+
+  // Speech Synthesis Narration Effect: the computer reads each question aloud.
+  // Waits until camera + microphone are on, speaks sentence by sentence (long utterances stall in
+  // Chrome), and has a watchdog so a silent speech engine can never freeze the interview.
   useEffect(() => {
-    setInterviewerSpeaking(true);
+    if (!devicesReady) {
+      narrationRunRef.current += 1;
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      return;
+    }
+
+    const runId = ++narrationRunRef.current;
+    const isStale = () => narrationRunRef.current !== runId;
     setSpokenSentenceIndex(0);
+    setNarrationBlocked(false);
 
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+    const synth =
+      typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null;
 
-      const utterance = new SpeechSynthesisUtterance(currentQuestionText);
-      utterance.rate = voiceRate;
-      utterance.pitch = voicePitch;
-
-      utterance.onboundary = (event) => {
-        if (event.name === 'sentence' || event.name === 'word') {
-          const charIdx = event.charIndex;
-          let accumLength = 0;
-          for (let i = 0; i < questionSentences.length; i++) {
-            accumLength += questionSentences[i].length;
-            if (charIdx < accumLength) {
-              setSpokenSentenceIndex(i);
-              break;
-            }
-          }
-        }
-      };
-
-      utterance.onend = () => {
-        setInterviewerSpeaking(false);
-      };
-
-      utterance.onerror = (e) => {
-        console.warn('Speech synthesis error fallback:', e);
-        setInterviewerSpeaking(false);
-      };
-
-      activeUtteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
-    } else {
-      // Fallback for browsers without SpeechSynthesis API
+    if (!synth || typeof SpeechSynthesisUtterance === 'undefined') {
+      // No voice playback in this browser: show the question and proceed after a short read time
+      setTtsSupported(false);
+      setInterviewerSpeaking(true);
       const fallbackTimer = setTimeout(() => {
-        setInterviewerSpeaking(false);
+        if (!isStale()) setInterviewerSpeaking(false);
       }, 3500);
       return () => clearTimeout(fallbackTimer);
     }
 
-    return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+    setTtsSupported(true);
+    setInterviewerSpeaking(true);
+    synth.cancel();
+
+    const sentences = splitIntoSentences(currentQuestionText);
+    const voice = pickEnglishVoice(synth.getVoices());
+    let started = false;
+    let finished = false;
+    let watchdog: ReturnType<typeof setTimeout> | null = null;
+
+    const finish = (blocked: boolean) => {
+      if (finished || isStale()) return;
+      finished = true;
+      if (watchdog) clearTimeout(watchdog);
+      if (blocked) setNarrationBlocked(true);
+      setInterviewerSpeaking(false);
     };
-  }, [currentQuestionIndex, currentQuestionText, voiceRate, voicePitch]);
+
+    const speakAt = (index: number) => {
+      if (isStale() || finished) return;
+      if (index >= sentences.length) {
+        finish(false);
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(sentences[index]);
+      utterance.rate = voiceRate;
+      utterance.pitch = voicePitch;
+      utterance.lang = voice?.lang || 'en-US';
+      if (voice) utterance.voice = voice;
+
+      utterance.onstart = () => {
+        if (isStale()) return;
+        started = true;
+        setSpokenSentenceIndex(index);
+      };
+      utterance.onend = () => speakAt(index + 1);
+      utterance.onerror = (event) => {
+        if (isStale()) return;
+        const reason = (event as SpeechSynthesisErrorEvent).error;
+        if (reason === 'interrupted' || reason === 'canceled') return;
+        console.warn('Speech synthesis error:', reason);
+        // 'not-allowed' means the browser blocked autoplay: offer a click-to-hear button
+        finish(reason === 'not-allowed');
+      };
+
+      activeUtteranceRef.current = utterance;
+      synth.speak(utterance);
+    };
+
+    speakAt(0);
+
+    watchdog = setTimeout(
+      () => finish(!started),
+      estimateNarrationMs(currentQuestionText, voiceRate) + 4000
+    );
+
+    return () => {
+      narrationRunRef.current += 1;
+      if (watchdog) clearTimeout(watchdog);
+      synth.cancel();
+    };
+  }, [currentQuestionIndex, currentQuestionText, voiceRate, voicePitch, devicesReady, narrationNonce]);
 
   // Restore autosaved draft for the current question index
   useEffect(() => {
@@ -784,7 +859,8 @@ export default function InterviewSession() {
   }, [handleNextQuestion]);
 
   useEffect(() => {
-    if (interviewerSpeaking || checkingFollowUp || grading) return;
+    // Never run the clock unless the question has been read and camera + microphone are on
+    if (interviewerSpeaking || checkingFollowUp || grading || !devicesReady) return;
 
     const durationSec = currentQuestion.duration;
     const deadline = Date.now() + durationSec * 1000;
@@ -802,7 +878,7 @@ export default function InterviewSession() {
     }, 250);
 
     return () => clearInterval(timer);
-  }, [currentQuestionIndex, interviewerSpeaking, checkingFollowUp, grading, currentQuestion.duration]);
+  }, [currentQuestionIndex, interviewerSpeaking, checkingFollowUp, grading, devicesReady, currentQuestion.duration]);
 
   // Unsaved Content Navigation Guard (Tab close / refresh)
   const activeAnswerContent = responseMode === 'type' ? typedAnswer : transcriptText;
@@ -1087,6 +1163,20 @@ export default function InterviewSession() {
     return <SessionGradingOverlay />;
   }
 
+  // Bare minimum to run an interview: camera AND microphone on (also re-checked mid-interview)
+  if (!devicesReady) {
+    return (
+      <SessionDeviceGate
+        readiness={mediaReadiness}
+        errorName={cameraErrorName}
+        requesting={requestingDevices}
+        interrupted={hasBeenReadyRef.current}
+        onEnable={handleEnableDevices}
+        onBack={() => router.push('/setup')}
+      />
+    );
+  }
+
   const isFallbackSession =
     (typeof currentQuestionRaw === 'object' && (currentQuestionRaw as any)?.source === 'fallback') ||
     (setupData as any)?.source === 'fallback';
@@ -1120,6 +1210,9 @@ export default function InterviewSession() {
           focusAreasList={focusAreasList}
           setupData={setupData}
           isFallback={isFallbackSession}
+          onReplayQuestion={replayQuestion}
+          narrationBlocked={narrationBlocked}
+          ttsSupported={ttsSupported}
         >
           {/* Biometric HUDs (Lazy-loaded with ssr: false) */}
           <SessionBiometricHUDs

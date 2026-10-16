@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaStepForward, FaInfoCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { FaStepForward, FaInfoCircle, FaExclamationTriangle, FaVolumeUp } from 'react-icons/fa';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 
@@ -38,6 +38,12 @@ export interface SessionInterviewerCardProps {
     role?: string;
   };
   isFallback?: boolean;
+  /** Reads the current question aloud again (also used when autoplay is blocked). */
+  onReplayQuestion?: () => void;
+  /** The browser or speech engine did not play the question automatically. */
+  narrationBlocked?: boolean;
+  /** False when this browser has no speech synthesis. */
+  ttsSupported?: boolean;
   children?: React.ReactNode;
 }
 
@@ -59,6 +65,9 @@ export default function SessionInterviewerCard({
   focusAreasList,
   setupData,
   isFallback,
+  onReplayQuestion,
+  narrationBlocked = false,
+  ttsSupported = true,
   children,
 }: SessionInterviewerCardProps) {
   return (
@@ -238,6 +247,32 @@ export default function SessionInterviewerCard({
                 </div>
               )}
             </AnimatePresence>
+
+            {!ttsSupported && (
+              <p className="mt-3 text-xs text-warning flex items-center gap-1.5" role="status">
+                <FaExclamationTriangle aria-hidden="true" />
+                <span>Voice playback isn&apos;t supported in this browser. Please read the question on screen.</span>
+              </p>
+            )}
+
+            {ttsSupported && onReplayQuestion && !interviewerSpeaking && (
+              <div className="mt-3 flex items-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={onReplayQuestion}
+                  aria-label="Hear the question again"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-hover bg-bg-surface border border-border hover:border-primary px-3 py-1.5 rounded-lg transition cursor-pointer"
+                >
+                  <FaVolumeUp aria-hidden="true" />
+                  <span>{narrationBlocked ? 'Click to hear the question' : 'Replay question'}</span>
+                </button>
+                {narrationBlocked && (
+                  <span className="text-xs text-text-secondary" role="status">
+                    Your browser didn&apos;t play the voice automatically.
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

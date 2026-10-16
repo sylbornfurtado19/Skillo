@@ -6,6 +6,8 @@ import { IVPCameraManager, ivpCameraManager } from '@/lib/services/ivpCameraMana
 export interface UseInterviewCameraOptions {
   autoStart?: boolean;
   enableAudio?: boolean;
+  /** Make the microphone mandatory (no silent video-only fallback). */
+  requireAudio?: boolean;
   idealWidth?: number;
   idealHeight?: number;
   manager?: IVPCameraManager;
@@ -15,6 +17,8 @@ export interface UseInterviewCameraReturn {
   stream: MediaStream | null;
   isCameraActive: boolean;
   cameraError: string | null;
+  /** DOMException name of the last failure (e.g. NotAllowedError), for tailored guidance. */
+  cameraErrorName: string | null;
   startCamera: () => Promise<MediaStream>;
   stopCamera: () => void;
 }
@@ -28,6 +32,7 @@ export function useInterviewCamera(options: UseInterviewCameraOptions = {}): Use
   const {
     autoStart = false,
     enableAudio = true,
+    requireAudio = false,
     idealWidth = 320,
     idealHeight = 240,
     manager = ivpCameraManager,
@@ -36,6 +41,7 @@ export function useInterviewCamera(options: UseInterviewCameraOptions = {}): Use
   const [stream, setStream] = useState<MediaStream | null>(() => manager.getStream());
   const [isCameraActive, setIsCameraActive] = useState<boolean>(() => manager.isActive());
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraErrorName, setCameraErrorName] = useState<string | null>(null);
 
   const managerRef = useRef(manager);
   managerRef.current = manager;
@@ -43,10 +49,12 @@ export function useInterviewCamera(options: UseInterviewCameraOptions = {}): Use
   const startCamera = useCallback(async (): Promise<MediaStream> => {
     try {
       setCameraError(null);
+      setCameraErrorName(null);
       const activeStream = await managerRef.current.acquireCamera({
         idealWidth,
         idealHeight,
         enableAudio,
+        requireAudio,
       });
       setStream(activeStream);
       setIsCameraActive(true);
@@ -63,10 +71,11 @@ export function useInterviewCamera(options: UseInterviewCameraOptions = {}): Use
           ? 'Requested camera constraints cannot be satisfied.'
           : 'Camera unavailable. Vision tracking disabled.';
       setCameraError(msg);
+      setCameraErrorName(err instanceof Error ? err.name : 'UnknownError');
       setIsCameraActive(false);
       throw err;
     }
-  }, [idealWidth, idealHeight, enableAudio]);
+  }, [idealWidth, idealHeight, enableAudio, requireAudio]);
 
   const stopCamera = useCallback(() => {
     managerRef.current.stopCamera();
@@ -84,6 +93,7 @@ export function useInterviewCamera(options: UseInterviewCameraOptions = {}): Use
     stream,
     isCameraActive,
     cameraError,
+    cameraErrorName,
     startCamera,
     stopCamera,
   };

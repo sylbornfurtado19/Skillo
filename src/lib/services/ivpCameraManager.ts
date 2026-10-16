@@ -17,6 +17,12 @@ export interface CameraManagerOptions {
   idealHeight?: number;
   facingMode?: string;
   enableAudio?: boolean;
+  /**
+   * When true the microphone is mandatory: a missing/denied microphone fails the acquisition
+   * instead of silently falling back to a video-only stream, and an existing video-only stream
+   * is replaced. Implies enableAudio.
+   */
+  requireAudio?: boolean;
 }
 
 export class IVPCameraManager {
@@ -33,8 +39,13 @@ export class IVPCameraManager {
     // 1. Return active stream if already running
     if (this.currentStream && this.currentStream.active) {
       const liveTracks = this.currentStream.getTracks().filter((t) => t.readyState === 'live');
-      if (liveTracks.length > 0) {
+      const hasLiveAudio = liveTracks.some((t) => t.kind === 'audio');
+      if (liveTracks.length > 0 && (!options.requireAudio || hasLiveAudio)) {
         return this.currentStream;
+      }
+      if (liveTracks.length > 0 && options.requireAudio && !hasLiveAudio) {
+        // A video-only stream cannot satisfy a mandatory microphone: release it and re-acquire.
+        this.stopCamera();
       }
     }
 
@@ -54,8 +65,9 @@ export class IVPCameraManager {
           idealWidth = 320,
           idealHeight = 240,
           facingMode = 'user',
-          enableAudio = true,
+          requireAudio = false,
         } = options;
+        const enableAudio = requireAudio || (options.enableAudio ?? true);
 
         const videoConstraints: MediaTrackConstraints = {
           width: { ideal: idealWidth },
@@ -73,6 +85,10 @@ export class IVPCameraManager {
               audio: true,
             });
           } catch (audioErr) {
+            if (requireAudio) {
+              // Interview mode: camera AND microphone are mandatory, so surface the failure.
+              throw audioErr;
+            }
             // Fallback: If microphone is denied or unavailable, acquire video-only so visual tracking proceeds
             console.warn('[IVPCameraManager] Joint audio/video acquisition failed, falling back to video-only:', audioErr);
             stream = await navigator.mediaDevices.getUserMedia({
