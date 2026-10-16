@@ -29,10 +29,10 @@
     }
   },
   "jitter_reduction_pct": {
-    "Head yaw (deg)": 26.2,
-    "Gaze pitch (deg)": 35.6,
+    "Head yaw (deg)": 26.1,
+    "Gaze pitch (deg)": 35.7,
     "Valence [-1,1]": 81.4,
-    "Composure [%]": 83.8
+    "Composure [%]": 83.7
   },
   "simpo_margin": [
     {
