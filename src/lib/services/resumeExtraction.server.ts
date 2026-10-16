@@ -32,13 +32,13 @@ export function detectFileType(buffer: Buffer, fileName?: string): DetectedFileT
     );
   }
 
-  // 1. PDF magic bytes: %PDF (0x25, 0x50, 0x44, 0x46)
+  const normalizedFileName = fileName?.toLowerCase() || '';
+
+  // 1. PDF magic bytes: %PDF (0x25, 0x50, 0x44, 0x46) anywhere in first 1024 bytes (per ISO 32000-1)
+  const pdfHeaderIndex = buffer.indexOf(Buffer.from('%PDF'));
   if (
-    buffer.length >= 4 &&
-    buffer[0] === 0x25 &&
-    buffer[1] === 0x50 &&
-    buffer[2] === 0x44 &&
-    buffer[3] === 0x46
+    (pdfHeaderIndex !== -1 && pdfHeaderIndex < 1024) ||
+    (normalizedFileName.endsWith('.pdf') && pdfHeaderIndex !== -1)
   ) {
     return 'pdf';
   }
@@ -51,7 +51,7 @@ export function detectFileType(buffer: Buffer, fileName?: string): DetectedFileT
     buffer[2] === 0x03 &&
     buffer[3] === 0x04
   ) {
-    if (fileName && !fileName.toLowerCase().endsWith('.docx')) {
+    if (normalizedFileName && !normalizedFileName.endsWith('.docx')) {
       throw new ResumeExtractionError(
         'ZIP archive detected, but only Microsoft Word (.docx) files are supported.',
         'UNSUPPORTED_TYPE',
@@ -76,7 +76,14 @@ export function detectFileType(buffer: Buffer, fileName?: string): DetectedFileT
     }
   }
 
-  // 4. Reject null bytes in first 4096 bytes (heuristic for binary files)
+  // 4. Check for UTF-16 LE / BE Windows Unicode text files
+  const isUtf16Le = buffer.length >= 2 && buffer[0] === 0xFF && buffer[1] === 0xFE;
+  const isUtf16Be = buffer.length >= 2 && buffer[0] === 0xFE && buffer[1] === 0xFF;
+  if (isUtf16Le || isUtf16Be) {
+    return 'txt';
+  }
+
+  // 5. Reject null bytes in first 4096 bytes (heuristic for binary files)
   const checkLength = Math.min(buffer.length, 4096);
   for (let i = 0; i < checkLength; i++) {
     if (buffer[i] === 0x00) {
@@ -88,8 +95,12 @@ export function detectFileType(buffer: Buffer, fileName?: string): DetectedFileT
     }
   }
 
-  // 5. Accept plain text (if filename is given, ensure .txt)
-  if (!fileName || fileName.toLowerCase().endsWith('.txt')) {
+  // 6. Accept plain text (if filename is given, ensure .txt, .text, .md or extensionless)
+  if (
+    !normalizedFileName ||
+    /\.(txt|text|md|markdown)$/i.test(normalizedFileName) ||
+    !normalizedFileName.includes('.')
+  ) {
     return 'txt';
   }
 
@@ -101,18 +112,20 @@ export function detectFileType(buffer: Buffer, fileName?: string): DetectedFileT
 }
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<{ text: string; pageCount: number }> {
+  const pdfHeaderIndex = buffer.indexOf(Buffer.from('%PDF'));
+  const effectiveBuffer = pdfHeaderIndex > 0 ? buffer.subarray(pdfHeaderIndex) : buffer;
+
   let parser: any = null;
   try {
-    parser = new PDFParse({ data: buffer });
+    parser = new PDFParse({ data: effectiveBuffer });
     await parser.load();
     const result = await parser.getText();
-    const rawPagesText =
-      result.pages && result.pages.length > 0
-        ? result.pages
-            .map((p: { text?: string }) => p.text || '')
-            .filter(Boolean)
-            .join('\n\n')
-        : result.text || '';
+    const pagesJoined = (result.pages || [])
+      .map((p: { text?: string }) => (p?.text || '').trim())
+      .filter(Boolean)
+      .join('\n\n');
+    const fullText = (result.text || '').trim();
+    const rawPagesText = pagesJoined.length >= fullText.length ? pagesJoined : fullText || pagesJoined;
     const pageCount = result.total || result.pages?.length || 1;
     return { text: rawPagesText, pageCount };
   } finally {
@@ -136,7 +149,14 @@ export async function extractTextFromDocx(buffer: Buffer): Promise<{ text: strin
 export function extractTextFromTxt(buffer: Buffer): { text: string; pageCount: number } {
   let rawText = '';
   if (buffer.length >= 3 && buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF) {
+    // UTF-8 BOM
     rawText = buffer.subarray(3).toString('utf-8');
+  } else if (buffer.length >= 2 && buffer[0] === 0xFF && buffer[1] === 0xFE) {
+    // UTF-16 LE BOM (Windows Unicode)
+    rawText = buffer.subarray(2).toString('utf16le');
+  } else if (buffer.length >= 2 && buffer[0] === 0xFE && buffer[1] === 0xFF) {
+    // UTF-16 BE BOM
+    rawText = buffer.subarray(2).swap16().toString('utf16le');
   } else {
     rawText = buffer.toString('utf-8');
   }

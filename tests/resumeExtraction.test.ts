@@ -229,6 +229,34 @@ Skills:
         /Unsupported file extension/i
       );
     });
+
+    it('tolerates leading whitespace or comments before %PDF header (ISO 32000-1)', () => {
+      const paddedPdf = Buffer.from('   \r\n%PDF-1.4\n1 0 obj\n<<>>\nendobj');
+      expect(detectFileType(paddedPdf, 'resume.pdf')).toBe('pdf');
+    });
+
+    it('tolerates uppercase and mixed-case file extensions', () => {
+      const pdfHeader = Buffer.from('%PDF-1.4\n');
+      const docxHeader = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+      expect(detectFileType(pdfHeader, 'CANDIDATE_RESUME.PDF')).toBe('pdf');
+      expect(detectFileType(docxHeader, 'CANDIDATE_RESUME.DOCX')).toBe('docx');
+      expect(detectFileType(Buffer.from(sampleValidResume), 'CANDIDATE_RESUME.TXT')).toBe('txt');
+    });
+
+    it('correctly detects and extracts UTF-16 LE Windows Unicode text files', async () => {
+      const utf16leBuffer = Buffer.concat([
+        Buffer.from([0xff, 0xfe]),
+        Buffer.from(sampleValidResume, 'utf16le'),
+      ]);
+      expect(detectFileType(utf16leBuffer, 'resume_utf16.txt')).toBe('txt');
+
+      const result = await extractResumeText({
+        buffer: utf16leBuffer,
+        fileName: 'resume_utf16.txt',
+      });
+      expect(result.text).toBe(sampleValidResume);
+      expect(result.charCount).toBe(sampleValidResume.length);
+    });
   });
 
   describe('6. Maximum Character Capping (15,000 Chars)', () => {

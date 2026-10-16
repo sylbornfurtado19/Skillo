@@ -55,6 +55,7 @@ export default function ResumeUpload() {
   const [currentState, setCurrentState] = useState<'idle' | 'uploading' | 'analyzing' | 'complete' | 'failed'>(
     resumeData && analysisResult ? 'complete' : 'idle'
   );
+  const [errorMessage, setErrorMessage] = useState('');
   const [analysisStep, setAnalysisStep] = useState(0);
   const [suggestedRewrites, setSuggestedRewrites] = useState<ResumeRewriteItem[]>([]);
   const [rewritesLoading, setRewritesLoading] = useState(false);
@@ -85,7 +86,7 @@ export default function ResumeUpload() {
   }
 
   const analysisSteps = [
-    'Parsing PDF text layers...',
+    'Parsing document text layers...',
     'Extracting technical skill matrices...',
     'Matching profile experience to target job description...',
     'Generating optimal mock question sets...',
@@ -101,16 +102,26 @@ export default function ResumeUpload() {
   };
 
   const processFile = (selectedFile: File) => {
-    if (
-      selectedFile.type !== 'application/pdf' &&
-      !selectedFile.name.endsWith('.pdf') &&
-      !selectedFile.name.endsWith('.docx') &&
-      !selectedFile.name.endsWith('.txt')
-    ) {
+    const fileNameLower = selectedFile.name.toLowerCase();
+    const isAllowedExt =
+      fileNameLower.endsWith('.pdf') ||
+      fileNameLower.endsWith('.docx') ||
+      fileNameLower.endsWith('.txt') ||
+      fileNameLower.endsWith('.text');
+    const isAllowedMime =
+      selectedFile.type === 'application/pdf' ||
+      selectedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      selectedFile.type.startsWith('text/');
+
+    if (!isAllowedExt && !isAllowedMime) {
+      const msg = 'Unsupported file format. Please upload a PDF, DOCX, or TXT file.';
+      setErrorMessage(msg);
+      showToast(msg, 'error');
       setCurrentState('failed');
       return;
     }
 
+    setErrorMessage('');
     setFile(selectedFile);
     setCurrentState('uploading');
 
@@ -150,6 +161,7 @@ export default function ResumeUpload() {
     setUploadProgress(0);
     setResumeData(null);
     setAnalysisResult(null);
+    setErrorMessage('');
     setCurrentState('idle');
   };
 
@@ -157,6 +169,7 @@ export default function ResumeUpload() {
     e.preventDefault();
     if (!file || !jobTitle.trim() || !jobDescription.trim()) return;
 
+    setErrorMessage('');
     setCurrentState('analyzing');
     setAnalysisStep(0);
 
@@ -168,29 +181,52 @@ export default function ResumeUpload() {
       }
     }, 800);
 
-    // Server-side resume text extraction (PDF / DOCX / TXT)
+    // Resume text extraction (server extraction with client fallback for text files)
     let extractedText = '';
     try {
       const extraction = await extractResumeTextApi(file, showToast);
       if (!extraction.text || extraction.charCount < 100) {
-        clearInterval(interval);
-        showToast('scanned PDF, no selectable text', 'error');
-        setCurrentState('failed');
-        return;
+        throw new Error('scanned PDF, no selectable text');
       }
       extractedText = extraction.text;
     } catch (extractErr: unknown) {
-      clearInterval(interval);
-      console.error('File text extraction warning:', extractErr);
-      setCurrentState('failed');
-      return;
+      console.warn('Server text extraction failed, attempting client fallback:', extractErr);
+
+      // Client-side fallback for plain text files
+      const fileNameLower = file.name.toLowerCase();
+      if (file.type.startsWith('text/') || fileNameLower.endsWith('.txt') || fileNameLower.endsWith('.text')) {
+        try {
+          const clientText = await file.text();
+          if (clientText && clientText.trim().length >= 100) {
+            extractedText = clientText.trim();
+          }
+        } catch (clientReadErr) {
+          console.warn('Client-side text read error:', clientReadErr);
+        }
+      }
+
+      if (!extractedText || extractedText.length < 100) {
+        clearInterval(interval);
+        const errMsg =
+          extractErr instanceof Error && extractErr.message.includes('scanned PDF')
+            ? 'Resume text is too short or could not be extracted (scanned PDF without selectable text). Please upload a text-selectable document.'
+            : extractErr instanceof Error
+            ? extractErr.message
+            : 'Could not extract text from the resume file.';
+        setErrorMessage(errMsg);
+        setCurrentState('failed');
+        return;
+      }
     }
 
     try {
+      const cleanJobTitle = jobTitle.trim().slice(0, 150);
+      const cleanJobDescription = jobDescription.trim().slice(0, 10000);
+
       const apiResult = await simulateResumeAnalysis(
         file.name,
-        jobTitle,
-        jobDescription,
+        cleanJobTitle,
+        cleanJobDescription,
         showToast,
         extractedText || undefined
       );
@@ -210,7 +246,7 @@ export default function ResumeUpload() {
         experience: [
           {
             company: 'SaaS Tech Corp',
-            role: jobTitle,
+            role: cleanJobTitle,
             period: '2023 - Present',
             bullet: 'Optimized full-stack response times and type safety across production APIs.',
           },
@@ -230,8 +266,8 @@ export default function ResumeUpload() {
           },
           body: JSON.stringify({
             resumeText: extractedText,
-            jobTitle,
-            jobDescription,
+            jobTitle: cleanJobTitle,
+            jobDescription: cleanJobDescription,
           }),
         });
         if (!rewriteResponse.ok) {
@@ -249,6 +285,8 @@ export default function ResumeUpload() {
     } catch (err: unknown) {
       clearInterval(interval);
       console.error('Resume analysis failed:', err);
+      const errMsg = err instanceof Error ? err.message : 'Could not complete analysis.';
+      setErrorMessage(errMsg);
       setCurrentState('failed');
     }
   };
@@ -358,7 +396,7 @@ export default function ResumeUpload() {
             </div>
             <h3 className="text-lg font-heading font-bold text-text-primary mb-2">Analysis Error</h3>
             <p className="text-xs text-text-secondary leading-relaxed max-w-sm mb-6">
-              Could not complete analysis. Ensure you are signed in and have entered valid job details.
+              {errorMessage || 'Could not complete analysis. Ensure you are signed in and have entered valid job details.'}
             </p>
             <Button onClick={() => setCurrentState('idle')} variant="danger" size="sm" icon={FaRedo}>
               Retry Upload
@@ -774,6 +812,7 @@ export default function ResumeUpload() {
                     id={jobTitleId}
                     type="text"
                     required
+                    maxLength={150}
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
                     placeholder="e.g., Software Engineer"
@@ -799,6 +838,7 @@ export default function ResumeUpload() {
                   <textarea
                     id={jobDescriptionId}
                     required
+                    maxLength={10000}
                     value={jobDescription}
                     onChange={(e) => setJobDescription(e.target.value)}
                     placeholder="Paste the target job description requirements here..."
