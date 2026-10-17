@@ -6,6 +6,8 @@ import {
   buildIntegrityReport,
   serializeLedger,
   restoreLedger,
+  registerQuestionTimer,
+  markQuestionCompleted,
 } from '../src/lib/integrity/integrityLedger';
 
 describe('Integrity Ledger & Event Reducer', () => {
@@ -148,5 +150,13 @@ describe('Integrity Ledger & Event Reducer', () => {
     expect(restoreLedger('')).toBeNull();
     expect(restoreLedger('not-a-json')).toBeNull();
     expect(restoreLedger('{"invalid":"object"}')).toBeNull();
+  });
+
+  it('marks a question as completed in ledger timer records', () => {
+    let state = createInitialLedgerState(sessionId, startEpoch);
+    state = registerQuestionTimer(state, 'q1', 0, 60000);
+    expect(state.questionTimers['q1'].isCompleted).toBe(false);
+    state = markQuestionCompleted(state, 'q1');
+    expect(state.questionTimers['q1'].isCompleted).toBe(true);
   });
 });

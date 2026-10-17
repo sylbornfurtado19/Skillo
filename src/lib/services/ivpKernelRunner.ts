@@ -12,8 +12,15 @@ import {
   applyYCrCbOtsuSegmentation,
   applySobelGradientField,
   computeTemporalMAD,
+  calculateEAR,
+  calculateMAR,
+  drawProjected3DAxes,
+  histogramMax,
   type FaceRoi,
 } from './ivpDiagnosticKernels';
+import { renderSegmentedBackground } from './backgroundSegmentation';
+import { getRawIVPFeatureFlags, subscribeIVPFeatureFlags, type IVPFeatureFlags } from './ivpFeatureFlags';
+import { MicroPatchTracker } from './microPatchTracker';
 import type { KernelSampleStats } from './ivpEvidenceAggregator';
 import type { IVPKernelCounts, IVPEvidenceThumbnail } from '@/types/ivpEvidence';
 
@@ -57,6 +64,7 @@ export class IVPKernelRunner {
   };
 
   private isRunning = false;
+  private patchTracker = new MicroPatchTracker();
 
   constructor() {
     this.initBuffers();
@@ -136,6 +144,50 @@ export class IVPKernelRunner {
     return this.totalFramesAnalyzed > 0
       ? Math.round((this.totalKernelTimeMs / this.totalFramesAnalyzed) * 100) / 100
       : 0;
+  }
+
+  public getPatchTracker(): MicroPatchTracker {
+    return this.patchTracker;
+  }
+
+  public getHistogramPeak(hist: Uint32Array): number {
+    return histogramMax(hist);
+  }
+
+  public computeLandmarkApertures(landmarks: Array<{ x: number; y: number }>): { ear: number; mar: number } {
+    return {
+      ear: calculateEAR(landmarks),
+      mar: calculateMAR(landmarks),
+    };
+  }
+
+  public renderPoseProjection(
+    ctx: CanvasRenderingContext2D,
+    originX: number,
+    originY: number,
+    yawRad: number,
+    pitchRad: number,
+    rollRad: number,
+    axisLength?: number
+  ): void {
+    drawProjected3DAxes(ctx, originX, originY, yawRad, pitchRad, rollRad, axisLength);
+  }
+
+  public renderSegmentedForeground(
+    outputCtx: CanvasRenderingContext2D,
+    srcCtx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): void {
+    renderSegmentedBackground(outputCtx, srcCtx, width, height);
+  }
+
+  public getActiveFeatureFlags(): IVPFeatureFlags {
+    return getRawIVPFeatureFlags();
+  }
+
+  public onFeatureFlagsChange(callback: (flags: IVPFeatureFlags) => void): () => void {
+    return subscribeIVPFeatureFlags(callback);
   }
 
   /**

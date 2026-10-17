@@ -159,7 +159,7 @@ const deriveEvidence = (f, rawEvidence) => {
   if (f.startsWith('docs/')) return 'Documentation & spec reference: ' + f;
   if (f.startsWith('public/models/') || f.endsWith('.onnx')) return 'ONNX model loaded by onnxInferenceService / useONNXWorker';
   if (f.startsWith('public/wasm/') || f.endsWith('.wasm')) return 'WASM binary loaded by MediaPipe visionWorker';
-  if (f.startsWith('public/images/sample-face.jpg')) return 'Loaded by src/views/IVPLab.tsx for offline face inspection';
+  if (f.startsWith('public/images/sample-face.jpg')) return 'Test asset and offline face fixture for IVP test suite';
   if (f.startsWith('public/')) return 'Public asset referenced in UI: ' + f;
   if (f === 'package.json') return 'Package manifest: npm test & build';
   if (f.endsWith('.config.js') || f.endsWith('.config.ts') || f.endsWith('.config.mjs')) return 'Tooling config: ' + f;

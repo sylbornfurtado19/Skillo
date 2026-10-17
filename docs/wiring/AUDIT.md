@@ -2,11 +2,11 @@
 
 | metric | value |
 |---|---|
-| totalFiles | 173 |
-| reachable | 173 |
+| totalFiles | 178 |
+| reachable | 178 |
 | orphanFiles | 0 |
 | deadExports | 0 |
-| testOnlyExports | 85 |
+| testOnlyExports | 101 |
 
 ## Orphan files (not reachable from any app/ entry)
 
@@ -24,6 +24,9 @@
 | src/lib/ai/aiConfig.ts | resolveAiProvider | TEST_ONLY |
 | src/lib/ai/safeJsonParser.ts | extractJsonString | TEST_ONLY |
 | src/lib/firebase/services/auth.firebase.ts | normalizeFirebaseUser | INTERNAL_ONLY |
+| src/lib/integrity/integrityLedger.ts | updateQuestionConsumedTime | TEST_ONLY |
+| src/lib/integrity/integrityLedger.ts | markQuestionCompleted | TEST_ONLY |
+| src/lib/integrity/integrityLedger.ts | computeTotals | TEST_ONLY |
 | src/lib/schemas/diagramSchema.ts | systemDesignNodeTypeSchema | INTERNAL_ONLY |
 | src/lib/schemas/diagramSchema.ts | systemDesignNodeSchema | INTERNAL_ONLY |
 | src/lib/schemas/diagramSchema.ts | systemDesignEdgeSchema | INTERNAL_ONLY |
@@ -62,13 +65,22 @@
 | src/lib/services/ivpAffectEngine.ts | calculateComposureScore | TEST_ONLY |
 | src/lib/services/ivpAffectEngine.ts | classifyDiscreteEmotion | TEST_ONLY |
 | src/lib/services/ivpAffectEngine.ts | detectStressSpikes | TEST_ONLY |
+| src/lib/services/ivpDiagnosticKernels.ts | ensureKernelBuffers | INTERNAL_ONLY |
+| src/lib/services/ivpEvidenceAggregator.ts | computeCanonicalDigest | TEST_ONLY |
 | src/lib/services/ivpFeatureFlags.ts | DEFAULT_IVP_FEATURE_FLAGS | INTERNAL_ONLY |
+| src/lib/services/ivpFeatureFlags.ts | setIVPFeatureFlag | TEST_ONLY |
+| src/lib/services/ivpFeatureFlags.ts | resetIVPFeatureFlags | TEST_ONLY |
 | src/lib/services/ivpGazeEngine.ts | computeGazeVector | TEST_ONLY |
 | src/lib/services/ivpGazeEngine.ts | processGazeFrame | INTERNAL_ONLY |
 | src/lib/services/ivpGazeEngine.ts | detectDistractionEvents | TEST_ONLY |
+| src/lib/services/ivpKernelRunner.ts | RUNNER_WIDTH | TEST_ONLY |
+| src/lib/services/ivpKernelRunner.ts | RUNNER_HEIGHT | TEST_ONLY |
+| src/lib/services/ivpKernelRunner.ts | THUMB_WIDTH | INTERNAL_ONLY |
+| src/lib/services/ivpKernelRunner.ts | THUMB_HEIGHT | INTERNAL_ONLY |
 | src/lib/services/ivpPoseEngine.ts | softArgmaxAngle | TEST_ONLY |
 | src/lib/services/ivpPoseEngine.ts | analyzeGesturalEvents | TEST_ONLY |
 | src/lib/services/ivpSignalCalculators.ts | DEFAULT_BLINK_CONFIG | INTERNAL_ONLY |
+| src/lib/services/ivpSignalCalculators.ts | computeSpeechCadence | TEST_ONLY |
 | src/lib/services/ivpSyncEngine.ts | calculateL2Distance | TEST_ONLY |
 | src/lib/services/ivpSyncEngine.ts | evaluateSyncStatus | TEST_ONLY |
 | src/lib/services/ivpSyncEngine.ts | detectSpoofingAlerts | TEST_ONLY |
@@ -118,14 +130,21 @@
 | src/lib/services/temporalSmoothing.ts | LandmarkKinematicFilter | TEST_ONLY |
 | src/lib/services/temporalSmoothing.ts | computeSimilarityTransform | TEST_ONLY |
 | src/lib/services/temporalSmoothing.ts | computeRansacSimilarityTransform | TEST_ONLY |
+| src/lib/services/temporalSmoothing.ts | DenseLandmarksSmoother | TEST_ONLY |
+| src/lib/services/visionPipeline.ts | computeCoordinateMapping | TEST_ONLY |
+| src/lib/services/visionPipeline.ts | mapNormalizedToCanvas | TEST_ONLY |
 | src/lib/services/visionPipeline.ts | mapNormalizedPointsToCanvas | TEST_ONLY |
 | src/lib/services/visionPipeline.ts | procNormalizedToVideoNormalized | TEST_ONLY |
 | src/lib/services/visionPipeline.ts | procToVideoCoord | TEST_ONLY |
 | src/lib/services/visionPipeline.ts | videoToProcCoord | TEST_ONLY |
+| src/lib/services/visionPipeline.ts | procToVideoX | TEST_ONLY |
+| src/lib/services/visionPipeline.ts | procToVideoY | TEST_ONLY |
 | src/lib/services/visionPipeline.ts | videoToProcX | TEST_ONLY |
 | src/lib/services/visionPipeline.ts | videoToProcY | TEST_ONLY |
 | src/lib/services/visionPipeline.ts | procToVideoNormalized | TEST_ONLY |
 | src/lib/services/visionPipeline.ts | videoNormalizedToProc | TEST_ONLY |
+| src/lib/services/visionPipeline.ts | detectFastFaceBootstrap | TEST_ONLY |
+| src/lib/services/visionPipeline.ts | OnlineCalibrationEstimator | TEST_ONLY |
 | src/lib/utils/downsample.ts | downsampleEvenly | TEST_ONLY |
 | src/lib/workers/visionWorker.ts | MEDIAPIPE_478_TO_CANONICAL_70 | TEST_ONLY |
 | src/lib/workers/visionWorker.ts | tryInitModelWithBackoff | TEST_ONLY |

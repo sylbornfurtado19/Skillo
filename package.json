@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "oxlint src app",
     "test": "jest",
-    "test:e2e": "playwright test tests/e2e/antigravity-3-8-high-flash.spec.ts",
+    "test:e2e": "playwright test tests/e2e/interviewIntegrity.spec.ts",
     "test:memory": "node scripts/memory-leak-test.js",
     "test:regression": "node scripts/check-ci-regression.js",
     "test:replay": "node scripts/replay-harness.js",

@@ -83,7 +83,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { name: 'Resume', path: '/resume', icon: FaFileAlt },
     { name: 'Career Setup', path: '/setup', icon: FaSlidersH },
     { name: 'Interview', path: '/interview', icon: FaUserTie },
-    { name: 'IVP Lab', path: '/ivp-lab', icon: FaFlask },
     { name: 'Results', path: '/results', icon: FaChartLine },
     { name: 'Settings', path: '/settings', icon: FaCog },
   ];
@@ -110,10 +109,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     '/interview': {
       title: 'Interview Studio',
       subtitle: 'Live simulation with real-time feedback, speech transcription, and vision tracking.',
-    },
-    '/ivp-lab': {
-      title: 'IVP Telemetry Lab',
-      subtitle: 'Real-time edge neural diagnostics for gaze, posture, and facial composure.',
     },
     '/results': {
       title: 'Assessment Results',

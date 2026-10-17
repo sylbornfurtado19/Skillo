@@ -359,9 +359,6 @@ export default function Dashboard() {
         </div>
 
         <div className="flex flex-wrap gap-3 shrink-0">
-          <Button onClick={() => router.push('/ivp-lab')} variant="secondary" size="sm" icon={FaFlask}>
-            IVP Lab
-          </Button>
           <Button onClick={() => router.push('/setup')} variant="primary" size="sm" icon={FaPlay}>
             Practice Session
           </Button>

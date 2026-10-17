@@ -1,10 +1,10 @@
 {
   "summary": {
-    "totalFiles": 173,
-    "reachable": 173,
+    "totalFiles": 178,
+    "reachable": 178,
     "orphanFiles": 0,
     "deadExports": 0,
-    "testOnlyExports": 85
+    "testOnlyExports": 101
   },
   "orphans": [],
   "exports": [
@@ -42,6 +42,24 @@
       "file": "src/lib/firebase/services/auth.firebase.ts",
       "name": "normalizeFirebaseUser",
       "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/integrity/integrityLedger.ts",
+      "name": "updateQuestionConsumedTime",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/integrity/integrityLedger.ts",
+      "name": "markQuestionCompleted",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/integrity/integrityLedger.ts",
+      "name": "computeTotals",
+      "status": "TEST_ONLY",
       "live": true
     },
     {
@@ -273,9 +291,33 @@
       "live": true
     },
     {
+      "file": "src/lib/services/ivpDiagnosticKernels.ts",
+      "name": "ensureKernelBuffers",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpEvidenceAggregator.ts",
+      "name": "computeCanonicalDigest",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
       "file": "src/lib/services/ivpFeatureFlags.ts",
       "name": "DEFAULT_IVP_FEATURE_FLAGS",
       "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpFeatureFlags.ts",
+      "name": "setIVPFeatureFlag",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpFeatureFlags.ts",
+      "name": "resetIVPFeatureFlags",
+      "status": "TEST_ONLY",
       "live": true
     },
     {
@@ -297,6 +339,30 @@
       "live": true
     },
     {
+      "file": "src/lib/services/ivpKernelRunner.ts",
+      "name": "RUNNER_WIDTH",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpKernelRunner.ts",
+      "name": "RUNNER_HEIGHT",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpKernelRunner.ts",
+      "name": "THUMB_WIDTH",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpKernelRunner.ts",
+      "name": "THUMB_HEIGHT",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
       "file": "src/lib/services/ivpPoseEngine.ts",
       "name": "softArgmaxAngle",
       "status": "TEST_ONLY",
@@ -312,6 +378,12 @@
       "file": "src/lib/services/ivpSignalCalculators.ts",
       "name": "DEFAULT_BLINK_CONFIG",
       "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpSignalCalculators.ts",
+      "name": "computeSpeechCadence",
+      "status": "TEST_ONLY",
       "live": true
     },
     {
@@ -609,6 +681,24 @@
       "live": true
     },
     {
+      "file": "src/lib/services/temporalSmoothing.ts",
+      "name": "DenseLandmarksSmoother",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "computeCoordinateMapping",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "mapNormalizedToCanvas",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
       "file": "src/lib/services/visionPipeline.ts",
       "name": "mapNormalizedPointsToCanvas",
       "status": "TEST_ONLY",
@@ -634,6 +724,18 @@
     },
     {
       "file": "src/lib/services/visionPipeline.ts",
+      "name": "procToVideoX",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "procToVideoY",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
       "name": "videoToProcX",
       "status": "TEST_ONLY",
       "live": true
@@ -653,6 +755,18 @@
     {
       "file": "src/lib/services/visionPipeline.ts",
       "name": "videoNormalizedToProc",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "detectFastFaceBootstrap",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "OnlineCalibrationEstimator",
       "status": "TEST_ONLY",
       "live": true
     },
@@ -748,7 +862,7 @@
     },
     {
       "file": "src/components/common/ProtectedRoute.tsx",
-      "loc": 38,
+      "loc": 36,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 1
@@ -780,6 +894,13 @@
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
+    },
+    {
+      "file": "src/components/interview/session/IVPLivePanel.tsx",
+      "loc": 349,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
     },
     {
       "file": "src/components/interview/session/SessionAnswerWorkspace.tsx",
@@ -817,6 +938,13 @@
       "testedBy": 2
     },
     {
+      "file": "src/components/interview/session/SessionIntegrityOverlay.tsx",
+      "loc": 217,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
       "file": "src/components/interview/session/SessionInterviewerCard.tsx",
       "loc": 307,
       "reachable": true,
@@ -824,53 +952,25 @@
       "testedBy": 0
     },
     {
+      "file": "src/components/interview/session/SessionPreflight.tsx",
+      "loc": 217,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/interview/session/SessionStatusBar.tsx",
+      "loc": 202,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
       "file": "src/components/interview/SystemDesignCanvas.tsx",
       "loc": 708,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 2
-    },
-    {
-      "file": "src/components/ivp/canvas/CalibrationModal.tsx",
-      "loc": 132,
-      "reachable": true,
-      "importedBy": 1,
-      "testedBy": 0
-    },
-    {
-      "file": "src/components/ivp/canvas/CanvasHeaderControls.tsx",
-      "loc": 198,
-      "reachable": true,
-      "importedBy": 1,
-      "testedBy": 0
-    },
-    {
-      "file": "src/components/ivp/canvas/CanvasMetricHUD.tsx",
-      "loc": 60,
-      "reachable": true,
-      "importedBy": 1,
-      "testedBy": 0
-    },
-    {
-      "file": "src/components/ivp/canvas/telemetryHelpers.ts",
-      "loc": 107,
-      "reachable": true,
-      "importedBy": 1,
-      "testedBy": 0
-    },
-    {
-      "file": "src/components/ivp/canvas/types.ts",
-      "loc": 74,
-      "reachable": true,
-      "importedBy": 4,
-      "testedBy": 25
-    },
-    {
-      "file": "src/components/ivp/canvas/WarmupWarningBanner.tsx",
-      "loc": 30,
-      "reachable": true,
-      "importedBy": 1,
-      "testedBy": 0
     },
     {
       "file": "src/components/ui/AdaptiveHUDHeader.tsx",
@@ -890,22 +990,22 @@
       "file": "src/components/ui/Badge.tsx",
       "loc": 41,
       "reachable": true,
-      "importedBy": 20,
+      "importedBy": 24,
       "testedBy": 0
     },
     {
       "file": "src/components/ui/Button.tsx",
       "loc": 65,
       "reachable": true,
-      "importedBy": 12,
+      "importedBy": 14,
       "testedBy": 1
     },
     {
       "file": "src/components/ui/Card.tsx",
       "loc": 72,
       "reachable": true,
-      "importedBy": 21,
-      "testedBy": 3
+      "importedBy": 25,
+      "testedBy": 4
     },
     {
       "file": "src/components/ui/EyeContactHUD.tsx",
@@ -957,22 +1057,15 @@
       "testedBy": 4
     },
     {
-      "file": "src/components/ui/IVPInteractiveCanvas.tsx",
-      "loc": 1917,
+      "file": "src/components/ui/IVPEvidenceCard.tsx",
+      "loc": 235,
       "reachable": true,
       "importedBy": 1,
-      "testedBy": 0
-    },
-    {
-      "file": "src/components/ui/IVPSignalOscilloscope.tsx",
-      "loc": 271,
-      "reachable": true,
-      "importedBy": 1,
-      "testedBy": 0
+      "testedBy": 1
     },
     {
       "file": "src/components/ui/IVPSyncTracker.tsx",
-      "loc": 215,
+      "loc": 225,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 4
@@ -1055,6 +1148,13 @@
       "testedBy": 0
     },
     {
+      "file": "src/components/ui/SessionIntegrityCard.tsx",
+      "loc": 203,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
       "file": "src/components/ui/SimPOContrastiveCard.tsx",
       "loc": 262,
       "reachable": true,
@@ -1112,7 +1212,7 @@
     },
     {
       "file": "src/context/InterviewContext.tsx",
-      "loc": 459,
+      "loc": 464,
       "reachable": true,
       "importedBy": 10,
       "testedBy": 5
@@ -1139,8 +1239,22 @@
       "testedBy": 3
     },
     {
+      "file": "src/hooks/useInterviewIntegrity.ts",
+      "loc": 440,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/hooks/useIVPEvidenceRunner.ts",
+      "loc": 270,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 1
+    },
+    {
       "file": "src/hooks/useIVPSessionPipeline.ts",
-      "loc": 390,
+      "loc": 398,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 4
@@ -1156,19 +1270,19 @@
       "file": "src/hooks/useONNXWorker.ts",
       "loc": 288,
       "reachable": true,
-      "importedBy": 2,
+      "importedBy": 1,
       "testedBy": 1
     },
     {
       "file": "src/hooks/useVisionWorker.ts",
       "loc": 622,
       "reachable": true,
-      "importedBy": 3,
+      "importedBy": 1,
       "testedBy": 1
     },
     {
       "file": "src/layouts/AppLayout.tsx",
-      "loc": 414,
+      "loc": 445,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
@@ -1231,7 +1345,7 @@
     },
     {
       "file": "src/lib/firebase/services/interview.firebase.ts",
-      "loc": 100,
+      "loc": 102,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
@@ -1244,10 +1358,24 @@
       "testedBy": 0
     },
     {
+      "file": "src/lib/integrity/integrityLedger.ts",
+      "loc": 380,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/lib/integrity/integrityPolicy.ts",
+      "loc": 51,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
       "file": "src/lib/media/mediaReadiness.ts",
       "loc": 99,
       "reachable": true,
-      "importedBy": 2,
+      "importedBy": 3,
       "testedBy": 1
     },
     {
@@ -1290,7 +1418,7 @@
       "loc": 72,
       "reachable": true,
       "importedBy": 5,
-      "testedBy": 1
+      "testedBy": 3
     },
     {
       "file": "src/lib/server/supabaseAdmin.ts",
@@ -1328,6 +1456,13 @@
       "testedBy": 1
     },
     {
+      "file": "src/lib/services/evidencePrompt.ts",
+      "loc": 77,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
       "file": "src/lib/services/graphRAG.server.ts",
       "loc": 562,
       "reachable": true,
@@ -1343,7 +1478,7 @@
     },
     {
       "file": "src/lib/services/interviewEvaluation.server.ts",
-      "loc": 1079,
+      "loc": 1122,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 11
@@ -1370,17 +1505,24 @@
       "testedBy": 1
     },
     {
+      "file": "src/lib/services/ivpEvidenceAggregator.ts",
+      "loc": 236,
+      "reachable": true,
+      "importedBy": 4,
+      "testedBy": 2
+    },
+    {
       "file": "src/lib/services/ivpExpressionKernel.ts",
       "loc": 542,
       "reachable": true,
-      "importedBy": 2,
+      "importedBy": 1,
       "testedBy": 1
     },
     {
       "file": "src/lib/services/ivpFeatureFlags.ts",
       "loc": 175,
       "reachable": true,
-      "importedBy": 4,
+      "importedBy": 2,
       "testedBy": 2
     },
     {
@@ -1389,6 +1531,13 @@
       "reachable": true,
       "importedBy": 2,
       "testedBy": 4
+    },
+    {
+      "file": "src/lib/services/ivpKernelRunner.ts",
+      "loc": 339,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
     },
     {
       "file": "src/lib/services/ivpPoseEngine.ts",
@@ -1506,14 +1655,14 @@
       "file": "src/lib/services/temporalSmoothing.ts",
       "loc": 1698,
       "reachable": true,
-      "importedBy": 6,
+      "importedBy": 3,
       "testedBy": 12
     },
     {
       "file": "src/lib/services/visionPipeline.ts",
       "loc": 1059,
       "reachable": true,
-      "importedBy": 4,
+      "importedBy": 2,
       "testedBy": 9
     },
     {
@@ -1527,7 +1676,7 @@
       "file": "src/lib/themeColors.ts",
       "loc": 61,
       "reachable": true,
-      "importedBy": 4,
+      "importedBy": 3,
       "testedBy": 0
     },
     {
@@ -1567,17 +1716,17 @@
     },
     {
       "file": "src/services/constants.ts",
-      "loc": 595,
+      "loc": 604,
       "reachable": true,
       "importedBy": 8,
       "testedBy": 3
     },
     {
       "file": "src/services/interview.ts",
-      "loc": 109,
+      "loc": 138,
       "reachable": true,
       "importedBy": 1,
-      "testedBy": 31
+      "testedBy": 35
     },
     {
       "file": "src/services/profile.ts",
@@ -1602,10 +1751,17 @@
     },
     {
       "file": "src/types/index.ts",
-      "loc": 486,
+      "loc": 496,
       "reachable": true,
       "importedBy": 56,
       "testedBy": 28
+    },
+    {
+      "file": "src/types/integrity.ts",
+      "loc": 94,
+      "reachable": true,
+      "importedBy": 9,
+      "testedBy": 7
     },
     {
       "file": "src/types/interviewModes.ts",
@@ -1613,6 +1769,13 @@
       "reachable": true,
       "importedBy": 4,
       "testedBy": 1
+    },
+    {
+      "file": "src/types/ivpEvidence.ts",
+      "loc": 53,
+      "reachable": true,
+      "importedBy": 9,
+      "testedBy": 4
     },
     {
       "file": "src/types/layoutLMv3.ts",
@@ -1647,7 +1810,7 @@
       "loc": 228,
       "reachable": true,
       "importedBy": 5,
-      "testedBy": 12
+      "testedBy": 13
     },
     {
       "file": "src/types/themes.ts",
@@ -1660,7 +1823,7 @@
       "file": "src/types/workerMessages.ts",
       "loc": 254,
       "reachable": true,
-      "importedBy": 4,
+      "importedBy": 3,
       "testedBy": 2
     },
     {
@@ -1672,24 +1835,17 @@
     },
     {
       "file": "src/views/Dashboard.tsx",
-      "loc": 817,
+      "loc": 814,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 3
     },
     {
       "file": "src/views/InterviewSession.tsx",
-      "loc": 1290,
+      "loc": 1463,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 4
-    },
-    {
-      "file": "src/views/IVPLab.tsx",
-      "loc": 596,
-      "reachable": true,
-      "importedBy": 1,
-      "testedBy": 0
     },
     {
       "file": "src/views/Landing.tsx",
@@ -1714,10 +1870,10 @@
     },
     {
       "file": "src/views/Results.tsx",
-      "loc": 1393,
+      "loc": 1408,
       "reachable": true,
       "importedBy": 1,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "src/views/ResumeUpload.tsx",
@@ -1745,14 +1901,14 @@
       "loc": 186,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 8
+      "testedBy": 9
     },
     {
       "file": "app/(app)/dashboard/page.tsx",
       "loc": 12,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 8
+      "testedBy": 9
     },
     {
       "file": "app/(app)/error.tsx",
@@ -1766,14 +1922,7 @@
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 8
-    },
-    {
-      "file": "app/(app)/ivp-lab/page.tsx",
-      "loc": 8,
-      "reachable": true,
-      "importedBy": 0,
-      "testedBy": 8
+      "testedBy": 9
     },
     {
       "file": "app/(app)/layout.tsx",
@@ -1794,84 +1943,84 @@
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 8
+      "testedBy": 9
     },
     {
       "file": "app/(app)/results/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 8
+      "testedBy": 9
     },
     {
       "file": "app/(app)/resume/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 8
+      "testedBy": 9
     },
     {
       "file": "app/(app)/settings/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 8
+      "testedBy": 9
     },
     {
       "file": "app/(app)/setup/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 8
+      "testedBy": 9
     },
     {
       "file": "app/api/code/run/route.ts",
       "loc": 102,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 10
+      "testedBy": 11
     },
     {
       "file": "app/api/interview/evaluate/route.ts",
-      "loc": 246,
+      "loc": 349,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 10
+      "testedBy": 11
     },
     {
       "file": "app/api/interview/followup/route.ts",
       "loc": 155,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 10
+      "testedBy": 11
     },
     {
       "file": "app/api/interview/setup/route.ts",
       "loc": 218,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 10
+      "testedBy": 11
     },
     {
       "file": "app/api/resume/analyze/route.ts",
       "loc": 76,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 10
+      "testedBy": 11
     },
     {
       "file": "app/api/resume/extract/route.ts",
       "loc": 88,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 10
+      "testedBy": 11
     },
     {
       "file": "app/api/resume/rewrite/route.ts",
       "loc": 65,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 10
+      "testedBy": 11
     },
     {
       "file": "app/error.tsx",
@@ -1906,7 +2055,7 @@
       "loc": 17,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 8
+      "testedBy": 9
     },
     {
       "file": "app/not-found.tsx",
@@ -1920,7 +2069,7 @@
       "loc": 13,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 8
+      "testedBy": 9
     },
     {
       "file": "app/providers.tsx",

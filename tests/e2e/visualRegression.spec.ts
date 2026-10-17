@@ -14,7 +14,7 @@ test.describe('IVP Interactive Canvas Visual & Functional Regression', () => {
   }) => {
     await context.grantPermissions(['camera']).catch(() => {});
 
-    const targetUrl = process.env.TEST_URL || 'http://localhost:3000/ivp-lab';
+    const targetUrl = process.env.TEST_URL || 'http://localhost:3000/interview';
     try {
       await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
     } catch (e) {
@@ -123,7 +123,7 @@ test.describe('IVP Interactive Canvas Visual & Functional Regression', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await context.grantPermissions(['camera']).catch(() => {});
 
-    const targetUrl = process.env.TEST_URL || 'http://localhost:3000/ivp-lab';
+    const targetUrl = process.env.TEST_URL || 'http://localhost:3000/interview';
     try {
       await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
     } catch (e) {
@@ -152,7 +152,7 @@ test.describe('IVP Interactive Canvas Visual & Functional Regression', () => {
   });
 
   test('verifies low contrast and poor lighting HUD alert handling', async ({ page }) => {
-    const targetUrl = process.env.TEST_URL || 'http://localhost:3000/ivp-lab';
+    const targetUrl = process.env.TEST_URL || 'http://localhost:3000/interview';
     try {
       await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
     } catch (e) {

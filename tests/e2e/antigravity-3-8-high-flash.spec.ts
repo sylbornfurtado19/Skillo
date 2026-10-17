@@ -4,7 +4,7 @@ import * as path from 'path';
 
 /**
  * End-to-End Functional Test Suite for Skillo IVP Vision Pipeline
- * Test Target: /ivp-lab (Interactive Video Processing Laboratory)
+ * Test Target: /interview (Live Proctored Interview with Integrated IVP Engine)
  *
  * Verifies:
  * 1. Web Worker instantiation & MediaPipe FaceLandmarker model readiness
@@ -35,8 +35,8 @@ test.describe('IVP Vision Pipeline E2E & Telemetry Verification', () => {
       benchmarks: {},
     };
 
-    // 2. Navigate to /ivp-lab
-    const targetUrl = process.env.TEST_URL || 'http://localhost:3000/ivp-lab';
+    // 2. Navigate to /interview
+    const targetUrl = process.env.TEST_URL || 'http://localhost:3000/interview';
     console.log(`[E2E] Navigating to ${targetUrl}...`);
 
     try {
@@ -81,7 +81,7 @@ test.describe('IVP Vision Pipeline E2E & Telemetry Verification', () => {
     await page.waitForTimeout(2000);
 
     // 7. Capture HUD Telemetry & Interactive Canvas Screenshot
-    const screenshotPath = path.join(reportDir, 'ivp-lab-hud.png');
+    const screenshotPath = path.join(reportDir, 'interview-session-hud.png');
     await page.screenshot({ path: screenshotPath, fullPage: false });
     console.log(`[E2E] Captured visual screenshot: ${screenshotPath}`);
 

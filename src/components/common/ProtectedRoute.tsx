@@ -13,13 +13,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const isPublicLab = pathname === '/ivp-lab';
-
   useEffect(() => {
-    if (!loading && !isAuthenticated && !isPublicLab) {
+    if (!loading && !isAuthenticated) {
       router.replace('/login');
     }
-  }, [loading, isAuthenticated, isPublicLab, router]);
+  }, [loading, isAuthenticated, router]);
 
   if (loading) {
     return (
@@ -29,7 +27,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!isAuthenticated && !isPublicLab) {
+  if (!isAuthenticated) {
     return null;
   }
 
