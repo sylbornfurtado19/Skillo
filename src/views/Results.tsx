@@ -50,6 +50,8 @@ import PostureComposureCard from '../components/ui/PostureComposureCard';
 import FacialComposureCard from '../components/ui/FacialComposureCard';
 import LipSyncVerificationCard from '../components/ui/LipSyncVerificationCard';
 import IVPTelemetryTimeline, { extractTelemetryTimelineEvents } from '../components/ui/IVPTelemetryTimeline';
+import IVPEvidenceCard from '../components/ui/IVPEvidenceCard';
+import SessionIntegrityCard from '../components/ui/SessionIntegrityCard';
 import type { EyeContactSessionMetrics, HeadPoseSessionMetrics, AffectiveSessionMetrics, LipSyncSessionMetrics, SpeechAnalytics } from '../types/index';
 
 function isLATSTreeState(obj: any): obj is LATSTreeState {
@@ -1079,6 +1081,19 @@ export default function Results() {
           <LipSyncVerificationCard metrics={results.lipSyncMetrics} />
         </div>
       ) : null}
+
+      {/* SECTION 3f: CLASSICAL IVP EDGE EVIDENCE RECEIPT (O5) */}
+      <div id="sec-ivp-evidence" className="scroll-mt-32">
+        <IVPEvidenceCard
+          evidence={results.ivpEvidence}
+          observations={results.ivpObservations}
+        />
+      </div>
+
+      {/* SECTION 3g: PROCTORED SESSION INTEGRITY AUDIT (O3, O7) */}
+      <div id="sec-integrity" className="scroll-mt-32">
+        <SessionIntegrityCard integrity={results.sessionIntegrity} />
+      </div>
 
       {/* SECTION 4: DETAILED RESPONSES LOG */}
       <div id="sec-responses" className="scroll-mt-32 space-y-4">

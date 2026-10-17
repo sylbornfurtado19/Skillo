@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { InterviewQuestion, EvaluationReport } from '../types/index';
+import type { IVPEvidenceReceipt } from '@/types/ivpEvidence';
+import type { SessionIntegrityReport } from '@/types/integrity';
 
 export type { InterviewQuestion };
 export type QuestionItem = string | InterviewQuestion;
@@ -48,6 +50,9 @@ export interface InterviewResults {
   personaId?: string;
   breakdown?: AnswerBreakdown[];
   deliveryComposite?: number;
+  ivpEvidence?: IVPEvidenceReceipt;
+  sessionIntegrity?: SessionIntegrityReport;
+  ivpObservations?: Array<{ evidenceId: string; observation: string }>;
   [key: string]: unknown;
 }
 
