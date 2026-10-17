@@ -303,6 +303,9 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
   useEffect(() => {
     setResumeData(safeSessionGet<unknown>('iq_resume_data', null));
     setSetupData(safeSessionGet<SetupData>('iq_setup_data', DEFAULT_SETUP));
+    setQuestions(safeSessionGet<(string | InterviewQuestion)[]>('iq_questions', []));
+    setCurrentQuestionIndex(safeSessionGet<number>('iq_question_index', 0));
+    setAnswers(safeSessionGet<AnswerRecord[]>('iq_answers', []));
     _setResults(safeSessionGet<InterviewResults | null>('iq_results', null));
     setSessionHistory(safeLocalGet<SessionHistoryItem[]>('session_history', []));
   }, []);
@@ -315,6 +318,18 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
   useEffect(() => {
     safeSessionSet('iq_setup_data', setupData);
   }, [setupData]);
+
+  useEffect(() => {
+    safeSessionSet('iq_questions', questions);
+  }, [questions]);
+
+  useEffect(() => {
+    safeSessionSet('iq_question_index', currentQuestionIndex);
+  }, [currentQuestionIndex]);
+
+  useEffect(() => {
+    safeSessionSet('iq_answers', answers);
+  }, [answers]);
 
   useEffect(() => {
     safeSessionSet('iq_results', results);

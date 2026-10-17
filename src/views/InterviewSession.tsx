@@ -1356,29 +1356,73 @@ export default function InterviewSession() {
           </Badge>
         </div>
       )}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-        <SessionInterviewerCard
-          persona={persona}
-          interviewerSpeaking={interviewerSpeaking}
-          followUpBadgeSet={followUpBadgeSet}
-          currentQuestionIndex={currentQuestionIndex}
-          pastCritiques={pastCritiques}
-          recalledMemoryNotice={recalledMemoryNotice}
-          cancelSpeechNarration={cancelSpeechNarration}
-          voiceRate={voiceRate}
-          subtitlesEnabled={subtitlesEnabled}
-          questionSentences={questionSentences}
-          spokenSentenceIndex={spokenSentenceIndex}
-          currentQuestion={currentQuestion}
-          showHint={showHint}
-          setShowHint={setShowHint}
-          focusAreasList={focusAreasList}
-          setupData={setupData}
-          isFallback={isFallbackSession}
-          onReplayQuestion={replayQuestion}
-          narrationBlocked={narrationBlocked}
-          ttsSupported={ttsSupported}
-        >
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Main Column: Interviewer + Question prompt on top, Candidate Answer Workspace below */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+          <SessionInterviewerCard
+            className="w-full"
+            persona={persona}
+            interviewerSpeaking={interviewerSpeaking}
+            followUpBadgeSet={followUpBadgeSet}
+            currentQuestionIndex={currentQuestionIndex}
+            pastCritiques={pastCritiques}
+            recalledMemoryNotice={recalledMemoryNotice}
+            cancelSpeechNarration={cancelSpeechNarration}
+            voiceRate={voiceRate}
+            subtitlesEnabled={subtitlesEnabled}
+            questionSentences={questionSentences}
+            spokenSentenceIndex={spokenSentenceIndex}
+            currentQuestion={currentQuestion}
+            showHint={showHint}
+            setShowHint={setShowHint}
+            focusAreasList={focusAreasList}
+            setupData={setupData}
+            isFallback={isFallbackSession}
+            onReplayQuestion={replayQuestion}
+            narrationBlocked={narrationBlocked}
+            ttsSupported={ttsSupported}
+          />
+
+          <SessionAnswerWorkspace
+            className="w-full"
+            isRetry={isRetry}
+            currentQuestionIndex={currentQuestionIndex}
+            totalQuestions={questions.length}
+            responseMode={responseMode}
+            setResponseMode={setResponseMode}
+            typedAnswer={typedAnswer}
+            setTypedAnswer={setTypedAnswer}
+            transcriptText={transcriptText}
+            setTranscriptText={setTranscriptText}
+            recording={recording}
+            setRecording={setRecording}
+            interviewerSpeaking={interviewerSpeaking}
+            timeLeft={timeLeft}
+            currentQuestionDuration={currentQuestion.duration}
+            isSpeechSupported={isSpeechSupported}
+            handleToggleRecord={handleToggleRecord}
+            wordCount={wordCount}
+            charCount={charCount}
+            confirmSkip={confirmSkip}
+            setConfirmSkip={setConfirmSkip}
+            handlePrevQuestion={handlePrevQuestion}
+            handleConfirmSkip={handleConfirmSkip}
+            handleNextQuestion={handleNextQuestion}
+            activeAnswer={activeAnswer}
+            isSystemDesignQuestion={isSystemDesignQuestion}
+            diagramState={diagramState}
+            setDiagramState={setDiagramState}
+          />
+
+          {isCodingMode && (
+            <div className="w-full">
+              <CodeWorkspace value={codeAnswer} onChange={setCodeAnswer} />
+            </div>
+          )}
+        </div>
+
+        {/* Right Rail: Surveillance & Classical IVP Engine Panel */}
+        <div className="lg:col-span-5 xl:col-span-4 space-y-4" data-testid="interview-surveillance-rail">
           {/* Biometric HUDs (Lazy-loaded with ssr: false) */}
           <SessionBiometricHUDs
             liveGazeFrame={liveGazeFrame}
@@ -1388,6 +1432,17 @@ export default function InterviewSession() {
             latestGestureToast={latestGestureToast}
             liveAffectFrame={liveAffectFrame}
             liveSyncWindow={liveSyncWindow}
+          />
+
+          {/* Modern Unified Vision Worker + ONNX Camera HUD (REM-3) */}
+          <IVPCameraPreview
+            videoRef={videoRef}
+            mediaStream={cameraStream}
+            gazeResult={liveGazeFrame}
+            poseResult={livePoseFrame}
+            isVisionReady={isVisionReady}
+            isONNXReady={isONNXReady}
+            visible={!interviewerSpeaking}
           />
 
           {/* Audio Sync Tracker for AV latency & speech energy */}
@@ -1402,60 +1457,12 @@ export default function InterviewSession() {
             visible={!interviewerSpeaking}
           />
 
-          {/* Modern Unified Vision Worker + ONNX Camera HUD (REM-3) */}
-          <IVPCameraPreview
-            videoRef={videoRef}
-            mediaStream={cameraStream}
-            gazeResult={liveGazeFrame}
-            poseResult={livePoseFrame}
-            isVisionReady={isVisionReady}
-            isONNXReady={isONNXReady}
-            visible={!interviewerSpeaking}
-            className="mt-3"
-          />
-
           {/* Classical IVP Live Diagnostic Panel (O4 / REM-3) */}
           <IVPLivePanel
             runner={ivpRunner}
             sparklineSignal={typeof lastEar === 'number' ? lastEar : 0.3}
-            className="mt-3"
           />
-        </SessionInterviewerCard>
-
-        <SessionAnswerWorkspace
-          isRetry={isRetry}
-          currentQuestionIndex={currentQuestionIndex}
-          totalQuestions={questions.length}
-          responseMode={responseMode}
-          setResponseMode={setResponseMode}
-          typedAnswer={typedAnswer}
-          setTypedAnswer={setTypedAnswer}
-          transcriptText={transcriptText}
-          setTranscriptText={setTranscriptText}
-          recording={recording}
-          setRecording={setRecording}
-          interviewerSpeaking={interviewerSpeaking}
-          timeLeft={timeLeft}
-          currentQuestionDuration={currentQuestion.duration}
-          isSpeechSupported={isSpeechSupported}
-          handleToggleRecord={handleToggleRecord}
-          wordCount={wordCount}
-          charCount={charCount}
-          confirmSkip={confirmSkip}
-          setConfirmSkip={setConfirmSkip}
-          handlePrevQuestion={handlePrevQuestion}
-          handleConfirmSkip={handleConfirmSkip}
-          handleNextQuestion={handleNextQuestion}
-          activeAnswer={activeAnswer}
-          isSystemDesignQuestion={isSystemDesignQuestion}
-          diagramState={diagramState}
-          setDiagramState={setDiagramState}
-        />
-        {isCodingMode && (
-          <div className="lg:col-span-12">
-            <CodeWorkspace value={codeAnswer} onChange={setCodeAnswer} />
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

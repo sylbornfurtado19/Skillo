@@ -12,6 +12,7 @@ export default defineConfig({
     baseURL: process.env.TEST_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
     headless: true,
+    permissions: ['camera', 'microphone'],
     launchOptions: {
       args: [
         '--use-fake-ui-for-media-stream',

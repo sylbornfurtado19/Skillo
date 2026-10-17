@@ -44,6 +44,7 @@ export interface SessionInterviewerCardProps {
   narrationBlocked?: boolean;
   /** False when this browser has no speech synthesis. */
   ttsSupported?: boolean;
+  className?: string;
   children?: React.ReactNode;
 }
 
@@ -68,10 +69,11 @@ export default function SessionInterviewerCard({
   onReplayQuestion,
   narrationBlocked = false,
   ttsSupported = true,
+  className = '',
   children,
 }: SessionInterviewerCardProps) {
   return (
-    <div className="lg:col-span-5 space-y-6 flex flex-col justify-between" data-secure="content">
+    <div className={`space-y-6 flex flex-col justify-between ${className}`} data-secure="content">
       <Card variant="default" className="space-y-4 flex-1 flex flex-col justify-between">
         <div>
           <div className="flex items-start justify-between gap-4">

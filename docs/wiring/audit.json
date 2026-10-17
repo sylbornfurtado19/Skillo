@@ -904,7 +904,7 @@
     },
     {
       "file": "src/components/interview/session/SessionAnswerWorkspace.tsx",
-      "loc": 331,
+      "loc": 333,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
@@ -946,7 +946,7 @@
     },
     {
       "file": "src/components/interview/session/SessionInterviewerCard.tsx",
-      "loc": 307,
+      "loc": 309,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
@@ -998,7 +998,7 @@
       "loc": 65,
       "reachable": true,
       "importedBy": 14,
-      "testedBy": 1
+      "testedBy": 2
     },
     {
       "file": "src/components/ui/Card.tsx",
@@ -1212,7 +1212,7 @@
     },
     {
       "file": "src/context/InterviewContext.tsx",
-      "loc": 464,
+      "loc": 479,
       "reachable": true,
       "importedBy": 10,
       "testedBy": 5
@@ -1327,14 +1327,14 @@
       "loc": 63,
       "reachable": true,
       "importedBy": 2,
-      "testedBy": 4
+      "testedBy": 5
     },
     {
       "file": "src/lib/firebase/config.ts",
       "loc": 78,
       "reachable": true,
       "importedBy": 5,
-      "testedBy": 17
+      "testedBy": 18
     },
     {
       "file": "src/lib/firebase/services/auth.firebase.ts",
@@ -1726,7 +1726,7 @@
       "loc": 138,
       "reachable": true,
       "importedBy": 1,
-      "testedBy": 35
+      "testedBy": 36
     },
     {
       "file": "src/services/profile.ts",
@@ -1754,14 +1754,14 @@
       "loc": 496,
       "reachable": true,
       "importedBy": 56,
-      "testedBy": 28
+      "testedBy": 29
     },
     {
       "file": "src/types/integrity.ts",
       "loc": 94,
       "reachable": true,
       "importedBy": 9,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "src/types/interviewModes.ts",
@@ -1842,7 +1842,7 @@
     },
     {
       "file": "src/views/InterviewSession.tsx",
-      "loc": 1463,
+      "loc": 1470,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 4
@@ -1873,7 +1873,7 @@
       "loc": 1408,
       "reachable": true,
       "importedBy": 1,
-      "testedBy": 8
+      "testedBy": 9
     },
     {
       "file": "src/views/ResumeUpload.tsx",
@@ -1901,35 +1901,35 @@
       "loc": 186,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/(app)/dashboard/page.tsx",
       "loc": 12,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/(app)/error.tsx",
       "loc": 36,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 29
+      "testedBy": 30
     },
     {
       "file": "app/(app)/interview/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/(app)/layout.tsx",
       "loc": 19,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 1
+      "testedBy": 2
     },
     {
       "file": "app/(app)/loading.tsx",
@@ -1943,35 +1943,35 @@
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/(app)/results/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/(app)/resume/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/(app)/settings/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/(app)/setup/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/api/code/run/route.ts",
@@ -2027,7 +2027,7 @@
       "loc": 38,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 29
+      "testedBy": 30
     },
     {
       "file": "app/global-error.tsx",
@@ -2041,7 +2041,7 @@
       "loc": 87,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 1
+      "testedBy": 2
     },
     {
       "file": "app/loading.tsx",
@@ -2055,7 +2055,7 @@
       "loc": 17,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/not-found.tsx",
@@ -2069,7 +2069,7 @@
       "loc": 13,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/providers.tsx",
