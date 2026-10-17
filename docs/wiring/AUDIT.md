@@ -2,24 +2,18 @@
 
 | metric | value |
 |---|---|
-| generatedAt | 2026-10-17T12:17:49.399Z |
-| totalFiles | 178 |
-| reachable | 171 |
-| orphanFiles | 7 |
-| deadExports | 10 |
-| testOnlyExports | 86 |
+| generatedAt | 2026-10-17T12:26:26.437Z |
+| totalFiles | 173 |
+| reachable | 172 |
+| orphanFiles | 1 |
+| deadExports | 2 |
+| testOnlyExports | 85 |
 
 ## Orphan files (not reachable from any app/ entry)
 
 | file | loc | tests reference it |
 |---|---|---|
 | src/components/ui/InputFields.tsx | 118 | no |
-| src/lib/firebase/services/jobs.firebase.ts | 44 | no |
-| src/lib/firebase/services/resume.firebase.ts | 132 | no |
-| src/lib/server/env.ts | 115 | yes |
-| src/services/analysis.ts | 49 | yes |
-| src/services/jobs.ts | 41 | no |
-| src/services/resume.ts | 110 | yes |
 
 ## Exports with no runtime consumer
 
@@ -31,7 +25,6 @@
 | src/lib/ai/aiConfig.ts | DEFAULT_GROQ_MODEL | TEST_ONLY |
 | src/lib/ai/aiConfig.ts | resolveAiProvider | TEST_ONLY |
 | src/lib/ai/safeJsonParser.ts | extractJsonString | TEST_ONLY |
-| src/lib/firebase/admin.ts | getAdminStorage | DEAD |
 | src/lib/firebase/services/auth.firebase.ts | normalizeFirebaseUser | INTERNAL_ONLY |
 | src/lib/schemas/diagramSchema.ts | systemDesignNodeTypeSchema | INTERNAL_ONLY |
 | src/lib/schemas/diagramSchema.ts | systemDesignNodeSchema | INTERNAL_ONLY |
@@ -42,8 +35,6 @@
 | src/lib/schemas/graphSchema.ts | GRAPH_RELATIONSHIP_TYPES | INTERNAL_ONLY |
 | src/lib/server/authenticateRequest.ts | resolveAuthProvider | TEST_ONLY |
 | src/lib/server/authenticateRequest.ts | extractBearerToken | TEST_ONLY |
-| src/lib/server/env.ts | validateEnvironment | TEST_ONLY |
-| src/lib/server/env.ts | getServerEnv | DEAD |
 | src/lib/server/sanitize.ts | PROMPT_INJECTION_PATTERNS | INTERNAL_ONLY |
 | src/lib/server/supabaseAdmin.ts | getSupabaseAdmin | TEST_ONLY |
 | src/lib/services/benchmarkRetrieval.server.ts | tokenize | TEST_ONLY |
@@ -60,7 +51,6 @@
 | src/lib/services/groundingVerifier.server.ts | diceBigramSimilarity | TEST_ONLY |
 | src/lib/services/groundingVerifier.server.ts | verifyQuoteInText | TEST_ONLY |
 | src/lib/services/groundingVerifier.server.ts | verifyPassGrounding | TEST_ONLY |
-| src/lib/services/interviewEvaluation.server.ts | PROMETHEUS2_RUBRICS | DEAD |
 | src/lib/services/interviewEvaluation.server.ts | groundedEvidenceEntrySchema | INTERNAL_ONLY |
 | src/lib/services/interviewEvaluation.server.ts | criterionEvidenceSchema | INTERNAL_ONLY |
 | src/lib/services/interviewEvaluation.server.ts | singlePassSchema | INTERNAL_ONLY |
@@ -144,13 +134,8 @@
 | src/lib/workers/visionWorker.ts | tryInitModelWithBackoff | TEST_ONLY |
 | src/lib/workers/visionWorker.ts | cancelPendingModelRetries | TEST_ONLY |
 | src/lib/workers/visionWorker.ts | extractDenseLandmarksFromLearnedModel | TEST_ONLY |
-| src/services/analysis.ts | saveAnalysis | DEAD |
-| src/services/analysis.ts | getAnalyses | DEAD |
-| src/services/analysis.ts | getAnalysisById | DEAD |
 | src/services/backendProvider.ts | getActiveBackendProvider | INTERNAL_ONLY |
 | src/services/constants.ts | EvaluationRequestError | TEST_ONLY |
 | src/services/constants.ts | PRESET_QUESTION_POOLS | INTERNAL_ONLY |
-| src/services/resume.ts | listResumes | DEAD |
-| src/services/resume.ts | getSignedUrl | DEAD |
 | src/views/Profile.tsx | loadPastReport | TEST_ONLY |
 | src/views/Results.tsx | handleShareImage | INTERNAL_ONLY |

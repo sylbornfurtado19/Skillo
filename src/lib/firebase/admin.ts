@@ -1,6 +1,5 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import { getStorage, Storage } from 'firebase-admin/storage';
 import type { Auth } from 'firebase-admin/auth';
 
 // Guard against accidental client-side bundling/execution
@@ -60,8 +59,4 @@ export async function getAdminAuth(): Promise<Auth> {
 
 export function getAdminFirestore(): Firestore {
   return getFirestore(getFirebaseAdminApp());
-}
-
-export function getAdminStorage(): Storage {
-  return getStorage(getFirebaseAdminApp());
 }

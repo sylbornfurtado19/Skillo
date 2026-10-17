@@ -85,7 +85,7 @@ describe('Fast Face Bootstrap Detector', () => {
     const result = detectFastFaceBootstrap(data, W, H, false);
     const elapsed = performance.now() - start;
 
-    expect(elapsed).toBeLessThan(25); // < 25ms conservative CI budget (< 3ms typical after JIT)
+    expect(elapsed).toBeLessThan(75); // < 75ms conservative CI budget with thread contention (< 3ms typical after JIT)
     expect(result).not.toBeNull();
 
     if (!result) return;

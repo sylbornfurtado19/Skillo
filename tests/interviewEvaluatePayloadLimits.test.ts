@@ -23,6 +23,7 @@ jest.mock('@/lib/services/rateLimiter.server', () => ({
 jest.mock('@/lib/services/reflexionService', () => ({ dispatchReflexionWorker: jest.fn() }));
 jest.mock('@/lib/services/interviewEvaluation.server', () => ({
   performInterviewEvaluation: (...args: unknown[]) => mockPerformEvaluation(...(args as [unknown])),
+  PROMETHEUS2_RUBRICS: { technicalAccuracy: {}, systemDesignLogic: {}, edgeCaseHandling: {}, communicationClarity: {} },
 }));
 
 import { POST } from '../app/api/interview/evaluate/route';

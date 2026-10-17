@@ -1,11 +1,11 @@
 {
   "summary": {
-    "generatedAt": "2026-10-17T12:17:49.399Z",
-    "totalFiles": 178,
-    "reachable": 171,
-    "orphanFiles": 7,
-    "deadExports": 10,
-    "testOnlyExports": 86
+    "generatedAt": "2026-10-17T12:26:26.437Z",
+    "totalFiles": 173,
+    "reachable": 172,
+    "orphanFiles": 1,
+    "deadExports": 2,
+    "testOnlyExports": 85
   },
   "orphans": [
     {
@@ -14,48 +14,6 @@
       "reachable": false,
       "importedBy": 0,
       "testedBy": 0
-    },
-    {
-      "file": "src/lib/firebase/services/jobs.firebase.ts",
-      "loc": 44,
-      "reachable": false,
-      "importedBy": 1,
-      "testedBy": 0
-    },
-    {
-      "file": "src/lib/firebase/services/resume.firebase.ts",
-      "loc": 132,
-      "reachable": false,
-      "importedBy": 1,
-      "testedBy": 0
-    },
-    {
-      "file": "src/lib/server/env.ts",
-      "loc": 115,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 13
-    },
-    {
-      "file": "src/services/analysis.ts",
-      "loc": 49,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 5
-    },
-    {
-      "file": "src/services/jobs.ts",
-      "loc": 41,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 0
-    },
-    {
-      "file": "src/services/resume.ts",
-      "loc": 110,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 13
     }
   ],
   "exports": [
@@ -93,12 +51,6 @@
       "file": "src/lib/ai/safeJsonParser.ts",
       "name": "extractJsonString",
       "status": "TEST_ONLY",
-      "live": true
-    },
-    {
-      "file": "src/lib/firebase/admin.ts",
-      "name": "getAdminStorage",
-      "status": "DEAD",
       "live": true
     },
     {
@@ -160,18 +112,6 @@
       "name": "extractBearerToken",
       "status": "TEST_ONLY",
       "live": true
-    },
-    {
-      "file": "src/lib/server/env.ts",
-      "name": "validateEnvironment",
-      "status": "TEST_ONLY",
-      "live": false
-    },
-    {
-      "file": "src/lib/server/env.ts",
-      "name": "getServerEnv",
-      "status": "DEAD",
-      "live": false
     },
     {
       "file": "src/lib/server/sanitize.ts",
@@ -267,12 +207,6 @@
       "file": "src/lib/services/groundingVerifier.server.ts",
       "name": "verifyPassGrounding",
       "status": "TEST_ONLY",
-      "live": true
-    },
-    {
-      "file": "src/lib/services/interviewEvaluation.server.ts",
-      "name": "PROMETHEUS2_RUBRICS",
-      "status": "DEAD",
       "live": true
     },
     {
@@ -774,24 +708,6 @@
       "live": true
     },
     {
-      "file": "src/services/analysis.ts",
-      "name": "saveAnalysis",
-      "status": "DEAD",
-      "live": false
-    },
-    {
-      "file": "src/services/analysis.ts",
-      "name": "getAnalyses",
-      "status": "DEAD",
-      "live": false
-    },
-    {
-      "file": "src/services/analysis.ts",
-      "name": "getAnalysisById",
-      "status": "DEAD",
-      "live": false
-    },
-    {
       "file": "src/services/backendProvider.ts",
       "name": "getActiveBackendProvider",
       "status": "INTERNAL_ONLY",
@@ -808,18 +724,6 @@
       "name": "PRESET_QUESTION_POOLS",
       "status": "INTERNAL_ONLY",
       "live": true
-    },
-    {
-      "file": "src/services/resume.ts",
-      "name": "listResumes",
-      "status": "DEAD",
-      "live": false
-    },
-    {
-      "file": "src/services/resume.ts",
-      "name": "getSignedUrl",
-      "status": "DEAD",
-      "live": false
     },
     {
       "file": "src/views/Profile.tsx",
@@ -1327,7 +1231,7 @@
     },
     {
       "file": "src/lib/firebase/admin.ts",
-      "loc": 68,
+      "loc": 63,
       "reachable": true,
       "importedBy": 2,
       "testedBy": 3
@@ -1336,7 +1240,7 @@
       "file": "src/lib/firebase/config.ts",
       "loc": 78,
       "reachable": true,
-      "importedBy": 7,
+      "importedBy": 5,
       "testedBy": 17
     },
     {
@@ -1354,23 +1258,9 @@
       "testedBy": 0
     },
     {
-      "file": "src/lib/firebase/services/jobs.firebase.ts",
-      "loc": 44,
-      "reachable": false,
-      "importedBy": 1,
-      "testedBy": 0
-    },
-    {
       "file": "src/lib/firebase/services/profile.firebase.ts",
       "loc": 80,
       "reachable": true,
-      "importedBy": 1,
-      "testedBy": 0
-    },
-    {
-      "file": "src/lib/firebase/services/resume.firebase.ts",
-      "loc": 132,
-      "reachable": false,
       "importedBy": 1,
       "testedBy": 0
     },
@@ -1412,8 +1302,8 @@
     {
       "file": "src/lib/server/env.ts",
       "loc": 115,
-      "reachable": false,
-      "importedBy": 0,
+      "reachable": true,
+      "importedBy": 1,
       "testedBy": 13
     },
     {
@@ -1651,7 +1541,7 @@
       "file": "src/lib/supabase.ts",
       "loc": 65,
       "reachable": true,
-      "importedBy": 9,
+      "importedBy": 6,
       "testedBy": 17
     },
     {
@@ -1683,13 +1573,6 @@
       "testedBy": 2
     },
     {
-      "file": "src/services/analysis.ts",
-      "loc": 49,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 5
-    },
-    {
       "file": "src/services/auth.ts",
       "loc": 167,
       "reachable": true,
@@ -1700,7 +1583,7 @@
       "file": "src/services/backendProvider.ts",
       "loc": 22,
       "reachable": true,
-      "importedBy": 6,
+      "importedBy": 4,
       "testedBy": 0
     },
     {
@@ -1718,25 +1601,11 @@
       "testedBy": 30
     },
     {
-      "file": "src/services/jobs.ts",
-      "loc": 41,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 0
-    },
-    {
       "file": "src/services/profile.ts",
       "loc": 136,
       "reachable": true,
       "importedBy": 5,
       "testedBy": 6
-    },
-    {
-      "file": "src/services/resume.ts",
-      "loc": 110,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 13
     },
     {
       "file": "src/types/affectEngine.ts",
@@ -1756,7 +1625,7 @@
       "file": "src/types/index.ts",
       "loc": 485,
       "reachable": true,
-      "importedBy": 61,
+      "importedBy": 56,
       "testedBy": 28
     },
     {
@@ -1985,7 +1854,7 @@
     },
     {
       "file": "app/api/interview/evaluate/route.ts",
-      "loc": 238,
+      "loc": 241,
       "reachable": true,
       "importedBy": 0,
       "testedBy": 9
@@ -2041,7 +1910,7 @@
     },
     {
       "file": "app/layout.tsx",
-      "loc": 87,
+      "loc": 94,
       "reachable": true,
       "importedBy": 0,
       "testedBy": 1

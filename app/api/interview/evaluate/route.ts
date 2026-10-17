@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { authenticateRequest, authFailureResponse } from '@/lib/server/authenticateRequest';
 import { dispatchReflexionWorker } from '@/lib/services/reflexionService';
-import { performInterviewEvaluation } from '@/lib/services/interviewEvaluation.server';
+import { performInterviewEvaluation, PROMETHEUS2_RUBRICS } from '@/lib/services/interviewEvaluation.server';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
 import { systemDesignDiagramStateSchema } from '@/lib/schemas/diagramSchema';
 import { downsampleByGroup } from '@/lib/utils/downsample';
@@ -225,7 +225,10 @@ export async function POST(request: Request) {
     // 6. Return computed evaluation result (no body echo)
     return NextResponse.json({
       status: 'success',
-      data: evaluationResult,
+      data: {
+        ...evaluationResult,
+        rubricCriteria: PROMETHEUS2_RUBRICS ? Object.keys(PROMETHEUS2_RUBRICS) : [],
+      },
     });
   } catch (err: unknown) {
     console.error('[API /api/interview/evaluate Error]:', err);

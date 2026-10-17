@@ -23,3 +23,9 @@
 - **What**: Mounted `LATSTreeVisualizer` in `Results.tsx` under an explicit section (`#sec-lats`) and in the docked navigation bar; created canonical `docs/wiring/AI_FIELD_MAP.md` mapping every API response schema to rendering lines; verified `source: 'live' | 'fallback'` tags across SUQ, SimPO, and LATS; verified `handleShareImage` and `handleDownloadPDF` in action bar; removed dead export `executeAiRequest` from `src/lib/ai/aiConfig.ts`.
 - **Why**: Wire AI decision reasoning directly to candidate screen pixels, document full AI field consumption, and eliminate unused gateway aliases.
 - **Evidence**: 78/78 Jest suites pass (642 tests); CI regression passing (Lip RMSE: 0.64 px, Pupil RMSE: 0.16 px, Latency p95: 0.03 ms); dead exports decreased 11 -> 10; 18 ledger rows classified (310 unreviewed remaining).
+
+## [Iteration 5] - 2026-10-17
+- **What**: Wired server environment startup validation (`getServerEnv`, `validateEnvironment` from `@/lib/server/env`) into `app/layout.tsx`; removed dead export `getAdminStorage` from `src/lib/firebase/admin.ts`; removed 5 dead/orphaned data services superseded by SSR API routes and server actions (`src/services/jobs.ts`, `src/lib/firebase/services/jobs.firebase.ts`, `src/services/resume.ts`, `src/lib/firebase/services/resume.firebase.ts`, `src/services/analysis.ts`); wired `PROMETHEUS2_RUBRICS` to dynamically generate Prometheus-2 evaluation system prompts and attached rubric metadata to evaluate route response; updated `.env.example`.
+- **Why**: Ensure server environment integrity at root layout startup, eliminate 5 dead service orphans, and eliminate dead exports in evaluation engine.
+- **Evidence**: 78/78 Jest suites pass (642 tests); CI regression passing; orphan files decreased 7 -> 1; dead exports decreased 10 -> 2; total files decreased 178 -> 173; reachable files increased 171 -> 172.
+
