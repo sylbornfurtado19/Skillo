@@ -2,7 +2,6 @@
 
 | metric | value |
 |---|---|
-| generatedAt | 2026-10-17T12:41:58.938Z |
 | totalFiles | 173 |
 | reachable | 173 |
 | orphanFiles | 0 |

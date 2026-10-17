@@ -1,6 +1,5 @@
 {
   "summary": {
-    "generatedAt": "2026-10-17T12:41:58.938Z",
     "totalFiles": 173,
     "reachable": 173,
     "orphanFiles": 0,
@@ -1106,7 +1105,7 @@
     },
     {
       "file": "src/context/AuthContext.tsx",
-      "loc": 111,
+      "loc": 128,
       "reachable": true,
       "importedBy": 2,
       "testedBy": 1
@@ -1155,7 +1154,7 @@
     },
     {
       "file": "src/hooks/useONNXWorker.ts",
-      "loc": 283,
+      "loc": 288,
       "reachable": true,
       "importedBy": 2,
       "testedBy": 1
@@ -1214,7 +1213,7 @@
       "loc": 63,
       "reachable": true,
       "importedBy": 2,
-      "testedBy": 3
+      "testedBy": 4
     },
     {
       "file": "src/lib/firebase/config.ts",
@@ -1281,7 +1280,7 @@
     },
     {
       "file": "src/lib/server/env.ts",
-      "loc": 115,
+      "loc": 124,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 13
@@ -1379,10 +1378,10 @@
     },
     {
       "file": "src/lib/services/ivpFeatureFlags.ts",
-      "loc": 170,
+      "loc": 175,
       "reachable": true,
-      "importedBy": 3,
-      "testedBy": 1
+      "importedBy": 4,
+      "testedBy": 2
     },
     {
       "file": "src/lib/services/ivpGazeEngine.ts",
@@ -1557,7 +1556,7 @@
       "loc": 167,
       "reachable": true,
       "importedBy": 6,
-      "testedBy": 19
+      "testedBy": 20
     },
     {
       "file": "src/services/backendProvider.ts",
@@ -1578,14 +1577,14 @@
       "loc": 109,
       "reachable": true,
       "importedBy": 1,
-      "testedBy": 30
+      "testedBy": 31
     },
     {
       "file": "src/services/profile.ts",
       "loc": 136,
       "reachable": true,
       "importedBy": 5,
-      "testedBy": 6
+      "testedBy": 7
     },
     {
       "file": "src/types/affectEngine.ts",
@@ -1648,7 +1647,7 @@
       "loc": 228,
       "reachable": true,
       "importedBy": 5,
-      "testedBy": 11
+      "testedBy": 12
     },
     {
       "file": "src/types/themes.ts",
@@ -1718,7 +1717,7 @@
       "loc": 1393,
       "reachable": true,
       "importedBy": 1,
-      "testedBy": 6
+      "testedBy": 7
     },
     {
       "file": "src/views/ResumeUpload.tsx",
@@ -1729,7 +1728,7 @@
     },
     {
       "file": "src/views/Settings.tsx",
-      "loc": 293,
+      "loc": 299,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 2
@@ -1743,38 +1742,38 @@
     },
     {
       "file": "app/(app)/calibration/page.tsx",
-      "loc": 183,
+      "loc": 186,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "app/(app)/dashboard/page.tsx",
       "loc": 12,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "app/(app)/error.tsx",
       "loc": 36,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 28
+      "testedBy": 29
     },
     {
       "file": "app/(app)/interview/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "app/(app)/ivp-lab/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "app/(app)/layout.tsx",
@@ -1795,91 +1794,91 @@
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "app/(app)/results/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "app/(app)/resume/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "app/(app)/settings/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "app/(app)/setup/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "app/api/code/run/route.ts",
       "loc": 102,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/api/interview/evaluate/route.ts",
-      "loc": 241,
+      "loc": 246,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/api/interview/followup/route.ts",
       "loc": 155,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/api/interview/setup/route.ts",
       "loc": 218,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/api/resume/analyze/route.ts",
       "loc": 76,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/api/resume/extract/route.ts",
       "loc": 88,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/api/resume/rewrite/route.ts",
       "loc": 65,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 9
+      "testedBy": 10
     },
     {
       "file": "app/error.tsx",
       "loc": 38,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 28
+      "testedBy": 29
     },
     {
       "file": "app/global-error.tsx",
@@ -1890,7 +1889,7 @@
     },
     {
       "file": "app/layout.tsx",
-      "loc": 94,
+      "loc": 87,
       "reachable": true,
       "importedBy": 0,
       "testedBy": 1
@@ -1907,7 +1906,7 @@
       "loc": 17,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "app/not-found.tsx",
@@ -1921,7 +1920,7 @@
       "loc": 13,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 7
+      "testedBy": 8
     },
     {
       "file": "app/providers.tsx",

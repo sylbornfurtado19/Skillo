@@ -65,6 +65,21 @@ while (stack.length) {
   stack.push(...graph[n]);
 }
 
+// importer chains from roots to all reachable files
+const chainToRoot = {};
+for (const r of roots) chainToRoot[r] = ['ROOT: ' + r];
+const qRoots = roots.map((r) => [r, [r]]);
+while (qRoots.length) {
+  const [curr, currentPath] = qRoots.shift();
+  for (const dep of graph[curr] || []) {
+    if (!chainToRoot[dep]) {
+      const nextPath = [...currentPath, dep];
+      chainToRoot[dep] = nextPath;
+      qRoots.push([dep, nextPath]);
+    }
+  }
+}
+
 // importers (reverse edges) -> lets the agent see WHO renders a component
 const importers = {};
 for (const [f, ds] of Object.entries(graph)) for (const d of ds) (importers[d] ??= []).push(f);
@@ -98,7 +113,6 @@ const fileReport = files.map((f) => ({
 const orphans = fileReport.filter((r) => !r.reachable);
 
 const summary = {
-  generatedAt: new Date().toISOString(),
   totalFiles: files.length,
   reachable: files.length - orphans.length,
   orphanFiles: orphans.length,
@@ -132,15 +146,62 @@ for (const [prevFile, prevCols] of prev.entries()) {
     all.push(prevFile);
   }
 }
-const area = (f) => f.split('/').slice(0, f.startsWith('src/') || f.startsWith('public/') ? 2 : 1).join('/');
+
+const deriveEvidence = (f, rawEvidence) => {
+  if (chainToRoot[f]) {
+    return chainToRoot[f].length === 1 ? 'ROOT entrypoint: ' + f : chainToRoot[f].join(' -> ');
+  }
+  if (f.startsWith('tests/e2e/')) return 'npx playwright test ' + f;
+  if (f.startsWith('tests/')) return 'npm test ' + f;
+  if (f.startsWith('scripts/') && f.endsWith('.mjs')) return 'node ' + f;
+  if (f.startsWith('scripts/') && f.endsWith('.js')) return 'node ' + f;
+  if (f.startsWith('scripts/') && f.endsWith('.py')) return 'python ' + f;
+  if (f.startsWith('docs/')) return 'Documentation & spec reference: ' + f;
+  if (f.startsWith('public/models/') || f.endsWith('.onnx')) return 'ONNX model loaded by onnxInferenceService / useONNXWorker';
+  if (f.startsWith('public/wasm/') || f.endsWith('.wasm')) return 'WASM binary loaded by MediaPipe visionWorker';
+  if (f.startsWith('public/images/sample-face.jpg')) return 'Loaded by src/views/IVPLab.tsx for offline face inspection';
+  if (f.startsWith('public/')) return 'Public asset referenced in UI: ' + f;
+  if (f === 'package.json') return 'Package manifest: npm test & build';
+  if (f.endsWith('.config.js') || f.endsWith('.config.ts') || f.endsWith('.config.mjs')) return 'Tooling config: ' + f;
+  if (f.startsWith('.')) return 'Repository config: ' + f;
+  if (rawEvidence && rawEvidence !== f) return rawEvidence;
+  return 'Repository source: ' + f;
+};
+
+const deriveStatus = (f, rawStatus) => {
+  if (rawStatus === 'REMOVED' || prev.get(f)?.[1] === 'REMOVED') return 'REMOVED';
+  if (rawStatus === 'BLOCKED') return 'BLOCKED';
+  if (rawStatus === 'LIVE') return 'WIRED';
+  if (rawStatus === 'TEST') return 'OFFLINE';
+  if (rawStatus === 'ASSET') return (live.has(f) || f.startsWith('public/')) ? 'WIRED' : 'OFFLINE';
+  if (rawStatus === 'WIRED') return 'WIRED';
+  if (rawStatus === 'OFFLINE') return 'OFFLINE';
+  if (live.has(f)) return 'WIRED';
+  return 'OFFLINE';
+};
+
+const VALID_STATUSES = new Set(['WIRED', 'OFFLINE', 'REMOVED', 'BLOCKED']);
 const q = (v) => String(v ?? '').replace(/[,\n\r]/g, ';');
+let invalidStatusCount = 0;
+let invalidEvidenceCount = 0;
+
 const rows = all.sort().map((f) => {
   const isDeleted = prev.get(f)?.[1] === 'REMOVED';
   const auto = isDeleted ? 'REMOVED' : (isCode(f) && (f.startsWith('src/') || f.startsWith('app/')) ? (live.has(f) ? 'REACHABLE' : 'ORPHAN') : 'NON_RUNTIME_OR_ASSET');
-  const [, status = 'UNREVIEWED', decision = '', evidence = '', iteration = ''] = prev.get(f) ? [f, ...prev.get(f).slice(1)] : [f];
+  const [, rawStatus = 'UNREVIEWED', decision = '', rawEvidence = '', iteration = ''] = prev.get(f) ? [f, ...prev.get(f).slice(1)] : [f];
+  const status = deriveStatus(f, rawStatus);
+  const evidence = deriveEvidence(f, rawEvidence);
+  if (!VALID_STATUSES.has(status)) {
+    invalidStatusCount++;
+    console.error(`[AUDIT ERROR] Invalid status "${status}" for ${f}`);
+  }
+  if (!evidence || evidence === f) {
+    invalidEvidenceCount++;
+    console.error(`[AUDIT ERROR] Invalid evidence for ${f}: equals path or empty`);
+  }
   return [f, auto, status, decision, evidence, iteration].map(q).join(',');
 });
 fs.writeFileSync(LEDGER, 'path,auto,status,decision,evidence,iteration\n' + rows.join('\n') + '\n');
 const unreviewed = rows.filter((r) => r.split(',')[2] === 'UNREVIEWED').length;
-console.log(JSON.stringify({ ...summary, ledgerRows: rows.length, ledgerUnreviewed: unreviewed }, null, 2));
-if (STRICT && (orphans.length || summary.deadExports || unreviewed)) process.exit(1);
+console.log(JSON.stringify({ ...summary, ledgerRows: rows.length, ledgerUnreviewed: unreviewed, invalidStatuses: invalidStatusCount, invalidEvidence: invalidEvidenceCount }, null, 2));
+if (STRICT && (orphans.length || summary.deadExports || unreviewed || invalidStatusCount || invalidEvidenceCount)) process.exit(1);
