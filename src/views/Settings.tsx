@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getProfile, updateProfile } from '../services/profile';
 import { useToast } from '../components/ui/Toast';
 import { ThemeSwitcher } from '../components/common/ThemeSwitcher';
+import { Input, Textarea } from '../components/ui/InputFields';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -31,6 +32,7 @@ export default function Settings() {
   const [profileName, setProfileName] = useState(candidateName);
   const [profileEmail, setProfileEmail] = useState(candidateEmail);
   const [targetTitle, setTargetTitle] = useState('');
+  const [practiceNotes, setPracticeNotes] = useState('');
   const [voiceRate, setVoiceRate] = useState(1.0);
   const [voicePitch, setVoicePitch] = useState(1.0);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
@@ -73,6 +75,7 @@ export default function Settings() {
           if (typeof ps.voiceRate === 'number') setVoiceRate(ps.voiceRate);
           if (typeof ps.voicePitch === 'number') setVoicePitch(ps.voicePitch);
           if (typeof ps.subtitlesEnabled === 'boolean') setSubtitlesEnabled(ps.subtitlesEnabled);
+          if (typeof ps.practiceNotes === 'string') setPracticeNotes(ps.practiceNotes);
         }
 
       }
@@ -98,6 +101,7 @@ export default function Settings() {
           voiceRate,
           voicePitch,
           subtitlesEnabled,
+          practiceNotes,
         },
       };
 
@@ -136,37 +140,39 @@ export default function Settings() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor={nameInputId} className="text-xs font-semibold text-text-secondary">Full Name</label>
-              <input
-                id={nameInputId}
-                type="text"
-                value={profileName}
-                onChange={(e) => setProfileName(e.target.value)}
-                placeholder="e.g. Alex Mercer"
-                className="w-full bg-bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor={emailInputId} className="text-xs font-semibold text-text-secondary">Email Address</label>
-              <input
-                id={emailInputId}
-                type="email"
-                value={profileEmail}
-                onChange={(e) => setProfileEmail(e.target.value)}
-                placeholder="name@company.com"
-                className="w-full bg-bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <label htmlFor={titleInputId} className="text-xs font-semibold text-text-secondary">Target Role Title</label>
-              <input
+            <Input
+              id={nameInputId}
+              label="Full Name"
+              type="text"
+              value={profileName}
+              onChange={(e) => setProfileName(e.target.value)}
+              placeholder="e.g. Alex Mercer"
+            />
+            <Input
+              id={emailInputId}
+              label="Email Address"
+              type="email"
+              value={profileEmail}
+              onChange={(e) => setProfileEmail(e.target.value)}
+              placeholder="name@company.com"
+            />
+            <div className="sm:col-span-2">
+              <Input
                 id={titleInputId}
+                label="Target Role Title"
                 type="text"
                 value={targetTitle}
                 onChange={(e) => setTargetTitle(e.target.value)}
                 placeholder="e.g. Senior Frontend Architect / Staff Engineer"
-                className="w-full bg-bg-surface-alt border border-border focus:border-primary focus:ring-1 focus:ring-primary/25 rounded-xl px-4 py-2.5 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none transition"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <Textarea
+                label="Preparation Goals & Notes"
+                placeholder="Enter personal preparation targets, interview weaknesses to focus on, or target technologies..."
+                value={practiceNotes}
+                onChange={(e) => setPracticeNotes(e.target.value)}
+                rows={3}
               />
             </div>
           </div>

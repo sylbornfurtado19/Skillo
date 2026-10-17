@@ -16,6 +16,7 @@ export interface ProfileSettings {
   voiceRate?: number;
   voicePitch?: number;
   subtitlesEnabled?: boolean;
+  practiceNotes?: string;
 }
 
 export interface CategoryScores {

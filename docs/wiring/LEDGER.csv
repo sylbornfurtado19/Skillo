@@ -247,7 +247,7 @@ src/components/ui/IVPPoseTracker.tsx,REMOVED,REMOVED,Deprecated heuristic tracke
 src/components/ui/IVPSignalOscilloscope.tsx,REACHABLE,WIRED,Real-time circular buffer oscilloscope displaying live EAR and MAR waveforms with null states,src/views/IVPLab.tsx:488;src/views/IVPLab.tsx:507,2
 src/components/ui/IVPSyncTracker.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/IVPTelemetryTimeline.tsx,REACHABLE,WIRED,Synchronized IVP timeline rendering AffectNet/HopeNet/L2CS-Net events,src/views/Results.tsx:990;src/components/ui/IVPTelemetryTimeline.tsx:73,3
-src/components/ui/InputFields.tsx,ORPHAN,UNREVIEWED,,,
+src/components/ui/InputFields.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/LATSTreeVisualizer.tsx,REACHABLE,WIRED,Monte Carlo Tree Search visualizer for adaptive interview trajectories and PRM scoring,src/views/Results.tsx:971;src/components/ui/AdaptiveHUDHeader.tsx:87,4
 src/components/ui/LayoutPenaltyViewer.tsx,REACHABLE,WIRED,LayoutLMv3 formatting penalty breakdown and visual ATS integrity auditor,src/views/ResumeUpload.tsx:602;src/components/ui/LayoutPenaltyViewer.tsx:88,4
 src/components/ui/LipSyncHUD.tsx,REACHABLE,UNREVIEWED,,,

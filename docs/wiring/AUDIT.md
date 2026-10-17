@@ -2,25 +2,24 @@
 
 | metric | value |
 |---|---|
-| generatedAt | 2026-10-17T12:26:26.437Z |
+| generatedAt | 2026-10-17T12:35:31.418Z |
 | totalFiles | 173 |
-| reachable | 172 |
-| orphanFiles | 1 |
-| deadExports | 2 |
+| reachable | 173 |
+| orphanFiles | 0 |
+| deadExports | 0 |
 | testOnlyExports | 85 |
 
 ## Orphan files (not reachable from any app/ entry)
 
 | file | loc | tests reference it |
 |---|---|---|
-| src/components/ui/InputFields.tsx | 118 | no |
+
 
 ## Exports with no runtime consumer
 
 | file | export | status |
 |---|---|---|
 | src/components/dashboard/OnboardingProgressWidget.tsx | calculateOnboardingProgress | TEST_ONLY |
-| src/components/ui/InputFields.tsx | Textarea | DEAD |
 | src/components/ui/IVPTelemetryTimeline.tsx | DEFAULT_EVENTS | TEST_ONLY |
 | src/lib/ai/aiConfig.ts | DEFAULT_GROQ_MODEL | TEST_ONLY |
 | src/lib/ai/aiConfig.ts | resolveAiProvider | TEST_ONLY |
@@ -114,7 +113,6 @@
 | src/lib/services/temporalMotion.ts | computeFrameMotionEnergy | TEST_ONLY |
 | src/lib/services/temporalMotion.ts | fuseRestlessnessWithMotionEnergy | TEST_ONLY |
 | src/lib/services/temporalSmoothing.ts | ScalarEMA | TEST_ONLY |
-| src/lib/services/temporalSmoothing.ts | VisionTelemetrySmoother | DEAD |
 | src/lib/services/temporalSmoothing.ts | computeJitterMetric | TEST_ONLY |
 | src/lib/services/temporalSmoothing.ts | computeJitterReduction | TEST_ONLY |
 | src/lib/services/temporalSmoothing.ts | PRESET_REGIONAL_CONFIGS | TEST_ONLY |

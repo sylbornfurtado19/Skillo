@@ -24,10 +24,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useVisionWorker } from '@/hooks/useVisionWorker';
 import { useONNXWorker } from '@/hooks/useONNXWorker';
 import {
-  GazeAngleEMA,
-  HeadPoseEMA,
-  AffectiveEMA,
-  CategoricalConsensusSmoother,
+  VisionTelemetrySmoother,
 } from '@/lib/services/temporalSmoothing';
 import {
   evaluateEyeContact,
@@ -131,11 +128,8 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
   const capturedPoseFramesRef = useRef<HeadPoseFrameInput[]>([]);
   const capturedAffectFramesRef = useRef<AffectFrameInput[]>([]);
 
-  // Temporal smoothing instances
-  const gazeEmaRef = useRef(new GazeAngleEMA(0.45));
-  const poseEmaRef = useRef(new HeadPoseEMA(0.35));
-  const affectEmaRef = useRef(new AffectiveEMA(0.25, 0.20));
-  const emotionConsensusRef = useRef(new CategoricalConsensusSmoother<DiscreteEmotion>(5, 0.30));
+  // Unified temporal smoothing pipeline
+  const telemetrySmootherRef = useRef(new VisionTelemetrySmoother());
   const lastPoseResultRef = useRef<HeadPoseFrameResult | null>(null);
 
   // Live HUD States
@@ -179,7 +173,7 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
       const qIdx = metadata?.questionIndex ?? currentQuestionIndexRef.current;
 
       // ── 1. Gaze Processing (L2CS-Net + GazeAngleEMA) ──────────────────────────
-      const smoothedGaze = gazeEmaRef.current.update({
+      const smoothedGaze = telemetrySmootherRef.current.gaze.update({
         pitchDegrees: telemetry.gazeY,
         yawDegrees: telemetry.gazeX,
       });
@@ -229,7 +223,7 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
       }
 
       // ── 2. Head Pose Processing (HopeNet + HeadPoseEMA) ────────────────────────
-      const smoothedPose = poseEmaRef.current.update({
+      const smoothedPose = telemetrySmootherRef.current.pose.update({
         yawDegrees: telemetry.yaw,
         pitchDegrees: telemetry.pitch,
         rollDegrees: telemetry.roll,
@@ -264,11 +258,11 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
       const rawValence = discreteEmotion === 'HAPPY' ? 0.65 : discreteEmotion === 'STRESSED' ? -0.4 : 0.15;
       const rawArousal = discreteEmotion === 'SURPRISED' ? 0.60 : discreteEmotion === 'STRESSED' ? 0.50 : 0.15;
 
-      const smoothedVA = affectEmaRef.current.update(
+      const smoothedVA = telemetrySmootherRef.current.affect.update(
         { valence: rawValence, arousal: rawArousal },
         telemetry.composure
       );
-      const smoothedEmotion = emotionConsensusRef.current.update(discreteEmotion);
+      const smoothedEmotion = telemetrySmootherRef.current.emotion.update(discreteEmotion);
 
       const affectInput: AffectFrameInput = {
         timestampMs,
@@ -340,10 +334,7 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
     setShowGazeWarning(false);
     if (gazeWarningTimerRef.current) clearTimeout(gazeWarningTimerRef.current);
 
-    gazeEmaRef.current.reset();
-    poseEmaRef.current.reset();
-    affectEmaRef.current.reset();
-    emotionConsensusRef.current.reset();
+    telemetrySmootherRef.current.reset();
     lastPoseResultRef.current = null;
   }, []);
 

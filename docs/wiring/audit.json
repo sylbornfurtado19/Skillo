@@ -1,33 +1,19 @@
 {
   "summary": {
-    "generatedAt": "2026-10-17T12:26:26.437Z",
+    "generatedAt": "2026-10-17T12:35:31.418Z",
     "totalFiles": 173,
-    "reachable": 172,
-    "orphanFiles": 1,
-    "deadExports": 2,
+    "reachable": 173,
+    "orphanFiles": 0,
+    "deadExports": 0,
     "testOnlyExports": 85
   },
-  "orphans": [
-    {
-      "file": "src/components/ui/InputFields.tsx",
-      "loc": 118,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 0
-    }
-  ],
+  "orphans": [],
   "exports": [
     {
       "file": "src/components/dashboard/OnboardingProgressWidget.tsx",
       "name": "calculateOnboardingProgress",
       "status": "TEST_ONLY",
       "live": true
-    },
-    {
-      "file": "src/components/ui/InputFields.tsx",
-      "name": "Textarea",
-      "status": "DEAD",
-      "live": false
     },
     {
       "file": "src/components/ui/IVPTelemetryTimeline.tsx",
@@ -589,12 +575,6 @@
     },
     {
       "file": "src/lib/services/temporalSmoothing.ts",
-      "name": "VisionTelemetrySmoother",
-      "status": "DEAD",
-      "live": true
-    },
-    {
-      "file": "src/lib/services/temporalSmoothing.ts",
       "name": "computeJitterMetric",
       "status": "TEST_ONLY",
       "live": true
@@ -966,8 +946,8 @@
     {
       "file": "src/components/ui/InputFields.tsx",
       "loc": 118,
-      "reachable": false,
-      "importedBy": 0,
+      "reachable": true,
+      "importedBy": 1,
       "testedBy": 0
     },
     {
@@ -1161,7 +1141,7 @@
     },
     {
       "file": "src/hooks/useIVPSessionPipeline.ts",
-      "loc": 399,
+      "loc": 390,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 4
@@ -1623,7 +1603,7 @@
     },
     {
       "file": "src/types/index.ts",
-      "loc": 485,
+      "loc": 486,
       "reachable": true,
       "importedBy": 56,
       "testedBy": 28
@@ -1668,7 +1648,7 @@
       "loc": 228,
       "reachable": true,
       "importedBy": 5,
-      "testedBy": 10
+      "testedBy": 11
     },
     {
       "file": "src/types/themes.ts",
@@ -1749,7 +1729,7 @@
     },
     {
       "file": "src/views/Settings.tsx",
-      "loc": 287,
+      "loc": 293,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 2

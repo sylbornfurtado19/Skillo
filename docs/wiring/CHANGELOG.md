@@ -29,3 +29,9 @@
 - **Why**: Ensure server environment integrity at root layout startup, eliminate 5 dead service orphans, and eliminate dead exports in evaluation engine.
 - **Evidence**: 78/78 Jest suites pass (642 tests); CI regression passing; orphan files decreased 7 -> 1; dead exports decreased 10 -> 2; total files decreased 178 -> 173; reachable files increased 171 -> 172.
 
+## [Iteration 6] - 2026-10-17
+- **What**: Wired `Input` and `Textarea` from `src/components/ui/InputFields.tsx` into `Settings.tsx` Candidate Profile section (binding Full Name, Email, Target Role, and a new Preparation Goals & Notes field stored in profile settings); unified temporal smoothing in `src/hooks/useIVPSessionPipeline.ts` using `VisionTelemetrySmoother` (connecting gaze, pose, affect, and emotion consensus under a single pipeline with synchronized reset on question transitions); verified root error/loading boundaries (`app/error.tsx`, `app/loading.tsx`, `app/not-found.tsx`).
+- **Why**: Reach 100% reachability across all components in `src/` and `app/`, eliminating all remaining orphan files (0 orphans) and dead exports (0 dead exports).
+- **Evidence**: `audit:wiring` reports 173/173 files reachable (0 orphans), 0 dead exports, 0 tsc errors, 0 lint errors, 78/78 test suites passing, and CI regression passing.
+
+
