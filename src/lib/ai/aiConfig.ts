@@ -336,6 +336,3 @@ export async function executeAnthropicRequest(
     httpStatus: lastHttpStatus,
   };
 }
-
-/** Provider-neutral alias; the Anthropic-named export is kept for existing callers. */
-export const executeAiRequest = executeAnthropicRequest;

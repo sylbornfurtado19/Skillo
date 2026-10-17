@@ -1,10 +1,10 @@
 {
   "summary": {
-    "generatedAt": "2026-10-17T12:08:01.115Z",
+    "generatedAt": "2026-10-17T12:17:49.399Z",
     "totalFiles": 178,
     "reachable": 171,
     "orphanFiles": 7,
-    "deadExports": 11,
+    "deadExports": 10,
     "testOnlyExports": 86
   },
   "orphans": [
@@ -87,12 +87,6 @@
       "file": "src/lib/ai/aiConfig.ts",
       "name": "resolveAiProvider",
       "status": "TEST_ONLY",
-      "live": true
-    },
-    {
-      "file": "src/lib/ai/aiConfig.ts",
-      "name": "executeAiRequest",
-      "status": "DEAD",
       "live": true
     },
     {
@@ -1111,7 +1105,7 @@
       "file": "src/components/ui/LATSTreeVisualizer.tsx",
       "loc": 245,
       "reachable": true,
-      "importedBy": 1,
+      "importedBy": 2,
       "testedBy": 1
     },
     {
@@ -1305,7 +1299,7 @@
     },
     {
       "file": "src/lib/ai/aiConfig.ts",
-      "loc": 342,
+      "loc": 339,
       "reachable": true,
       "importedBy": 9,
       "testedBy": 3
@@ -1872,7 +1866,7 @@
     },
     {
       "file": "src/views/Results.tsx",
-      "loc": 1369,
+      "loc": 1393,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 6

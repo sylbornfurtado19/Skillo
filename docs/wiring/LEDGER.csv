@@ -229,7 +229,7 @@ src/components/ivp/canvas/CanvasMetricHUD.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ivp/canvas/WarmupWarningBanner.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ivp/canvas/telemetryHelpers.ts,REACHABLE,UNREVIEWED,,,
 src/components/ivp/canvas/types.ts,REACHABLE,WIRED,TypeScript interfaces for IVP canvas telemetry; nullable metrics; and modes,src/components/ui/IVPInteractiveCanvas.tsx:48;src/components/ivp/canvas/CanvasHeaderControls.tsx:4,2
-src/components/ui/AdaptiveHUDHeader.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/AdaptiveHUDHeader.tsx,REACHABLE,WIRED,Live interview HUD header displaying adaptive follow-up challenges and LATS PRM score,src/views/InterviewSession.tsx:550;src/components/ui/AdaptiveHUDHeader.tsx:30,4
 src/components/ui/AffectiveHUD.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/Badge.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/Button.tsx,REACHABLE,UNREVIEWED,,,
@@ -238,7 +238,7 @@ src/components/ui/EyeContactHUD.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/FacialComposureCard.tsx,REACHABLE,WIRED,Renders AffectNet 2D circumplex V-A scatter plot and emotional stability metrics,src/views/Results.tsx:48;src/views/Results.tsx:1033,3
 src/components/ui/FeedbackHelpers.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/GazeAnalyticsCard.tsx,REACHABLE,WIRED,Renders L2CS-Net gaze ray focus zone donut and distraction event log,src/views/Results.tsx:46;src/views/Results.tsx:1020,3
-src/components/ui/GraphRAGDashboard.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/GraphRAGDashboard.tsx,REACHABLE,WIRED,Hierarchical force-directed skill knowledge graph and prerequisite chain mapper,src/views/ResumeUpload.tsx:560;src/components/ui/GraphRAGDashboard.tsx:32,4
 src/components/ui/IVPAffectTracker.tsx,REMOVED,REMOVED,Deprecated heuristic tracker replaced by useIVPSessionPipeline; 0 callers in app/,tests/ivpWorkerIntegration.test.ts:49,3
 src/components/ui/IVPCameraPreview.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/IVPGazeTracker.tsx,REMOVED,REMOVED,Deprecated heuristic tracker replaced by useIVPSessionPipeline; 0 callers in app/,tests/ivpWorkerIntegration.test.ts:47,3
@@ -248,23 +248,23 @@ src/components/ui/IVPSignalOscilloscope.tsx,REACHABLE,WIRED,Real-time circular b
 src/components/ui/IVPSyncTracker.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/IVPTelemetryTimeline.tsx,REACHABLE,WIRED,Synchronized IVP timeline rendering AffectNet/HopeNet/L2CS-Net events,src/views/Results.tsx:990;src/components/ui/IVPTelemetryTimeline.tsx:73,3
 src/components/ui/InputFields.tsx,ORPHAN,UNREVIEWED,,,
-src/components/ui/LATSTreeVisualizer.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/LayoutPenaltyViewer.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/LATSTreeVisualizer.tsx,REACHABLE,WIRED,Monte Carlo Tree Search visualizer for adaptive interview trajectories and PRM scoring,src/views/Results.tsx:971;src/components/ui/AdaptiveHUDHeader.tsx:87,4
+src/components/ui/LayoutPenaltyViewer.tsx,REACHABLE,WIRED,LayoutLMv3 formatting penalty breakdown and visual ATS integrity auditor,src/views/ResumeUpload.tsx:602;src/components/ui/LayoutPenaltyViewer.tsx:88,4
 src/components/ui/LipSyncHUD.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/LipSyncVerificationCard.tsx,REACHABLE,WIRED,Renders SyncNet audio-visual latency offset and anti-spoofing verification card,src/views/Results.tsx:49;src/views/Results.tsx:1040,3
 src/components/ui/Loader.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/Modal.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/PostureComposureCard.tsx,REACHABLE,WIRED,Renders HopeNet 3D head pose stability gauge and affirmative gesture counts,src/views/Results.tsx:47;src/views/Results.tsx:1027,3
 src/components/ui/PostureHUD.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/PrerequisiteChainViewer.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/ReflectionTimelineDrawer.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/SUQConfidenceDashboard.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/SimPOContrastiveCard.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/PrerequisiteChainViewer.tsx,REACHABLE,WIRED,Renders step-by-step prerequisite learning paths and dependency gap chains,src/components/ui/GraphRAGDashboard.tsx:282;src/components/ui/PrerequisiteChainViewer.tsx:20,4
+src/components/ui/ReflectionTimelineDrawer.tsx,REACHABLE,WIRED,Sliding timeline drawer displaying chronological candidate self-critique episodes,src/components/ui/SkillMemoryGraph.tsx:155;src/components/ui/ReflectionTimelineDrawer.tsx:23,4
+src/components/ui/SUQConfidenceDashboard.tsx,REACHABLE,WIRED,Semantic Uncertainty Quantification dashboard with entropy gauge and validation trigger,src/views/Results.tsx:941;src/components/ui/SUQConfidenceDashboard.tsx:24,4
+src/components/ui/SimPOContrastiveCard.tsx,REACHABLE,WIRED,FAANG benchmark contrastive analysis card displaying quality margin and delta cards,src/views/Results.tsx:964;src/components/ui/SimPOContrastiveCard.tsx:22,4
 src/components/ui/Skeleton.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/SkillMemoryGraph.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/StructuralDeltaViewer.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/SkillMemoryGraph.tsx,REACHABLE,WIRED,Candidate multi-session skill mastery radar chart with persistent deficiency tracker,src/views/Profile.tsx:387;src/components/ui/SkillMemoryGraph.tsx:22,4
+src/components/ui/StructuralDeltaViewer.tsx,REACHABLE,WIRED,Viewer rendering architectural and edge-case delta items from SimPO benchmark evaluation,src/components/ui/SimPOContrastiveCard.tsx:7;src/components/ui/StructuralDeltaViewer.tsx:14,4
 src/components/ui/Toast.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/VisualDocumentCanvas.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/VisualDocumentCanvas.tsx,REACHABLE,WIRED,HTML5 canvas rendering normalized 2D document layout bounding boxes and text blocks,src/views/ResumeUpload.tsx:585;src/components/ui/VisualDocumentCanvas.tsx:19,4
 src/context/AuthContext.tsx,REACHABLE,UNREVIEWED,,,
 src/context/InterviewContext.tsx,REACHABLE,UNREVIEWED,,,
 src/hooks/useAuth.ts,REACHABLE,UNREVIEWED,,,
@@ -277,7 +277,7 @@ src/hooks/useVisionWorker.ts,REACHABLE,WIRED,Hook managing MediaPipe FaceLandmar
 src/index.css,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 src/layouts/AppLayout.tsx,REACHABLE,UNREVIEWED,,,
 src/layouts/MainLayout.tsx,REACHABLE,UNREVIEWED,,,
-src/lib/ai/aiConfig.ts,REACHABLE,UNREVIEWED,,,
+src/lib/ai/aiConfig.ts,REACHABLE,WIRED,Unified AI gateway with provider failover; retry jitter; and concurrency semaphore,src/lib/services/interviewEvaluation.server.ts:16;src/lib/ai/aiConfig.ts:28,4
 src/lib/ai/defaultModel.ts,REACHABLE,UNREVIEWED,,,
 src/lib/ai/safeJsonParser.ts,REACHABLE,UNREVIEWED,,,
 src/lib/chartSetup.ts,REACHABLE,UNREVIEWED,,,
@@ -351,15 +351,15 @@ src/types/syncEngine.ts,REACHABLE,UNREVIEWED,,,
 src/types/systemDesign.ts,REACHABLE,UNREVIEWED,,,
 src/types/themes.ts,REACHABLE,UNREVIEWED,,,
 src/types/workerMessages.ts,REACHABLE,WIRED,Command and response message contracts for vision worker,src/hooks/useVisionWorker.ts:10;src/lib/workers/visionWorker.ts:26,1
-src/views/CareerSetup.tsx,REACHABLE,UNREVIEWED,,,
-src/views/Dashboard.tsx,REACHABLE,UNREVIEWED,,,
+src/views/CareerSetup.tsx,REACHABLE,WIRED,Role configuration and historical critique memory initialization screen,app/(app)/setup/page.tsx:5;src/views/CareerSetup.tsx:32,4
+src/views/Dashboard.tsx,REACHABLE,WIRED,Candidate home dashboard displaying readiness score; recent sessions; and recommendations,app/(app)/dashboard/page.tsx:5;src/views/Dashboard.tsx:42,4
 src/views/IVPLab.tsx,REACHABLE,WIRED,Interactive Vision Pipeline laboratory workbench screen with truthful physiological telemetry,app/(app)/ivp-lab/page.tsx:5,2
-src/views/InterviewSession.tsx,REACHABLE,UNREVIEWED,,,
+src/views/InterviewSession.tsx,REACHABLE,WIRED,Live multi-modal technical interview screen with real-time biometric HUD and audio streaming,app/(app)/interview/page.tsx:5;src/views/InterviewSession.tsx:48,4
 src/views/Landing.tsx,REACHABLE,UNREVIEWED,,,
 src/views/Login.tsx,REACHABLE,UNREVIEWED,,,
-src/views/Profile.tsx,REACHABLE,UNREVIEWED,,,
+src/views/Profile.tsx,REACHABLE,WIRED,Candidate profile view rendering persistent skill memory graph and past sessions,app/(app)/profile/page.tsx:5;src/views/Profile.tsx:35,4
 src/views/Results.tsx,REACHABLE,WIRED,Assessment report view rendering real IVP telemetry; delivery composite and camera-unavailable state,app/(app)/results/page.tsx:5;src/views/Results.tsx:448,3
-src/views/ResumeUpload.tsx,REACHABLE,UNREVIEWED,,,
+src/views/ResumeUpload.tsx,REACHABLE,WIRED,Resume intelligence workbench rendering ATS layout audit; GraphRAG graph; and rewrites,app/(app)/resume/page.tsx:5;src/views/ResumeUpload.tsx:33,4
 src/views/Settings.tsx,REACHABLE,UNREVIEWED,,,
 startup_handoff_failures.json,REMOVED,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
 storage.rules,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,storage.rules,0

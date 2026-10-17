@@ -32,7 +32,7 @@ const Radar = dynamic(() => import('react-chartjs-2').then((m) => m.Radar), { ss
 
 import { INTERVIEWER_PERSONAS } from '../services/constants';
 import { useInterview } from '../context/InterviewContext';
-import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult, ContrastiveEvaluationResult, BenchmarkDeltaCard } from '../types/index';
+import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult, ContrastiveEvaluationResult, BenchmarkDeltaCard, LATSTreeState } from '../types/index';
 import { useToast } from '../components/ui/Toast';
 import { useChartTheme } from '../hooks/useChartTheme';
 import { getThemeColor } from '../lib/themeColors';
@@ -44,6 +44,7 @@ import Badge from '../components/ui/Badge';
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import SUQConfidenceDashboard from '../components/ui/SUQConfidenceDashboard';
 import SimPOContrastiveCard from '../components/ui/SimPOContrastiveCard';
+import LATSTreeVisualizer from '../components/ui/LATSTreeVisualizer';
 import GazeAnalyticsCard from '../components/ui/GazeAnalyticsCard';
 import PostureComposureCard from '../components/ui/PostureComposureCard';
 import FacialComposureCard from '../components/ui/FacialComposureCard';
@@ -51,6 +52,9 @@ import LipSyncVerificationCard from '../components/ui/LipSyncVerificationCard';
 import IVPTelemetryTimeline, { extractTelemetryTimelineEvents } from '../components/ui/IVPTelemetryTimeline';
 import type { EyeContactSessionMetrics, HeadPoseSessionMetrics, AffectiveSessionMetrics, LipSyncSessionMetrics, SpeechAnalytics } from '../types/index';
 
+function isLATSTreeState(obj: any): obj is LATSTreeState {
+  return Boolean(obj && typeof obj === 'object' && 'rootNode' in obj);
+}
 function isEyeContactMetrics(obj: any): obj is EyeContactSessionMetrics {
   return Boolean(obj && typeof obj === 'object' && 'totalVideoDurationSeconds' in obj && obj.totalVideoDurationSeconds > 0);
 }
@@ -132,7 +136,7 @@ export default function Results() {
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'confidence' | 'contrastive' | 'gaze' | 'pose' | 'affect' | 'sync' | 'responses'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'confidence' | 'contrastive' | 'lats' | 'gaze' | 'pose' | 'affect' | 'sync' | 'responses'>('overview');
 
   const timelineEvents = useMemo(() => {
     return extractTelemetryTimelineEvents(results);
@@ -149,7 +153,7 @@ export default function Results() {
     setMounted(true);
   }, []);
 
-  const scrollToSection = (id: string, tab: 'overview' | 'confidence' | 'contrastive' | 'gaze' | 'pose' | 'affect' | 'sync' | 'responses') => {
+  const scrollToSection = (id: string, tab: 'overview' | 'confidence' | 'contrastive' | 'lats' | 'gaze' | 'pose' | 'affect' | 'sync' | 'responses') => {
 
 
 
@@ -682,6 +686,20 @@ export default function Results() {
           >
             Contrastive Analysis
           </button>
+          {/* Adaptive Decision Tree tab — only shown when LATS state is available */}
+          {isLATSTreeState(results.latsTreeState) && (
+            <button
+              type="button"
+              onClick={() => scrollToSection('sec-lats', 'lats')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+                activeTab === 'lats'
+                  ? 'bg-primary text-text-on-primary shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
+              }`}
+            >
+              Adaptive Tree (LATS)
+            </button>
+          )}
           {/* Gaze tab — only shown when metrics are available */}
           {isEyeContactMetrics(results.eyeContactMetrics) && (
             <button
@@ -947,6 +965,12 @@ export default function Results() {
       {/* SECTION 3: CONTRASTIVE ANALYSIS */}
       <div id="sec-contrastive" className="scroll-mt-32 space-y-6">
         <SimPOContrastiveCard contrastiveResult={results.simpoContrastiveResult as ContrastiveEvaluationResult | undefined} />
+
+        {isLATSTreeState(results.latsTreeState) && (
+          <div id="sec-lats" className="scroll-mt-32">
+            <LATSTreeVisualizer treeState={results.latsTreeState} />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 

@@ -2,11 +2,11 @@
 
 | metric | value |
 |---|---|
-| generatedAt | 2026-10-17T12:08:01.115Z |
+| generatedAt | 2026-10-17T12:17:49.399Z |
 | totalFiles | 178 |
 | reachable | 171 |
 | orphanFiles | 7 |
-| deadExports | 11 |
+| deadExports | 10 |
 | testOnlyExports | 86 |
 
 ## Orphan files (not reachable from any app/ entry)
@@ -30,7 +30,6 @@
 | src/components/ui/IVPTelemetryTimeline.tsx | DEFAULT_EVENTS | TEST_ONLY |
 | src/lib/ai/aiConfig.ts | DEFAULT_GROQ_MODEL | TEST_ONLY |
 | src/lib/ai/aiConfig.ts | resolveAiProvider | TEST_ONLY |
-| src/lib/ai/aiConfig.ts | executeAiRequest | DEAD |
 | src/lib/ai/safeJsonParser.ts | extractJsonString | TEST_ONLY |
 | src/lib/firebase/admin.ts | getAdminStorage | DEAD |
 | src/lib/firebase/services/auth.firebase.ts | normalizeFirebaseUser | INTERNAL_ONLY |
