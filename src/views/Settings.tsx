@@ -93,15 +93,21 @@ export default function Settings() {
 
     setSaving(true);
     try {
+      const sanitizedNotes = practiceNotes
+        .replace(/[<>]/g, '')
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+        .trim()
+        .slice(0, 1000);
+
       const updates = {
-        name: profileName,
-        email: profileEmail,
-        title: targetTitle,
+        name: profileName.trim().slice(0, 100),
+        email: profileEmail.trim().slice(0, 100),
+        title: targetTitle.trim().slice(0, 100),
         profileSettings: {
           voiceRate,
           voicePitch,
           subtitlesEnabled,
-          practiceNotes,
+          practiceNotes: sanitizedNotes,
         },
       };
 
