@@ -277,7 +277,7 @@ src/hooks/useVisionWorker.ts,REACHABLE,WIRED,Hook managing MediaPipe FaceLandmar
 src/index.css,NON_RUNTIME_OR_ASSET,WIRED,Reachable application runtime module or component,Repository source: src/index.css,7
 src/layouts/AppLayout.tsx,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/layout.tsx -> src/layouts/AppLayout.tsx,7
 src/layouts/MainLayout.tsx,REACHABLE,WIRED,Reachable application runtime module or component,app/login/page.tsx -> src/layouts/MainLayout.tsx,7
-src/lib/ai/aiConfig.ts,REACHABLE,WIRED,Unified AI gateway with provider failover; retry jitter; and concurrency semaphore,app/api/interview/followup/route.ts -> src/lib/ai/aiConfig.ts,4
+src/lib/ai/aiConfig.ts,REACHABLE,WIRED,Unified AI gateway with provider selection; retry jitter; and concurrency semaphore,app/api/interview/followup/route.ts -> src/lib/ai/aiConfig.ts,4
 src/lib/ai/defaultModel.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/interview/followup/route.ts -> src/lib/ai/aiConfig.ts -> src/lib/ai/defaultModel.ts,7
 src/lib/ai/safeJsonParser.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/interview/evaluate/route.ts -> src/lib/services/interviewEvaluation.server.ts -> src/lib/ai/safeJsonParser.ts,7
 src/lib/chartSetup.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/calibration/page.tsx -> app/(app)/calibration/CalibrationChart.tsx -> src/lib/chartSetup.ts,7
