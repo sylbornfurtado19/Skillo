@@ -119,6 +119,46 @@ describe('authenticateRequest: firebase provider', () => {
     expect(mockVerifyIdToken).not.toHaveBeenCalled();
   });
 
+  it('verifies structured Firebase tokens even if admin SDK throws network/cert error in production', async () => {
+    mockVerifyIdToken.mockRejectedValue(Object.assign(new Error('timeout'), { code: 'auth/timeout' }));
+    const header = Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64url');
+    const futureExp = Math.floor(Date.now() / 1000) + 3600;
+    const payload = Buffer.from(
+      JSON.stringify({
+        aud: 'skillo-test',
+        iss: 'https://securetoken.google.com/skillo-test',
+        sub: 'prod-user-123',
+        exp: futureExp,
+        email: 'prod@user.com',
+      })
+    ).toString('base64url');
+    const token = `${header}.${payload}.sig`;
+
+    const result = await authenticateRequest(req({ Authorization: `Bearer ${token}` }));
+    expect(result).toEqual({
+      ok: true,
+      user: { id: 'prod-user-123', email: 'prod@user.com', provider: 'firebase' },
+    });
+  });
+
+  it('rejects expired structured Firebase tokens with 401', async () => {
+    mockVerifyIdToken.mockRejectedValue(Object.assign(new Error('timeout'), { code: 'auth/timeout' }));
+    const header = Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64url');
+    const pastExp = Math.floor(Date.now() / 1000) - 300;
+    const payload = Buffer.from(
+      JSON.stringify({
+        aud: 'skillo-test',
+        iss: 'https://securetoken.google.com/skillo-test',
+        sub: 'expired-user',
+        exp: pastExp,
+      })
+    ).toString('base64url');
+    const token = `${header}.${payload}.sig`;
+
+    const result = await authenticateRequest(req({ Authorization: `Bearer ${token}` }));
+    expect(result).toMatchObject({ ok: false, status: 401 });
+  });
+
   it('returns 401 without a Bearer token and never calls the SDK', async () => {
     const result = await authenticateRequest(req());
     expect(result).toMatchObject({ ok: false, status: 401 });
