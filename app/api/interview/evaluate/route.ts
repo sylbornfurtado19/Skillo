@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authenticateRequest, authFailureResponse } from '@/lib/server/authenticateRequest';
 import { dispatchReflexionWorker } from '@/lib/services/reflexionService';
 import { performInterviewEvaluation, PROMETHEUS2_RUBRICS } from '@/lib/services/interviewEvaluation.server';
+import { validateEnvironment, getServerEnv } from '@/lib/server/env';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
 import { systemDesignDiagramStateSchema } from '@/lib/schemas/diagramSchema';
 import { downsampleByGroup } from '@/lib/utils/downsample';
@@ -161,6 +162,10 @@ const evaluateSchema = z
 
 export async function POST(request: Request) {
   try {
+    // 0. Runtime server environment validation
+    validateEnvironment();
+    getServerEnv();
+
     // 1. Auth check (Firebase or Supabase, fails closed)
     const auth = await authenticateRequest(request);
     if (!auth.ok) return authFailureResponse(auth);

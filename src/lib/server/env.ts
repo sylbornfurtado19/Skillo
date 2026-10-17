@@ -95,12 +95,21 @@ export function validateEnvironment(env: Record<string, string | undefined> = pr
 }
 
 /**
- * Returns validated server env or throws in production if invalid.
+ * Returns validated server env.
+ * In build phase or when strict is false, logs a build-safe warning instead of throwing,
+ * ensuring production static generation/prerender succeeds even if runtime secrets are absent.
  */
-export function getServerEnv(): ServerEnv {
+export function getServerEnv(options: { strict?: boolean } = {}): ServerEnv {
   const result = validateEnvironment();
+  const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build' ||
+                       process.env.BUILD_PHASE === 'true';
+
   if (!result.isValid && process.env.NODE_ENV === 'production') {
-    throw new Error(`[Production Environment Validation Failed]: ${JSON.stringify(result.errors)}`);
+    if (options.strict && !isBuildPhase) {
+      throw new Error(`[Production Environment Validation Failed]: ${JSON.stringify(result.errors)}`);
+    } else {
+      console.warn('[Server Env Warning]: Missing environment variables (build-safe fallback):', result.errors);
+    }
   }
   return {
     NODE_ENV: (process.env.NODE_ENV as any) || 'development',

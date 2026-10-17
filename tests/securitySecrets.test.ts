@@ -7,7 +7,7 @@
  * 3. In-memory rate limiter emits production warnings when operating without Supabase persistence.
  */
 
-import { validateEnvironment } from '../src/lib/server/env';
+import { validateEnvironment, getServerEnv } from '../src/lib/server/env';
 import { getSupabaseAdmin } from '../src/lib/server/supabaseAdmin';
 import { supabase, isSupabaseConfigured } from '../src/lib/supabase';
 import { checkRateLimit, resetRateLimiterMemoryState } from '../src/lib/services/rateLimiter.server';
@@ -66,6 +66,30 @@ describe('Security & Secrets Protection Suite', () => {
       const result = validateEnvironment(cleanEnv);
       expect(result.errors['NEXT_PUBLIC_ANTHROPIC_API_KEY']).toBeUndefined();
       expect(result.errors['NEXT_PUBLIC_SERVICE_ROLE_KEY']).toBeUndefined();
+    });
+
+    it('executes build-safe warning path and does not throw when env variables are missing during build', () => {
+      const envMap = process.env as Record<string, string | undefined>;
+      const originalNodeEnv = envMap.NODE_ENV;
+      const originalBuildPhase = envMap.BUILD_PHASE;
+      try {
+        envMap.NODE_ENV = 'production';
+        envMap.BUILD_PHASE = 'true';
+        delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+        delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const env = getServerEnv();
+        expect(env).toBeDefined();
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[Server Env Warning]'),
+          expect.anything()
+        );
+        warnSpy.mockRestore();
+      } finally {
+        envMap.NODE_ENV = originalNodeEnv;
+        envMap.BUILD_PHASE = originalBuildPhase;
+      }
     });
   });
 

@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, Sora } from 'next/font/google';
 import '../src/index.css';
 import Providers from './providers';
-import { validateEnvironment, getServerEnv } from '@/lib/server/env';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -72,12 +71,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Validate and capture server environment during root server-side layout execution
-  if (process.env.NODE_ENV !== 'test') {
-    validateEnvironment();
-    getServerEnv();
-  }
-
   return (
     <html lang="en" className={`${inter.variable} ${sora.variable}`} suppressHydrationWarning>
       <head>
