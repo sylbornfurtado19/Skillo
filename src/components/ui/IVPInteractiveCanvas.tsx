@@ -18,6 +18,7 @@ import {
   type TemporalMADResult,
 } from '../../lib/services/ivpDiagnosticKernels';
 import { extractFacialExpressions } from '@/lib/services/ivpExpressionKernel';
+import { extractPersonForegroundMask, renderSegmentedBackground } from '@/lib/services/backgroundSegmentation';
 import {
   computeCoordinateMapping,
   mapNormalizedToCanvas,
@@ -540,6 +541,12 @@ export default function IVPInteractiveCanvas({
         case 'TEMPORAL_MAD': {
           const prevToUse = prevImgDataRef.current;
           madRes = computeTemporalMAD(rawImgData, prevToUse, procImgData, PROC_W, PROC_H);
+          break;
+        }
+        case 'PERSON_SEGMENTATION': {
+          renderSegmentedBackground(rawCtx, procCtx, PROC_W, PROC_H, { backdropType: 'mask' });
+          const maskResult = procCtx.getImageData(0, 0, PROC_W, PROC_H);
+          procImgData.data.set(maskResult.data);
           break;
         }
       }
@@ -1484,6 +1491,10 @@ export default function IVPInteractiveCanvas({
         ctx.fillText(`INTER-FRAME MAD: ${madRes.madScore.toFixed(2)}  |  MAX Δ: ${madRes.maxPixelDiff}`, hudX + 8, hudY + 24);
         ctx.fillStyle = '#F87171';
         ctx.fillText(`MOTION COVERAGE: ${madRes.motionAreaRatio.toFixed(1)}%  |  THERMAL JET`, hudX + 8, hudY + 40);
+      } else if (activeMode === 'PERSON_SEGMENTATION') {
+        ctx.fillText(`ANTHROPOMETRIC SALIENCY: YCbCr CHROMINANCE + TORSO PRIOR`, hudX + 8, hudY + 24);
+        ctx.fillStyle = '#38BDF8';
+        ctx.fillText(`FOREGROUND MASK: HEAD / HAIR / NECK / SHOULDERS`, hudX + 8, hudY + 40);
       }
       ctx.restore();
 

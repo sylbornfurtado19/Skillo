@@ -44,10 +44,11 @@ export default function CanvasHeaderControls({
       <div className="flex flex-wrap items-center gap-1.5">
         {(
           [
-            ['SOBEL_GRADIENTS',  'Unit 4/5: Sobel Vector Field'],
-            ['YCRCB_SKIN_OTSU',  'Unit 6/7: YCrCb Otsu Mask'],
-            ['LUMINANCE_HISTEQ', 'Unit 2: CLAHE Equalization'],
-            ['TEMPORAL_MAD',     'Unit 8: Temporal MAD Heatmap'],
+            ['SOBEL_GRADIENTS',     'Unit 4/5: Sobel Vector Field'],
+            ['YCRCB_SKIN_OTSU',     'Unit 6/7: YCrCb Otsu Mask'],
+            ['LUMINANCE_HISTEQ',    'Unit 2: CLAHE Equalization'],
+            ['TEMPORAL_MAD',        'Unit 8: Temporal MAD Heatmap'],
+            ['PERSON_SEGMENTATION', 'Unit 2/8: Person Segmentation'],
           ] as [DiagnosticMode, string][]
         ).map(([mode, label]) => (
           <button

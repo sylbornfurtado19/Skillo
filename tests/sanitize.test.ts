@@ -9,7 +9,7 @@
  * - maxLen truncation
  */
 
-import { sanitizeUserText, PROMPT_INJECTION_PATTERNS } from '../src/lib/server/sanitize';
+import { sanitizeUserText } from '../src/lib/server/sanitize';
 
 describe('sanitizeUserText suite', () => {
   it('returns empty string for null, undefined, or empty string', () => {

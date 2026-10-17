@@ -13,6 +13,7 @@ export interface ONNXInferPayload {
   imageBitmap: ImageBitmap;
   timestampMs: number;
   customAlphas?: number | { pose?: number; gaze?: number; composure?: number };
+  isROI?: boolean;
 }
 
 export interface ONNXCancelPayload {

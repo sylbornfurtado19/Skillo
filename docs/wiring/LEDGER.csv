@@ -83,18 +83,17 @@ package.json,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root docum
 playwright.config.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,playwright.config.ts,0
 postcss.config.js,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,postcss.config.js,0
 public/favicon.svg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-public/models/affect_engine.onnx,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-public/models/face_detection_yunet_2023mar.onnx,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-public/models/face_landmarker.task,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-public/models/gaze_engine.onnx,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-public/models/pose_engine.onnx,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+public/models/affect_engine.onnx,NON_RUNTIME_OR_ASSET,WIRED,MobileFaceNet ONNX model loaded for real-time affect/emotion inference,src/lib/services/onnxInferenceService.ts:72,1
+public/models/face_landmarker.task,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe FaceLandmarker dense 468-point mesh model bundle,src/lib/workers/visionWorker.ts:168,1
+public/models/gaze_engine.onnx,NON_RUNTIME_OR_ASSET,WIRED,L2CS-Net ONNX model loaded for 3D gaze vector inference,src/lib/services/onnxInferenceService.ts:73,1
+public/models/pose_engine.onnx,NON_RUNTIME_OR_ASSET,WIRED,HopeNet ONNX model loaded for 3D head pose Euler angles,src/lib/services/onnxInferenceService.ts:74,1
 public/og.png,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-public/wasm/vision_wasm_internal.js,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-public/wasm/vision_wasm_internal.wasm,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-public/wasm/vision_wasm_module_internal.js,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-public/wasm/vision_wasm_module_internal.wasm,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-public/wasm/vision_wasm_nosimd_internal.js,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-public/wasm/vision_wasm_nosimd_internal.wasm,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+public/wasm/vision_wasm_internal.js,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly loader script,src/lib/workers/visionWorker.ts:163,1
+public/wasm/vision_wasm_internal.wasm,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly binary runtime,src/lib/workers/visionWorker.ts:163,1
+public/wasm/vision_wasm_module_internal.js,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly threaded module script,src/lib/workers/visionWorker.ts:163,1
+public/wasm/vision_wasm_module_internal.wasm,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly threaded module binary,src/lib/workers/visionWorker.ts:163,1
+public/wasm/vision_wasm_nosimd_internal.js,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly non-SIMD fallback loader,src/lib/workers/visionWorker.ts:163,1
+public/wasm/vision_wasm_nosimd_internal.wasm,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly non-SIMD fallback binary,src/lib/workers/visionWorker.ts:163,1
 replay_report.json,NON_RUNTIME_OR_ASSET,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
 requirements.txt,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,requirements.txt,0
 scripts/benchmark-ivp-models.html,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
@@ -272,8 +271,8 @@ src/hooks/useChartTheme.ts,REACHABLE,UNREVIEWED,,,
 src/hooks/useIVPSessionPipeline.ts,REACHABLE,UNREVIEWED,,,
 src/hooks/useInterviewCamera.ts,REACHABLE,UNREVIEWED,,,
 src/hooks/useMediaReadiness.ts,REACHABLE,UNREVIEWED,,,
-src/hooks/useONNXWorker.ts,REACHABLE,UNREVIEWED,,,
-src/hooks/useVisionWorker.ts,REACHABLE,UNREVIEWED,,,
+src/hooks/useONNXWorker.ts,REACHABLE,WIRED,Hook managing ONNX worker backpressure and Face-ROI crop,src/views/IVPLab.tsx:188;src/hooks/useIVPSessionPipeline.ts:321,1
+src/hooks/useVisionWorker.ts,REACHABLE,WIRED,Hook managing MediaPipe FaceLandmarker worker and telemetry,src/views/IVPLab.tsx:75;src/hooks/useIVPSessionPipeline.ts:164,1
 src/index.css,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 src/layouts/AppLayout.tsx,REACHABLE,UNREVIEWED,,,
 src/layouts/MainLayout.tsx,REACHABLE,UNREVIEWED,,,
@@ -296,7 +295,7 @@ src/lib/server/authenticateRequest.ts,REACHABLE,UNREVIEWED,,,
 src/lib/server/env.ts,ORPHAN,UNREVIEWED,,,
 src/lib/server/sanitize.ts,REACHABLE,UNREVIEWED,,,
 src/lib/server/supabaseAdmin.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/backgroundSegmentation.ts,ORPHAN,UNREVIEWED,,,
+src/lib/services/backgroundSegmentation.ts,REACHABLE,WIRED,Anthropometric person foreground mask and backdrop blur,src/components/ui/IVPInteractiveCanvas.tsx:547;src/lib/services/temporalMotion.ts:154,1
 src/lib/services/benchmarkRetrieval.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/deliveryComposite.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/documentVision.server.ts,REACHABLE,UNREVIEWED,,,
@@ -304,7 +303,7 @@ src/lib/services/graphRAG.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/groundingVerifier.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/interviewEvaluation.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/ivpAffectEngine.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/ivpCameraManager.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/ivpCameraManager.ts,REACHABLE,WIRED,Camera acquisition device resolution fallback and stream lifecycle,src/hooks/useInterviewCamera.ts:25;src/views/IVPLab.tsx:105,1
 src/lib/services/ivpDiagnosticKernels.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/ivpExpressionKernel.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/ivpFeatureFlags.ts,REACHABLE,UNREVIEWED,,,
@@ -314,7 +313,7 @@ src/lib/services/ivpSyncEngine.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/ivpTimelineTransformer.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/latsEngine.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/microPatchTracker.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/onnxInferenceService.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/onnxInferenceService.ts,REACHABLE,WIRED,Unified ONNX preprocessing model decoding and EMA smoothing,src/hooks/useONNXWorker.ts:11;src/lib/workers/onnxWorker.ts:13,1
 src/lib/services/rateLimiter.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/reflexionEngine.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/reflexionService.ts,REACHABLE,UNREVIEWED,,,
@@ -323,14 +322,14 @@ src/lib/services/resumeExtraction.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/simpoEngine.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/speechAnalytics.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/studyPlan.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/temporalMotion.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/temporalMotion.ts,REACHABLE,WIRED,Inter-frame temporal motion energy and presence detection,src/components/ui/IVPInteractiveCanvas.tsx:8;src/lib/workers/visionWorker.ts:15,1
 src/lib/services/temporalSmoothing.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/visionPipeline.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/visionPipeline.ts,REACHABLE,WIRED,Coordinate mapping Face-ROI crop and device profiling,src/hooks/useONNXWorker.ts:13;src/components/ui/IVPInteractiveCanvas.tsx:28,1
 src/lib/supabase.ts,REACHABLE,UNREVIEWED,,,
 src/lib/themeColors.ts,REACHABLE,UNREVIEWED,,,
 src/lib/utils/downsample.ts,REACHABLE,UNREVIEWED,,,
-src/lib/workers/onnxWorker.ts,REACHABLE,UNREVIEWED,,,
-src/lib/workers/visionWorker.ts,REACHABLE,UNREVIEWED,,,
+src/lib/workers/onnxWorker.ts,REACHABLE,WIRED,Dedicated web worker executing ONNX models with ROI metadata,src/hooks/useONNXWorker.ts:88,1
+src/lib/workers/visionWorker.ts,REACHABLE,WIRED,Dedicated web worker executing MediaPipe FaceLandmarker mesh,src/hooks/useVisionWorker.ts:125,1
 src/services/analysis.ts,ORPHAN,UNREVIEWED,,,
 src/services/auth.ts,REACHABLE,UNREVIEWED,,,
 src/services/backendProvider.ts,REACHABLE,UNREVIEWED,,,
@@ -339,17 +338,17 @@ src/services/interview.ts,REACHABLE,UNREVIEWED,,,
 src/services/jobs.ts,ORPHAN,UNREVIEWED,,,
 src/services/profile.ts,REACHABLE,UNREVIEWED,,,
 src/services/resume.ts,ORPHAN,UNREVIEWED,,,
-src/types/affectEngine.ts,REACHABLE,UNREVIEWED,,,
-src/types/gazeEngine.ts,REACHABLE,UNREVIEWED,,,
+src/types/affectEngine.ts,REACHABLE,WIRED,Types for valence arousal emotion and composure,src/lib/services/onnxInferenceService.ts:5;src/hooks/useIVPSessionPipeline.ts:17,1
+src/types/gazeEngine.ts,REACHABLE,WIRED,Types for gaze yaw/pitch eye contact and focus zones,src/hooks/useVisionWorker.ts:22;src/hooks/useIVPSessionPipeline.ts:14,1
 src/types/index.ts,REACHABLE,UNREVIEWED,,,
 src/types/interviewModes.ts,REACHABLE,UNREVIEWED,,,
 src/types/layoutLMv3.ts,REACHABLE,UNREVIEWED,,,
-src/types/onnxWorkerMessages.ts,REACHABLE,UNREVIEWED,,,
-src/types/poseEngine.ts,REACHABLE,UNREVIEWED,,,
+src/types/onnxWorkerMessages.ts,REACHABLE,WIRED,Command and response message contracts for ONNX worker with ROI,src/hooks/useONNXWorker.ts:8;src/lib/workers/onnxWorker.ts:23,1
+src/types/poseEngine.ts,REACHABLE,WIRED,Types for 3D head pose Euler angles and gestures,src/hooks/useIVPSessionPipeline.ts:15,1
 src/types/syncEngine.ts,REACHABLE,UNREVIEWED,,,
 src/types/systemDesign.ts,REACHABLE,UNREVIEWED,,,
 src/types/themes.ts,REACHABLE,UNREVIEWED,,,
-src/types/workerMessages.ts,REACHABLE,UNREVIEWED,,,
+src/types/workerMessages.ts,REACHABLE,WIRED,Command and response message contracts for vision worker,src/hooks/useVisionWorker.ts:10;src/lib/workers/visionWorker.ts:26,1
 src/views/CareerSetup.tsx,REACHABLE,UNREVIEWED,,,
 src/views/Dashboard.tsx,REACHABLE,UNREVIEWED,,,
 src/views/IVPLab.tsx,REACHABLE,UNREVIEWED,,,
@@ -385,6 +384,7 @@ tests/downsample.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/e2e/antigravity-3-8-high-flash.spec.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/e2e/visualRegression.spec.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/evaluationModeHonesty.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+tests/faceRoiCrop.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/fixtures/ivpExternalGroundTruth.json,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/graphExtractionTolerance.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/groundingVerifier.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,

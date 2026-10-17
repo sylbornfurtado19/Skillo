@@ -161,6 +161,7 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
     isTabPaused,
     isThrottled,
     isFallbackMode,
+    lastLandmarks,
   } = useVisionWorker({
     autoStart: true,
     backend: 'WEBGL',
@@ -317,11 +318,13 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
       processVisionWorkerFrame(video);
 
       // Off-main-thread ONNX Models (L2CS-Net, HopeNet, AffectNet)
-      // Tag submission with the exact question active at dispatch time
+      // Tag submission with the exact question active at dispatch time and face ROI
       submitONNXFrame(video, {
         questionId: currentQuestionIdRef.current,
         questionIndex: currentQuestionIndexRef.current,
         timestampMs: Date.now() - sessionStartRef.current,
+        faceBox: lastLandmarks?.envelope.faceDetected ? lastLandmarks.envelope.faceBox : null,
+        mirrored: lastLandmarks?.envelope.mirrored ?? false,
       });
     }, intervalMs);
 

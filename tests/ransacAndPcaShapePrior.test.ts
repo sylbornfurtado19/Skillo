@@ -36,7 +36,7 @@ describe('RANSAC Similarity Relocalization & PCA Shape Prior', () => {
       target[9] = { x: 0.88, y: 0.90 }; // wildly displaced mouth corner
 
       // Standard least-squares will be severely skewed by outliers
-      const standardTransform = computeSimilarityTransform(cleanSource, target);
+      const _standardTransform = computeSimilarityTransform(cleanSource, target);
       // RANSAC estimator should identify inliers and recover true transform
       const ransacTransform = computeRansacSimilarityTransform(cleanSource, target, 30, 0.04);
 

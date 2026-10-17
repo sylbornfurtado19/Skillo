@@ -880,7 +880,7 @@ export function extractDenseLandmarksFromLearnedModel(
   // 3D Euler Pose Estimation
   const noseTip = { x: buffer[33 * 4], y: buffer[33 * 4 + 1], z: buffer[33 * 4 + 2] };
   const chin = { x: buffer[8 * 4], y: buffer[8 * 4 + 1], z: buffer[8 * 4 + 2] };
-  const earR_pt = { x: buffer[0 * 4], y: buffer[0 * 4 + 1] };
+  const earR_pt = { x: buffer[0], y: buffer[1] }; // landmark 0: right ear tragus
   const earL_pt = { x: buffer[16 * 4], y: buffer[16 * 4 + 1] };
   const eyeCenterY = (p36.y + p45.y) / 2;
 

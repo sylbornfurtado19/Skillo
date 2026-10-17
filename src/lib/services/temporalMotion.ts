@@ -8,6 +8,7 @@
  * 3. Subject-left-frame detection via temporal persistence of zero motion + low skin mask foreground.
  * 4. Excess-motion / fidgeting detection as an additive signal to posture composure scoring.
  */
+import { extractPersonForegroundMask } from './backgroundSegmentation';
 
 export interface MotionEnergyResult {
   /** Mean luminance difference across all sampled pixels [0..255] */
@@ -143,11 +144,32 @@ export class TemporalMotionDetector {
 
     // Subject Presence Logic:
     // 1. If skin mask is available and below minimum threshold, increment absence counter.
-    // 2. If motion energy is below 0.35 (ambient noise floor) AND skin pixels are low, subject has left frame.
+    // 2. If motion energy is below 0.35 (ambient noise floor) AND skin pixels are low, verify via anthropometric foreground mask.
     const lowSkin = skinPixelCount !== undefined && skinPixelCount < this.config.minSkinPixels;
     const nearZeroMotion = motionEnergy < 0.35;
 
-    if (lowSkin || (skinPixelCount === undefined && nearZeroMotion && motionAreaRatio < 0.005)) {
+    if (skinPixelCount === undefined && nearZeroMotion && motionAreaRatio < 0.005) {
+      try {
+        const dummyImgData = {
+          data: currPixels instanceof Uint8ClampedArray ? currPixels : new Uint8ClampedArray(currPixels),
+          width,
+          height,
+          colorSpace: 'srgb',
+        } as unknown as ImageData;
+        const mask = extractPersonForegroundMask(dummyImgData, width, height);
+        let fgCount = 0;
+        for (let idx = 0; idx < mask.length; idx += 8) {
+          if (mask[idx] > 0.4) fgCount++;
+        }
+        if (fgCount < this.config.minSkinPixels) {
+          this.absentFrames++;
+        } else {
+          this.absentFrames = Math.max(0, this.absentFrames - 2);
+        }
+      } catch {
+        this.absentFrames++;
+      }
+    } else if (lowSkin) {
       this.absentFrames++;
     } else {
       // Rapid recovery when motion and skin return

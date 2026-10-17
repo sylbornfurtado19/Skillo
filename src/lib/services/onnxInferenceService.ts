@@ -62,7 +62,7 @@ async function getOrt(): Promise<any> {
 /**
  * Loads and returns a cached ONNX InferenceSession for the requested model.
  */
-export async function getONNXSession(modelType: ONNXModelType): Promise<any> {
+async function getONNXSession(modelType: ONNXModelType): Promise<any> {
   if (sessionCache[modelType]) {
     return sessionCache[modelType]!;
   }
@@ -160,7 +160,7 @@ export interface PreprocessingResult {
  * 4. Illumination normalization (Gamma LUT fallback)
  * 5. ImageNet radiometric standardization to Float32Tensor [1, 3, 224, 224]
  */
-export async function preprocessFrameToTensor(
+async function preprocessFrameToTensor(
   source: HTMLCanvasElement | ImageData,
   targetWidth = 224,
   targetHeight = 224,
@@ -433,7 +433,7 @@ export function decodeAffectLogits(logits: Float32Array): {
 /**
  * Executes continuous Gaze Estimation via L2CS-Net ONNX model.
  */
-export async function runGazeONNX(
+async function runGazeONNX(
   canvas: HTMLCanvasElement,
   preprocessedTensor?: any
 ): Promise<GazeInferenceResult> {
@@ -474,7 +474,7 @@ export async function runGazeONNX(
 /**
  * Executes 3D Head Pose & Euler Angle Inference via HopeNet ONNX model.
  */
-export async function runPoseONNX(
+async function runPoseONNX(
   canvas: HTMLCanvasElement,
   preprocessedTensor?: any
 ): Promise<PoseInferenceResult> {
@@ -514,7 +514,7 @@ export async function runPoseONNX(
 /**
  * Executes Facial Affect & Valence-Arousal Inference via MobileFaceNet ONNX model.
  */
-export async function runAffectONNX(
+async function runAffectONNX(
   canvas: HTMLCanvasElement,
   preprocessedTensor?: any
 ): Promise<AffectInferenceResult> {
@@ -657,6 +657,7 @@ export interface SmoothedTelemetry {
   totalInferenceTimeMs: number;
   isBlurry?: boolean;
   blurVariance?: number;
+  roi?: boolean;
 }
 
 let smoothedState: SmoothedTelemetry = {
@@ -691,11 +692,12 @@ let _onnxBusy = false;
  */
 export async function runContinuousUnifiedONNX(
   canvas: HTMLCanvasElement,
-  customAlphas?: number | { pose?: number; gaze?: number; composure?: number }
+  customAlphas?: number | { pose?: number; gaze?: number; composure?: number },
+  isROI?: boolean
 ): Promise<SmoothedTelemetry> {
   // ── Re-entrancy guard ────────────────────────────────────────────────────
   if (_onnxBusy) {
-    return { ...smoothedState };
+    return { ...smoothedState, roi: Boolean(isROI) };
   }
   _onnxBusy = true;
 
@@ -712,6 +714,7 @@ export async function runContinuousUnifiedONNX(
 
     smoothedState.blurVariance = preproc.blurVariance;
     smoothedState.isBlurry = preproc.isBlurry;
+    smoothedState.roi = Boolean(isROI);
 
     // 2. Blur Quality Gate: if severely blurry, skip expensive model forward passes
     if (preproc.isBlurry) {
@@ -727,6 +730,7 @@ export async function runContinuousUnifiedONNX(
         totalInferenceTimeMs: smoothedState.totalInferenceTimeMs,
         isBlurry:            true,
         blurVariance:        preproc.blurVariance,
+        roi:                 smoothedState.roi,
       };
     }
 
@@ -776,6 +780,7 @@ export async function runContinuousUnifiedONNX(
     totalInferenceTimeMs: smoothedState.totalInferenceTimeMs,
     isBlurry:            smoothedState.isBlurry,
     blurVariance:        smoothedState.blurVariance,
+    roi:                 smoothedState.roi,
   };
 }
 

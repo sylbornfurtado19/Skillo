@@ -1,10 +1,10 @@
 {
   "summary": {
-    "generatedAt": "2026-10-17T11:07:04.804Z",
+    "generatedAt": "2026-10-17T11:24:24.580Z",
     "totalFiles": 180,
-    "reachable": 169,
-    "orphanFiles": 11,
-    "deadExports": 15,
+    "reachable": 170,
+    "orphanFiles": 10,
+    "deadExports": 14,
     "testOnlyExports": 87
   },
   "orphans": [
@@ -56,13 +56,6 @@
       "reachable": false,
       "importedBy": 0,
       "testedBy": 13
-    },
-    {
-      "file": "src/lib/services/backgroundSegmentation.ts",
-      "loc": 331,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 0
     },
     {
       "file": "src/services/analysis.ts",
@@ -218,18 +211,6 @@
       "name": "getSupabaseAdmin",
       "status": "TEST_ONLY",
       "live": true
-    },
-    {
-      "file": "src/lib/services/backgroundSegmentation.ts",
-      "name": "extractPersonForegroundMask",
-      "status": "INTERNAL_ONLY",
-      "live": false
-    },
-    {
-      "file": "src/lib/services/backgroundSegmentation.ts",
-      "name": "renderSegmentedBackground",
-      "status": "DEAD",
-      "live": false
     },
     {
       "file": "src/lib/services/benchmarkRetrieval.server.ts",
@@ -551,37 +532,7 @@
     },
     {
       "file": "src/lib/services/onnxInferenceService.ts",
-      "name": "getONNXSession",
-      "status": "INTERNAL_ONLY",
-      "live": true
-    },
-    {
-      "file": "src/lib/services/onnxInferenceService.ts",
-      "name": "preprocessFrameToTensor",
-      "status": "INTERNAL_ONLY",
-      "live": true
-    },
-    {
-      "file": "src/lib/services/onnxInferenceService.ts",
       "name": "preprocessFrameDetailed",
-      "status": "INTERNAL_ONLY",
-      "live": true
-    },
-    {
-      "file": "src/lib/services/onnxInferenceService.ts",
-      "name": "runGazeONNX",
-      "status": "INTERNAL_ONLY",
-      "live": true
-    },
-    {
-      "file": "src/lib/services/onnxInferenceService.ts",
-      "name": "runPoseONNX",
-      "status": "INTERNAL_ONLY",
-      "live": true
-    },
-    {
-      "file": "src/lib/services/onnxInferenceService.ts",
-      "name": "runAffectONNX",
       "status": "INTERNAL_ONLY",
       "live": true
     },
@@ -1050,7 +1001,7 @@
     },
     {
       "file": "src/components/ivp/canvas/CanvasHeaderControls.tsx",
-      "loc": 174,
+      "loc": 175,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
@@ -1071,7 +1022,7 @@
     },
     {
       "file": "src/components/ivp/canvas/types.ts",
-      "loc": 71,
+      "loc": 74,
       "reachable": true,
       "importedBy": 4,
       "testedBy": 25
@@ -1183,7 +1134,7 @@
     },
     {
       "file": "src/components/ui/IVPInteractiveCanvas.tsx",
-      "loc": 1882,
+      "loc": 1893,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
@@ -1372,7 +1323,7 @@
     },
     {
       "file": "src/hooks/useIVPSessionPipeline.ts",
-      "loc": 396,
+      "loc": 399,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 4
@@ -1386,7 +1337,7 @@
     },
     {
       "file": "src/hooks/useONNXWorker.ts",
-      "loc": 262,
+      "loc": 283,
       "reachable": true,
       "importedBy": 2,
       "testedBy": 1
@@ -1548,9 +1499,9 @@
     {
       "file": "src/lib/services/backgroundSegmentation.ts",
       "loc": 331,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 0
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 1
     },
     {
       "file": "src/lib/services/benchmarkRetrieval.server.ts",
@@ -1673,7 +1624,7 @@
     },
     {
       "file": "src/lib/services/onnxInferenceService.ts",
-      "loc": 782,
+      "loc": 787,
       "reachable": true,
       "importedBy": 4,
       "testedBy": 2
@@ -1736,7 +1687,7 @@
     },
     {
       "file": "src/lib/services/temporalMotion.ts",
-      "loc": 237,
+      "loc": 259,
       "reachable": true,
       "importedBy": 2,
       "testedBy": 1
@@ -1750,10 +1701,10 @@
     },
     {
       "file": "src/lib/services/visionPipeline.ts",
-      "loc": 983,
+      "loc": 1059,
       "reachable": true,
-      "importedBy": 3,
-      "testedBy": 8
+      "importedBy": 4,
+      "testedBy": 9
     },
     {
       "file": "src/lib/supabase.ts",
@@ -1778,7 +1729,7 @@
     },
     {
       "file": "src/lib/workers/onnxWorker.ts",
-      "loc": 336,
+      "loc": 337,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 1
@@ -1883,7 +1834,7 @@
     },
     {
       "file": "src/types/onnxWorkerMessages.ts",
-      "loc": 58,
+      "loc": 59,
       "reachable": true,
       "importedBy": 2,
       "testedBy": 1
@@ -1946,7 +1897,7 @@
     },
     {
       "file": "src/views/IVPLab.tsx",
-      "loc": 550,
+      "loc": 553,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0

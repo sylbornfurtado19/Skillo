@@ -2,11 +2,11 @@
 
 | metric | value |
 |---|---|
-| generatedAt | 2026-10-17T11:07:04.804Z |
+| generatedAt | 2026-10-17T11:24:24.580Z |
 | totalFiles | 180 |
-| reachable | 169 |
-| orphanFiles | 11 |
-| deadExports | 15 |
+| reachable | 170 |
+| orphanFiles | 10 |
+| deadExports | 14 |
 | testOnlyExports | 87 |
 
 ## Orphan files (not reachable from any app/ entry)
@@ -20,7 +20,6 @@
 | src/lib/firebase/services/jobs.firebase.ts | 44 | no |
 | src/lib/firebase/services/resume.firebase.ts | 132 | no |
 | src/lib/server/env.ts | 115 | yes |
-| src/lib/services/backgroundSegmentation.ts | 331 | no |
 | src/services/analysis.ts | 49 | yes |
 | src/services/jobs.ts | 41 | no |
 | src/services/resume.ts | 110 | yes |
@@ -51,8 +50,6 @@
 | src/lib/server/env.ts | getServerEnv | DEAD |
 | src/lib/server/sanitize.ts | PROMPT_INJECTION_PATTERNS | INTERNAL_ONLY |
 | src/lib/server/supabaseAdmin.ts | getSupabaseAdmin | TEST_ONLY |
-| src/lib/services/backgroundSegmentation.ts | extractPersonForegroundMask | INTERNAL_ONLY |
-| src/lib/services/backgroundSegmentation.ts | renderSegmentedBackground | DEAD |
 | src/lib/services/benchmarkRetrieval.server.ts | tokenize | TEST_ONLY |
 | src/lib/services/benchmarkRetrieval.server.ts | resetBenchmarkCorpusCache | TEST_ONLY |
 | src/lib/services/benchmarkRetrieval.server.ts | evaluateRetrievalRouting | TEST_ONLY |
@@ -106,12 +103,7 @@
 | src/lib/services/latsEngine.server.ts | attachChildrenToNode | INTERNAL_ONLY |
 | src/lib/services/latsEngine.server.ts | getTreeMaxDepth | TEST_ONLY |
 | src/lib/services/latsEngine.server.ts | recomputeTreeStats | TEST_ONLY |
-| src/lib/services/onnxInferenceService.ts | getONNXSession | INTERNAL_ONLY |
-| src/lib/services/onnxInferenceService.ts | preprocessFrameToTensor | INTERNAL_ONLY |
 | src/lib/services/onnxInferenceService.ts | preprocessFrameDetailed | INTERNAL_ONLY |
-| src/lib/services/onnxInferenceService.ts | runGazeONNX | INTERNAL_ONLY |
-| src/lib/services/onnxInferenceService.ts | runPoseONNX | INTERNAL_ONLY |
-| src/lib/services/onnxInferenceService.ts | runAffectONNX | INTERNAL_ONLY |
 | src/lib/services/rateLimiter.server.ts | resetRateLimiterMemoryState | TEST_ONLY |
 | src/lib/services/reflexionService.ts | verbalReflectionSchema | TEST_ONLY |
 | src/lib/services/reflexionService.ts | generateVerbalSelfReflection | TEST_ONLY |

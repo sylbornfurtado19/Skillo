@@ -2,6 +2,7 @@ import {
   applyYCrCbOtsuSegmentation,
   type FaceRoi,
 } from '../src/lib/services/ivpDiagnosticKernels';
+import { extractPersonForegroundMask } from '../src/lib/services/backgroundSegmentation';
 
 describe('YCrCb Morphological Otsu Segmentation (Unit 6 & 7)', () => {
   const W = 320;
@@ -151,5 +152,31 @@ describe('YCrCb Morphological Otsu Segmentation (Unit 6 & 7)', () => {
     // Shirt center must be rejected as background
     const shirtIdx = (190 * W + 150) * 4;
     expect(dstImg.data[shirtIdx + 1]).toBe(23);
+  });
+
+  it('computes person foreground mask highlighting head and upper torso', () => {
+    const srcImg = createMockImageData(W, H);
+
+    // Face region with skin tones
+    const fx = 120, fy = 40, fw = 80, fh = 80;
+    for (let y = fy; y < fy + fh; y++) {
+      for (let x = fx; x < fx + fw; x++) {
+        const idx = (y * W + x) * 4;
+        srcImg.data[idx]     = 210;
+        srcImg.data[idx + 1] = 155;
+        srcImg.data[idx + 2] = 130;
+        srcImg.data[idx + 3] = 255;
+      }
+    }
+
+    const mask = extractPersonForegroundMask(srcImg, W, H);
+    expect(mask.length).toBe(W * H);
+
+    // Center of face must have strong foreground saliency
+    const faceCenterIdx = (fy + 40) * W + (fx + 40);
+    expect(mask[faceCenterIdx]).toBeGreaterThan(0.5);
+
+    // Extreme corner (0,0) should have low foreground probability
+    expect(mask[0]).toBeLessThan(0.3);
   });
 });

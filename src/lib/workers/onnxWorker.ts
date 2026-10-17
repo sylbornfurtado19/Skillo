@@ -148,7 +148,7 @@ if (typeof self !== 'undefined') {
       }
 
       case 'INFER_FRAME': {
-        const { frameId, imageBitmap, timestampMs, customAlphas } = message.payload;
+        const { frameId, imageBitmap, customAlphas, isROI } = message.payload;
 
         // 1. Backpressure & Staleness Check
         if (frameId <= latestProcessedFrameId || frameId === cancelledFrameId) {
@@ -165,6 +165,7 @@ if (typeof self !== 'undefined') {
 
         isBusy = true;
         const t0 = performance.now();
+        smoothedState.roi = Boolean(isROI);
 
         try {
           if (!imageBitmap) {
@@ -202,7 +203,7 @@ if (typeof self !== 'undefined') {
               type: 'INFER_RESULT',
               payload: {
                 frameId,
-                telemetry: { ...smoothedState, totalInferenceTimeMs: Math.round(performance.now() - t0) },
+                telemetry: { ...smoothedState, roi: Boolean(isROI), totalInferenceTimeMs: Math.round(performance.now() - t0) },
                 processingLatencyMs: Math.round(performance.now() - t0),
                 isFallback: true,
               },

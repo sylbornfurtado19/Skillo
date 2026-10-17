@@ -4,18 +4,6 @@ describe('Warmup False-Positive Auto-Protection & Provenance Tagging (PR C)', ()
   const PROC_W = 160;
   const PROC_H = 120;
 
-  function createFlatNoiseFrame(): Uint8ClampedArray {
-    const data = new Uint8ClampedArray(PROC_W * PROC_H * 4);
-    for (let i = 0; i < data.length; i += 4) {
-      // Very low contrast / high frequency uniform noise (poor SNR)
-      const v = 80 + Math.floor(Math.random() * 4);
-      data[i] = v;
-      data[i + 1] = v;
-      data[i + 2] = v;
-      data[i + 3] = 255;
-    }
-    return data;
-  }
 
   it('tags templates with provenance source and evicts bootstrap templates when model templates arrive', () => {
     const tracker = new MicroPatchTracker(8, 10);
@@ -25,12 +13,10 @@ describe('Warmup False-Positive Auto-Protection & Provenance Tagging (PR C)', ()
       for (let x = 0; x < PROC_W; x++) {
         const idx = (y * PROC_W + x) * 4;
         const v = (x % 16 < 8 && y % 16 < 8) ? 220 : 40;
-        data_set: {
-          frame[idx] = v;
-          frame[idx + 1] = v;
-          frame[idx + 2] = v;
-          frame[idx + 3] = 255;
-        }
+        frame[idx] = v;
+        frame[idx + 1] = v;
+        frame[idx + 2] = v;
+        frame[idx + 3] = 255;
       }
     }
 

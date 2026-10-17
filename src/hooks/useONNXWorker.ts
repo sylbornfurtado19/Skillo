@@ -10,11 +10,14 @@ import {
   type SmoothedTelemetry,
   runContinuousUnifiedONNX,
 } from '@/lib/services/onnxInferenceService';
+import { computeFaceRoiCrop } from '@/lib/services/visionPipeline';
 
 export interface FrameMetadata {
   questionId?: string;
   questionIndex?: number;
   timestampMs?: number;
+  faceBox?: { x: number; y: number; width: number; height: number } | null;
+  mirrored?: boolean;
 }
 
 export interface UseONNXWorkerOptions {
@@ -187,7 +190,8 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
         inFlightRef.current = true;
         try {
           if (source instanceof HTMLCanvasElement) {
-            const res = await runContinuousUnifiedONNX(source, 0.35);
+            const isROI = Boolean(metadata?.faceBox && metadata.faceBox.width > 0 && metadata.faceBox.height > 0);
+            const res = await runContinuousUnifiedONNX(source, 0.35, isROI);
             setTelemetry(res);
             if (onTelemetryRef.current) onTelemetryRef.current(res, undefined, metadata);
             return true;
@@ -206,7 +210,7 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
         return false;
       }
 
-      // 3. Create transferable ImageBitmap
+      // 3. Create transferable ImageBitmap with Face-ROI crop
       frameIdCounterRef.current += 1;
       const frameId = frameIdCounterRef.current;
       if (metadata) {
@@ -216,12 +220,28 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
 
       try {
         let bitmap: ImageBitmap;
+        let isROI = false;
         if (typeof createImageBitmap !== 'undefined') {
-          bitmap = await createImageBitmap(source, {
-            resizeWidth: 224,
-            resizeHeight: 224,
-            resizeQuality: 'low',
+          const srcW = source instanceof HTMLVideoElement ? source.videoWidth : source.width;
+          const srcH = source instanceof HTMLVideoElement ? source.videoHeight : source.height;
+          const crop = computeFaceRoiCrop(metadata?.faceBox, srcW, srcH, {
+            mirrored: metadata?.mirrored,
           });
+          isROI = crop.isROI;
+
+          if (isROI && crop.sw > 0 && crop.sh > 0) {
+            bitmap = await createImageBitmap(source, crop.sx, crop.sy, crop.sw, crop.sh, {
+              resizeWidth: 224,
+              resizeHeight: 224,
+              resizeQuality: 'low',
+            });
+          } else {
+            bitmap = await createImageBitmap(source, {
+              resizeWidth: 224,
+              resizeHeight: 224,
+              resizeQuality: 'low',
+            });
+          }
         } else {
           frameMetadataMapRef.current.delete(frameId);
           inFlightRef.current = false;
@@ -234,12 +254,13 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
             frameId,
             imageBitmap: bitmap,
             timestampMs: performance.now(),
+            isROI,
           },
         };
 
         workerRef.current.postMessage(inferCmd, [bitmap]);
         return true;
-      } catch  {
+      } catch {
         frameMetadataMapRef.current.delete(frameId);
         inFlightRef.current = false;
         return false;

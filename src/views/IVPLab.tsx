@@ -184,8 +184,11 @@ export default function IVPLab() {
         // Continuous off-main-thread landmark extraction
         processWorkerFrame(source);
 
-        // Continuous off-main-thread ONNX inference via Web Worker
-        submitONNXFrame(inferCanvas);
+        // Continuous off-main-thread ONNX inference via Web Worker with Face-ROI crop
+        submitONNXFrame(source, {
+          faceBox: lastLandmarks?.envelope?.faceDetected ? lastLandmarks.envelope.faceBox : null,
+          mirrored: mirrored && inputSource === 'webcam',
+        });
       } catch (err) {
         console.warn('Continuous ONNX pipeline tick warning:', err);
       }
@@ -500,7 +503,7 @@ export default function IVPLab() {
                 <span>Edge Neural Model Telemetry</span>
               </div>
               <span className="text-xs font-mono text-text-secondary">
-                WASM &bull; {onnxTelemetry.totalInferenceTimeMs} ms
+                {onnxTelemetry.roi === false ? 'FULL (FALLBACK)' : 'ROI CROP'} &bull; WASM &bull; {onnxTelemetry.totalInferenceTimeMs} ms
               </span>
             </div>
 

@@ -979,4 +979,80 @@ export function detectDeviceProfile(): DeviceProfile {
   };
 }
 
+export interface FaceRoiCrop {
+  sx: number;
+  sy: number;
+  sw: number;
+  sh: number;
+  isROI: boolean;
+}
+
+/**
+ * Computes a tight, aspect-preserving square bounding crop around the face ROI with margin.
+ * Clamps strictly to source dimensions and falls back to full-frame when no valid faceBox exists.
+ */
+export function computeFaceRoiCrop(
+  faceBox: { x: number; y: number; width: number; height: number } | null | undefined,
+  sourceWidth: number,
+  sourceHeight: number,
+  options?: {
+    margin?: number; // fractional margin, default: 0.25 (25% expansion around face bounds)
+    mirrored?: boolean;
+  }
+): FaceRoiCrop {
+  if (!faceBox || faceBox.width <= 0 || faceBox.height <= 0 || sourceWidth <= 0 || sourceHeight <= 0) {
+    return {
+      sx: 0,
+      sy: 0,
+      sw: Math.max(1, Math.round(sourceWidth)),
+      sh: Math.max(1, Math.round(sourceHeight)),
+      isROI: false,
+    };
+  }
+
+  const margin = options?.margin ?? 0.25;
+  const mirrored = options?.mirrored ?? false;
+
+  // 1. Calculate face center in source pixel coordinates
+  let cx = faceBox.x + faceBox.width / 2;
+  const cy = faceBox.y + faceBox.height / 2;
+
+  if (mirrored) {
+    cx = sourceWidth - cx;
+  }
+
+  // 2. Square bounding box with margin for aspect ratio preservation (224x224 target)
+  const maxDim = Math.max(faceBox.width, faceBox.height);
+  let side = maxDim * (1.0 + 2.0 * margin);
+
+  // If face side exceeds frame boundaries, clamp side to max available dimension
+  const maxAllowedSide = Math.min(sourceWidth, sourceHeight);
+  if (side > maxAllowedSide) {
+    side = maxAllowedSide;
+  }
+
+  // 3. Clamping at frame edges to avoid out-of-bounds crops
+  let x0 = cx - side / 2;
+  let y0 = cy - side / 2;
+
+  if (x0 < 0) x0 = 0;
+  if (y0 < 0) y0 = 0;
+  if (x0 + side > sourceWidth) x0 = Math.max(0, sourceWidth - side);
+  if (y0 + side > sourceHeight) y0 = Math.max(0, sourceHeight - side);
+
+  const sx = Math.max(0, Math.floor(x0));
+  const sy = Math.max(0, Math.floor(y0));
+  const sw = Math.min(sourceWidth - sx, Math.ceil(side));
+  const sh = Math.min(sourceHeight - sy, Math.ceil(side));
+
+  return {
+    sx,
+    sy,
+    sw,
+    sh,
+    isROI: true,
+  };
+}
+
+
 
