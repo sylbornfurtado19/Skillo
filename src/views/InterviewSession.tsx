@@ -22,6 +22,8 @@ import { splitIntoSentences, estimateNarrationMs, pickEnglishVoice } from '../li
 import SessionDeviceGate from '../components/interview/session/SessionDeviceGate';
 import SessionPreflight from '../components/interview/session/SessionPreflight';
 import SessionIntegrityOverlay from '../components/interview/session/SessionIntegrityOverlay';
+import SessionStatusBar from '../components/interview/session/SessionStatusBar';
+import IVPLivePanel from '../components/interview/session/IVPLivePanel';
 import { useInterviewIntegrity } from '../hooks/useInterviewIntegrity';
 import { useIVPEvidenceRunner } from '../hooks/useIVPEvidenceRunner';
 
@@ -172,6 +174,7 @@ export default function InterviewSession() {
   const [confirmSkip, setConfirmSkip] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const [spokenSentenceIndex, setSpokenSentenceIndex] = useState(0);
+  const [micAudioLevel, setMicAudioLevel] = useState(0);
 
   // Real-time AI Follow-Up States
   const [checkingFollowUp, setCheckingFollowUp] = useState(false);
@@ -1325,6 +1328,26 @@ export default function InterviewSession() {
         />
       )}
 
+      {/* Persistent Session Status Bar (O4) */}
+      <SessionStatusBar
+        cameraActive={mediaReadiness.cameraLive}
+        micActive={mediaReadiness.microphoneLive}
+        audioLevel={micAudioLevel}
+        ivpStatus={integrity.isPaused ? 'paused' : ivpRunner.status === 'running' ? 'active' : 'paused'}
+        framesAnalyzed={ivpRunner.framesAnalyzed}
+        samplingHz={ivpRunner.samplingHz}
+        integrityFlagsCount={
+          integrity.report.totals.tabSwitches +
+          integrity.report.totals.fullscreenExits +
+          integrity.report.totals.copyPasteAttempts +
+          integrity.report.totals.screenshotKeyAttempts +
+          integrity.report.totals.reloads
+        }
+        currentQuestionIndex={currentQuestionIndex}
+        totalQuestions={questions.length}
+        timeLeftSec={timeLeft}
+      />
+
       {isFallbackSession && (
         <div className="flex items-center justify-center">
           <Badge variant="warning" size="md" className="flex items-center gap-1.5 px-3 py-1 text-xs">
@@ -1375,6 +1398,7 @@ export default function InterviewSession() {
             questionId={activeQuestionId}
             questionIndex={activeQuestionIndex}
             onWindow={handleSyncWindow}
+            onAudioLevel={setMicAudioLevel}
             visible={!interviewerSpeaking}
           />
 
@@ -1387,6 +1411,13 @@ export default function InterviewSession() {
             isVisionReady={isVisionReady}
             isONNXReady={isONNXReady}
             visible={!interviewerSpeaking}
+            className="mt-3"
+          />
+
+          {/* Classical IVP Live Diagnostic Panel (O4 / REM-3) */}
+          <IVPLivePanel
+            runner={ivpRunner}
+            sparklineSignal={typeof lastEar === 'number' ? lastEar : 0.3}
             className="mt-3"
           />
         </SessionInterviewerCard>

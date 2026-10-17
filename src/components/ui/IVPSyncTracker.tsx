@@ -26,10 +26,12 @@ export interface IVPSyncTrackerHandle {
   stop(): void;
   getFrames(): SyncWindowInput[];
   clearFrames(): void;
+  getAudioLevel?: () => number;
 }
 
 interface IVPSyncTrackerProps {
   onWindow?: (windowResult: SyncWindowResult) => void;
+  onAudioLevel?: (level: number) => void;
   visible?: boolean;
   className?: string;
   mediaStream?: MediaStream | null;
@@ -39,7 +41,7 @@ interface IVPSyncTrackerProps {
 }
 
 const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
-  function IVPSyncTracker({ onWindow, visible = true, className = '', mediaStream = null, videoSource = null, questionId, questionIndex }, ref) {
+  function IVPSyncTracker({ onWindow, onAudioLevel, visible = true, className = '', mediaStream = null, videoSource = null, questionId, questionIndex }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const samplerCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -115,11 +117,12 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
           windowsRef.current.push(input);
           const result = processSyncWindow(input);
           onWindow?.(result);
+          onAudioLevel?.(audioEnergy);
         }
       }
 
       rafIdRef.current = requestAnimationFrame(runSamplingLoop);
-    }, [onWindow]);
+    }, [onWindow, onAudioLevel]);
 
     // Synchronize video element with parent MediaStream prop
     useEffect(() => {
@@ -188,6 +191,13 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
         },
         clearFrames() {
           windowsRef.current = [];
+        },
+        getAudioLevel() {
+          if (!analyserRef.current) return 0;
+          const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+          analyserRef.current.getByteFrequencyData(dataArray);
+          const sum = dataArray.reduce((acc, v) => acc + v, 0);
+          return sum / (dataArray.length * 255);
         },
       }),
       [runSamplingLoop, mediaStream]
