@@ -10,9 +10,7 @@ import {
   FaRunning,
   FaCheckCircle,
   FaPauseCircle,
-  FaInfoCircle,
 } from 'react-icons/fa';
-import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import type { IVPEvidenceRunnerHandle } from '@/hooks/useIVPEvidenceRunner';
 

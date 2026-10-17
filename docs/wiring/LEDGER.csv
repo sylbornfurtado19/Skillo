@@ -46,7 +46,11 @@ docs/baseline_tests.txt,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation res
 docs/baseline_timeline.json,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation research papers and test data,Documentation & spec reference: docs/baseline_timeline.json,0;
 docs/calibration-latest.json,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation research papers and test data,Documentation & spec reference: docs/calibration-latest.json,0;
 docs/frontend_report.md,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation research papers and test data,Documentation & spec reference: docs/frontend_report.md,0;
+docs/ivp-merge/CHANGE_LEDGER.md,NON_RUNTIME_OR_ASSET,OFFLINE,,Documentation & spec reference: docs/ivp-merge/CHANGE_LEDGER.md,
+docs/ivp-merge/DEMO_RUNBOOK.md,NON_RUNTIME_OR_ASSET,OFFLINE,,Documentation & spec reference: docs/ivp-merge/DEMO_RUNBOOK.md,
+docs/ivp-merge/ELEMENT_AUDIT.md,NON_RUNTIME_OR_ASSET,OFFLINE,,Documentation & spec reference: docs/ivp-merge/ELEMENT_AUDIT.md,
 docs/ivp-merge/EXECUTION_LOG.md,NON_RUNTIME_OR_ASSET,OFFLINE,,Documentation & spec reference: docs/ivp-merge/EXECUTION_LOG.md,
+docs/ivp-merge/LIMITATIONS.md,NON_RUNTIME_OR_ASSET,OFFLINE,,Documentation & spec reference: docs/ivp-merge/LIMITATIONS.md,
 docs/ivp-merge/PARITY_MATRIX.md,NON_RUNTIME_OR_ASSET,OFFLINE,,Documentation & spec reference: docs/ivp-merge/PARITY_MATRIX.md,
 docs/paper/Skillo_AI_IEEE_Paper.docx,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation research papers and test data,Documentation & spec reference: docs/paper/Skillo_AI_IEEE_Paper.docx,0;
 docs/paper/Skillo_AI_IEEE_Paper.pdf,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation research papers and test data,Documentation & spec reference: docs/paper/Skillo_AI_IEEE_Paper.pdf,0;
@@ -387,6 +391,7 @@ tests/deliveryComposite.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Unit tests for weig
 tests/downsample.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/downsample.test.ts,7;
 tests/e2e/antigravity-3-8-high-flash.spec.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npx playwright test tests/e2e/antigravity-3-8-high-flash.spec.ts,7;
 tests/e2e/interviewIntegrity.spec.ts,NON_RUNTIME_OR_ASSET,OFFLINE,,npx playwright test tests/e2e/interviewIntegrity.spec.ts,
+tests/e2e/pageElementAudit.spec.ts,NON_RUNTIME_OR_ASSET,OFFLINE,,npx playwright test tests/e2e/pageElementAudit.spec.ts,
 tests/e2e/visualRegression.spec.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npx playwright test tests/e2e/visualRegression.spec.ts,7;
 tests/e2e/wiringScreenshots.spec.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Playwright E2E visual verification and screenshot capture suite,npx playwright test tests/e2e/wiringScreenshots.spec.ts,7;
 tests/evaluationModeHonesty.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/evaluationModeHonesty.test.ts,7;

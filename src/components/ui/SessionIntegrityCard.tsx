@@ -6,15 +6,12 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
   FaTimesCircle,
-  FaClock,
   FaHistory,
-  FaWindowClose,
-  FaLock,
   FaInfoCircle,
 } from 'react-icons/fa';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
-import type { SessionIntegrityReport, IntegrityEvent } from '@/types/integrity';
+import type { SessionIntegrityReport } from '@/types/integrity';
 
 export interface SessionIntegrityCardProps {
   integrity?: SessionIntegrityReport | null;

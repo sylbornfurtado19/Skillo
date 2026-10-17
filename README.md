@@ -523,19 +523,38 @@ Skillo-main/
 │   │   ├── layoutLMv3.ts
 │   │   ├── poseEngine.ts
 │   │   ├── syncEngine.ts
+│   │   ├── integrity.ts        # Proctoring & Integrity Types
+│   │   ├── ivpEvidence.ts      # Classical IVP Evidence Receipts
 │   │   └── index.ts            # Master Type Barrels
 │   └── views/                  # Main Page Layout Components
-├── tests/                      # Jest Test Suites (79 Tests across 7 Suites)
+├── tests/                      # Jest Test Suites (693 Tests across 87 Suites)
 │   ├── aiEngine.test.ts
-│   ├── boundaryTesting.test.ts  # Phase 8 Boundary & Adversarial Suite
-│   ├── interviewModes.test.ts
-│   ├── ivpEngine.test.ts       # Part B IVP Engine Suite
-│   ├── onboardingWidget.test.ts
-│   ├── systemDesignCanvas.test.ts
-│   └── theme.test.ts
+│   ├── boundaryTesting.test.ts
+│   ├── integrityLedger.test.ts # Proctoring Ledger & Timer Reducer
+│   ├── ivpKernelRunner.test.ts # Classical IVP Engine Runner
+│   ├── interviewEvaluateIvpEvidence.test.ts # Evaluator Telemetry Contract
+│   ├── resultsIvpEvidenceAndIntegrityCards.test.ts
+│   ├── sessionStatusBarAndLivePanel.test.ts
+│   └── ...
+├── docs/ivp-merge/             # Mission Documentation
+│   ├── PARITY_MATRIX.md        # 100% Classical Feature Parity Map
+│   ├── CHANGE_LEDGER.md        # Explicit Diff Justification
+│   ├── ELEMENT_AUDIT.md        # 33 Controls / 10 Routes Audit
+│   ├── LIMITATIONS.md          # Transparent Security Disclosures
+│   └── DEMO_RUNBOOK.md         # 8-Minute Faculty Presentation Script
 ├── package.json
 └── tsconfig.json
 ```
+
+---
+
+### 🎥 Proctored Placement Room & Classical IVP Engine (PLUS ULTRA)
+The standalone IVP Lab has been merged directly into the live proctored interview session (`/interview`), retiring the standalone route while preserving 100% feature parity:
+- **Sequential Classical Kernels (`ivpKernelRunner.ts`)**: Runs 256-bin Histogram Equalization, YCrCb + Otsu Skin Segmentation, 3x3 Spatial Sobel Gradients, and Temporal MAD Motion Heatmaps on-device at 160x120 resolution.
+- **Hardware Preflight Gating (`SessionPreflight.tsx`)**: Enforces live camera and microphone tracks prior to question narration or clock initiation.
+- **Millisecond Countdown Ledger (`integrityLedger.ts`)**: Prevents clock manipulation across pauses, hardware drops, or window defocus.
+- **Cryptographic Evidence Receipt (`ivpEvidenceAggregator.ts`)**: Generates canonical SHA-256 seal verified on the Results page and injected into delivery context for AI evaluation.
+- **E2E Test Suite**: Run `npm run test:e2e` to execute the full proctoring integrity suite via Playwright.
 
 ---
 

@@ -3,18 +3,15 @@
 import React, { useState } from 'react';
 import {
   FaMicrochip,
-  FaShieldAlt,
   FaCheckCircle,
   FaInfoCircle,
   FaCopy,
   FaCheck,
   FaFileContract,
-  FaEye,
   FaLock,
 } from 'react-icons/fa';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
 import type { IVPEvidenceReceipt } from '@/types/ivpEvidence';
 
 export interface IVPEvidenceCardProps {

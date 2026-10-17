@@ -16,7 +16,6 @@ import {
   FaTimes,
   FaBell,
   FaUserTie,
-  FaFlask,
 } from 'react-icons/fa';
 import { useAuth } from '../hooks/useAuth';
 import { useInterview } from '../context/InterviewContext';
