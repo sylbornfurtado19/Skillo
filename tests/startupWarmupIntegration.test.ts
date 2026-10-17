@@ -79,14 +79,16 @@ describe('Startup & Warmup Integration (<1.5s visual lock-in)', () => {
       const workerModelReady = false; // Simulate model is still downloading/compiling
 
       if (!workerModelReady && state === 'BOOTSTRAPPING') {
-        // JIT warmup: first call compiles Otsu pipeline; subsequent calls are fast
-        detectFastFaceBootstrap(rawFrame, PROC_W, PROC_H, false);
+        // JIT warmup: compile Otsu loops in V8; subsequent runs are fast (< 3ms typical).
+        for (let i = 0; i < 3; i++) {
+          detectFastFaceBootstrap(rawFrame, PROC_W, PROC_H, false);
+        }
 
         const t0 = performance.now();
         const face = detectFastFaceBootstrap(rawFrame, PROC_W, PROC_H, false);
         const bootstrapTimeMs = performance.now() - t0;
 
-        expect(bootstrapTimeMs).toBeLessThan(75); // < 75ms conservative CI budget with thread contention
+        expect(bootstrapTimeMs).toBeLessThan(25);
         expect(face).not.toBeNull();
 
         if (face && face.detected) {
