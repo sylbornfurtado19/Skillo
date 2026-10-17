@@ -1901,14 +1901,14 @@
       "loc": 186,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 11
+      "testedBy": 12
     },
     {
       "file": "app/(app)/dashboard/page.tsx",
       "loc": 12,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 11
+      "testedBy": 12
     },
     {
       "file": "app/(app)/error.tsx",
@@ -1922,7 +1922,7 @@
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 11
+      "testedBy": 12
     },
     {
       "file": "app/(app)/layout.tsx",
@@ -1943,35 +1943,35 @@
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 11
+      "testedBy": 12
     },
     {
       "file": "app/(app)/results/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 11
+      "testedBy": 12
     },
     {
       "file": "app/(app)/resume/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 11
+      "testedBy": 12
     },
     {
       "file": "app/(app)/settings/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 11
+      "testedBy": 12
     },
     {
       "file": "app/(app)/setup/page.tsx",
       "loc": 8,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 11
+      "testedBy": 12
     },
     {
       "file": "app/api/code/run/route.ts",
@@ -2055,7 +2055,7 @@
       "loc": 17,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 11
+      "testedBy": 12
     },
     {
       "file": "app/not-found.tsx",
@@ -2069,7 +2069,7 @@
       "loc": 13,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 11
+      "testedBy": 12
     },
     {
       "file": "app/providers.tsx",

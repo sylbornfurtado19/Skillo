@@ -1,25 +1,25 @@
 {
-  "generatedAt": "2026-10-16T03:30:30.905Z",
-  "model": "groq:openai/gpt-oss-120b",
+  "generatedAt": "2026-10-17T19:24:01.393Z",
+  "model": "dry-run (no-api)",
   "splits": {
     "validation": {
-      "entries": 3,
+      "entries": 7,
       "pairwiseAccuracy": 1,
-      "preferredWins": 3,
+      "preferredWins": 7,
       "ties": 0,
-      "meanConfidence": 1,
+      "meanConfidence": 0.9,
       "meanConfidencePerTier": {
-        "HIGH": 1,
+        "HIGH": 0.9,
         "MEDIUM": null,
         "LOW": null
       },
       "confidenceTierCounts": {
-        "HIGH": 6,
+        "HIGH": 7,
         "MEDIUM": 0,
         "LOW": 0
       },
-      "expectedCalibrationError": 0,
-      "ECE": 0,
+      "expectedCalibrationError": 0.05,
+      "ECE": 0.05,
       "calibrationBins": [
         {
           "lowerBound": 0,
@@ -87,31 +87,30 @@
         {
           "lowerBound": 0.9,
           "upperBound": 1,
-          "count": 3,
-          "meanConfidence": 1,
+          "count": 7,
+          "meanConfidence": 0.9,
           "accuracy": 1
         }
-      ],
-      "warning": "Subset: 3 of 7 pairs evaluated (CALIBRATION_MAX_PAIRS_PER_SPLIT). Small sample: metrics are indicative only"
+      ]
     },
     "test": {
-      "entries": 3,
+      "entries": 8,
       "pairwiseAccuracy": 1,
-      "preferredWins": 3,
+      "preferredWins": 8,
       "ties": 0,
-      "meanConfidence": 1,
+      "meanConfidence": 0.9,
       "meanConfidencePerTier": {
-        "HIGH": 1,
+        "HIGH": 0.9,
         "MEDIUM": null,
         "LOW": null
       },
       "confidenceTierCounts": {
-        "HIGH": 6,
+        "HIGH": 8,
         "MEDIUM": 0,
         "LOW": 0
       },
-      "expectedCalibrationError": 0,
-      "ECE": 0,
+      "expectedCalibrationError": 0.05,
+      "ECE": 0.05,
       "calibrationBins": [
         {
           "lowerBound": 0,
@@ -179,12 +178,11 @@
         {
           "lowerBound": 0.9,
           "upperBound": 1,
-          "count": 3,
-          "meanConfidence": 1,
+          "count": 8,
+          "meanConfidence": 0.9,
           "accuracy": 1
         }
-      ],
-      "warning": "Subset: 3 of 8 pairs evaluated (CALIBRATION_MAX_PAIRS_PER_SPLIT). Small sample: metrics are indicative only"
+      ]
     }
   }
 }

@@ -15,6 +15,8 @@
     "test:replay": "node scripts/replay-harness.js",
     "perf:measure": "node scripts/measure-device-perf.js",
     "eval:calibration": "npx tsx scripts/eval/verify_ai_benchmarks.ts",
+    "calibration:run": "node scripts/eval/run-calibration.mjs",
+    "calibration:dry-run": "node scripts/eval/run-calibration.mjs --dry-run",
     "audit:wiring": "node scripts/wiring/audit-wiring.mjs",
     "audit:wiring:strict": "node scripts/wiring/audit-wiring.mjs --strict"
   },
