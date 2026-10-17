@@ -127,10 +127,16 @@ if (fs.existsSync(LEDGER)) {
   }
 }
 const all = walk('.').map((f) => f.replace(/^\.\//, '')).filter((f) => !f.startsWith('docs/wiring/') && !f.startsWith('test-results/') && f !== 'package-lock.json' && f !== 'tsconfig.tsbuildinfo');
+for (const [prevFile, prevCols] of prev.entries()) {
+  if (prevCols[1] === 'REMOVED' && !all.includes(prevFile)) {
+    all.push(prevFile);
+  }
+}
 const area = (f) => f.split('/').slice(0, f.startsWith('src/') || f.startsWith('public/') ? 2 : 1).join('/');
 const q = (v) => String(v ?? '').replace(/[,\n\r]/g, ';');
 const rows = all.sort().map((f) => {
-  const auto = isCode(f) && (f.startsWith('src/') || f.startsWith('app/')) ? (live.has(f) ? 'REACHABLE' : 'ORPHAN') : 'NON_RUNTIME_OR_ASSET';
+  const isDeleted = prev.get(f)?.[1] === 'REMOVED';
+  const auto = isDeleted ? 'REMOVED' : (isCode(f) && (f.startsWith('src/') || f.startsWith('app/')) ? (live.has(f) ? 'REACHABLE' : 'ORPHAN') : 'NON_RUNTIME_OR_ASSET');
   const [, status = 'UNREVIEWED', decision = '', evidence = '', iteration = ''] = prev.get(f) ? [f, ...prev.get(f).slice(1)] : [f];
   return [f, auto, status, decision, evidence, iteration].map(q).join(',');
 });

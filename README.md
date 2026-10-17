@@ -432,7 +432,7 @@ npm run build
 
 The Interactive Video Processing (IVP) suite adheres to strict privacy-by-design standards:
 
-* **100% Local Processing:** Real-time face tracking, 70-point kinematic smoothing, and micro-patch optical flow run entirely inside the client's browser (Web Workers & OffscreenCanvas). Video streams never leave the user's device.
+* **100% Local Processing:** Real-time face tracking, 70-point kinematic smoothing, and micro-patch optical flow run entirely inside the client's browser (Web Workers & OffscreenCanvas). Static model weights are cached locally in IndexedDB or fetched via CDN; video pixel buffers never leave the user's device.
 * **Strict Image Exclusion by Default:** The telemetry export bundle excludes camera images by default. Only numerical vectors (normalized landmark coordinates, tracking latencies, filter confidences) are exported.
 * **Canonical Telemetry Schema:**
   ```typescript

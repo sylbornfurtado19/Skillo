@@ -14,9 +14,6 @@
  */
 
 import { IVPCameraManager } from '../src/lib/services/ivpCameraManager';
-import type { IVPGazeTrackerHandle } from '../src/components/ui/IVPGazeTracker';
-import type { IVPPoseTrackerHandle } from '../src/components/ui/IVPPoseTracker';
-import type { IVPAffectTrackerHandle } from '../src/components/ui/IVPAffectTracker';
 import type { IVPSyncTrackerHandle } from '../src/components/ui/IVPSyncTracker';
 
 class MockMediaStreamTrack {

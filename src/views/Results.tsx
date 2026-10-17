@@ -20,6 +20,7 @@ import {
   FaTachometerAlt,
   FaCommentDots,
   FaPause,
+  FaVideoSlash,
 } from 'react-icons/fa';
 
 
@@ -35,7 +36,7 @@ import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult, Contra
 import { useToast } from '../components/ui/Toast';
 import { useChartTheme } from '../hooks/useChartTheme';
 import { getThemeColor } from '../lib/themeColors';
-import { calculateDeliveryComposite } from '../lib/services/deliveryComposite';
+import { calculateDeliveryComposite, DELIVERY_COMPOSITE_WEIGHTS } from '../lib/services/deliveryComposite';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -51,16 +52,16 @@ import IVPTelemetryTimeline, { extractTelemetryTimelineEvents } from '../compone
 import type { EyeContactSessionMetrics, HeadPoseSessionMetrics, AffectiveSessionMetrics, LipSyncSessionMetrics, SpeechAnalytics } from '../types/index';
 
 function isEyeContactMetrics(obj: any): obj is EyeContactSessionMetrics {
-  return Boolean(obj && typeof obj === 'object' && 'totalVideoDurationSeconds' in obj);
+  return Boolean(obj && typeof obj === 'object' && 'totalVideoDurationSeconds' in obj && obj.totalVideoDurationSeconds > 0);
 }
 function isHeadPoseMetrics(obj: any): obj is HeadPoseSessionMetrics {
-  return Boolean(obj && typeof obj === 'object' && 'totalFramesAnalyzed' in obj);
+  return Boolean(obj && typeof obj === 'object' && 'totalFramesAnalyzed' in obj && obj.totalFramesAnalyzed > 0);
 }
 function isAffectiveMetrics(obj: any): obj is AffectiveSessionMetrics {
-  return Boolean(obj && typeof obj === 'object' && 'totalKeyframesAnalyzed' in obj);
+  return Boolean(obj && typeof obj === 'object' && 'totalKeyframesAnalyzed' in obj && obj.totalKeyframesAnalyzed > 0);
 }
 function isLipSyncMetrics(obj: any): obj is LipSyncSessionMetrics {
-  return Boolean(obj && typeof obj === 'object' && 'totalWindowsAnalyzed' in obj);
+  return Boolean(obj && typeof obj === 'object' && 'totalWindowsAnalyzed' in obj && obj.totalWindowsAnalyzed > 0);
 }
 
 function renderHighlightedAnswer(answerText: string, quotes: string[]) {
@@ -275,10 +276,10 @@ export default function Results() {
     : undefined;
   const speechDeliveryScore = deliverySummary?.deliveryScore;
   const deliveryComponents = [
-    { label: 'Eye contact', value: eyeContactRatio, camera: true },
-    { label: 'Posture stability', value: postureStability, camera: true },
-    { label: 'Affect composure', value: affectComposure, camera: true },
-    { label: 'Speech delivery', value: speechDeliveryScore, camera: false },
+    { label: 'Eye contact', value: eyeContactRatio, camera: true, weightPct: Math.round(DELIVERY_COMPOSITE_WEIGHTS.eyeContactRatio * 100) },
+    { label: 'Posture stability', value: postureStability, camera: true, weightPct: Math.round(DELIVERY_COMPOSITE_WEIGHTS.postureStability * 100) },
+    { label: 'Affect composure', value: affectComposure, camera: true, weightPct: Math.round(DELIVERY_COMPOSITE_WEIGHTS.affectComposure * 100) },
+    { label: 'Speech delivery', value: speechDeliveryScore, camera: false, weightPct: Math.round(DELIVERY_COMPOSITE_WEIGHTS.speechDeliveryScore * 100) },
   ];
   const availableDeliveryComponents = deliveryComponents.filter((component) => component.value !== undefined);
   const deliveryComposite: number | undefined =
@@ -544,7 +545,10 @@ export default function Results() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {deliveryComponents.map((component) => (
             <div key={component.label} className="rounded-xl border border-border bg-bg-surface-alt p-4">
-              <p className="text-xs font-semibold text-text-secondary">{component.label}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-text-secondary">{component.label}</p>
+                <span className="text-[10px] text-text-muted font-mono">{component.weightPct}% weight</span>
+              </div>
               <p className="mt-2 text-2xl font-heading font-extrabold text-text-primary">
                 {component.value !== undefined ? `${Math.round(component.value)}` : 'N/A'}
                 <span className="ml-1 text-sm font-mono font-semibold text-text-secondary">/100</span>
@@ -603,8 +607,12 @@ export default function Results() {
             <div className="p-3 rounded-xl bg-bg-surface-alt border border-border flex flex-col justify-between">
               <span className="text-xs font-mono text-text-secondary">Gaze Estimation</span>
               <div className="mt-1 flex items-center gap-1.5">
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-primary-soft text-primary border border-primary/20">
-                  [Canvas Heuristic]
+                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${
+                  isEyeContactMetrics(results.eyeContactMetrics)
+                    ? 'bg-primary-soft text-primary border-primary/20'
+                    : 'bg-neutral/10 text-text-muted border-border'
+                }`}>
+                  {isEyeContactMetrics(results.eyeContactMetrics) ? '[L2CS-Net Neural]' : '[Unavailable]'}
                 </span>
               </div>
             </div>
@@ -612,8 +620,12 @@ export default function Results() {
             <div className="p-3 rounded-xl bg-bg-surface-alt border border-border flex flex-col justify-between">
               <span className="text-xs font-mono text-text-secondary">3D Head Pose</span>
               <div className="mt-1 flex items-center gap-1.5">
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-primary-soft text-primary border border-primary/20">
-                  [Canvas Heuristic]
+                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${
+                  isHeadPoseMetrics(results.headPoseMetrics)
+                    ? 'bg-primary-soft text-primary border-primary/20'
+                    : 'bg-neutral/10 text-text-muted border-border'
+                }`}>
+                  {isHeadPoseMetrics(results.headPoseMetrics) ? '[HopeNet 3D Euler]' : '[Unavailable]'}
                 </span>
               </div>
             </div>
@@ -621,8 +633,12 @@ export default function Results() {
             <div className="p-3 rounded-xl bg-bg-surface-alt border border-border flex flex-col justify-between">
               <span className="text-xs font-mono text-text-secondary">Facial Affect</span>
               <div className="mt-1 flex items-center gap-1.5">
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-primary-soft text-primary border border-primary/20">
-                  [Canvas Heuristic]
+                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${
+                  isAffectiveMetrics(results.affectiveMetrics)
+                    ? 'bg-primary-soft text-primary border-primary/20'
+                    : 'bg-neutral/10 text-text-muted border-border'
+                }`}>
+                  {isAffectiveMetrics(results.affectiveMetrics) ? '[AffectNet V-A]' : '[Unavailable]'}
                 </span>
               </div>
             </div>
@@ -989,13 +1005,27 @@ export default function Results() {
 
       {/* SECTION 3a: SYNCHRONIZED IVP MULTI-MODAL TIMELINE */}
       <div id="sec-timeline" className="scroll-mt-32">
-        <IVPTelemetryTimeline
-          durationSeconds={isEyeContactMetrics(results?.eyeContactMetrics) ? results.eyeContactMetrics.totalVideoDurationSeconds : 240}
-          events={timelineEvents}
-          overallEyeContactPct={isEyeContactMetrics(results?.eyeContactMetrics) ? results.eyeContactMetrics.eyeContactPercentage : 84}
-          overallComposureScore={isAffectiveMetrics(results?.affectiveMetrics) ? results.affectiveMetrics.overallComposureScore : 88}
-          overallStabilityScore={isHeadPoseMetrics(results?.headPoseMetrics) ? results.headPoseMetrics.postureComposureScore : 90}
-        />
+        {cameraSignalsCaptured ? (
+          <IVPTelemetryTimeline
+            durationSeconds={isEyeContactMetrics(results?.eyeContactMetrics) ? results.eyeContactMetrics.totalVideoDurationSeconds : (isHeadPoseMetrics(results?.headPoseMetrics) ? Math.round(results.headPoseMetrics.totalFramesAnalyzed / 30) : 240)}
+            events={timelineEvents}
+            overallEyeContactPct={isEyeContactMetrics(results?.eyeContactMetrics) ? results.eyeContactMetrics.eyeContactPercentage : undefined}
+            overallComposureScore={isAffectiveMetrics(results?.affectiveMetrics) ? results.affectiveMetrics.overallComposureScore : undefined}
+            overallStabilityScore={isHeadPoseMetrics(results?.headPoseMetrics) ? results.headPoseMetrics.postureComposureScore : undefined}
+          />
+        ) : (
+          <Card className="p-6 bg-bg-surface border-border shadow-soft text-center space-y-3">
+            <div className="flex justify-center">
+              <div className="p-3 bg-neutral/10 rounded-full text-text-secondary">
+                <FaVideoSlash className="text-xl" />
+              </div>
+            </div>
+            <h3 className="text-base font-semibold text-text-primary">Camera Biometrics Unavailable</h3>
+            <p className="text-xs text-text-secondary max-w-md mx-auto">
+              Visual telemetry was not recorded for this session. Enable camera permissions during interview practice to receive millisecond-level gaze tracking, posture stability, and facial composure telemetry.
+            </p>
+          </Card>
+        )}
       </div>
 
       {/* SECTION 3b: GAZE ANALYTICS */}

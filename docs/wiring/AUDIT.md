@@ -2,21 +2,18 @@
 
 | metric | value |
 |---|---|
-| generatedAt | 2026-10-17T11:45:25.690Z |
-| totalFiles | 181 |
+| generatedAt | 2026-10-17T12:08:01.115Z |
+| totalFiles | 178 |
 | reachable | 171 |
-| orphanFiles | 10 |
+| orphanFiles | 7 |
 | deadExports | 11 |
-| testOnlyExports | 87 |
+| testOnlyExports | 86 |
 
 ## Orphan files (not reachable from any app/ entry)
 
 | file | loc | tests reference it |
 |---|---|---|
 | src/components/ui/InputFields.tsx | 118 | no |
-| src/components/ui/IVPAffectTracker.tsx | 213 | yes |
-| src/components/ui/IVPGazeTracker.tsx | 507 | yes |
-| src/components/ui/IVPPoseTracker.tsx | 467 | yes |
 | src/lib/firebase/services/jobs.firebase.ts | 44 | no |
 | src/lib/firebase/services/resume.firebase.ts | 132 | no |
 | src/lib/server/env.ts | 115 | yes |
@@ -54,7 +51,6 @@
 | src/lib/services/benchmarkRetrieval.server.ts | resetBenchmarkCorpusCache | TEST_ONLY |
 | src/lib/services/benchmarkRetrieval.server.ts | evaluateRetrievalRouting | TEST_ONLY |
 | src/lib/services/benchmarkRetrieval.server.ts | loadBenchmarkCorpus | TEST_ONLY |
-| src/lib/services/deliveryComposite.ts | DELIVERY_COMPOSITE_WEIGHTS | TEST_ONLY |
 | src/lib/services/graphRAG.server.ts | entityExtractionSchema | INTERNAL_ONLY |
 | src/lib/services/graphRAG.server.ts | relationshipExtractionSchema | TEST_ONLY |
 | src/lib/services/graphRAG.server.ts | graphRAGOutputSchema | TEST_ONLY |

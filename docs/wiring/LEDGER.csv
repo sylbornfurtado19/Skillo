@@ -34,7 +34,7 @@ app/login/page.tsx,REACHABLE,UNREVIEWED,,,
 app/not-found.tsx,REACHABLE,UNREVIEWED,,,
 app/page.tsx,REACHABLE,UNREVIEWED,,,
 app/providers.tsx,REACHABLE,UNREVIEWED,,,
-baseline_fail_1.png,NON_RUNTIME_OR_ASSET,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
+baseline_fail_1.png,REMOVED,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
 data/benchmarks/interview_benchmarks.json,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 docs/IVP_MODEL_FEASIBILITY_SPIKE.md,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation research papers and test data,docs/IVP_MODEL_FEASIBILITY_SPIKE.md,0
 docs/PREPROCESSING_UPGRADE_RESULTS.md,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation research papers and test data,docs/PREPROCESSING_UPGRADE_RESULTS.md,0
@@ -76,7 +76,7 @@ docs/test-data/sample-resume-aarav-mehta.pdf,NON_RUNTIME_OR_ASSET,OFFLINE,Techni
 docs/test-data/sample-resume-aarav-mehta.txt,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation research papers and test data,docs/test-data/sample-resume-aarav-mehta.txt,0
 firestore.rules,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,firestore.rules,0
 jest.config.cjs,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,jest.config.cjs,0
-microtrack_perf_benchmark.json,NON_RUNTIME_OR_ASSET,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
+microtrack_perf_benchmark.json,REMOVED,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
 next-env.d.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,next-env.d.ts,0
 next.config.js,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,next.config.js,0
 package.json,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,package.json,0
@@ -95,7 +95,7 @@ public/wasm/vision_wasm_module_internal.js,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe 
 public/wasm/vision_wasm_module_internal.wasm,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly threaded module binary,src/lib/workers/visionWorker.ts:163,1
 public/wasm/vision_wasm_nosimd_internal.js,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly non-SIMD fallback loader,src/lib/workers/visionWorker.ts:163,1
 public/wasm/vision_wasm_nosimd_internal.wasm,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly non-SIMD fallback binary,src/lib/workers/visionWorker.ts:163,1
-replay_report.json,NON_RUNTIME_OR_ASSET,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
+replay_report.json,REMOVED,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
 requirements.txt,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,requirements.txt,0
 scripts/benchmark-ivp-models.html,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 scripts/check-ci-regression.js,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
@@ -235,26 +235,26 @@ src/components/ui/Badge.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/Button.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/Card.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/EyeContactHUD.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/FacialComposureCard.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/FacialComposureCard.tsx,REACHABLE,WIRED,Renders AffectNet 2D circumplex V-A scatter plot and emotional stability metrics,src/views/Results.tsx:48;src/views/Results.tsx:1033,3
 src/components/ui/FeedbackHelpers.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/GazeAnalyticsCard.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/GazeAnalyticsCard.tsx,REACHABLE,WIRED,Renders L2CS-Net gaze ray focus zone donut and distraction event log,src/views/Results.tsx:46;src/views/Results.tsx:1020,3
 src/components/ui/GraphRAGDashboard.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/IVPAffectTracker.tsx,ORPHAN,UNREVIEWED,,,
+src/components/ui/IVPAffectTracker.tsx,REMOVED,REMOVED,Deprecated heuristic tracker replaced by useIVPSessionPipeline; 0 callers in app/,tests/ivpWorkerIntegration.test.ts:49,3
 src/components/ui/IVPCameraPreview.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/IVPGazeTracker.tsx,ORPHAN,UNREVIEWED,,,
+src/components/ui/IVPGazeTracker.tsx,REMOVED,REMOVED,Deprecated heuristic tracker replaced by useIVPSessionPipeline; 0 callers in app/,tests/ivpWorkerIntegration.test.ts:47,3
 src/components/ui/IVPInteractiveCanvas.tsx,REACHABLE,WIRED,Dual-viewport CV inspection canvas with genuine EAR/MAR signals and HUD,src/views/IVPLab.tsx:398,2
-src/components/ui/IVPPoseTracker.tsx,ORPHAN,UNREVIEWED,,,
+src/components/ui/IVPPoseTracker.tsx,REMOVED,REMOVED,Deprecated heuristic tracker replaced by useIVPSessionPipeline; 0 callers in app/,tests/ivpWorkerIntegration.test.ts:48,3
 src/components/ui/IVPSignalOscilloscope.tsx,REACHABLE,WIRED,Real-time circular buffer oscilloscope displaying live EAR and MAR waveforms with null states,src/views/IVPLab.tsx:488;src/views/IVPLab.tsx:507,2
 src/components/ui/IVPSyncTracker.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/IVPTelemetryTimeline.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/IVPTelemetryTimeline.tsx,REACHABLE,WIRED,Synchronized IVP timeline rendering AffectNet/HopeNet/L2CS-Net events,src/views/Results.tsx:990;src/components/ui/IVPTelemetryTimeline.tsx:73,3
 src/components/ui/InputFields.tsx,ORPHAN,UNREVIEWED,,,
 src/components/ui/LATSTreeVisualizer.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/LayoutPenaltyViewer.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/LipSyncHUD.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/LipSyncVerificationCard.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/LipSyncVerificationCard.tsx,REACHABLE,WIRED,Renders SyncNet audio-visual latency offset and anti-spoofing verification card,src/views/Results.tsx:49;src/views/Results.tsx:1040,3
 src/components/ui/Loader.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/Modal.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/PostureComposureCard.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/PostureComposureCard.tsx,REACHABLE,WIRED,Renders HopeNet 3D head pose stability gauge and affirmative gesture counts,src/views/Results.tsx:47;src/views/Results.tsx:1027,3
 src/components/ui/PostureHUD.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/PrerequisiteChainViewer.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/ReflectionTimelineDrawer.tsx,REACHABLE,UNREVIEWED,,,
@@ -269,7 +269,7 @@ src/context/AuthContext.tsx,REACHABLE,UNREVIEWED,,,
 src/context/InterviewContext.tsx,REACHABLE,UNREVIEWED,,,
 src/hooks/useAuth.ts,REACHABLE,UNREVIEWED,,,
 src/hooks/useChartTheme.ts,REACHABLE,UNREVIEWED,,,
-src/hooks/useIVPSessionPipeline.ts,REACHABLE,UNREVIEWED,,,
+src/hooks/useIVPSessionPipeline.ts,REACHABLE,WIRED,Hook orchestrating real-time vision workers; EMA smoothers; and evaluation telemetry buffering,src/views/InterviewSession.tsx:28;src/hooks/useIVPSessionPipeline.ts:115,3
 src/hooks/useInterviewCamera.ts,REACHABLE,UNREVIEWED,,,
 src/hooks/useMediaReadiness.ts,REACHABLE,UNREVIEWED,,,
 src/hooks/useONNXWorker.ts,REACHABLE,WIRED,Hook managing ONNX worker backpressure and Face-ROI crop,src/views/IVPLab.tsx:188;src/hooks/useIVPSessionPipeline.ts:321,1
@@ -298,21 +298,21 @@ src/lib/server/sanitize.ts,REACHABLE,UNREVIEWED,,,
 src/lib/server/supabaseAdmin.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/backgroundSegmentation.ts,REACHABLE,WIRED,Anthropometric person foreground mask and backdrop blur,src/components/ui/IVPInteractiveCanvas.tsx:547;src/lib/services/temporalMotion.ts:154,1
 src/lib/services/benchmarkRetrieval.server.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/deliveryComposite.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/deliveryComposite.ts,REACHABLE,WIRED,Pure service computing weighted delivery composite and exposing DELIVERY_COMPOSITE_WEIGHTS,src/views/Results.tsx:38;src/lib/services/deliveryComposite.ts:6,3
 src/lib/services/documentVision.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/graphRAG.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/groundingVerifier.server.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/interviewEvaluation.server.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/ivpAffectEngine.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/interviewEvaluation.server.ts,REACHABLE,WIRED,Prometheus-2 and IVP session aggregator computing delivery composite and guarding zero-frame sessions,app/api/interview/evaluate/route.ts:5;src/lib/services/interviewEvaluation.server.ts:1012,3
+src/lib/services/ivpAffectEngine.ts,REACHABLE,WIRED,AffectNet Valence-Arousal composure and stress spike detector,src/lib/services/interviewEvaluation.server.ts:11;src/hooks/useIVPSessionPipeline.ts:17,3
 src/lib/services/ivpCameraManager.ts,REACHABLE,WIRED,Camera acquisition device resolution fallback and stream lifecycle,src/hooks/useInterviewCamera.ts:25;src/views/IVPLab.tsx:105,1
 src/lib/services/ivpDiagnosticKernels.ts,REACHABLE,WIRED,Pure image and landmark kernels including calculateEAR and calculateMAR,src/components/ui/IVPInteractiveCanvas.tsx:10;tests/ycrcbOtsuSegmentation.test.ts:1,2
 src/lib/services/ivpExpressionKernel.ts,REACHABLE,WIRED,Facial expression extraction kernel computing genuine landmark-derived metrics,src/components/ui/IVPInteractiveCanvas.tsx:20;tests/ivpEngine.test.ts:1,2
 src/lib/services/ivpFeatureFlags.ts,REACHABLE,WIRED,Runtime gating and persistence for vision algorithms with reset and raw getters,src/components/ui/IVPInteractiveCanvas.tsx:38;src/components/ivp/canvas/CanvasHeaderControls.tsx:6,2
-src/lib/services/ivpGazeEngine.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/ivpPoseEngine.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/ivpGazeEngine.ts,REACHABLE,WIRED,L2CS-Net soft-argmax 3D gaze vector and distraction detector,src/lib/services/interviewEvaluation.server.ts:9;src/hooks/useIVPSessionPipeline.ts:14,3
+src/lib/services/ivpPoseEngine.ts,REACHABLE,WIRED,HopeNet 3D head pose and cyclic nod/shake gesture detector,src/lib/services/interviewEvaluation.server.ts:10;src/hooks/useIVPSessionPipeline.ts:15,3
 src/lib/services/ivpSignalCalculators.ts,REACHABLE,WIRED,Pure physiological signal calculators for blink rate; hysteresis; and speech cadence,src/views/IVPLab.tsx:24;tests/ivpSignalCalculators.test.ts:1,2
-src/lib/services/ivpSyncEngine.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/ivpTimelineTransformer.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/ivpSyncEngine.ts,REACHABLE,WIRED,SyncNet lip-audio cross-modal distance and anti-spoofing verifier,src/lib/services/interviewEvaluation.server.ts:12;src/components/ui/IVPSyncTracker.tsx:12,3
+src/lib/services/ivpTimelineTransformer.ts,REACHABLE,WIRED,Transforms raw EvaluationReport metrics into chronological timeline events,src/components/ui/IVPTelemetryTimeline.tsx:14;src/views/Results.tsx:50,3
 src/lib/services/latsEngine.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/microPatchTracker.ts,REACHABLE,WIRED,Sub-pixel ZNCC and optical flow micro-template tracker across frames,src/components/ui/IVPInteractiveCanvas.tsx:36;tests/microPatchTrackerPixelMapping.test.ts:1,2
 src/lib/services/onnxInferenceService.ts,REACHABLE,WIRED,Unified ONNX preprocessing model decoding and EMA smoothing,src/hooks/useONNXWorker.ts:11;src/lib/workers/onnxWorker.ts:13,1
@@ -358,10 +358,10 @@ src/views/InterviewSession.tsx,REACHABLE,UNREVIEWED,,,
 src/views/Landing.tsx,REACHABLE,UNREVIEWED,,,
 src/views/Login.tsx,REACHABLE,UNREVIEWED,,,
 src/views/Profile.tsx,REACHABLE,UNREVIEWED,,,
-src/views/Results.tsx,REACHABLE,UNREVIEWED,,,
+src/views/Results.tsx,REACHABLE,WIRED,Assessment report view rendering real IVP telemetry; delivery composite and camera-unavailable state,app/(app)/results/page.tsx:5;src/views/Results.tsx:448,3
 src/views/ResumeUpload.tsx,REACHABLE,UNREVIEWED,,,
 src/views/Settings.tsx,REACHABLE,UNREVIEWED,,,
-startup_handoff_failures.json,NON_RUNTIME_OR_ASSET,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
+startup_handoff_failures.json,REMOVED,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
 storage.rules,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,storage.rules,0
 supabase_schema.sql,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,supabase_schema.sql,0
 tailwind.config.js,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,tailwind.config.js,0
@@ -381,7 +381,7 @@ tests/closedLoopReflexion.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/codeRunRoute.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/coordAndFaceRoi.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/coordinateAndMappingRobustness.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/deliveryComposite.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+tests/deliveryComposite.test.ts,NON_RUNTIME_OR_ASSET,TEST,Unit tests for weighted delivery composite calculation and signal re-normalization,npm test -- tests/deliveryComposite.test.ts,3
 tests/downsample.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/e2e/antigravity-3-8-high-flash.spec.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/e2e/visualRegression.spec.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
@@ -397,13 +397,13 @@ tests/interviewModes.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/interviewPersistenceContract.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/interviewQuestionMetadata.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/interviewSetupRateLimit.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/ivpCameraContention.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+tests/ivpCameraContention.test.ts,NON_RUNTIME_OR_ASSET,TEST,Integration tests verifying camera single-stream arbitration and fallback,npm test -- tests/ivpCameraContention.test.ts,3
 tests/ivpCameraPreviewMirroring.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/ivpEngine.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/ivpQuestionScoping.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+tests/ivpEngine.test.ts,NON_RUNTIME_OR_ASSET,TEST,Ground-truth unit tests for Part B IVP engines (Gaze; Pose; Affect; Sync),npm test -- tests/ivpEngine.test.ts,3
+tests/ivpQuestionScoping.test.ts,NON_RUNTIME_OR_ASSET,TEST,Verification suite for per-question telemetry scoping and retry isolation,npm test -- tests/ivpQuestionScoping.test.ts,3
 tests/ivpSignalCalculators.test.ts,NON_RUNTIME_OR_ASSET,TEST,Unit test suite verifying blink detection hysteresis and sliding window math,npm test -- tests/ivpSignalCalculators.test.ts,2
-tests/ivpTimelineTransformer.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/ivpWorkerIntegration.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+tests/ivpTimelineTransformer.test.ts,NON_RUNTIME_OR_ASSET,TEST,Unit tests for IVP telemetry event transformation and chronological sorting,npm test -- tests/ivpTimelineTransformer.test.ts,3
+tests/ivpWorkerIntegration.test.ts,NON_RUNTIME_OR_ASSET,TEST,Integration tests verifying vision worker telemetry pipeline and absence of legacy trackers,npm test -- tests/ivpWorkerIntegration.test.ts,3
 tests/landingFaq.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/landmarkTracking.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/latsMultiIterationMCTS.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,

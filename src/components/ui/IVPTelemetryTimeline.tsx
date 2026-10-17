@@ -73,9 +73,9 @@ export const DEFAULT_EVENTS: TelemetryEvent[] = [
 export default function IVPTelemetryTimeline({
   durationSeconds = 240,
   events,
-  overallEyeContactPct = 82,
-  overallComposureScore = 88,
-  overallStabilityScore = 91,
+  overallEyeContactPct,
+  overallComposureScore,
+  overallStabilityScore,
   isDemo = false,
 }: IVPTelemetryTimelineProps) {
   // If events is explicitly provided (even an empty array []), use it.
@@ -123,13 +123,13 @@ export default function IVPTelemetryTimeline({
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="primary" className="text-xs">
-            Eye Contact: {overallEyeContactPct}%
+            Eye Contact: {overallEyeContactPct !== undefined ? `${Math.round(overallEyeContactPct)}%` : '--'}
           </Badge>
           <Badge variant="success" className="text-xs">
-            Composure: {overallComposureScore}/100
+            Composure: {overallComposureScore !== undefined ? `${Math.round(overallComposureScore)}/100` : '--'}
           </Badge>
           <Badge variant="neutral" className="text-xs">
-            Stability: {overallStabilityScore}%
+            Stability: {overallStabilityScore !== undefined ? `${Math.round(overallStabilityScore)}%` : '--'}
           </Badge>
         </div>
       </div>

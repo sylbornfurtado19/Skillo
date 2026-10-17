@@ -10,6 +10,7 @@ import { processGazeFrames } from './ivpGazeEngine';
 import { analyzeHeadPoseAndGestures } from './ivpPoseEngine';
 import { processAffectFrames } from './ivpAffectEngine';
 import { processLipSyncWindows } from './ivpSyncEngine';
+import { calculateDeliveryComposite } from './deliveryComposite';
 
 import { summarizeDiagramTopology, SystemDesignDiagramState } from '@/types/systemDesign';
 import { verifyMultiPassGrounding } from './groundingVerifier.server';
@@ -998,16 +999,32 @@ export async function performInterviewEvaluation(
 
   // L2CS-Net: Process gaze frame data into eye contact session metrics
   // Runs synchronously — pure math, no I/O, negligible latency impact
-  const eyeContactMetrics = processGazeFrames(input.gazeFrames ?? []);
+  const eyeContactMetrics = input.gazeFrames && input.gazeFrames.length > 0
+    ? processGazeFrames(input.gazeFrames)
+    : undefined;
 
   // HopeNet: Process head pose frames into gestural composure metrics
-  const headPoseMetrics = analyzeHeadPoseAndGestures(input.headPoseFrames ?? []);
+  const headPoseMetrics = input.headPoseFrames && input.headPoseFrames.length > 0
+    ? analyzeHeadPoseAndGestures(input.headPoseFrames)
+    : undefined;
 
   // AffectNet: Process facial expression keyframes into Valence-Arousal & Composure metrics
-  const affectiveMetrics = processAffectFrames(input.affectFrames ?? []);
+  const affectiveMetrics = input.affectFrames && input.affectFrames.length > 0
+    ? processAffectFrames(input.affectFrames)
+    : undefined;
 
   // SyncNet: Process lip-audio cross-modal windows into anti-spoofing & sync metrics
-  const lipSyncMetrics = processLipSyncWindows(input.syncWindows ?? []);
+  const lipSyncMetrics = input.syncWindows && input.syncWindows.length > 0
+    ? processLipSyncWindows(input.syncWindows)
+    : undefined;
+
+  // Weighted delivery composite across available IVP modalities
+  const deliveryComposite = calculateDeliveryComposite({
+    eyeContactRatio: eyeContactMetrics?.eyeContactPercentage,
+    postureStability: headPoseMetrics?.postureComposureScore,
+    affectComposure: affectiveMetrics?.overallComposureScore,
+    speechDeliveryScore: undefined,
+  });
 
   return {
     overallScore: overallScore100,
@@ -1027,6 +1044,7 @@ export async function performInterviewEvaluation(
     headPoseMetrics,
     affectiveMetrics,
     lipSyncMetrics,
+    deliveryComposite,
     evaluationMode,
     source: isFallback ? 'fallback' : 'live',
     selectedQuestionIndex,

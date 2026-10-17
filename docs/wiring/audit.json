@@ -1,11 +1,11 @@
 {
   "summary": {
-    "generatedAt": "2026-10-17T11:45:25.690Z",
-    "totalFiles": 181,
+    "generatedAt": "2026-10-17T12:08:01.115Z",
+    "totalFiles": 178,
     "reachable": 171,
-    "orphanFiles": 10,
+    "orphanFiles": 7,
     "deadExports": 11,
-    "testOnlyExports": 87
+    "testOnlyExports": 86
   },
   "orphans": [
     {
@@ -14,27 +14,6 @@
       "reachable": false,
       "importedBy": 0,
       "testedBy": 0
-    },
-    {
-      "file": "src/components/ui/IVPAffectTracker.tsx",
-      "loc": 213,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 2
-    },
-    {
-      "file": "src/components/ui/IVPGazeTracker.tsx",
-      "loc": 507,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 2
-    },
-    {
-      "file": "src/components/ui/IVPPoseTracker.tsx",
-      "loc": 467,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 2
     },
     {
       "file": "src/lib/firebase/services/jobs.firebase.ts",
@@ -233,12 +212,6 @@
     {
       "file": "src/lib/services/benchmarkRetrieval.server.ts",
       "name": "loadBenchmarkCorpus",
-      "status": "TEST_ONLY",
-      "live": true
-    },
-    {
-      "file": "src/lib/services/deliveryComposite.ts",
-      "name": "DELIVERY_COMPOSITE_WEIGHTS",
       "status": "TEST_ONLY",
       "live": true
     },
@@ -1100,13 +1073,6 @@
       "testedBy": 0
     },
     {
-      "file": "src/components/ui/IVPAffectTracker.tsx",
-      "loc": 213,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 2
-    },
-    {
       "file": "src/components/ui/IVPCameraPreview.tsx",
       "loc": 343,
       "reachable": true,
@@ -1114,25 +1080,11 @@
       "testedBy": 4
     },
     {
-      "file": "src/components/ui/IVPGazeTracker.tsx",
-      "loc": 507,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 2
-    },
-    {
       "file": "src/components/ui/IVPInteractiveCanvas.tsx",
       "loc": 1917,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
-    },
-    {
-      "file": "src/components/ui/IVPPoseTracker.tsx",
-      "loc": 467,
-      "reachable": false,
-      "importedBy": 0,
-      "testedBy": 2
     },
     {
       "file": "src/components/ui/IVPSignalOscilloscope.tsx",
@@ -1502,7 +1454,7 @@
       "file": "src/lib/services/deliveryComposite.ts",
       "loc": 56,
       "reachable": true,
-      "importedBy": 1,
+      "importedBy": 2,
       "testedBy": 1
     },
     {
@@ -1528,7 +1480,7 @@
     },
     {
       "file": "src/lib/services/interviewEvaluation.server.ts",
-      "loc": 1061,
+      "loc": 1079,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 11
@@ -1537,7 +1489,7 @@
       "file": "src/lib/services/ivpAffectEngine.ts",
       "loc": 269,
       "reachable": true,
-      "importedBy": 3,
+      "importedBy": 2,
       "testedBy": 4
     },
     {
@@ -1558,7 +1510,7 @@
       "file": "src/lib/services/ivpExpressionKernel.ts",
       "loc": 542,
       "reachable": true,
-      "importedBy": 3,
+      "importedBy": 2,
       "testedBy": 1
     },
     {
@@ -1572,14 +1524,14 @@
       "file": "src/lib/services/ivpGazeEngine.ts",
       "loc": 433,
       "reachable": true,
-      "importedBy": 3,
+      "importedBy": 2,
       "testedBy": 4
     },
     {
       "file": "src/lib/services/ivpPoseEngine.ts",
       "loc": 323,
       "reachable": true,
-      "importedBy": 3,
+      "importedBy": 2,
       "testedBy": 4
     },
     {
@@ -1684,14 +1636,14 @@
       "file": "src/lib/services/temporalMotion.ts",
       "loc": 259,
       "reachable": true,
-      "importedBy": 2,
+      "importedBy": 1,
       "testedBy": 1
     },
     {
       "file": "src/lib/services/temporalSmoothing.ts",
       "loc": 1698,
       "reachable": true,
-      "importedBy": 9,
+      "importedBy": 6,
       "testedBy": 12
     },
     {
@@ -1712,7 +1664,7 @@
       "file": "src/lib/themeColors.ts",
       "loc": 61,
       "reachable": true,
-      "importedBy": 6,
+      "importedBy": 4,
       "testedBy": 0
     },
     {
@@ -1810,7 +1762,7 @@
       "file": "src/types/index.ts",
       "loc": 485,
       "reachable": true,
-      "importedBy": 64,
+      "importedBy": 61,
       "testedBy": 28
     },
     {
@@ -1920,7 +1872,7 @@
     },
     {
       "file": "src/views/Results.tsx",
-      "loc": 1339,
+      "loc": 1369,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 6
