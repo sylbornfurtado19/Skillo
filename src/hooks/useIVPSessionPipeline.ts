@@ -48,6 +48,7 @@ export interface UseIVPSessionPipelineOptions {
   isSpeaking?: boolean;
   questionId?: string;
   questionIndex?: number;
+  paused?: boolean;
 }
 
 export interface UseIVPSessionPipelineReturn {
@@ -66,6 +67,9 @@ export interface UseIVPSessionPipelineReturn {
   isONNXReady: boolean;
   isThrottled: boolean;
   isFallbackMode: boolean;
+  lastEar: number | null;
+  lastMar: number | null;
+  faceBox: { x: number; y: number; width: number; height: number } | null;
   clearPerQuestionFrames: () => void;
   getCapturedTelemetry: (filterQuestionId?: string) => {
     capturedGazeFrames: GazeFrameInput[];
@@ -95,6 +99,7 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
   const {
     mediaStream = null,
     isSpeaking = false,
+    paused = false,
     questionId,
     questionIndex,
   } = options;
@@ -300,11 +305,11 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
   // ── Continuous Frame Dispatcher Loop ───────────────────────────────────────
   // Dispatches frames to both workers at ~10 FPS (~100ms) or ~5.5 FPS (~180ms) when throttled
   useEffect(() => {
-    if (isSpeaking || !mediaStream) return;
+    if (isSpeaking || !mediaStream || paused) return;
 
     const intervalMs = isThrottled ? 180 : 100;
     const timer = setInterval(() => {
-      if (isTabPaused) return;
+      if (isTabPaused || paused) return;
       const video = videoRef.current;
       if (!video || video.readyState < 2 || video.paused || video.ended) return;
 
@@ -323,7 +328,7 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
     }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [isSpeaking, mediaStream, isTabPaused, isThrottled, processVisionWorkerFrame, submitONNXFrame]);
+  }, [isSpeaking, mediaStream, paused, isTabPaused, isThrottled, processVisionWorkerFrame, submitONNXFrame, lastLandmarks]);
 
   // Reset per-question counts & smoothing filters on question change
   const clearPerQuestionFrames = useCallback(() => {
@@ -382,6 +387,9 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
     isONNXReady,
     isThrottled,
     isFallbackMode,
+    lastEar: lastLandmarks?.envelope.faceDetected ? lastLandmarks.envelope.ear : null,
+    lastMar: lastLandmarks?.envelope.faceDetected ? lastLandmarks.envelope.mar : null,
+    faceBox: lastLandmarks?.envelope.faceDetected ? lastLandmarks.envelope.faceBox : null,
     clearPerQuestionFrames,
     getCapturedTelemetry,
     getQuestionTelemetry,
