@@ -71,7 +71,7 @@ export default function SessionInterviewerCard({
   children,
 }: SessionInterviewerCardProps) {
   return (
-    <div className="lg:col-span-5 space-y-6 flex flex-col justify-between">
+    <div className="lg:col-span-5 space-y-6 flex flex-col justify-between" data-secure="content">
       <Card variant="default" className="space-y-4 flex-1 flex flex-col justify-between">
         <div>
           <div className="flex items-start justify-between gap-4">

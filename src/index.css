@@ -310,3 +310,40 @@ textarea:disabled,
   background-color: var(--primary-soft);
   color: var(--primary);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   STEP 6: SECURE EXAM INTEGRITY & ANTI-COPY DETERRENCE (O2)
+   Token-based CSS for proctored question surfaces and print deterrence.
+   ───────────────────────────────────────────────────────────────────────── */
+[data-secure="content"] {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+[data-secure="input"] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  body::before {
+    content: "Proctored Exam Environment: Printing and screen duplication are restricted.";
+    display: block !important;
+    visibility: visible !important;
+    position: fixed;
+    top: 40%;
+    left: 5%;
+    right: 5%;
+    text-align: center;
+    font-size: 1.5rem;
+    font-family: var(--font-heading, sans-serif);
+    font-weight: 800;
+    color: var(--danger, #DC2626);
+  }
+}

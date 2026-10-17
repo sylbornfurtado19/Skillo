@@ -3,6 +3,9 @@ import { getAuthToken } from './auth';
 import type { CodeAnswer } from '../types';
 import type { SpeechAnalytics } from '../lib/services/speechAnalytics';
 import { downsampleByGroup } from '../lib/utils/downsample';
+import type { IVPEvidenceReceipt } from '@/types/ivpEvidence';
+import type { SessionIntegrityReport } from '@/types/integrity';
+import { toServerSafeEvidence } from '@/lib/services/ivpEvidenceAggregator';
 
 // ── Evaluation request limits (mirror app/api/interview/evaluate/route.ts) ──
 const MAX_ANSWER_CHARS = 10000;
@@ -428,7 +431,9 @@ export const submitInterviewAnswers = async (
     questionIndex?: number;
   }>,
   codeAnswer?: CodeAnswer,
-  speechAnalytics?: Record<string, SpeechAnalytics>
+  speechAnalytics?: Record<string, SpeechAnalytics>,
+  ivpEvidence?: IVPEvidenceReceipt,
+  sessionIntegrity?: SessionIntegrityReport
 ) => {
   const token = await getAuthToken();
 
@@ -464,6 +469,8 @@ export const submitInterviewAnswers = async (
       }
     : undefined;
 
+  const serverSafeEvidence = ivpEvidence ? toServerSafeEvidence(ivpEvidence) : undefined;
+
   const coreBody = { setupData, questionsList: safeQuestions, answersList: safeAnswers };
   const fullBody = {
     ...coreBody,
@@ -473,6 +480,8 @@ export const submitInterviewAnswers = async (
     ...(sampledSync ? { syncWindows: sampledSync } : {}),
     ...(safeCode ? { codeAnswer: safeCode } : {}),
     ...(speechAnalytics && Object.keys(speechAnalytics).length > 0 ? { speechAnalytics } : {}),
+    ...(serverSafeEvidence ? { ivpEvidence: serverSafeEvidence } : {}),
+    ...(sessionIntegrity ? { sessionIntegrity } : {}),
   };
   const hasOptionalPayload = Object.keys(fullBody).length > Object.keys(coreBody).length;
 

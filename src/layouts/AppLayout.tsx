@@ -135,6 +135,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
     : { title: 'Product Workspace', subtitle: 'Practice and refine your professional interview skills.' };
   
 
+  const isExamMode = pathname.startsWith('/interview');
+
+  // Exam-mode navigation deterrence (D17)
+  useEffect(() => {
+    if (!isExamMode || typeof window === 'undefined') return;
+    const handlePopState = () => {
+      const confirmLeave = window.confirm(
+        'Warning: An assessed interview is in progress. Leaving will pause your session and be logged as an integrity violation. Are you sure you want to exit?'
+      );
+      if (!confirmLeave) {
+        window.history.pushState(null, '', window.location.href);
+      }
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isExamMode]);
+
   const avatarUrl =
     (user?.user_metadata?.avatar_url as string | undefined) ??
     (user?.user_metadata?.picture as string | undefined) ??
@@ -145,6 +163,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
     user?.email?.split('@')[0] ??
     'Candidate';
   const userInitial = userName.charAt(0).toUpperCase();
+
+  // Focused proctored exam viewport with no sidebar/nav distractions
+  if (isExamMode) {
+    return (
+      <div className="flex h-screen bg-[var(--bg-page)] text-[var(--text-primary)] overflow-hidden font-body transition-colors duration-300">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-primary focus:text-text-on-primary focus:rounded-xl focus:shadow-soft font-semibold text-xs transition duration-200"
+        >
+          Skip to main content
+        </a>
+        <ToastContainer />
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto w-full relative outline-none">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[var(--bg-page)] text-[var(--text-primary)] overflow-hidden font-body transition-colors duration-300">

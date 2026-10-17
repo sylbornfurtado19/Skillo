@@ -75,7 +75,7 @@ export default function CodeWorkspace({ value, onChange }: CodeWorkspaceProps) {
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface shadow-soft overflow-hidden text-left">
+    <section className="rounded-2xl border border-border bg-bg-surface shadow-soft overflow-hidden text-left" data-secure="input">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-bg-surface-alt px-4 py-3">
         <label className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
           Language

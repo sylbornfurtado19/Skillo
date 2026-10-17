@@ -82,7 +82,7 @@ export default function SessionAnswerWorkspace({
   setDiagramState,
 }: SessionAnswerWorkspaceProps) {
   return (
-    <div className="lg:col-span-7 flex flex-col justify-between bg-bg-surface border border-border rounded-2xl p-6 relative space-y-6 shadow-soft">
+    <div className="lg:col-span-7 flex flex-col justify-between bg-bg-surface border border-border rounded-2xl p-6 relative space-y-6 shadow-soft" data-secure="input">
       <div>
         <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
           <div className="space-y-0.5">

@@ -20,6 +20,10 @@ import { getAuthToken } from '../services/auth';
 import { useMediaReadiness } from '../hooks/useMediaReadiness';
 import { splitIntoSentences, estimateNarrationMs, pickEnglishVoice } from '../lib/media/narration';
 import SessionDeviceGate from '../components/interview/session/SessionDeviceGate';
+import SessionPreflight from '../components/interview/session/SessionPreflight';
+import SessionIntegrityOverlay from '../components/interview/session/SessionIntegrityOverlay';
+import { useInterviewIntegrity } from '../hooks/useInterviewIntegrity';
+import { useIVPEvidenceRunner } from '../hooks/useIVPEvidenceRunner';
 
 import dynamic from 'next/dynamic';
 
@@ -248,6 +252,47 @@ export default function InterviewSession() {
   const activeQuestionIndex = isRetry && retryQuestionIndex !== null
     ? retryQuestionIndex
     : currentQuestionIndex;
+  const [preflightDone, setPreflightDone] = useState<boolean>(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    return (
+      (answers && answers.length > 0) ||
+      currentQuestionIndex > 0 ||
+      sessionStorage.getItem(`skillo_preflight_done_${sessionKeyRef.current}`) === 'true'
+    );
+  });
+
+  // ── Proctored Interview Integrity Engine (O1, O2, O3, O7) ─────────────────
+  const integrity = useInterviewIntegrity({
+    sessionKey: sessionKeyRef.current,
+    activeQuestionId,
+    activeQuestionIndex,
+    devicesReady,
+    isExamActive: preflightDone && !grading,
+    onPauseTriggered: () => {
+      cancelSpeechNarration();
+      if (recording && recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+    },
+    onResumeTriggered: () => {
+      replayQuestion();
+    },
+  });
+
+  // Mid-interview hardware disconnect detection (O3 / REM-2)
+  useEffect(() => {
+    if (preflightDone && hasBeenReadyRef.current && !devicesReady) {
+      if (!mediaReadiness.cameraLive) {
+        integrity.recordDevicePause('camera_off');
+      } else if (!mediaReadiness.microphoneLive) {
+        integrity.recordDevicePause('microphone_off');
+      }
+    }
+  }, [preflightDone, devicesReady, mediaReadiness.cameraLive, mediaReadiness.microphoneLive, integrity]);
 
   // ── Unified Worker + ONNX Vision Pipeline (REM-3 / REM-4) ─────────────
   const {
@@ -256,10 +301,15 @@ export default function InterviewSession() {
     livePoseFrame,
     liveAffectFrame,
     gazeEyeContactPct,
+    gazeFrameCount,
     showGazeWarning,
     latestGestureToast,
     isVisionReady,
     isONNXReady,
+    isThrottled,
+    lastEar,
+    lastMar,
+    faceBox,
     clearPerQuestionFrames,
     getCapturedTelemetry,
   } = useIVPSessionPipeline({
@@ -267,6 +317,29 @@ export default function InterviewSession() {
     isSpeaking: interviewerSpeaking,
     questionId: activeQuestionId,
     questionIndex: activeQuestionIndex,
+    paused: integrity.isPaused,
+  });
+
+  // ── Dedicated Headless Classical IVP Engine Runner (O4 / O5) ───────────
+  const ivpRunner = useIVPEvidenceRunner({
+    videoRef,
+    questionId: activeQuestionId,
+    questionIndex: activeQuestionIndex,
+    isPaused: integrity.isPaused,
+    isTabPaused: false,
+    isThrottled,
+    isInterviewerSpeaking: interviewerSpeaking,
+    faceRoi: faceBox
+      ? {
+          x: faceBox.x,
+          y: faceBox.y,
+          width: faceBox.width,
+          height: faceBox.height,
+        }
+      : null,
+    ear: lastEar,
+    mar: lastMar,
+    enabled: preflightDone && !grading,
   });
 
   // Reset per-question vision metrics on question change
@@ -326,7 +399,7 @@ export default function InterviewSession() {
   // Waits until camera + microphone are on, speaks sentence by sentence (long utterances stall in
   // Chrome), and has a watchdog so a silent speech engine can never freeze the interview.
   useEffect(() => {
-    if (!devicesReady) {
+    if (!devicesReady || !preflightDone || integrity.isPaused) {
       narrationRunRef.current += 1;
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -414,7 +487,16 @@ export default function InterviewSession() {
       if (watchdog) clearTimeout(watchdog);
       synth.cancel();
     };
-  }, [currentQuestionIndex, currentQuestionText, voiceRate, voicePitch, devicesReady, narrationNonce]);
+  }, [
+    currentQuestionIndex,
+    currentQuestionText,
+    voiceRate,
+    voicePitch,
+    devicesReady,
+    preflightDone,
+    integrity.isPaused,
+    narrationNonce,
+  ]);
 
   // Restore autosaved draft for the current question index
   useEffect(() => {
@@ -547,6 +629,189 @@ export default function InterviewSession() {
     };
   }, [showToast, setResponseMode]);
 
+  // ── Unified Submission & Evaluation Finalizer (T6 Refactor) ─────────────
+  // Collapses the 3 duplicated submit paths (handleNextQuestion final branch,
+  // handleConfirmSkip final branch, and retry branch) into a single authoritative handler.
+  // Attaches client-measured IVP Evidence receipt and Session Integrity report.
+  const finalizeAndSubmit = useCallback(
+    async (options: {
+      isRetrySubmit?: boolean;
+      overrideQuestions?: (string | InterviewQuestion)[];
+      overrideAnswers?: any[];
+      speechAnalytics?: Record<string, SpeechAnalytics>;
+    } = {}) => {
+      setGrading(true);
+      cancelSpeechNarration();
+      if (recording && recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      const { capturedGazeFrames, capturedPoseFrames, capturedAffectFrames } = getCapturedTelemetry();
+      const capturedSyncWindows = syncTrackerRef.current?.getFrames() ?? [];
+      syncTrackerRef.current?.stop();
+      stopCamera();
+
+      // Retrieve evidence receipt and integrity report
+      let ivpEvidence = undefined;
+      try {
+        ivpEvidence = await ivpRunner.getReceipt();
+      } catch (err) {
+        console.warn('[InterviewSession] Failed to compile IVP evidence receipt:', err);
+      }
+      const sessionIntegrity = integrity.getReport();
+
+      if (options.isRetrySubmit && retryQuestionIndex !== null) {
+        const finalAnswer = responseMode === 'type' ? typedAnswer : transcriptText;
+        submitInterviewAnswers(
+          setupData,
+          [{
+            id: currentQuestion.id || activeQuestionId,
+            question: currentQuestion.question,
+            hint: currentQuestion.hint,
+            duration: currentQuestion.duration,
+            idealConcepts: currentQuestion.idealConcepts,
+            targetedWeakness: currentQuestion.targetedWeakness,
+          }],
+          [{ answerText: finalAnswer || 'No response provided.' }],
+          undefined,
+          capturedGazeFrames,
+          capturedPoseFrames,
+          capturedAffectFrames,
+          capturedSyncWindows,
+          isCodingMode ? codeAnswer : undefined,
+          options.speechAnalytics,
+          ivpEvidence,
+          sessionIntegrity
+        )
+          .then((finalReport) => {
+            const enriched = {
+              ...finalReport,
+              ivpEvidence: ivpEvidence ?? finalReport.ivpEvidence,
+              sessionIntegrity: sessionIntegrity ?? finalReport.sessionIntegrity,
+            };
+            const { newScore, feedback } = handleRetryEvaluationSuccess(enriched);
+            updateQuestionScore(retryQuestionIndex, finalAnswer || 'No response provided.', newScore, feedback);
+            setIsRetry(false);
+            setGrading(false);
+            router.push('/results');
+          })
+          .catch((err) => {
+            console.warn('[InterviewSession] Retry evaluation error, keeping previous score:', err);
+            const failure = handleRetryEvaluationFailure(err);
+            showToast(failure.toastMessage, failure.toastType);
+            setGrading(failure.grading);
+          });
+        return;
+      }
+
+      const questionsToSubmit = (options.overrideQuestions || questions).map((q, idx) => {
+        if (typeof q === 'object' && q !== null) {
+          return {
+            id: q.id || `q_${idx + 1}`,
+            question: q.question,
+            hint: q.hint,
+            duration: q.duration,
+            idealConcepts: q.idealConcepts,
+            targetedWeakness: q.targetedWeakness,
+          };
+        }
+        return { id: `q_${idx + 1}`, question: q };
+      });
+
+      const answersToSubmit = options.overrideAnswers || answers;
+
+      submitInterviewAnswers(
+        setupData,
+        questionsToSubmit,
+        answersToSubmit,
+        undefined,
+        capturedGazeFrames,
+        capturedPoseFrames,
+        capturedAffectFrames,
+        capturedSyncWindows,
+        isCodingMode ? codeAnswer : undefined,
+        options.speechAnalytics,
+        ivpEvidence,
+        sessionIntegrity
+      )
+        .then((finalReport) => {
+          // Attach client-computed evidence and integrity report (D5)
+          const enrichedReport = {
+            ...finalReport,
+            ivpEvidence: ivpEvidence ?? finalReport.ivpEvidence,
+            sessionIntegrity: sessionIntegrity ?? finalReport.sessionIntegrity,
+          };
+          setResults(enrichedReport);
+
+          const authUserId = user?.id || enrichedReport.userId;
+          if (authUserId) {
+            const effectiveSetup = {
+              ...setupData,
+              ...(diagramState?.nodes?.length ? { systemDesignDiagram: diagramState } : {}),
+            };
+            const payload = mapEvaluationToMockInterviewPayload(enrichedReport, effectiveSetup);
+            saveMockInterview(authUserId, payload).catch((err) => {
+              console.warn('[InterviewSession] Failed to persist mock interview to Supabase:', err);
+            });
+          }
+          setGrading(false);
+          router.push('/results');
+        })
+        .catch((err) => {
+          console.warn('[InterviewSession] Server evaluation failed, using resilient offline fallback:', err);
+          const failure = describeEvaluationFailure(err);
+          showToast(failure.toast, 'info');
+          const fallback = generateFallbackEvaluationReport(
+            setupData,
+            questionsToSubmit,
+            answersToSubmit,
+            undefined,
+            failure.reason
+          );
+          const enrichedFallback = {
+            ...fallback,
+            ivpEvidence: ivpEvidence
+              ? { ...ivpEvidence, consumedByEvaluator: false, transmitted: false }
+              : undefined,
+            sessionIntegrity: sessionIntegrity ?? undefined,
+          };
+          setResults(enrichedFallback);
+          setGrading(false);
+          router.push('/results');
+        });
+    },
+    [
+      cancelSpeechNarration,
+      recording,
+      getCapturedTelemetry,
+      stopCamera,
+      ivpRunner,
+      integrity,
+      retryQuestionIndex,
+      responseMode,
+      typedAnswer,
+      transcriptText,
+      setupData,
+      currentQuestion,
+      activeQuestionId,
+      isCodingMode,
+      codeAnswer,
+      setIsRetry,
+      updateQuestionScore,
+      router,
+      showToast,
+      questions,
+      answers,
+      user?.id,
+      diagramState,
+      setResults,
+    ]
+  );
+
   const handleNextQuestion = useCallback(() => {
     cancelSpeechNarration();
 
@@ -602,123 +867,19 @@ export default function InterviewSession() {
         }
         setCurrentQuestionIndex(nextIndex);
       } else {
-        setGrading(true);
-        const { capturedGazeFrames, capturedPoseFrames, capturedAffectFrames } = getCapturedTelemetry();
-        const capturedSyncWindows = syncTrackerRef.current?.getFrames() ?? [];
-        syncTrackerRef.current?.stop();
-        stopCamera();
-        submitInterviewAnswers(
-          setupData,
-          updatedQuestions.map((q, idx) => {
-            if (typeof q === 'object' && q !== null) {
-              return {
-                id: q.id || `q_${idx + 1}`,
-                question: q.question,
-                hint: q.hint,
-                duration: q.duration,
-                idealConcepts: q.idealConcepts,
-                targetedWeakness: q.targetedWeakness,
-              };
-            }
-            return { id: `q_${idx + 1}`, question: q };
-          }),
-          updatedAnswers,
-          undefined,
-          capturedGazeFrames,
-          capturedPoseFrames,
-          capturedAffectFrames,
-          capturedSyncWindows,
-          isCodingMode ? codeAnswer : undefined,
-          analyticsByQuestion
-        )
-
-
-
-          .then((finalReport) => {
-            setResults(finalReport);
-            const authUserId = user?.id || finalReport.userId;
-            if (authUserId) {
-              const effectiveSetup = {
-                ...setupData,
-                ...(diagramState?.nodes?.length ? { systemDesignDiagram: diagramState } : {}),
-              };
-              const payload = mapEvaluationToMockInterviewPayload(finalReport, effectiveSetup);
-              saveMockInterview(authUserId, payload).catch((err) => {
-                console.warn('[InterviewSession] Failed to persist mock interview to Supabase:', err);
-              });
-            }
-            setGrading(false);
-            router.push('/results');
-          })
-          .catch((err) => {
-            console.warn('[InterviewSession] Server evaluation failed, using resilient offline fallback:', err);
-            const failure = describeEvaluationFailure(err);
-            showToast(failure.toast, 'info');
-            const fallback = generateFallbackEvaluationReport(
-              setupData,
-              updatedQuestions.map((q, idx) => {
-                if (typeof q === 'object' && q !== null) {
-                  return {
-                    id: q.id || `q_${idx + 1}`,
-                    question: q.question,
-                    hint: q.hint,
-                    idealConcepts: q.idealConcepts,
-                  };
-                }
-                return { id: `q_${idx + 1}`, question: q };
-              }),
-              updatedAnswers,
-              undefined,
-              failure.reason
-            );
-            setResults(fallback);
-            setGrading(false);
-            router.push('/results');
-          });
+        finalizeAndSubmit({
+          overrideQuestions: updatedQuestions,
+          overrideAnswers: updatedAnswers,
+          speechAnalytics: analyticsByQuestion,
+        });
       }
     };
 
     if (isRetry && retryQuestionIndex !== null) {
-      setGrading(true);
-      const { capturedGazeFrames, capturedPoseFrames, capturedAffectFrames } = getCapturedTelemetry();
-      const capturedSyncWindows = syncTrackerRef.current?.getFrames() ?? [];
-      syncTrackerRef.current?.stop();
-      stopCamera();
-      submitInterviewAnswers(
-        setupData,
-        [{
-          id: currentQuestion.id || activeQuestionId,
-          question: currentQuestion.question,
-          hint: currentQuestion.hint,
-          duration: currentQuestion.duration,
-          idealConcepts: currentQuestion.idealConcepts,
-          targetedWeakness: currentQuestion.targetedWeakness,
-        }],
-        [{ answerText: finalAnswer || 'No response provided.' }],
-        undefined,
-        capturedGazeFrames,
-        capturedPoseFrames,
-        capturedAffectFrames,
-        capturedSyncWindows,
-        isCodingMode ? codeAnswer : undefined,
-        currentSpeechAnalytics
-      )
-
-
-
-        .then((finalReport) => {
-          const { newScore, feedback } = handleRetryEvaluationSuccess(finalReport);
-          updateQuestionScore(retryQuestionIndex, finalAnswer || 'No response provided.', newScore, feedback);
-          setIsRetry(false);
-          setGrading(false);
-          router.push('/results');
-        })
-        .catch((err) => {
-          console.warn('[InterviewSession] Retry evaluation error, keeping previous score:', err);
-          const failure = handleRetryEvaluationFailure(err);
-          showToast(failure.toastMessage, failure.toastType);
-          setGrading(failure.grading);
-        });
+      finalizeAndSubmit({
+        isRetrySubmit: true,
+        speechAnalytics: currentSpeechAnalytics,
+      });
       return;
     }
 
@@ -859,17 +1020,31 @@ export default function InterviewSession() {
   }, [handleNextQuestion]);
 
   useEffect(() => {
-    // Never run the clock unless the question has been read and camera + microphone are on
-    if (interviewerSpeaking || checkingFollowUp || grading || !devicesReady) return;
+    // Never run the clock unless preflight is complete, question has been read, devices are live, and not paused
+    if (
+      !preflightDone ||
+      interviewerSpeaking ||
+      checkingFollowUp ||
+      grading ||
+      !devicesReady ||
+      integrity.isPaused
+    ) {
+      return;
+    }
 
     const durationSec = currentQuestion.duration;
-    const deadline = Date.now() + durationSec * 1000;
-    setTimeLeft(durationSec);
+    let currentRemaining = integrity.getQuestionRemainingSec(activeQuestionId, durationSec);
+    if (currentRemaining <= 0) {
+      currentRemaining = integrity.startQuestionClock(activeQuestionId, durationSec);
+    }
+    setTimeLeft(currentRemaining);
 
     let fired = false;
+    const deadline = Date.now() + currentRemaining * 1000;
     const timer = setInterval(() => {
       const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
       setTimeLeft(remaining);
+      integrity.saveCurrentQuestionRemainingSec(activeQuestionId, remaining);
       if (remaining <= 0 && !fired) {
         fired = true;
         clearInterval(timer);
@@ -878,7 +1053,17 @@ export default function InterviewSession() {
     }, 250);
 
     return () => clearInterval(timer);
-  }, [currentQuestionIndex, interviewerSpeaking, checkingFollowUp, grading, devicesReady, currentQuestion.duration]);
+  }, [
+    preflightDone,
+    currentQuestionIndex,
+    activeQuestionId,
+    interviewerSpeaking,
+    checkingFollowUp,
+    grading,
+    devicesReady,
+    integrity.isPaused,
+    currentQuestion.duration,
+  ]);
 
   // Unsaved Content Navigation Guard (Tab close / refresh)
   const activeAnswerContent = responseMode === 'type' ? typedAnswer : transcriptText;
@@ -942,101 +1127,24 @@ export default function InterviewSession() {
       }
       setCurrentQuestionIndex(nextIndex);
     } else {
-      setGrading(true);
-      const { capturedGazeFrames, capturedPoseFrames, capturedAffectFrames } = getCapturedTelemetry();
-      const capturedSyncWindows = syncTrackerRef.current?.getFrames() ?? [];
-      syncTrackerRef.current?.stop();
-      stopCamera();
-      submitInterviewAnswers(
-        setupData,
-        questions.map((q, idx) => {
-          if (typeof q === 'object' && q !== null) {
-            return {
-              id: q.id || `q_${idx + 1}`,
-              question: q.question,
-              hint: q.hint,
-              duration: q.duration,
-              idealConcepts: q.idealConcepts,
-              targetedWeakness: q.targetedWeakness,
-            };
-          }
-          return { id: `q_${idx + 1}`, question: q };
-        }),
-        newAnswers,
-        undefined,
-        capturedGazeFrames,
-        capturedPoseFrames,
-        capturedAffectFrames,
-        capturedSyncWindows,
-        isCodingMode ? codeAnswer : undefined,
-        currentSpeechAnalytics
-      )
-
-
-
-        .then((finalReport) => {
-          setResults(finalReport);
-          const authUserId = user?.id || finalReport.userId;
-          if (authUserId) {
-            const effectiveSetup = {
-              ...setupData,
-              ...(diagramState?.nodes?.length ? { systemDesignDiagram: diagramState } : {}),
-            };
-            const payload = mapEvaluationToMockInterviewPayload(finalReport, effectiveSetup);
-            saveMockInterview(authUserId, payload).catch((err) => {
-              console.warn('[InterviewSession] Failed to persist mock interview to Supabase on skip:', err);
-            });
-          }
-          setGrading(false);
-          router.push('/results');
-        })
-        .catch((err) => {
-          console.warn('[InterviewSession] Server evaluation failed on skip, using resilient fallback:', err);
-          const failure = describeEvaluationFailure(err);
-          showToast(failure.toast, 'info');
-          const fallback = generateFallbackEvaluationReport(
-            setupData,
-            questions.map((q, idx) => {
-              if (typeof q === 'object' && q !== null) {
-                return {
-                  id: q.id || `q_${idx + 1}`,
-                  question: q.question,
-                  hint: q.hint,
-                  idealConcepts: q.idealConcepts,
-                };
-              }
-              return { id: `q_${idx + 1}`, question: q };
-            }),
-            newAnswers,
-            undefined,
-            failure.reason
-          );
-          setResults(fallback);
-          setGrading(false);
-          router.push('/results');
-        });
+      finalizeAndSubmit({
+        overrideQuestions: questions,
+        overrideAnswers: newAnswers,
+        speechAnalytics: currentSpeechAnalytics,
+      });
     }
   }, [
-    recording,
-    answers,
+    cancelSpeechNarration,
     currentQuestionIndex,
+    recording,
+    finalizeSpeechAnalytics,
+    currentQuestion.id,
+    answers,
     questions,
     responseMode,
+    finalizeAndSubmit,
     setAnswers,
     setCurrentQuestionIndex,
-    setupData,
-    setResults,
-    router,
-    cancelSpeechNarration,
-    codeAnswer,
-    isCodingMode,
-    currentQuestion.id,
-    diagramState,
-    user?.id,
-    showToast,
-    getCapturedTelemetry,
-    stopCamera,
-    finalizeSpeechAnalytics,
   ]);
 
   const handlePrevQuestion = () => {
@@ -1163,15 +1271,37 @@ export default function InterviewSession() {
     return <SessionGradingOverlay />;
   }
 
-  // Bare minimum to run an interview: camera AND microphone on (also re-checked mid-interview)
-  if (!devicesReady) {
+  // Bare minimum to run an interview: camera AND microphone on (G1, G2)
+  if (!devicesReady && !hasBeenReadyRef.current) {
     return (
       <SessionDeviceGate
         readiness={mediaReadiness}
         errorName={cameraErrorName}
         requesting={requestingDevices}
-        interrupted={hasBeenReadyRef.current}
+        interrupted={false}
         onEnable={handleEnableDevices}
+        onBack={() => router.push('/setup')}
+      />
+    );
+  }
+
+  // Preflight Gate: Enforces Camera AND Microphone permission before interview begins (O1, D8, D9, D14)
+  if (!preflightDone) {
+    return (
+      <SessionPreflight
+        readiness={mediaReadiness}
+        errorName={cameraErrorName}
+        requesting={requestingDevices}
+        cameraStream={cameraStream}
+        onEnableDevices={handleEnableDevices}
+        onBeginInterview={() => {
+          setPreflightDone(true);
+          if (typeof window !== 'undefined') {
+            try {
+              sessionStorage.setItem(`skillo_preflight_done_${sessionKeyRef.current}`, 'true');
+            } catch {}
+          }
+        }}
         onBack={() => router.push('/setup')}
       />
     );
@@ -1182,7 +1312,19 @@ export default function InterviewSession() {
     (setupData as any)?.source === 'fallback';
 
   return (
-    <div className="max-w-6xl mx-auto pb-12 text-left space-y-4">
+    <div className="max-w-6xl mx-auto pb-12 text-left space-y-4 relative" data-testid="interview-session-container">
+      {/* Integrity Pause Overlay (D13: mounted on top so camera video element never unmounts) */}
+      {integrity.isPaused && (
+        <SessionIntegrityOverlay
+          reason={integrity.pauseReason}
+          devicesReady={devicesReady}
+          onEnableDevices={handleEnableDevices}
+          onResume={() => {
+            integrity.resumeInterview();
+          }}
+        />
+      )}
+
       {isFallbackSession && (
         <div className="flex items-center justify-center">
           <Badge variant="warning" size="md" className="flex items-center gap-1.5 px-3 py-1 text-xs">

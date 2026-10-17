@@ -4,7 +4,11 @@ import type { HeadPoseSessionMetrics } from './poseEngine';
 import type { AffectiveSessionMetrics } from './affectEngine';
 import type { LipSyncSessionMetrics } from './syncEngine';
 import type { SpeechAnalytics } from '@/lib/services/speechAnalytics';
+import type { IVPEvidenceReceipt } from './ivpEvidence';
+import type { SessionIntegrityReport } from './integrity';
 export type { SpeechAnalytics } from '@/lib/services/speechAnalytics';
+export type { IVPEvidenceReceipt } from './ivpEvidence';
+export type { SessionIntegrityReport } from './integrity';
 
 
 
@@ -456,6 +460,8 @@ export interface EvaluationReport {
   selectedQuestionIndex?: number;
   selectedQuestionId?: string;
   speechAnalytics?: Record<string, SpeechAnalytics>;
+  ivpEvidence?: IVPEvidenceReceipt;
+  sessionIntegrity?: SessionIntegrityReport;
 }
 
 export interface MockInterview {
@@ -475,6 +481,8 @@ export interface MockInterview {
   duration?: number;
   interview_mode_id?: string;
   system_design_diagram?: Record<string, any>;
+  ivp_evidence?: Record<string, any>;
+  session_integrity?: Record<string, any>;
 }
 
 export type MockInterviewInsert = Omit<MockInterview, 'id' | 'user_id'>;
