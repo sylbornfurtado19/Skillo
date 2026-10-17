@@ -41,6 +41,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 0. Test / Mock Session Override
+    if (
+      typeof window !== 'undefined' &&
+      (window.localStorage.getItem('skillo_test_session') === 'true' ||
+        document.cookie.includes('skillo_test_session=true'))
+    ) {
+      const mockUser = {
+        id: 'test-candidate-id',
+        email: 'candidate@skillo.ai',
+        user_metadata: { name: 'Test Candidate' },
+      };
+      setUser(mockUser);
+      setSession({ user: mockUser, access_token: 'test-token' });
+      setLoading(false);
+      return;
+    }
+
     // 1. Firebase Provider Path
     if (isFirebaseActive()) {
       try {

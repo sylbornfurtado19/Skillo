@@ -380,7 +380,7 @@ tests/deliveryComposite.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Unit tests for weig
 tests/downsample.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/downsample.test.ts,7
 tests/e2e/antigravity-3-8-high-flash.spec.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npx playwright test tests/e2e/antigravity-3-8-high-flash.spec.ts,7
 tests/e2e/visualRegression.spec.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npx playwright test tests/e2e/visualRegression.spec.ts,7
-tests/e2e/wiringScreenshots.spec.ts,NON_RUNTIME_OR_ASSET,OFFLINE,,npx playwright test tests/e2e/wiringScreenshots.spec.ts,
+tests/e2e/wiringScreenshots.spec.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Playwright E2E visual verification and screenshot capture suite,npx playwright test tests/e2e/wiringScreenshots.spec.ts,7
 tests/evaluationModeHonesty.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/evaluationModeHonesty.test.ts,7
 tests/faceRoiCrop.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/faceRoiCrop.test.ts,7
 tests/fixtures/ivpExternalGroundTruth.json,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/fixtures/ivpExternalGroundTruth.json,7
