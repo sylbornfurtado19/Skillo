@@ -358,6 +358,7 @@ export interface SinglePassEvaluation {
   feedback: string;
   groundingScore?: number;
   isUngrounded?: boolean;
+  ivpObservations?: Array<{ evidenceId: string; observation: string }>;
 }
 
 export interface SemanticCluster {
@@ -462,6 +463,7 @@ export interface EvaluationReport {
   speechAnalytics?: Record<string, SpeechAnalytics>;
   ivpEvidence?: IVPEvidenceReceipt;
   sessionIntegrity?: SessionIntegrityReport;
+  ivpObservations?: Array<{ evidenceId: string; observation: string }>;
 }
 
 export interface MockInterview {

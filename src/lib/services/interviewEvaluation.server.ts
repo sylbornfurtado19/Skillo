@@ -17,6 +17,9 @@ import { verifyMultiPassGrounding } from './groundingVerifier.server';
 import { AI_CONFIG, executeAnthropicRequest, getAiApiKey } from '@/lib/ai/aiConfig';
 import { safeParseModelJson } from '@/lib/ai/safeJsonParser';
 import { sanitizeUserText } from '@/lib/server/sanitize';
+import { buildEvidencePromptBlock, sanitizeIvpObservations } from './evidencePrompt';
+import type { IVPEvidenceReceipt } from '@/types/ivpEvidence';
+import type { SessionIntegrityReport } from '@/types/integrity';
 import type {
   RubricCriterion,
   SinglePassEvaluation,
@@ -85,6 +88,8 @@ export interface EvaluateInterviewInput {
   /** Optional: per-window SyncNet audio-visual lip sync data captured during the interview session */
   syncWindows?: SyncWindowInput[];
   codeAnswer?: CodeAnswer;
+  ivpEvidence?: IVPEvidenceReceipt;
+  sessionIntegrity?: SessionIntegrityReport;
 }
 
 
@@ -174,6 +179,14 @@ export const singlePassSchema = z.object({
   }),
   overallScore: z.number().min(1).max(5),
   feedback: z.string().min(5).max(1000),
+  ivpObservations: z
+    .array(
+      z.object({
+        evidenceId: z.string().max(64),
+        observation: z.string().max(1000),
+      })
+    )
+    .optional(),
 });
 
 /**
@@ -246,13 +259,15 @@ REQUIRED OUTPUT FORMAT: Return ONLY a JSON object matching this schema (do NOT r
   "feedback": "<Constructive summary feedback for candidate>"
 }`;
 
+      const evidencePromptBlock = buildEvidencePromptBlock(input.ivpEvidence);
+
       const res = await executeAnthropicRequest({
         apiKey: anthropicApiKey,
         system: systemPrompt,
         messages: [
           {
             role: 'user',
-            content: `Candidate Role Target: ${setupData.role} (${setupData.experienceLevel}, ${setupData.type})\n\n<candidate_submission_data>\n${combinedSubmission}${codeSubmission}\n</candidate_submission_data>`,
+            content: `Candidate Role Target: ${setupData.role} (${setupData.experienceLevel}, ${setupData.type})\n\n<candidate_submission_data>\n${combinedSubmission}${codeSubmission}\n</candidate_submission_data>${evidencePromptBlock ? `\n\n${evidencePromptBlock}` : ''}`,
           },
         ],
         maxTokens: AI_CONFIG.maxTokens.singlePass,
@@ -265,9 +280,13 @@ REQUIRED OUTPUT FORMAT: Return ONLY a JSON object matching this schema (do NOT r
           logContext: `CoT Pass ${passIndex + 1}`,
         });
         if (parsed.success && parsed.data) {
+          const allowedEvidenceIds = new Set(input.ivpEvidence?.perQuestion.map((q) => q.evidenceId) || []);
+          const validObservations = sanitizeIvpObservations(parsed.data.ivpObservations, allowedEvidenceIds);
+
           return {
             ...parsed.data,
             cotReasoning: parsed.data.cotReasoning || parsed.data.decisionSummary,
+            ivpObservations: validObservations.length > 0 ? validObservations : undefined,
             fromFallback: false,
           };
         }
@@ -1026,6 +1045,27 @@ export async function performInterviewEvaluation(
     speechDeliveryScore: undefined,
   });
 
+  // Resolve whether IVP edge evidence was consumed by live evaluator (O5, D7, D10)
+  const consumedByEvaluator = Boolean(!isFallback && input.ivpEvidence && completedPasses.length > 0);
+  const resolvedIvpEvidence: IVPEvidenceReceipt | undefined = input.ivpEvidence
+    ? {
+        ...input.ivpEvidence,
+        consumedByEvaluator,
+        transmitted: true,
+      }
+    : undefined;
+
+  // Deduplicate and aggregate IVP observations from completed passes
+  const observationsMap = new Map<string, { evidenceId: string; observation: string }>();
+  completedPasses.forEach((p) => {
+    p.ivpObservations?.forEach((obs) => {
+      if (!observationsMap.has(obs.evidenceId)) {
+        observationsMap.set(obs.evidenceId, obs);
+      }
+    });
+  });
+  const aggregatedIvpObservations = Array.from(observationsMap.values());
+
   return {
     overallScore: overallScore100,
     categories,
@@ -1049,6 +1089,9 @@ export async function performInterviewEvaluation(
     source: isFallback ? 'fallback' : 'live',
     selectedQuestionIndex,
     selectedQuestionId,
+    ivpEvidence: resolvedIvpEvidence,
+    sessionIntegrity: input.sessionIntegrity,
+    ivpObservations: aggregatedIvpObservations.length > 0 ? aggregatedIvpObservations : undefined,
   };
 }
 

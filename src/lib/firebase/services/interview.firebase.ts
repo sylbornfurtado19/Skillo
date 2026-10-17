@@ -34,6 +34,8 @@ export const saveMockInterview = async (
       duration: interviewData.duration ?? 45,
       interview_mode_id: interviewData.interview_mode_id ?? 'generic-technical',
       system_design_diagram: interviewData.system_design_diagram ?? {},
+      ...(interviewData.ivp_evidence ? { ivp_evidence: interviewData.ivp_evidence } : {}),
+      ...(interviewData.session_integrity ? { session_integrity: interviewData.session_integrity } : {}),
       created_at: interviewData.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
       _serverTimestamp: serverTimestamp(),

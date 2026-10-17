@@ -195,3 +195,14 @@ CREATE POLICY "Users can insert their own request logs"
 -- 2. INSERT: (bucket_id = 'resumes' AND auth.uid()::text = (storage.foldername(name))[1])
 -- 3. DELETE: (bucket_id = 'resumes' AND auth.uid()::text = (storage.foldername(name))[1])
 
+-- =========================================================
+-- MIGRATION: IVP Edge Evidence & Proctoring Session Integrity (Phase 5)
+-- =========================================================
+-- Guarded column additions for mock_interviews table (D6 safe migration)
+ALTER TABLE mock_interviews ADD COLUMN IF NOT EXISTS ivp_evidence JSONB;
+ALTER TABLE mock_interviews ADD COLUMN IF NOT EXISTS session_integrity JSONB;
+
+COMMENT ON COLUMN mock_interviews.ivp_evidence IS 'Deterministic on-device classical IVP edge telemetry receipt (scalars and SHA-256 digest only; zero raw face/biometric storage)';
+COMMENT ON COLUMN mock_interviews.session_integrity IS 'Proctored browser integrity event ledger, pause accounting, and security verdict';
+
+

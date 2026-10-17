@@ -127,6 +127,107 @@ function telemetryArray<T extends z.ZodTypeAny>(frameSchema: T) {
     .optional();
 }
 
+const ivpKernelCountsSchema = z.object({
+  histogramEq: z.number().int().nonnegative(),
+  otsuYCrCb: z.number().int().nonnegative(),
+  sobel: z.number().int().nonnegative(),
+  temporalMAD: z.number().int().nonnegative(),
+  earMar: z.number().int().nonnegative(),
+});
+
+const ivpQuestionEvidenceSchema = z.object({
+  questionId: z.string().max(64),
+  questionIndex: z.number().int().nonnegative(),
+  frames: z.number().int().nonnegative(),
+  meanLuminance: z.number().finite(),
+  contrastStdDev: z.number().finite(),
+  clippedPct: z.number().finite(),
+  illumination: z.enum(['underexposed', 'ok', 'overexposed', 'uneven']),
+  skinMaskCoveragePct: z.number().finite(),
+  presenceRatio: z.number().finite(),
+  sobelEdgeDensity: z.number().finite(),
+  sharpnessScore: z.number().finite(),
+  motionEnergy: z.number().finite(),
+  blinkRatePerMin: z.number().finite().optional(),
+  mouthActivityPct: z.number().finite().optional(),
+  evidenceId: z.string().max(64),
+});
+
+const ivpEvidenceSchema = z
+  .object({
+    kernelVersion: z.string().max(50),
+    samplingHz: z.number().finite().positive().max(60),
+    framesAnalyzed: z.number().int().nonnegative(),
+    kernelCounts: ivpKernelCountsSchema,
+    avgKernelMs: z.number().finite().nonnegative(),
+    perQuestion: z.array(ivpQuestionEvidenceSchema).max(MAX_INTERVIEW_QUESTIONS),
+    digestSha256: z.string().regex(/^[a-f0-9]{64}$/i, 'Must be 64-character SHA-256 hex string'),
+    provenance: z.literal('client-reported'),
+    consumedByEvaluator: z.boolean().default(false),
+    transmitted: z.boolean().default(true),
+    thumbnails: z.undefined().optional(),
+  })
+  .strict();
+
+const integrityEventSchema = z.object({
+  id: z.string().max(64),
+  type: z.enum([
+    'pause',
+    'copy_attempt',
+    'cut_attempt',
+    'paste_attempt',
+    'context_menu',
+    'screenshot_key',
+    'print_attempt',
+    'drag_attempt',
+    'tab_hidden',
+    'window_blur',
+    'fullscreen_exit',
+    'fullscreen_unavailable',
+    'navigation_attempt',
+    'multi_tab',
+    'session_reload',
+    'permission_revoked',
+  ]),
+  atMs: z.number().finite().nonnegative(),
+  questionId: z.string().max(64).optional(),
+  questionIndex: z.number().int().nonnegative().optional(),
+  pauseReason: z
+    .enum([
+      'camera_off',
+      'microphone_off',
+      'permission_revoked',
+      'tab_hidden',
+      'window_blur',
+      'fullscreen_exit',
+      'navigation_attempt',
+      'multi_tab',
+      'session_reload',
+    ])
+    .optional(),
+  durationMs: z.number().finite().nonnegative().optional(),
+  blocked: z.boolean().optional(),
+});
+
+const integrityTotalsSchema = z.object({
+  pauses: z.number().int().nonnegative(),
+  pausedMs: z.number().finite().nonnegative(),
+  tabSwitches: z.number().int().nonnegative(),
+  fullscreenExits: z.number().int().nonnegative(),
+  copyPasteAttempts: z.number().int().nonnegative(),
+  screenshotKeyAttempts: z.number().int().nonnegative(),
+  navigationAttempts: z.number().int().nonnegative(),
+  reloads: z.number().int().nonnegative(),
+});
+
+const sessionIntegritySchema = z.object({
+  events: z.array(integrityEventSchema).max(500),
+  totals: integrityTotalsSchema,
+  verdict: z.enum(['clean', 'minor_flags', 'flagged']),
+  policyVersion: z.string().max(50),
+  limitationsNote: z.string().max(500),
+});
+
 const evaluateSchema = z
   .object({
     setupData: setupDataSchema,
@@ -150,6 +251,8 @@ const evaluateSchema = z
         `Cannot exceed ${MAX_INTERVIEW_QUESTIONS} speech analytics entries`
       )
       .optional(),
+    ivpEvidence: ivpEvidenceSchema.optional(),
+    sessionIntegrity: sessionIntegritySchema.optional(),
   })
   .refine((data) => data.questionsList.length === data.answersList.length, {
     message: 'questionsList and answersList must have exactly equal lengths to prevent evaluation misalignment',
