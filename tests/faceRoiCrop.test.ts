@@ -91,4 +91,19 @@ describe('Face-ROI Tight Crop Math & Edge Clamping (Iteration 1a)', () => {
     expect(cropZero.sw).toBe(1280);
     expect(cropZero.sh).toBe(720);
   });
+
+  it('honors enableRoiCrop flag defaulting to true per training crop alignment', () => {
+    const { getIVPFeatureFlags, setIVPFeatureFlag, resetIVPFeatureFlags } = require('../src/lib/services/ivpFeatureFlags');
+    resetIVPFeatureFlags();
+    expect(getIVPFeatureFlags().enableRoiCrop).toBe(true);
+
+    const faceBox = { x: 220, y: 140, width: 200, height: 200 };
+    const enabledCrop = computeFaceRoiCrop(faceBox, 640, 480);
+    expect(enabledCrop.isROI).toBe(true);
+
+    setIVPFeatureFlag('enableRoiCrop', false);
+    expect(getIVPFeatureFlags().enableRoiCrop).toBe(false);
+    resetIVPFeatureFlags();
+  });
 });
+

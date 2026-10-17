@@ -11,6 +11,7 @@ import {
   runContinuousUnifiedONNX,
 } from '@/lib/services/onnxInferenceService';
 import { computeFaceRoiCrop } from '@/lib/services/visionPipeline';
+import { getIVPFeatureFlags } from '@/lib/services/ivpFeatureFlags';
 
 export interface FrameMetadata {
   questionId?: string;
@@ -224,9 +225,13 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
         if (typeof createImageBitmap !== 'undefined') {
           const srcW = source instanceof HTMLVideoElement ? source.videoWidth : source.width;
           const srcH = source instanceof HTMLVideoElement ? source.videoHeight : source.height;
-          const crop = computeFaceRoiCrop(metadata?.faceBox, srcW, srcH, {
-            mirrored: metadata?.mirrored,
-          });
+          const flags = getIVPFeatureFlags();
+          const shouldCropRoi = flags.enableRoiCrop !== false;
+          const crop = shouldCropRoi
+            ? computeFaceRoiCrop(metadata?.faceBox, srcW, srcH, {
+                mirrored: metadata?.mirrored,
+              })
+            : { sx: 0, sy: 0, sw: srcW, sh: srcH, isROI: false };
           isROI = crop.isROI;
 
           if (isROI && crop.sw > 0 && crop.sh > 0) {

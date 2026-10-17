@@ -23,6 +23,7 @@ export interface IVPFeatureFlags {
   enableSafeMode: boolean;
   enableTelemetryOptIn: boolean;
   enableWarmup: boolean;
+  enableRoiCrop: boolean;
 }
 
 export const DEFAULT_IVP_FEATURE_FLAGS: IVPFeatureFlags = {
@@ -33,6 +34,7 @@ export const DEFAULT_IVP_FEATURE_FLAGS: IVPFeatureFlags = {
   enableSafeMode: false,
   enableTelemetryOptIn: false,
   enableWarmup: true,
+  enableRoiCrop: true,
 };
 
 const STORAGE_KEY = 'ivp_feature_flags';
@@ -67,6 +69,9 @@ function parseQueryFlags(): Partial<IVPFeatureFlags> {
   }
   if (params.has('ivp_warmup')) {
     overrides.enableWarmup = params.get('ivp_warmup') === '1' || params.get('ivp_warmup') === 'true';
+  }
+  if (params.has('ivp_roicrop')) {
+    overrides.enableRoiCrop = params.get('ivp_roicrop') === '1' || params.get('ivp_roicrop') === 'true';
   }
   return overrides;
 }
