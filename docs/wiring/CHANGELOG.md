@@ -34,4 +34,10 @@
 - **Why**: Reach 100% reachability across all components in `src/` and `app/`, eliminating all remaining orphan files (0 orphans) and dead exports (0 dead exports).
 - **Evidence**: `audit:wiring` reports 173/173 files reachable (0 orphans), 0 dead exports, 0 tsc errors, 0 lint errors, 78/78 test suites passing, and CI regression passing.
 
+## [Iteration 7] - 2026-10-17
+- **What**: Cataloged all offline tooling, test suites, scripts, datasets, and docs into `docs/wiring/LEDGER.csv` (74 test suites classified as `TEST`, 110 offline training/benchmark scripts classified as `OFFLINE`, public and data assets classified as `ASSET`, and reachable Next.js and React modules classified as `LIVE`); registered `perf:measure` and `test:replay` script commands in `package.json`; documented comprehensive verification, audit, regression, and offline tooling commands in `README.md`.
+- **Why**: Ensure zero unreviewed rows in repository ledger, providing full accountability and working invocation commands for every file in the codebase.
+- **Evidence**: `audit:wiring:strict` exits with code 0; 444/444 ledger rows reviewed (0 unreviewed remaining); 173/173 files reachable (0 orphans); 0 dead exports; 78/78 test suites passing; CI regression passing.
+
+
 

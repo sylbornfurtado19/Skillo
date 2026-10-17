@@ -6,36 +6,36 @@ FIREBASE_SETUP.md,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root 
 ProjectReport.md,NON_RUNTIME_OR_ASSET,OFFLINE,Local project status documentation report,.gitignore:11,0
 README.md,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,README.md,0
 THEME.md,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,THEME.md,0
-app/(app)/calibration/CalibrationChart.tsx,REACHABLE,UNREVIEWED,,,
-app/(app)/calibration/page.tsx,REACHABLE,UNREVIEWED,,,
-app/(app)/dashboard/page.tsx,REACHABLE,UNREVIEWED,,,
-app/(app)/error.tsx,REACHABLE,UNREVIEWED,,,
-app/(app)/interview/page.tsx,REACHABLE,UNREVIEWED,,,
+app/(app)/calibration/CalibrationChart.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/calibration/CalibrationChart.tsx,7
+app/(app)/calibration/page.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/calibration/page.tsx,7
+app/(app)/dashboard/page.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/dashboard/page.tsx,7
+app/(app)/error.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/error.tsx,7
+app/(app)/interview/page.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/interview/page.tsx,7
 app/(app)/ivp-lab/page.tsx,REACHABLE,WIRED,Next.js route hosting the IVP diagnostic workbench,src/views/IVPLab.tsx;app/(app)/ivp-lab/page.tsx:5,2
-app/(app)/layout.tsx,REACHABLE,UNREVIEWED,,,
-app/(app)/loading.tsx,REACHABLE,UNREVIEWED,,,
-app/(app)/profile/page.tsx,REACHABLE,UNREVIEWED,,,
-app/(app)/results/page.tsx,REACHABLE,UNREVIEWED,,,
-app/(app)/resume/page.tsx,REACHABLE,UNREVIEWED,,,
-app/(app)/settings/page.tsx,REACHABLE,UNREVIEWED,,,
-app/(app)/setup/page.tsx,REACHABLE,UNREVIEWED,,,
-app/api/code/run/route.ts,REACHABLE,UNREVIEWED,,,
-app/api/interview/evaluate/route.ts,REACHABLE,UNREVIEWED,,,
-app/api/interview/followup/route.ts,REACHABLE,UNREVIEWED,,,
-app/api/interview/setup/route.ts,REACHABLE,UNREVIEWED,,,
-app/api/resume/analyze/route.ts,REACHABLE,UNREVIEWED,,,
-app/api/resume/extract/route.ts,REACHABLE,UNREVIEWED,,,
-app/api/resume/rewrite/route.ts,REACHABLE,UNREVIEWED,,,
-app/error.tsx,REACHABLE,UNREVIEWED,,,
-app/global-error.tsx,REACHABLE,UNREVIEWED,,,
-app/layout.tsx,REACHABLE,UNREVIEWED,,,
-app/loading.tsx,REACHABLE,UNREVIEWED,,,
-app/login/page.tsx,REACHABLE,UNREVIEWED,,,
-app/not-found.tsx,REACHABLE,UNREVIEWED,,,
-app/page.tsx,REACHABLE,UNREVIEWED,,,
-app/providers.tsx,REACHABLE,UNREVIEWED,,,
+app/(app)/layout.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/layout.tsx,7
+app/(app)/loading.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/loading.tsx,7
+app/(app)/profile/page.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/profile/page.tsx,7
+app/(app)/results/page.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/results/page.tsx,7
+app/(app)/resume/page.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/resume/page.tsx,7
+app/(app)/settings/page.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/settings/page.tsx,7
+app/(app)/setup/page.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/(app)/setup/page.tsx,7
+app/api/code/run/route.ts,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/api/code/run/route.ts,7
+app/api/interview/evaluate/route.ts,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/api/interview/evaluate/route.ts,7
+app/api/interview/followup/route.ts,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/api/interview/followup/route.ts,7
+app/api/interview/setup/route.ts,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/api/interview/setup/route.ts,7
+app/api/resume/analyze/route.ts,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/api/resume/analyze/route.ts,7
+app/api/resume/extract/route.ts,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/api/resume/extract/route.ts,7
+app/api/resume/rewrite/route.ts,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/api/resume/rewrite/route.ts,7
+app/error.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/error.tsx,7
+app/global-error.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/global-error.tsx,7
+app/layout.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/layout.tsx,7
+app/loading.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/loading.tsx,7
+app/login/page.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/login/page.tsx,7
+app/not-found.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/not-found.tsx,7
+app/page.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/page.tsx,7
+app/providers.tsx,REACHABLE,LIVE,Reachable Next.js App Router entry point or layout,app/providers.tsx,7
 baseline_fail_1.png,REMOVED,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
-data/benchmarks/interview_benchmarks.json,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+data/benchmarks/interview_benchmarks.json,NON_RUNTIME_OR_ASSET,ASSET,Static question bank dataset asset,data/,7
 docs/IVP_MODEL_FEASIBILITY_SPIKE.md,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation research papers and test data,docs/IVP_MODEL_FEASIBILITY_SPIKE.md,0
 docs/PREPROCESSING_UPGRADE_RESULTS.md,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation research papers and test data,docs/PREPROCESSING_UPGRADE_RESULTS.md,0
 docs/REPORT.md,NON_RUNTIME_OR_ASSET,OFFLINE,Technical documentation research papers and test data,docs/REPORT.md,0
@@ -82,13 +82,13 @@ next.config.js,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root doc
 package.json,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,package.json,0
 playwright.config.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,playwright.config.ts,0
 postcss.config.js,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,postcss.config.js,0
-public/favicon.svg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+public/favicon.svg,NON_RUNTIME_OR_ASSET,ASSET,Static public client asset,public/,7
 public/images/sample-face.jpg,NON_RUNTIME_OR_ASSET,WIRED,Offline baseline face asset for IVP laboratory and CI testing,src/views/IVPLab.tsx:101,2
 public/models/affect_engine.onnx,NON_RUNTIME_OR_ASSET,WIRED,MobileFaceNet ONNX model loaded for real-time affect/emotion inference,src/lib/services/onnxInferenceService.ts:72,1
 public/models/face_landmarker.task,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe FaceLandmarker dense 468-point mesh model bundle,src/lib/workers/visionWorker.ts:168,1
 public/models/gaze_engine.onnx,NON_RUNTIME_OR_ASSET,WIRED,L2CS-Net ONNX model loaded for 3D gaze vector inference,src/lib/services/onnxInferenceService.ts:73,1
 public/models/pose_engine.onnx,NON_RUNTIME_OR_ASSET,WIRED,HopeNet ONNX model loaded for 3D head pose Euler angles,src/lib/services/onnxInferenceService.ts:74,1
-public/og.png,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+public/og.png,NON_RUNTIME_OR_ASSET,ASSET,Static public client asset,public/,7
 public/wasm/vision_wasm_internal.js,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly loader script,src/lib/workers/visionWorker.ts:163,1
 public/wasm/vision_wasm_internal.wasm,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly binary runtime,src/lib/workers/visionWorker.ts:163,1
 public/wasm/vision_wasm_module_internal.js,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly threaded module script,src/lib/workers/visionWorker.ts:163,1
@@ -97,209 +97,209 @@ public/wasm/vision_wasm_nosimd_internal.js,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe 
 public/wasm/vision_wasm_nosimd_internal.wasm,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe WebAssembly non-SIMD fallback binary,src/lib/workers/visionWorker.ts:163,1
 replay_report.json,REMOVED,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
 requirements.txt,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,requirements.txt,0
-scripts/benchmark-ivp-models.html,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/check-ci-regression.js,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/common/__init__.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/common/__pycache__/__init__.cpython-313.pyc,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/common/__pycache__/preprocessing.cpython-313.pyc,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/common/preprocessing.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/eval/verify_ai_benchmarks.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/measure-device-perf.js,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/memory-leak-test.js,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/replay-harness.js,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/__pycache__/download_dataset.cpython-313.pyc,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/__pycache__/ivp_baseline_inference.cpython-313.pyc,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/__pycache__/ivp_preprocessing.cpython-313.pyc,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/benchmark_optical_flow.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/benchmark_preprocessing_upgrades.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/ground_truth.csv,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_001.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_002.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_003.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_004.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_005.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_006.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_007.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_008.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_009.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_010.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_011.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_012.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_013.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_014.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_015.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_016.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_017.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_018.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_019.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_020.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_021.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_022.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_023.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_024.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_025.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_026.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_027.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_028.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_029.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_030.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_031.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_032.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_033.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_034.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_035.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_036.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_037.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_038.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_039.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_040.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_041.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_042.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_043.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_044.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_045.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_046.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_047.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_048.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_049.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/images/sample_050.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_00_2007_007763.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_01_2008_001009.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_02_2008_001322.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_03_2008_002079.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_04_2008_002470.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_05_2008_002506.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_06_2008_004176.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_07_2008_007676.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_08_2009_004587.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_09_Tom_Cruise_avp_2014_4.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_10_bald_guys.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_11_emma.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_12_JianzhuGuo.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_13_trump_hillary.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_14_aflw-test.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/data/src_15_lena.jpg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/download_dataset.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/ivp_baseline_inference.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/ivp_preprocessing.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/measure_jitter.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/models/face_detection_yunet_2023mar.onnx,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/models/facial_expression_recognition_mobilefacenet_2022july.onnx,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/models/haarcascade_frontalface_default.xml,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/plots/illumination_normalization_demo.png,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/plots/inference_overlay_demo.png,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/plots/morphological_mask_demo.png,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/plots/optical_flow_feasibility.png,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/plots/preprocessing_demo.png,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/plots/temporal_smoothing_jitter.png,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/plots/white_balance_skin_demo.png,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/review1/run_review1_demo.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/test-auth.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/train/evaluate_all.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/train/export_onnx.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/train/exports/affect_engine.onnx,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/train/exports/gaze_engine.onnx,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/train/exports/pose_engine.onnx,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/train/ingest_all_datasets.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/train/plots/affect_learning_curve.csv,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/train/plots/gaze_learning_curve.csv,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/train/plots/pose_learning_curve.csv,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/train/train_engine.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/train/verify_all_datasets.py,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-scripts/wiring/audit-wiring.mjs,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-src/components/common/Footer.tsx,REACHABLE,UNREVIEWED,,,
-src/components/common/Logo.tsx,REACHABLE,UNREVIEWED,,,
-src/components/common/Navbar.tsx,REACHABLE,UNREVIEWED,,,
-src/components/common/PageTransition.tsx,REACHABLE,UNREVIEWED,,,
-src/components/common/ProtectedRoute.tsx,REACHABLE,UNREVIEWED,,,
-src/components/common/ThemeSwitcher.tsx,REACHABLE,UNREVIEWED,,,
-src/components/dashboard/OnboardingProgressWidget.tsx,REACHABLE,UNREVIEWED,,,
-src/components/interview/CodeWorkspace.tsx,REACHABLE,UNREVIEWED,,,
-src/components/interview/InterviewModePreviewCard.tsx,REACHABLE,UNREVIEWED,,,
-src/components/interview/SystemDesignCanvas.tsx,REACHABLE,UNREVIEWED,,,
-src/components/interview/session/SessionAnswerWorkspace.tsx,REACHABLE,UNREVIEWED,,,
-src/components/interview/session/SessionBiometricHUDs.tsx,REACHABLE,UNREVIEWED,,,
-src/components/interview/session/SessionDeviceGate.tsx,REACHABLE,UNREVIEWED,,,
-src/components/interview/session/SessionGradingOverlay.tsx,REACHABLE,UNREVIEWED,,,
-src/components/interview/session/SessionInterviewerCard.tsx,REACHABLE,UNREVIEWED,,,
-src/components/interview/session/sessionHelpers.ts,REACHABLE,UNREVIEWED,,,
-src/components/ivp/canvas/CalibrationModal.tsx,REACHABLE,UNREVIEWED,,,
+scripts/benchmark-ivp-models.html,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/check-ci-regression.js,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/common/__init__.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/common/__pycache__/__init__.cpython-313.pyc,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/common/__pycache__/preprocessing.cpython-313.pyc,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/common/preprocessing.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/eval/verify_ai_benchmarks.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/measure-device-perf.js,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/memory-leak-test.js,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/replay-harness.js,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/__pycache__/download_dataset.cpython-313.pyc,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/__pycache__/ivp_baseline_inference.cpython-313.pyc,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/__pycache__/ivp_preprocessing.cpython-313.pyc,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/benchmark_optical_flow.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/benchmark_preprocessing_upgrades.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/ground_truth.csv,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_001.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_002.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_003.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_004.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_005.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_006.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_007.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_008.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_009.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_010.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_011.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_012.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_013.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_014.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_015.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_016.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_017.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_018.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_019.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_020.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_021.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_022.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_023.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_024.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_025.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_026.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_027.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_028.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_029.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_030.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_031.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_032.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_033.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_034.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_035.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_036.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_037.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_038.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_039.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_040.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_041.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_042.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_043.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_044.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_045.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_046.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_047.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_048.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_049.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/images/sample_050.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_00_2007_007763.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_01_2008_001009.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_02_2008_001322.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_03_2008_002079.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_04_2008_002470.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_05_2008_002506.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_06_2008_004176.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_07_2008_007676.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_08_2009_004587.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_09_Tom_Cruise_avp_2014_4.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_10_bald_guys.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_11_emma.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_12_JianzhuGuo.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_13_trump_hillary.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_14_aflw-test.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/data/src_15_lena.jpg,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/download_dataset.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/ivp_baseline_inference.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/ivp_preprocessing.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/measure_jitter.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/models/face_detection_yunet_2023mar.onnx,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/models/facial_expression_recognition_mobilefacenet_2022july.onnx,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/models/haarcascade_frontalface_default.xml,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/plots/illumination_normalization_demo.png,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/plots/inference_overlay_demo.png,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/plots/morphological_mask_demo.png,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/plots/optical_flow_feasibility.png,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/plots/preprocessing_demo.png,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/plots/temporal_smoothing_jitter.png,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/plots/white_balance_skin_demo.png,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/review1/run_review1_demo.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/test-auth.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/train/evaluate_all.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/train/export_onnx.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/train/exports/affect_engine.onnx,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/train/exports/gaze_engine.onnx,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/train/exports/pose_engine.onnx,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/train/ingest_all_datasets.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/train/plots/affect_learning_curve.csv,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/train/plots/gaze_learning_curve.csv,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/train/plots/pose_learning_curve.csv,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/train/train_engine.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/train/verify_all_datasets.py,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+scripts/wiring/audit-wiring.mjs,NON_RUNTIME_OR_ASSET,OFFLINE,Offline model training or performance validation script,scripts/,7
+src/components/common/Footer.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/common/Footer.tsx,7
+src/components/common/Logo.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/common/Logo.tsx,7
+src/components/common/Navbar.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/common/Navbar.tsx,7
+src/components/common/PageTransition.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/common/PageTransition.tsx,7
+src/components/common/ProtectedRoute.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/common/ProtectedRoute.tsx,7
+src/components/common/ThemeSwitcher.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/common/ThemeSwitcher.tsx,7
+src/components/dashboard/OnboardingProgressWidget.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/dashboard/OnboardingProgressWidget.tsx,7
+src/components/interview/CodeWorkspace.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/interview/CodeWorkspace.tsx,7
+src/components/interview/InterviewModePreviewCard.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/interview/InterviewModePreviewCard.tsx,7
+src/components/interview/SystemDesignCanvas.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/interview/SystemDesignCanvas.tsx,7
+src/components/interview/session/SessionAnswerWorkspace.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/interview/session/SessionAnswerWorkspace.tsx,7
+src/components/interview/session/SessionBiometricHUDs.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/interview/session/SessionBiometricHUDs.tsx,7
+src/components/interview/session/SessionDeviceGate.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/interview/session/SessionDeviceGate.tsx,7
+src/components/interview/session/SessionGradingOverlay.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/interview/session/SessionGradingOverlay.tsx,7
+src/components/interview/session/SessionInterviewerCard.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/interview/session/SessionInterviewerCard.tsx,7
+src/components/interview/session/sessionHelpers.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/components/interview/session/sessionHelpers.ts,7
+src/components/ivp/canvas/CalibrationModal.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ivp/canvas/CalibrationModal.tsx,7
 src/components/ivp/canvas/CanvasHeaderControls.tsx,REACHABLE,WIRED,Interactive toolbar with mode toggles; warmup switch; safe-mode gate; and flag reset,src/components/ui/IVPInteractiveCanvas.tsx:1820,2
-src/components/ivp/canvas/CanvasMetricHUD.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ivp/canvas/WarmupWarningBanner.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ivp/canvas/telemetryHelpers.ts,REACHABLE,UNREVIEWED,,,
+src/components/ivp/canvas/CanvasMetricHUD.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ivp/canvas/CanvasMetricHUD.tsx,7
+src/components/ivp/canvas/WarmupWarningBanner.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ivp/canvas/WarmupWarningBanner.tsx,7
+src/components/ivp/canvas/telemetryHelpers.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ivp/canvas/telemetryHelpers.ts,7
 src/components/ivp/canvas/types.ts,REACHABLE,WIRED,TypeScript interfaces for IVP canvas telemetry; nullable metrics; and modes,src/components/ui/IVPInteractiveCanvas.tsx:48;src/components/ivp/canvas/CanvasHeaderControls.tsx:4,2
 src/components/ui/AdaptiveHUDHeader.tsx,REACHABLE,WIRED,Live interview HUD header displaying adaptive follow-up challenges and LATS PRM score,src/views/InterviewSession.tsx:550;src/components/ui/AdaptiveHUDHeader.tsx:30,4
-src/components/ui/AffectiveHUD.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/Badge.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/Button.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/Card.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/EyeContactHUD.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/AffectiveHUD.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/AffectiveHUD.tsx,7
+src/components/ui/Badge.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/Badge.tsx,7
+src/components/ui/Button.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/Button.tsx,7
+src/components/ui/Card.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/Card.tsx,7
+src/components/ui/EyeContactHUD.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/EyeContactHUD.tsx,7
 src/components/ui/FacialComposureCard.tsx,REACHABLE,WIRED,Renders AffectNet 2D circumplex V-A scatter plot and emotional stability metrics,src/views/Results.tsx:48;src/views/Results.tsx:1033,3
-src/components/ui/FeedbackHelpers.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/FeedbackHelpers.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/FeedbackHelpers.tsx,7
 src/components/ui/GazeAnalyticsCard.tsx,REACHABLE,WIRED,Renders L2CS-Net gaze ray focus zone donut and distraction event log,src/views/Results.tsx:46;src/views/Results.tsx:1020,3
 src/components/ui/GraphRAGDashboard.tsx,REACHABLE,WIRED,Hierarchical force-directed skill knowledge graph and prerequisite chain mapper,src/views/ResumeUpload.tsx:560;src/components/ui/GraphRAGDashboard.tsx:32,4
 src/components/ui/IVPAffectTracker.tsx,REMOVED,REMOVED,Deprecated heuristic tracker replaced by useIVPSessionPipeline; 0 callers in app/,tests/ivpWorkerIntegration.test.ts:49,3
-src/components/ui/IVPCameraPreview.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/IVPCameraPreview.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/IVPCameraPreview.tsx,7
 src/components/ui/IVPGazeTracker.tsx,REMOVED,REMOVED,Deprecated heuristic tracker replaced by useIVPSessionPipeline; 0 callers in app/,tests/ivpWorkerIntegration.test.ts:47,3
 src/components/ui/IVPInteractiveCanvas.tsx,REACHABLE,WIRED,Dual-viewport CV inspection canvas with genuine EAR/MAR signals and HUD,src/views/IVPLab.tsx:398,2
 src/components/ui/IVPPoseTracker.tsx,REMOVED,REMOVED,Deprecated heuristic tracker replaced by useIVPSessionPipeline; 0 callers in app/,tests/ivpWorkerIntegration.test.ts:48,3
 src/components/ui/IVPSignalOscilloscope.tsx,REACHABLE,WIRED,Real-time circular buffer oscilloscope displaying live EAR and MAR waveforms with null states,src/views/IVPLab.tsx:488;src/views/IVPLab.tsx:507,2
-src/components/ui/IVPSyncTracker.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/IVPSyncTracker.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/IVPSyncTracker.tsx,7
 src/components/ui/IVPTelemetryTimeline.tsx,REACHABLE,WIRED,Synchronized IVP timeline rendering AffectNet/HopeNet/L2CS-Net events,src/views/Results.tsx:990;src/components/ui/IVPTelemetryTimeline.tsx:73,3
-src/components/ui/InputFields.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/InputFields.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/InputFields.tsx,7
 src/components/ui/LATSTreeVisualizer.tsx,REACHABLE,WIRED,Monte Carlo Tree Search visualizer for adaptive interview trajectories and PRM scoring,src/views/Results.tsx:971;src/components/ui/AdaptiveHUDHeader.tsx:87,4
 src/components/ui/LayoutPenaltyViewer.tsx,REACHABLE,WIRED,LayoutLMv3 formatting penalty breakdown and visual ATS integrity auditor,src/views/ResumeUpload.tsx:602;src/components/ui/LayoutPenaltyViewer.tsx:88,4
-src/components/ui/LipSyncHUD.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/LipSyncHUD.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/LipSyncHUD.tsx,7
 src/components/ui/LipSyncVerificationCard.tsx,REACHABLE,WIRED,Renders SyncNet audio-visual latency offset and anti-spoofing verification card,src/views/Results.tsx:49;src/views/Results.tsx:1040,3
-src/components/ui/Loader.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ui/Modal.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/Loader.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/Loader.tsx,7
+src/components/ui/Modal.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/Modal.tsx,7
 src/components/ui/PostureComposureCard.tsx,REACHABLE,WIRED,Renders HopeNet 3D head pose stability gauge and affirmative gesture counts,src/views/Results.tsx:47;src/views/Results.tsx:1027,3
-src/components/ui/PostureHUD.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/PostureHUD.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/PostureHUD.tsx,7
 src/components/ui/PrerequisiteChainViewer.tsx,REACHABLE,WIRED,Renders step-by-step prerequisite learning paths and dependency gap chains,src/components/ui/GraphRAGDashboard.tsx:282;src/components/ui/PrerequisiteChainViewer.tsx:20,4
 src/components/ui/ReflectionTimelineDrawer.tsx,REACHABLE,WIRED,Sliding timeline drawer displaying chronological candidate self-critique episodes,src/components/ui/SkillMemoryGraph.tsx:155;src/components/ui/ReflectionTimelineDrawer.tsx:23,4
 src/components/ui/SUQConfidenceDashboard.tsx,REACHABLE,WIRED,Semantic Uncertainty Quantification dashboard with entropy gauge and validation trigger,src/views/Results.tsx:941;src/components/ui/SUQConfidenceDashboard.tsx:24,4
 src/components/ui/SimPOContrastiveCard.tsx,REACHABLE,WIRED,FAANG benchmark contrastive analysis card displaying quality margin and delta cards,src/views/Results.tsx:964;src/components/ui/SimPOContrastiveCard.tsx:22,4
-src/components/ui/Skeleton.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/Skeleton.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/Skeleton.tsx,7
 src/components/ui/SkillMemoryGraph.tsx,REACHABLE,WIRED,Candidate multi-session skill mastery radar chart with persistent deficiency tracker,src/views/Profile.tsx:387;src/components/ui/SkillMemoryGraph.tsx:22,4
 src/components/ui/StructuralDeltaViewer.tsx,REACHABLE,WIRED,Viewer rendering architectural and edge-case delta items from SimPO benchmark evaluation,src/components/ui/SimPOContrastiveCard.tsx:7;src/components/ui/StructuralDeltaViewer.tsx:14,4
-src/components/ui/Toast.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/Toast.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/components/ui/Toast.tsx,7
 src/components/ui/VisualDocumentCanvas.tsx,REACHABLE,WIRED,HTML5 canvas rendering normalized 2D document layout bounding boxes and text blocks,src/views/ResumeUpload.tsx:585;src/components/ui/VisualDocumentCanvas.tsx:19,4
-src/context/AuthContext.tsx,REACHABLE,UNREVIEWED,,,
-src/context/InterviewContext.tsx,REACHABLE,UNREVIEWED,,,
-src/hooks/useAuth.ts,REACHABLE,UNREVIEWED,,,
-src/hooks/useChartTheme.ts,REACHABLE,UNREVIEWED,,,
+src/context/AuthContext.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/context/AuthContext.tsx,7
+src/context/InterviewContext.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/context/InterviewContext.tsx,7
+src/hooks/useAuth.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/hooks/useAuth.ts,7
+src/hooks/useChartTheme.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/hooks/useChartTheme.ts,7
 src/hooks/useIVPSessionPipeline.ts,REACHABLE,WIRED,Hook orchestrating real-time vision workers; EMA smoothers; and evaluation telemetry buffering,src/views/InterviewSession.tsx:28;src/hooks/useIVPSessionPipeline.ts:115,3
-src/hooks/useInterviewCamera.ts,REACHABLE,UNREVIEWED,,,
-src/hooks/useMediaReadiness.ts,REACHABLE,UNREVIEWED,,,
+src/hooks/useInterviewCamera.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/hooks/useInterviewCamera.ts,7
+src/hooks/useMediaReadiness.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/hooks/useMediaReadiness.ts,7
 src/hooks/useONNXWorker.ts,REACHABLE,WIRED,Hook managing ONNX worker backpressure and Face-ROI crop,src/views/IVPLab.tsx:188;src/hooks/useIVPSessionPipeline.ts:321,1
 src/hooks/useVisionWorker.ts,REACHABLE,WIRED,Hook managing MediaPipe FaceLandmarker worker and telemetry,src/views/IVPLab.tsx:75;src/hooks/useIVPSessionPipeline.ts:164,1
-src/index.css,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-src/layouts/AppLayout.tsx,REACHABLE,UNREVIEWED,,,
-src/layouts/MainLayout.tsx,REACHABLE,UNREVIEWED,,,
+src/index.css,NON_RUNTIME_OR_ASSET,LIVE,Reachable application runtime module or component,src/index.css,7
+src/layouts/AppLayout.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/layouts/AppLayout.tsx,7
+src/layouts/MainLayout.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/layouts/MainLayout.tsx,7
 src/lib/ai/aiConfig.ts,REACHABLE,WIRED,Unified AI gateway with provider failover; retry jitter; and concurrency semaphore,src/lib/services/interviewEvaluation.server.ts:16;src/lib/ai/aiConfig.ts:28,4
-src/lib/ai/defaultModel.ts,REACHABLE,UNREVIEWED,,,
-src/lib/ai/safeJsonParser.ts,REACHABLE,UNREVIEWED,,,
-src/lib/chartSetup.ts,REACHABLE,UNREVIEWED,,,
-src/lib/firebase/admin.ts,REACHABLE,UNREVIEWED,,,
-src/lib/firebase/config.ts,REACHABLE,UNREVIEWED,,,
-src/lib/firebase/services/auth.firebase.ts,REACHABLE,UNREVIEWED,,,
-src/lib/firebase/services/interview.firebase.ts,REACHABLE,UNREVIEWED,,,
-src/lib/firebase/services/profile.firebase.ts,REACHABLE,UNREVIEWED,,,
-src/lib/media/mediaReadiness.ts,REACHABLE,UNREVIEWED,,,
-src/lib/media/narration.ts,REACHABLE,UNREVIEWED,,,
-src/lib/schemas/diagramSchema.ts,REACHABLE,UNREVIEWED,,,
-src/lib/schemas/graphSchema.ts,REACHABLE,UNREVIEWED,,,
-src/lib/server/authenticateRequest.ts,REACHABLE,UNREVIEWED,,,
-src/lib/server/env.ts,REACHABLE,UNREVIEWED,,,
-src/lib/server/sanitize.ts,REACHABLE,UNREVIEWED,,,
-src/lib/server/supabaseAdmin.ts,REACHABLE,UNREVIEWED,,,
+src/lib/ai/defaultModel.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/ai/defaultModel.ts,7
+src/lib/ai/safeJsonParser.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/ai/safeJsonParser.ts,7
+src/lib/chartSetup.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/chartSetup.ts,7
+src/lib/firebase/admin.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/firebase/admin.ts,7
+src/lib/firebase/config.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/firebase/config.ts,7
+src/lib/firebase/services/auth.firebase.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/firebase/services/auth.firebase.ts,7
+src/lib/firebase/services/interview.firebase.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/firebase/services/interview.firebase.ts,7
+src/lib/firebase/services/profile.firebase.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/firebase/services/profile.firebase.ts,7
+src/lib/media/mediaReadiness.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/media/mediaReadiness.ts,7
+src/lib/media/narration.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/media/narration.ts,7
+src/lib/schemas/diagramSchema.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/schemas/diagramSchema.ts,7
+src/lib/schemas/graphSchema.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/schemas/graphSchema.ts,7
+src/lib/server/authenticateRequest.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/server/authenticateRequest.ts,7
+src/lib/server/env.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/server/env.ts,7
+src/lib/server/sanitize.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/server/sanitize.ts,7
+src/lib/server/supabaseAdmin.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/server/supabaseAdmin.ts,7
 src/lib/services/backgroundSegmentation.ts,REACHABLE,WIRED,Anthropometric person foreground mask and backdrop blur,src/components/ui/IVPInteractiveCanvas.tsx:547;src/lib/services/temporalMotion.ts:154,1
-src/lib/services/benchmarkRetrieval.server.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/benchmarkRetrieval.server.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/benchmarkRetrieval.server.ts,7
 src/lib/services/deliveryComposite.ts,REACHABLE,WIRED,Pure service computing weighted delivery composite and exposing DELIVERY_COMPOSITE_WEIGHTS,src/views/Results.tsx:38;src/lib/services/deliveryComposite.ts:6,3
-src/lib/services/documentVision.server.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/graphRAG.server.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/groundingVerifier.server.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/documentVision.server.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/documentVision.server.ts,7
+src/lib/services/graphRAG.server.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/graphRAG.server.ts,7
+src/lib/services/groundingVerifier.server.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/groundingVerifier.server.ts,7
 src/lib/services/interviewEvaluation.server.ts,REACHABLE,WIRED,Prometheus-2 and IVP session aggregator computing delivery composite and guarding zero-frame sessions,app/api/interview/evaluate/route.ts:5;src/lib/services/interviewEvaluation.server.ts:1012,3
 src/lib/services/ivpAffectEngine.ts,REACHABLE,WIRED,AffectNet Valence-Arousal composure and stress spike detector,src/lib/services/interviewEvaluation.server.ts:11;src/hooks/useIVPSessionPipeline.ts:17,3
 src/lib/services/ivpCameraManager.ts,REACHABLE,WIRED,Camera acquisition device resolution fallback and stream lifecycle,src/hooks/useInterviewCamera.ts:25;src/views/IVPLab.tsx:105,1
@@ -311,135 +311,135 @@ src/lib/services/ivpPoseEngine.ts,REACHABLE,WIRED,HopeNet 3D head pose and cycli
 src/lib/services/ivpSignalCalculators.ts,REACHABLE,WIRED,Pure physiological signal calculators for blink rate; hysteresis; and speech cadence,src/views/IVPLab.tsx:24;tests/ivpSignalCalculators.test.ts:1,2
 src/lib/services/ivpSyncEngine.ts,REACHABLE,WIRED,SyncNet lip-audio cross-modal distance and anti-spoofing verifier,src/lib/services/interviewEvaluation.server.ts:12;src/components/ui/IVPSyncTracker.tsx:12,3
 src/lib/services/ivpTimelineTransformer.ts,REACHABLE,WIRED,Transforms raw EvaluationReport metrics into chronological timeline events,src/components/ui/IVPTelemetryTimeline.tsx:14;src/views/Results.tsx:50,3
-src/lib/services/latsEngine.server.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/latsEngine.server.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/latsEngine.server.ts,7
 src/lib/services/microPatchTracker.ts,REACHABLE,WIRED,Sub-pixel ZNCC and optical flow micro-template tracker across frames,src/components/ui/IVPInteractiveCanvas.tsx:36;tests/microPatchTrackerPixelMapping.test.ts:1,2
 src/lib/services/onnxInferenceService.ts,REACHABLE,WIRED,Unified ONNX preprocessing model decoding and EMA smoothing,src/hooks/useONNXWorker.ts:11;src/lib/workers/onnxWorker.ts:13,1
-src/lib/services/rateLimiter.server.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/reflexionEngine.server.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/reflexionService.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/resumeAnalysis.server.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/resumeExtraction.server.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/simpoEngine.server.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/speechAnalytics.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/studyPlan.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/rateLimiter.server.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/rateLimiter.server.ts,7
+src/lib/services/reflexionEngine.server.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/reflexionEngine.server.ts,7
+src/lib/services/reflexionService.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/reflexionService.ts,7
+src/lib/services/resumeAnalysis.server.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/resumeAnalysis.server.ts,7
+src/lib/services/resumeExtraction.server.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/resumeExtraction.server.ts,7
+src/lib/services/simpoEngine.server.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/simpoEngine.server.ts,7
+src/lib/services/speechAnalytics.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/speechAnalytics.ts,7
+src/lib/services/studyPlan.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/studyPlan.ts,7
 src/lib/services/temporalMotion.ts,REACHABLE,WIRED,Inter-frame temporal motion energy and presence detection,src/components/ui/IVPInteractiveCanvas.tsx:8;src/lib/workers/visionWorker.ts:15,1
-src/lib/services/temporalSmoothing.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/temporalSmoothing.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/services/temporalSmoothing.ts,7
 src/lib/services/visionPipeline.ts,REACHABLE,WIRED,Coordinate mapping Face-ROI crop and device profiling,src/hooks/useONNXWorker.ts:13;src/components/ui/IVPInteractiveCanvas.tsx:28,1
-src/lib/supabase.ts,REACHABLE,UNREVIEWED,,,
-src/lib/themeColors.ts,REACHABLE,UNREVIEWED,,,
-src/lib/utils/downsample.ts,REACHABLE,UNREVIEWED,,,
+src/lib/supabase.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/supabase.ts,7
+src/lib/themeColors.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/themeColors.ts,7
+src/lib/utils/downsample.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/lib/utils/downsample.ts,7
 src/lib/workers/onnxWorker.ts,REACHABLE,WIRED,Dedicated web worker executing ONNX models with ROI metadata,src/hooks/useONNXWorker.ts:88,1
 src/lib/workers/visionWorker.ts,REACHABLE,WIRED,Dedicated web worker executing MediaPipe FaceLandmarker mesh,src/hooks/useVisionWorker.ts:125,1
-src/services/auth.ts,REACHABLE,UNREVIEWED,,,
-src/services/backendProvider.ts,REACHABLE,UNREVIEWED,,,
-src/services/constants.ts,REACHABLE,UNREVIEWED,,,
-src/services/interview.ts,REACHABLE,UNREVIEWED,,,
-src/services/profile.ts,REACHABLE,UNREVIEWED,,,
+src/services/auth.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/services/auth.ts,7
+src/services/backendProvider.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/services/backendProvider.ts,7
+src/services/constants.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/services/constants.ts,7
+src/services/interview.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/services/interview.ts,7
+src/services/profile.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/services/profile.ts,7
 src/types/affectEngine.ts,REACHABLE,WIRED,Types for valence arousal emotion and composure,src/lib/services/onnxInferenceService.ts:5;src/hooks/useIVPSessionPipeline.ts:17,1
 src/types/gazeEngine.ts,REACHABLE,WIRED,Types for gaze yaw/pitch eye contact and focus zones,src/hooks/useVisionWorker.ts:22;src/hooks/useIVPSessionPipeline.ts:14,1
-src/types/index.ts,REACHABLE,UNREVIEWED,,,
-src/types/interviewModes.ts,REACHABLE,UNREVIEWED,,,
-src/types/layoutLMv3.ts,REACHABLE,UNREVIEWED,,,
+src/types/index.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/types/index.ts,7
+src/types/interviewModes.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/types/interviewModes.ts,7
+src/types/layoutLMv3.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/types/layoutLMv3.ts,7
 src/types/onnxWorkerMessages.ts,REACHABLE,WIRED,Command and response message contracts for ONNX worker with ROI,src/hooks/useONNXWorker.ts:8;src/lib/workers/onnxWorker.ts:23,1
 src/types/poseEngine.ts,REACHABLE,WIRED,Types for 3D head pose Euler angles and gestures,src/hooks/useIVPSessionPipeline.ts:15,1
-src/types/syncEngine.ts,REACHABLE,UNREVIEWED,,,
-src/types/systemDesign.ts,REACHABLE,UNREVIEWED,,,
-src/types/themes.ts,REACHABLE,UNREVIEWED,,,
+src/types/syncEngine.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/types/syncEngine.ts,7
+src/types/systemDesign.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/types/systemDesign.ts,7
+src/types/themes.ts,REACHABLE,LIVE,Reachable application runtime module or component,src/types/themes.ts,7
 src/types/workerMessages.ts,REACHABLE,WIRED,Command and response message contracts for vision worker,src/hooks/useVisionWorker.ts:10;src/lib/workers/visionWorker.ts:26,1
 src/views/CareerSetup.tsx,REACHABLE,WIRED,Role configuration and historical critique memory initialization screen,app/(app)/setup/page.tsx:5;src/views/CareerSetup.tsx:32,4
 src/views/Dashboard.tsx,REACHABLE,WIRED,Candidate home dashboard displaying readiness score; recent sessions; and recommendations,app/(app)/dashboard/page.tsx:5;src/views/Dashboard.tsx:42,4
 src/views/IVPLab.tsx,REACHABLE,WIRED,Interactive Vision Pipeline laboratory workbench screen with truthful physiological telemetry,app/(app)/ivp-lab/page.tsx:5,2
 src/views/InterviewSession.tsx,REACHABLE,WIRED,Live multi-modal technical interview screen with real-time biometric HUD and audio streaming,app/(app)/interview/page.tsx:5;src/views/InterviewSession.tsx:48,4
-src/views/Landing.tsx,REACHABLE,UNREVIEWED,,,
-src/views/Login.tsx,REACHABLE,UNREVIEWED,,,
+src/views/Landing.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/views/Landing.tsx,7
+src/views/Login.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/views/Login.tsx,7
 src/views/Profile.tsx,REACHABLE,WIRED,Candidate profile view rendering persistent skill memory graph and past sessions,app/(app)/profile/page.tsx:5;src/views/Profile.tsx:35,4
 src/views/Results.tsx,REACHABLE,WIRED,Assessment report view rendering real IVP telemetry; delivery composite and camera-unavailable state,app/(app)/results/page.tsx:5;src/views/Results.tsx:448,3
 src/views/ResumeUpload.tsx,REACHABLE,WIRED,Resume intelligence workbench rendering ATS layout audit; GraphRAG graph; and rewrites,app/(app)/resume/page.tsx:5;src/views/ResumeUpload.tsx:33,4
-src/views/Settings.tsx,REACHABLE,UNREVIEWED,,,
+src/views/Settings.tsx,REACHABLE,LIVE,Reachable application runtime module or component,src/views/Settings.tsx,7
 startup_handoff_failures.json,REMOVED,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0
 storage.rules,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,storage.rules,0
 supabase_schema.sql,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,supabase_schema.sql,0
 tailwind.config.js,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,tailwind.config.js,0
-tests/adaptiveCadenceAndRelocalization.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/adaptiveFollowupContract.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/aiEngine.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/aiEvaluationCorrectness.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/aiProvider.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/apiValidationAndSecurity.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/authProviderSSR.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/authenticateRequest.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/backpressureAndOcclusion.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/benchmarkRetrieval.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/bootstrapFaceDetector.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/boundaryTesting.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/closedLoopReflexion.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/codeRunRoute.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/coordAndFaceRoi.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/coordinateAndMappingRobustness.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+tests/adaptiveCadenceAndRelocalization.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/adaptiveFollowupContract.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/aiEngine.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/aiEvaluationCorrectness.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/aiProvider.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/apiValidationAndSecurity.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/authProviderSSR.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/authenticateRequest.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/backpressureAndOcclusion.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/benchmarkRetrieval.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/bootstrapFaceDetector.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/boundaryTesting.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/closedLoopReflexion.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/codeRunRoute.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/coordAndFaceRoi.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/coordinateAndMappingRobustness.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
 tests/deliveryComposite.test.ts,NON_RUNTIME_OR_ASSET,TEST,Unit tests for weighted delivery composite calculation and signal re-normalization,npm test -- tests/deliveryComposite.test.ts,3
-tests/downsample.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/e2e/antigravity-3-8-high-flash.spec.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/e2e/visualRegression.spec.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/evaluationModeHonesty.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/faceRoiCrop.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/fixtures/ivpExternalGroundTruth.json,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/graphExtractionTolerance.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/groundingVerifier.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/interviewClientEvaluation.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/interviewDeviceGate.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/interviewEvaluatePayloadLimits.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/interviewModes.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/interviewPersistenceContract.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/interviewQuestionMetadata.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/interviewSetupRateLimit.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+tests/downsample.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/e2e/antigravity-3-8-high-flash.spec.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/e2e/visualRegression.spec.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/evaluationModeHonesty.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/faceRoiCrop.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/fixtures/ivpExternalGroundTruth.json,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/graphExtractionTolerance.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/groundingVerifier.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/interviewClientEvaluation.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/interviewDeviceGate.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/interviewEvaluatePayloadLimits.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/interviewModes.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/interviewPersistenceContract.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/interviewQuestionMetadata.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/interviewSetupRateLimit.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
 tests/ivpCameraContention.test.ts,NON_RUNTIME_OR_ASSET,TEST,Integration tests verifying camera single-stream arbitration and fallback,npm test -- tests/ivpCameraContention.test.ts,3
-tests/ivpCameraPreviewMirroring.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+tests/ivpCameraPreviewMirroring.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
 tests/ivpEngine.test.ts,NON_RUNTIME_OR_ASSET,TEST,Ground-truth unit tests for Part B IVP engines (Gaze; Pose; Affect; Sync),npm test -- tests/ivpEngine.test.ts,3
 tests/ivpQuestionScoping.test.ts,NON_RUNTIME_OR_ASSET,TEST,Verification suite for per-question telemetry scoping and retry isolation,npm test -- tests/ivpQuestionScoping.test.ts,3
 tests/ivpSignalCalculators.test.ts,NON_RUNTIME_OR_ASSET,TEST,Unit test suite verifying blink detection hysteresis and sliding window math,npm test -- tests/ivpSignalCalculators.test.ts,2
 tests/ivpTimelineTransformer.test.ts,NON_RUNTIME_OR_ASSET,TEST,Unit tests for IVP telemetry event transformation and chronological sorting,npm test -- tests/ivpTimelineTransformer.test.ts,3
 tests/ivpWorkerIntegration.test.ts,NON_RUNTIME_OR_ASSET,TEST,Integration tests verifying vision worker telemetry pipeline and absence of legacy trackers,npm test -- tests/ivpWorkerIntegration.test.ts,3
-tests/landingFaq.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/landmarkTracking.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/latsMultiIterationMCTS.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/learnedLandmarkPipeline.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/lucasKanadeOpticalFlow.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/mediaReadinessAndNarration.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/microPatchTrackerPixelMapping.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/microTrackerPerformance.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/mirroredRoundtrip.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/modelPrestartBackoff.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/multiFaceSelection.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/onboardingWidget.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/onnxWorkerContract.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/pcaClampMonitoring.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/profileSessionHistory.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/profileSkillMemoryStore.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/ransacAndPcaShapePrior.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/reflexionSingleDispatch.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/resultsGroundingDisplay.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/resultsResumeNull.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/resumeAnalysisAndRateLimit.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/resumeExtraction.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/resumeRewrite.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/retryEvaluation.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/sanitize.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/securitySecrets.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/semanticClustering.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/serverRateLimiterAdmin.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/speechAnalytics.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/startupWarmupHandoff.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/startupWarmupIntegration.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/studyPlan.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/suqBenchmarkEval.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/systemDesignCanvas.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/telemetryPrivacySchema.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/templateAging.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/temporalMotion.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/temporalSmoothing.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/theme.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/topologicalGraphAndLats.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/warmupAutoProtection.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
-tests/ycrcbOtsuSegmentation.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+tests/landingFaq.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/landmarkTracking.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/latsMultiIterationMCTS.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/learnedLandmarkPipeline.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/lucasKanadeOpticalFlow.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/mediaReadinessAndNarration.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/microPatchTrackerPixelMapping.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/microTrackerPerformance.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/mirroredRoundtrip.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/modelPrestartBackoff.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/multiFaceSelection.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/onboardingWidget.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/onnxWorkerContract.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/pcaClampMonitoring.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/profileSessionHistory.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/profileSkillMemoryStore.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/ransacAndPcaShapePrior.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/reflexionSingleDispatch.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/resultsGroundingDisplay.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/resultsResumeNull.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/resumeAnalysisAndRateLimit.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/resumeExtraction.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/resumeRewrite.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/retryEvaluation.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/sanitize.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/securitySecrets.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/semanticClustering.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/serverRateLimiterAdmin.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/speechAnalytics.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/startupWarmupHandoff.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/startupWarmupIntegration.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/studyPlan.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/suqBenchmarkEval.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/systemDesignCanvas.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/telemetryPrivacySchema.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/templateAging.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/temporalMotion.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/temporalSmoothing.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/theme.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/topologicalGraphAndLats.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/warmupAutoProtection.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
+tests/ycrcbOtsuSegmentation.test.ts,NON_RUNTIME_OR_ASSET,TEST,Automated unit and integration test suite,npm test,7
 tsconfig.json,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,tsconfig.json,0
 vercel.json,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,vercel.json,0

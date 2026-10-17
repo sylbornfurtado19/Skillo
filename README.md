@@ -76,8 +76,23 @@ npm run dev
 # Type Safety Check (Zero errors)
 npx tsc --noEmit
 
-# Execute Automated Test Suite (318/318 Pass Rate across 38 Suites)
+# Static Analysis & Linting (Zero errors)
+npm run lint
+
+# Execute Automated Test Suite (642/642 Pass Rate across 78 Suites)
 npm test
+
+# Verify IVP Pipeline CI Regression & Drift SLAs (RMSE, latency, heap)
+npm run test:regression
+
+# Strict Wiring Audit (Zero orphans, zero dead exports, 100% reachable)
+npm run audit:wiring:strict
+
+# Offline Tooling, Memory & Performance Benchmarks
+npm run test:memory
+npm run test:replay
+npm run perf:measure
+npm run eval:calibration
 
 # Production Build Check
 npm run build
