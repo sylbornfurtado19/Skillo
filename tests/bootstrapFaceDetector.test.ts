@@ -78,14 +78,16 @@ describe('Fast Face Bootstrap Detector', () => {
     const data = createBlankFrame();
     drawSyntheticFace(data, W, H, 40, 25, 80, 70);
 
-    // JIT warmup: first call compiles; subsequent calls are fast.
-    detectFastFaceBootstrap(data, W, H, false);
+    // JIT warmup: compile loops in V8; subsequent runs are fast (< 3ms typical).
+    for (let i = 0; i < 3; i++) {
+      detectFastFaceBootstrap(data, W, H, false);
+    }
 
     const start = performance.now();
     const result = detectFastFaceBootstrap(data, W, H, false);
     const elapsed = performance.now() - start;
 
-    expect(elapsed).toBeLessThan(75); // < 75ms conservative CI budget with thread contention (< 3ms typical after JIT)
+    expect(elapsed).toBeLessThan(25); // < 25ms conservative CI budget (< 3ms typical after JIT)
     expect(result).not.toBeNull();
 
     if (!result) return;
