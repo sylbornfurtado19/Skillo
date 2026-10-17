@@ -12,7 +12,9 @@
     "test:e2e": "playwright test tests/e2e/antigravity-3-8-high-flash.spec.ts",
     "test:memory": "node scripts/memory-leak-test.js",
     "test:regression": "node scripts/check-ci-regression.js",
-    "eval:calibration": "npx tsx scripts/eval/verify_ai_benchmarks.ts"
+    "eval:calibration": "npx tsx scripts/eval/verify_ai_benchmarks.ts",
+    "audit:wiring": "node scripts/wiring/audit-wiring.mjs",
+    "audit:wiring:strict": "node scripts/wiring/audit-wiring.mjs --strict"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.35",

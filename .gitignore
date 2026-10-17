@@ -58,3 +58,4 @@ test-results/
 replay_report.json
 microtrack_perf_benchmark.json
 startup_handoff_failures.json
+baseline_fail_1.png

@@ -1,0 +1,2193 @@
+{
+  "summary": {
+    "generatedAt": "2026-10-17T11:07:04.804Z",
+    "totalFiles": 180,
+    "reachable": 169,
+    "orphanFiles": 11,
+    "deadExports": 15,
+    "testOnlyExports": 87
+  },
+  "orphans": [
+    {
+      "file": "src/components/ui/InputFields.tsx",
+      "loc": 118,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/IVPAffectTracker.tsx",
+      "loc": 213,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/IVPGazeTracker.tsx",
+      "loc": 507,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/IVPPoseTracker.tsx",
+      "loc": 467,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 2
+    },
+    {
+      "file": "src/lib/firebase/services/jobs.firebase.ts",
+      "loc": 44,
+      "reachable": false,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/firebase/services/resume.firebase.ts",
+      "loc": 132,
+      "reachable": false,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/server/env.ts",
+      "loc": 115,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 13
+    },
+    {
+      "file": "src/lib/services/backgroundSegmentation.ts",
+      "loc": 331,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 0
+    },
+    {
+      "file": "src/services/analysis.ts",
+      "loc": 49,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 5
+    },
+    {
+      "file": "src/services/jobs.ts",
+      "loc": 41,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 0
+    },
+    {
+      "file": "src/services/resume.ts",
+      "loc": 110,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 13
+    }
+  ],
+  "exports": [
+    {
+      "file": "src/components/dashboard/OnboardingProgressWidget.tsx",
+      "name": "calculateOnboardingProgress",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/components/ui/InputFields.tsx",
+      "name": "Textarea",
+      "status": "DEAD",
+      "live": false
+    },
+    {
+      "file": "src/components/ui/IVPTelemetryTimeline.tsx",
+      "name": "DEFAULT_EVENTS",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/ai/aiConfig.ts",
+      "name": "DEFAULT_GROQ_MODEL",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/ai/aiConfig.ts",
+      "name": "resolveAiProvider",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/ai/aiConfig.ts",
+      "name": "executeAiRequest",
+      "status": "DEAD",
+      "live": true
+    },
+    {
+      "file": "src/lib/ai/safeJsonParser.ts",
+      "name": "extractJsonString",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/firebase/admin.ts",
+      "name": "getAdminStorage",
+      "status": "DEAD",
+      "live": true
+    },
+    {
+      "file": "src/lib/firebase/services/auth.firebase.ts",
+      "name": "normalizeFirebaseUser",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/schemas/diagramSchema.ts",
+      "name": "systemDesignNodeTypeSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/schemas/diagramSchema.ts",
+      "name": "systemDesignNodeSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/schemas/diagramSchema.ts",
+      "name": "systemDesignEdgeSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/schemas/graphSchema.ts",
+      "name": "ENTITY_ALIAS_MAP",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/schemas/graphSchema.ts",
+      "name": "entityAliasMapSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/schemas/graphSchema.ts",
+      "name": "validateEntityAliasMap",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/schemas/graphSchema.ts",
+      "name": "GRAPH_RELATIONSHIP_TYPES",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/server/authenticateRequest.ts",
+      "name": "resolveAuthProvider",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/server/authenticateRequest.ts",
+      "name": "extractBearerToken",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/server/env.ts",
+      "name": "validateEnvironment",
+      "status": "TEST_ONLY",
+      "live": false
+    },
+    {
+      "file": "src/lib/server/env.ts",
+      "name": "getServerEnv",
+      "status": "DEAD",
+      "live": false
+    },
+    {
+      "file": "src/lib/server/sanitize.ts",
+      "name": "PROMPT_INJECTION_PATTERNS",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/server/supabaseAdmin.ts",
+      "name": "getSupabaseAdmin",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/backgroundSegmentation.ts",
+      "name": "extractPersonForegroundMask",
+      "status": "INTERNAL_ONLY",
+      "live": false
+    },
+    {
+      "file": "src/lib/services/backgroundSegmentation.ts",
+      "name": "renderSegmentedBackground",
+      "status": "DEAD",
+      "live": false
+    },
+    {
+      "file": "src/lib/services/benchmarkRetrieval.server.ts",
+      "name": "tokenize",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/benchmarkRetrieval.server.ts",
+      "name": "resetBenchmarkCorpusCache",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/benchmarkRetrieval.server.ts",
+      "name": "evaluateRetrievalRouting",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/benchmarkRetrieval.server.ts",
+      "name": "loadBenchmarkCorpus",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/deliveryComposite.ts",
+      "name": "DELIVERY_COMPOSITE_WEIGHTS",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/graphRAG.server.ts",
+      "name": "entityExtractionSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/graphRAG.server.ts",
+      "name": "relationshipExtractionSchema",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/graphRAG.server.ts",
+      "name": "graphRAGOutputSchema",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/graphRAG.server.ts",
+      "name": "executeLeidenHierarchicalClustering",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/graphRAG.server.ts",
+      "name": "synthesizePrerequisiteGapChains",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/groundingVerifier.server.ts",
+      "name": "normalizeForGrounding",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/groundingVerifier.server.ts",
+      "name": "levenshteinDistance",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/groundingVerifier.server.ts",
+      "name": "diceBigramSimilarity",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/groundingVerifier.server.ts",
+      "name": "verifyQuoteInText",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/groundingVerifier.server.ts",
+      "name": "verifyPassGrounding",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/interviewEvaluation.server.ts",
+      "name": "PROMETHEUS2_RUBRICS",
+      "status": "DEAD",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/interviewEvaluation.server.ts",
+      "name": "groundedEvidenceEntrySchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/interviewEvaluation.server.ts",
+      "name": "criterionEvidenceSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/interviewEvaluation.server.ts",
+      "name": "singlePassSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/interviewEvaluation.server.ts",
+      "name": "semanticClusterItemSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/interviewEvaluation.server.ts",
+      "name": "semanticClusterResponseSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/interviewEvaluation.server.ts",
+      "name": "buildPassComparisonText",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/interviewEvaluation.server.ts",
+      "name": "computeScoreVarianceClustering",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/interviewEvaluation.server.ts",
+      "name": "computeSemanticEquivalenceAndEntropy",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/interviewEvaluation.server.ts",
+      "name": "groupTelemetryByQuestion",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpAffectEngine.ts",
+      "name": "softArgmaxVA",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpAffectEngine.ts",
+      "name": "calculateComposureScore",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpAffectEngine.ts",
+      "name": "classifyDiscreteEmotion",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpAffectEngine.ts",
+      "name": "detectStressSpikes",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpDiagnosticKernels.ts",
+      "name": "calculateEAR",
+      "status": "DEAD",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpFeatureFlags.ts",
+      "name": "DEFAULT_IVP_FEATURE_FLAGS",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpFeatureFlags.ts",
+      "name": "getRawIVPFeatureFlags",
+      "status": "DEAD",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpFeatureFlags.ts",
+      "name": "resetIVPFeatureFlags",
+      "status": "DEAD",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpGazeEngine.ts",
+      "name": "computeGazeVector",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpGazeEngine.ts",
+      "name": "processGazeFrame",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpGazeEngine.ts",
+      "name": "detectDistractionEvents",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpPoseEngine.ts",
+      "name": "softArgmaxAngle",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpPoseEngine.ts",
+      "name": "analyzeGesturalEvents",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpSyncEngine.ts",
+      "name": "calculateL2Distance",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpSyncEngine.ts",
+      "name": "evaluateSyncStatus",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpSyncEngine.ts",
+      "name": "detectSpoofingAlerts",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "C_PUCT",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "prmResponseSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "branchExpansionSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "latsTreeNodeSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "computeUCT",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "selectNode",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "expandBranches",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "evaluatePRM",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "backpropagate",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "attachChildrenToNode",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "getTreeMaxDepth",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "name": "recomputeTreeStats",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/onnxInferenceService.ts",
+      "name": "getONNXSession",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/onnxInferenceService.ts",
+      "name": "preprocessFrameToTensor",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/onnxInferenceService.ts",
+      "name": "preprocessFrameDetailed",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/onnxInferenceService.ts",
+      "name": "runGazeONNX",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/onnxInferenceService.ts",
+      "name": "runPoseONNX",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/onnxInferenceService.ts",
+      "name": "runAffectONNX",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/rateLimiter.server.ts",
+      "name": "resetRateLimiterMemoryState",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/reflexionService.ts",
+      "name": "verbalReflectionSchema",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/reflexionService.ts",
+      "name": "generateVerbalSelfReflection",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/reflexionService.ts",
+      "name": "persistSkillMemoryStore",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/resumeAnalysis.server.ts",
+      "name": "resumeRewriteItemSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/resumeAnalysis.server.ts",
+      "name": "computeImpactMetricsScore",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/resumeAnalysis.server.ts",
+      "name": "computeExperienceRelevanceScore",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/resumeExtraction.server.ts",
+      "name": "MAX_RESUME_FILE_SIZE",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/resumeExtraction.server.ts",
+      "name": "MIN_RESUME_TEXT_CHARS",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/resumeExtraction.server.ts",
+      "name": "MAX_RESUME_TEXT_CHARS",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/resumeExtraction.server.ts",
+      "name": "detectFileType",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/resumeExtraction.server.ts",
+      "name": "extractTextFromPdf",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/resumeExtraction.server.ts",
+      "name": "extractTextFromDocx",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/resumeExtraction.server.ts",
+      "name": "extractTextFromTxt",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/simpoEngine.server.ts",
+      "name": "DEFAULT_SIMPO_GAMMA",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/simpoEngine.server.ts",
+      "name": "benchmarkDeltaCardSchema",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/simpoEngine.server.ts",
+      "name": "structuralDeltaSchema",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/simpoEngine.server.ts",
+      "name": "calculateLengthNormalizedReward",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/speechAnalytics.ts",
+      "name": "tokenizeWords",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/speechAnalytics.ts",
+      "name": "countFillerWords",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/speechAnalytics.ts",
+      "name": "getFillerCounts",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/speechAnalytics.ts",
+      "name": "getPauseDurations",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/speechAnalytics.ts",
+      "name": "calculateDeliveryScore",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/temporalMotion.ts",
+      "name": "DEFAULT_MOTION_CONFIG",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/temporalMotion.ts",
+      "name": "computeFrameMotionEnergy",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/temporalMotion.ts",
+      "name": "fuseRestlessnessWithMotionEnergy",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/temporalSmoothing.ts",
+      "name": "ScalarEMA",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/temporalSmoothing.ts",
+      "name": "VisionTelemetrySmoother",
+      "status": "DEAD",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/temporalSmoothing.ts",
+      "name": "computeJitterMetric",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/temporalSmoothing.ts",
+      "name": "computeJitterReduction",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/temporalSmoothing.ts",
+      "name": "PRESET_REGIONAL_CONFIGS",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/temporalSmoothing.ts",
+      "name": "LandmarkKinematicFilter",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/temporalSmoothing.ts",
+      "name": "computeSimilarityTransform",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/temporalSmoothing.ts",
+      "name": "computeRansacSimilarityTransform",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "mapNormalizedPointsToCanvas",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "procNormalizedToVideoNormalized",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "procToVideoCoord",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "videoToProcCoord",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "videoToProcX",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "videoToProcY",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "procToVideoNormalized",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "name": "videoNormalizedToProc",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/utils/downsample.ts",
+      "name": "downsampleEvenly",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/workers/visionWorker.ts",
+      "name": "MEDIAPIPE_478_TO_CANONICAL_70",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/workers/visionWorker.ts",
+      "name": "tryInitModelWithBackoff",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/workers/visionWorker.ts",
+      "name": "cancelPendingModelRetries",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/workers/visionWorker.ts",
+      "name": "extractDenseLandmarksFromLearnedModel",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/services/analysis.ts",
+      "name": "saveAnalysis",
+      "status": "DEAD",
+      "live": false
+    },
+    {
+      "file": "src/services/analysis.ts",
+      "name": "getAnalyses",
+      "status": "DEAD",
+      "live": false
+    },
+    {
+      "file": "src/services/analysis.ts",
+      "name": "getAnalysisById",
+      "status": "DEAD",
+      "live": false
+    },
+    {
+      "file": "src/services/backendProvider.ts",
+      "name": "getActiveBackendProvider",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/services/constants.ts",
+      "name": "EvaluationRequestError",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/services/constants.ts",
+      "name": "PRESET_QUESTION_POOLS",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/services/resume.ts",
+      "name": "listResumes",
+      "status": "DEAD",
+      "live": false
+    },
+    {
+      "file": "src/services/resume.ts",
+      "name": "getSignedUrl",
+      "status": "DEAD",
+      "live": false
+    },
+    {
+      "file": "src/views/Profile.tsx",
+      "name": "loadPastReport",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/views/Results.tsx",
+      "name": "handleShareImage",
+      "status": "INTERNAL_ONLY",
+      "live": true
+    }
+  ],
+  "files": [
+    {
+      "file": "src/components/common/Footer.tsx",
+      "loc": 20,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/common/Logo.tsx",
+      "loc": 77,
+      "reachable": true,
+      "importedBy": 6,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/common/Navbar.tsx",
+      "loc": 291,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/common/PageTransition.tsx",
+      "loc": 23,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/common/ProtectedRoute.tsx",
+      "loc": 38,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/components/common/ThemeSwitcher.tsx",
+      "loc": 88,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/dashboard/OnboardingProgressWidget.tsx",
+      "loc": 203,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/components/interview/CodeWorkspace.tsx",
+      "loc": 126,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/interview/InterviewModePreviewCard.tsx",
+      "loc": 148,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/interview/session/SessionAnswerWorkspace.tsx",
+      "loc": 331,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/interview/session/SessionBiometricHUDs.tsx",
+      "loc": 72,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/interview/session/SessionDeviceGate.tsx",
+      "loc": 101,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/interview/session/SessionGradingOverlay.tsx",
+      "loc": 38,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/interview/session/sessionHelpers.ts",
+      "loc": 182,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/interview/session/SessionInterviewerCard.tsx",
+      "loc": 307,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/interview/SystemDesignCanvas.tsx",
+      "loc": 708,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ivp/canvas/CalibrationModal.tsx",
+      "loc": 132,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ivp/canvas/CanvasHeaderControls.tsx",
+      "loc": 174,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ivp/canvas/CanvasMetricHUD.tsx",
+      "loc": 60,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ivp/canvas/telemetryHelpers.ts",
+      "loc": 107,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ivp/canvas/types.ts",
+      "loc": 71,
+      "reachable": true,
+      "importedBy": 4,
+      "testedBy": 25
+    },
+    {
+      "file": "src/components/ivp/canvas/WarmupWarningBanner.tsx",
+      "loc": 30,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/AdaptiveHUDHeader.tsx",
+      "loc": 92,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/AffectiveHUD.tsx",
+      "loc": 79,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/Badge.tsx",
+      "loc": 41,
+      "reachable": true,
+      "importedBy": 20,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/Button.tsx",
+      "loc": 65,
+      "reachable": true,
+      "importedBy": 12,
+      "testedBy": 1
+    },
+    {
+      "file": "src/components/ui/Card.tsx",
+      "loc": 72,
+      "reachable": true,
+      "importedBy": 21,
+      "testedBy": 3
+    },
+    {
+      "file": "src/components/ui/EyeContactHUD.tsx",
+      "loc": 145,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/FacialComposureCard.tsx",
+      "loc": 308,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/FeedbackHelpers.tsx",
+      "loc": 156,
+      "reachable": true,
+      "importedBy": 4,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/GazeAnalyticsCard.tsx",
+      "loc": 372,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/GraphRAGDashboard.tsx",
+      "loc": 286,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/InputFields.tsx",
+      "loc": 118,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/IVPAffectTracker.tsx",
+      "loc": 213,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/IVPCameraPreview.tsx",
+      "loc": 343,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 4
+    },
+    {
+      "file": "src/components/ui/IVPGazeTracker.tsx",
+      "loc": 507,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/IVPInteractiveCanvas.tsx",
+      "loc": 1882,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/IVPPoseTracker.tsx",
+      "loc": 467,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/IVPSignalOscilloscope.tsx",
+      "loc": 240,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/IVPSyncTracker.tsx",
+      "loc": 215,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 4
+    },
+    {
+      "file": "src/components/ui/IVPTelemetryTimeline.tsx",
+      "loc": 299,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 1
+    },
+    {
+      "file": "src/components/ui/LATSTreeVisualizer.tsx",
+      "loc": 245,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/components/ui/LayoutPenaltyViewer.tsx",
+      "loc": 304,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/LipSyncHUD.tsx",
+      "loc": 64,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/LipSyncVerificationCard.tsx",
+      "loc": 272,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/Loader.tsx",
+      "loc": 91,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/Modal.tsx",
+      "loc": 150,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/PostureComposureCard.tsx",
+      "loc": 273,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/PostureHUD.tsx",
+      "loc": 128,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/PrerequisiteChainViewer.tsx",
+      "loc": 151,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/ReflectionTimelineDrawer.tsx",
+      "loc": 185,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/SimPOContrastiveCard.tsx",
+      "loc": 262,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/components/ui/Skeleton.tsx",
+      "loc": 7,
+      "reachable": true,
+      "importedBy": 4,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/SkillMemoryGraph.tsx",
+      "loc": 162,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/StructuralDeltaViewer.tsx",
+      "loc": 122,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/components/ui/SUQConfidenceDashboard.tsx",
+      "loc": 450,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/components/ui/Toast.tsx",
+      "loc": 88,
+      "reachable": true,
+      "importedBy": 7,
+      "testedBy": 4
+    },
+    {
+      "file": "src/components/ui/VisualDocumentCanvas.tsx",
+      "loc": 320,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/context/AuthContext.tsx",
+      "loc": 111,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 1
+    },
+    {
+      "file": "src/context/InterviewContext.tsx",
+      "loc": 459,
+      "reachable": true,
+      "importedBy": 10,
+      "testedBy": 5
+    },
+    {
+      "file": "src/hooks/useAuth.ts",
+      "loc": 21,
+      "reachable": true,
+      "importedBy": 11,
+      "testedBy": 4
+    },
+    {
+      "file": "src/hooks/useChartTheme.ts",
+      "loc": 67,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 0
+    },
+    {
+      "file": "src/hooks/useInterviewCamera.ts",
+      "loc": 101,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 3
+    },
+    {
+      "file": "src/hooks/useIVPSessionPipeline.ts",
+      "loc": 396,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 4
+    },
+    {
+      "file": "src/hooks/useMediaReadiness.ts",
+      "loc": 81,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/hooks/useONNXWorker.ts",
+      "loc": 262,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 1
+    },
+    {
+      "file": "src/hooks/useVisionWorker.ts",
+      "loc": 622,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 1
+    },
+    {
+      "file": "src/layouts/AppLayout.tsx",
+      "loc": 414,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/layouts/MainLayout.tsx",
+      "loc": 42,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/ai/aiConfig.ts",
+      "loc": 342,
+      "reachable": true,
+      "importedBy": 9,
+      "testedBy": 3
+    },
+    {
+      "file": "src/lib/ai/defaultModel.ts",
+      "loc": 7,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/ai/safeJsonParser.ts",
+      "loc": 104,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/chartSetup.ts",
+      "loc": 29,
+      "reachable": true,
+      "importedBy": 4,
+      "testedBy": 3
+    },
+    {
+      "file": "src/lib/firebase/admin.ts",
+      "loc": 68,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 3
+    },
+    {
+      "file": "src/lib/firebase/config.ts",
+      "loc": 78,
+      "reachable": true,
+      "importedBy": 7,
+      "testedBy": 17
+    },
+    {
+      "file": "src/lib/firebase/services/auth.firebase.ts",
+      "loc": 128,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/firebase/services/interview.firebase.ts",
+      "loc": 100,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/firebase/services/jobs.firebase.ts",
+      "loc": 44,
+      "reachable": false,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/firebase/services/profile.firebase.ts",
+      "loc": 80,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/firebase/services/resume.firebase.ts",
+      "loc": 132,
+      "reachable": false,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/media/mediaReadiness.ts",
+      "loc": 99,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/media/narration.ts",
+      "loc": 43,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/schemas/diagramSchema.ts",
+      "loc": 46,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/schemas/graphSchema.ts",
+      "loc": 182,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/server/authenticateRequest.ts",
+      "loc": 300,
+      "reachable": true,
+      "importedBy": 7,
+      "testedBy": 2
+    },
+    {
+      "file": "src/lib/server/env.ts",
+      "loc": 115,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 13
+    },
+    {
+      "file": "src/lib/server/sanitize.ts",
+      "loc": 72,
+      "reachable": true,
+      "importedBy": 5,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/server/supabaseAdmin.ts",
+      "loc": 65,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 9
+    },
+    {
+      "file": "src/lib/services/backgroundSegmentation.ts",
+      "loc": 331,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/services/benchmarkRetrieval.server.ts",
+      "loc": 337,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/services/deliveryComposite.ts",
+      "loc": 56,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/services/documentVision.server.ts",
+      "loc": 379,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/services/graphRAG.server.ts",
+      "loc": 562,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 5
+    },
+    {
+      "file": "src/lib/services/groundingVerifier.server.ts",
+      "loc": 285,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/services/interviewEvaluation.server.ts",
+      "loc": 1061,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 11
+    },
+    {
+      "file": "src/lib/services/ivpAffectEngine.ts",
+      "loc": 269,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 4
+    },
+    {
+      "file": "src/lib/services/ivpCameraManager.ts",
+      "loc": 160,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/lib/services/ivpDiagnosticKernels.ts",
+      "loc": 878,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/services/ivpExpressionKernel.ts",
+      "loc": 542,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/services/ivpFeatureFlags.ts",
+      "loc": 170,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/services/ivpGazeEngine.ts",
+      "loc": 433,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 4
+    },
+    {
+      "file": "src/lib/services/ivpPoseEngine.ts",
+      "loc": 323,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 4
+    },
+    {
+      "file": "src/lib/services/ivpSyncEngine.ts",
+      "loc": 122,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 3
+    },
+    {
+      "file": "src/lib/services/ivpTimelineTransformer.ts",
+      "loc": 123,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/services/latsEngine.server.ts",
+      "loc": 617,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 6
+    },
+    {
+      "file": "src/lib/services/microPatchTracker.ts",
+      "loc": 654,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 9
+    },
+    {
+      "file": "src/lib/services/onnxInferenceService.ts",
+      "loc": 782,
+      "reachable": true,
+      "importedBy": 4,
+      "testedBy": 2
+    },
+    {
+      "file": "src/lib/services/rateLimiter.server.ts",
+      "loc": 199,
+      "reachable": true,
+      "importedBy": 7,
+      "testedBy": 7
+    },
+    {
+      "file": "src/lib/services/reflexionEngine.server.ts",
+      "loc": 2,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/lib/services/reflexionService.ts",
+      "loc": 487,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 4
+    },
+    {
+      "file": "src/lib/services/resumeAnalysis.server.ts",
+      "loc": 378,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 2
+    },
+    {
+      "file": "src/lib/services/resumeExtraction.server.ts",
+      "loc": 309,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/services/simpoEngine.server.ts",
+      "loc": 420,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 5
+    },
+    {
+      "file": "src/lib/services/speechAnalytics.ts",
+      "loc": 176,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 2
+    },
+    {
+      "file": "src/lib/services/studyPlan.ts",
+      "loc": 178,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/services/temporalMotion.ts",
+      "loc": 237,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/services/temporalSmoothing.ts",
+      "loc": 1698,
+      "reachable": true,
+      "importedBy": 9,
+      "testedBy": 12
+    },
+    {
+      "file": "src/lib/services/visionPipeline.ts",
+      "loc": 983,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 8
+    },
+    {
+      "file": "src/lib/supabase.ts",
+      "loc": 65,
+      "reachable": true,
+      "importedBy": 9,
+      "testedBy": 17
+    },
+    {
+      "file": "src/lib/themeColors.ts",
+      "loc": 61,
+      "reachable": true,
+      "importedBy": 6,
+      "testedBy": 0
+    },
+    {
+      "file": "src/lib/utils/downsample.ts",
+      "loc": 60,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 3
+    },
+    {
+      "file": "src/lib/workers/onnxWorker.ts",
+      "loc": 336,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/lib/workers/visionWorker.ts",
+      "loc": 1254,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "src/services/analysis.ts",
+      "loc": 49,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 5
+    },
+    {
+      "file": "src/services/auth.ts",
+      "loc": 167,
+      "reachable": true,
+      "importedBy": 6,
+      "testedBy": 19
+    },
+    {
+      "file": "src/services/backendProvider.ts",
+      "loc": 22,
+      "reachable": true,
+      "importedBy": 6,
+      "testedBy": 0
+    },
+    {
+      "file": "src/services/constants.ts",
+      "loc": 595,
+      "reachable": true,
+      "importedBy": 8,
+      "testedBy": 3
+    },
+    {
+      "file": "src/services/interview.ts",
+      "loc": 109,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 30
+    },
+    {
+      "file": "src/services/jobs.ts",
+      "loc": 41,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 0
+    },
+    {
+      "file": "src/services/profile.ts",
+      "loc": 136,
+      "reachable": true,
+      "importedBy": 5,
+      "testedBy": 6
+    },
+    {
+      "file": "src/services/resume.ts",
+      "loc": 110,
+      "reachable": false,
+      "importedBy": 0,
+      "testedBy": 13
+    },
+    {
+      "file": "src/types/affectEngine.ts",
+      "loc": 54,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 0
+    },
+    {
+      "file": "src/types/gazeEngine.ts",
+      "loc": 76,
+      "reachable": true,
+      "importedBy": 4,
+      "testedBy": 0
+    },
+    {
+      "file": "src/types/index.ts",
+      "loc": 485,
+      "reachable": true,
+      "importedBy": 64,
+      "testedBy": 28
+    },
+    {
+      "file": "src/types/interviewModes.ts",
+      "loc": 468,
+      "reachable": true,
+      "importedBy": 4,
+      "testedBy": 1
+    },
+    {
+      "file": "src/types/layoutLMv3.ts",
+      "loc": 37,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/types/onnxWorkerMessages.ts",
+      "loc": 58,
+      "reachable": true,
+      "importedBy": 2,
+      "testedBy": 1
+    },
+    {
+      "file": "src/types/poseEngine.ts",
+      "loc": 64,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/types/syncEngine.ts",
+      "loc": 46,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/types/systemDesign.ts",
+      "loc": 228,
+      "reachable": true,
+      "importedBy": 5,
+      "testedBy": 10
+    },
+    {
+      "file": "src/types/themes.ts",
+      "loc": 63,
+      "reachable": true,
+      "importedBy": 3,
+      "testedBy": 1
+    },
+    {
+      "file": "src/types/workerMessages.ts",
+      "loc": 254,
+      "reachable": true,
+      "importedBy": 4,
+      "testedBy": 2
+    },
+    {
+      "file": "src/views/CareerSetup.tsx",
+      "loc": 871,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/views/Dashboard.tsx",
+      "loc": 817,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 3
+    },
+    {
+      "file": "src/views/InterviewSession.tsx",
+      "loc": 1290,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 4
+    },
+    {
+      "file": "src/views/IVPLab.tsx",
+      "loc": 550,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/views/Landing.tsx",
+      "loc": 629,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
+      "file": "src/views/Login.tsx",
+      "loc": 457,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/views/Profile.tsx",
+      "loc": 614,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 6
+    },
+    {
+      "file": "src/views/Results.tsx",
+      "loc": 1339,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 6
+    },
+    {
+      "file": "src/views/ResumeUpload.tsx",
+      "loc": 901,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "src/views/Settings.tsx",
+      "loc": 287,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 2
+    },
+    {
+      "file": "app/(app)/calibration/CalibrationChart.tsx",
+      "loc": 71,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    },
+    {
+      "file": "app/(app)/calibration/page.tsx",
+      "loc": 183,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 7
+    },
+    {
+      "file": "app/(app)/dashboard/page.tsx",
+      "loc": 12,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 7
+    },
+    {
+      "file": "app/(app)/error.tsx",
+      "loc": 36,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 28
+    },
+    {
+      "file": "app/(app)/interview/page.tsx",
+      "loc": 8,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 7
+    },
+    {
+      "file": "app/(app)/ivp-lab/page.tsx",
+      "loc": 8,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 7
+    },
+    {
+      "file": "app/(app)/layout.tsx",
+      "loc": 19,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 1
+    },
+    {
+      "file": "app/(app)/loading.tsx",
+      "loc": 13,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 2
+    },
+    {
+      "file": "app/(app)/profile/page.tsx",
+      "loc": 8,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 7
+    },
+    {
+      "file": "app/(app)/results/page.tsx",
+      "loc": 8,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 7
+    },
+    {
+      "file": "app/(app)/resume/page.tsx",
+      "loc": 8,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 7
+    },
+    {
+      "file": "app/(app)/settings/page.tsx",
+      "loc": 8,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 7
+    },
+    {
+      "file": "app/(app)/setup/page.tsx",
+      "loc": 8,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 7
+    },
+    {
+      "file": "app/api/code/run/route.ts",
+      "loc": 102,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 9
+    },
+    {
+      "file": "app/api/interview/evaluate/route.ts",
+      "loc": 238,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 9
+    },
+    {
+      "file": "app/api/interview/followup/route.ts",
+      "loc": 155,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 9
+    },
+    {
+      "file": "app/api/interview/setup/route.ts",
+      "loc": 218,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 9
+    },
+    {
+      "file": "app/api/resume/analyze/route.ts",
+      "loc": 76,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 9
+    },
+    {
+      "file": "app/api/resume/extract/route.ts",
+      "loc": 88,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 9
+    },
+    {
+      "file": "app/api/resume/rewrite/route.ts",
+      "loc": 65,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 9
+    },
+    {
+      "file": "app/error.tsx",
+      "loc": 38,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 28
+    },
+    {
+      "file": "app/global-error.tsx",
+      "loc": 36,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 0
+    },
+    {
+      "file": "app/layout.tsx",
+      "loc": 87,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 1
+    },
+    {
+      "file": "app/loading.tsx",
+      "loc": 13,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 2
+    },
+    {
+      "file": "app/login/page.tsx",
+      "loc": 17,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 7
+    },
+    {
+      "file": "app/not-found.tsx",
+      "loc": 25,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 0
+    },
+    {
+      "file": "app/page.tsx",
+      "loc": 13,
+      "reachable": true,
+      "importedBy": 0,
+      "testedBy": 7
+    },
+    {
+      "file": "app/providers.tsx",
+      "loc": 21,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 0
+    }
+  ]
+}
