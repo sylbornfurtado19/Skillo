@@ -11,7 +11,7 @@ app/(app)/calibration/page.tsx,REACHABLE,UNREVIEWED,,,
 app/(app)/dashboard/page.tsx,REACHABLE,UNREVIEWED,,,
 app/(app)/error.tsx,REACHABLE,UNREVIEWED,,,
 app/(app)/interview/page.tsx,REACHABLE,UNREVIEWED,,,
-app/(app)/ivp-lab/page.tsx,REACHABLE,UNREVIEWED,,,
+app/(app)/ivp-lab/page.tsx,REACHABLE,WIRED,Next.js route hosting the IVP diagnostic workbench,src/views/IVPLab.tsx;app/(app)/ivp-lab/page.tsx:5,2
 app/(app)/layout.tsx,REACHABLE,UNREVIEWED,,,
 app/(app)/loading.tsx,REACHABLE,UNREVIEWED,,,
 app/(app)/profile/page.tsx,REACHABLE,UNREVIEWED,,,
@@ -83,6 +83,7 @@ package.json,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root docum
 playwright.config.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,playwright.config.ts,0
 postcss.config.js,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,postcss.config.js,0
 public/favicon.svg,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+public/images/sample-face.jpg,NON_RUNTIME_OR_ASSET,WIRED,Offline baseline face asset for IVP laboratory and CI testing,src/views/IVPLab.tsx:101,2
 public/models/affect_engine.onnx,NON_RUNTIME_OR_ASSET,WIRED,MobileFaceNet ONNX model loaded for real-time affect/emotion inference,src/lib/services/onnxInferenceService.ts:72,1
 public/models/face_landmarker.task,NON_RUNTIME_OR_ASSET,WIRED,MediaPipe FaceLandmarker dense 468-point mesh model bundle,src/lib/workers/visionWorker.ts:168,1
 public/models/gaze_engine.onnx,NON_RUNTIME_OR_ASSET,WIRED,L2CS-Net ONNX model loaded for 3D gaze vector inference,src/lib/services/onnxInferenceService.ts:73,1
@@ -223,11 +224,11 @@ src/components/interview/session/SessionGradingOverlay.tsx,REACHABLE,UNREVIEWED,
 src/components/interview/session/SessionInterviewerCard.tsx,REACHABLE,UNREVIEWED,,,
 src/components/interview/session/sessionHelpers.ts,REACHABLE,UNREVIEWED,,,
 src/components/ivp/canvas/CalibrationModal.tsx,REACHABLE,UNREVIEWED,,,
-src/components/ivp/canvas/CanvasHeaderControls.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ivp/canvas/CanvasHeaderControls.tsx,REACHABLE,WIRED,Interactive toolbar with mode toggles; warmup switch; safe-mode gate; and flag reset,src/components/ui/IVPInteractiveCanvas.tsx:1820,2
 src/components/ivp/canvas/CanvasMetricHUD.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ivp/canvas/WarmupWarningBanner.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ivp/canvas/telemetryHelpers.ts,REACHABLE,UNREVIEWED,,,
-src/components/ivp/canvas/types.ts,REACHABLE,UNREVIEWED,,,
+src/components/ivp/canvas/types.ts,REACHABLE,WIRED,TypeScript interfaces for IVP canvas telemetry; nullable metrics; and modes,src/components/ui/IVPInteractiveCanvas.tsx:48;src/components/ivp/canvas/CanvasHeaderControls.tsx:4,2
 src/components/ui/AdaptiveHUDHeader.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/AffectiveHUD.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/Badge.tsx,REACHABLE,UNREVIEWED,,,
@@ -241,9 +242,9 @@ src/components/ui/GraphRAGDashboard.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/IVPAffectTracker.tsx,ORPHAN,UNREVIEWED,,,
 src/components/ui/IVPCameraPreview.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/IVPGazeTracker.tsx,ORPHAN,UNREVIEWED,,,
-src/components/ui/IVPInteractiveCanvas.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/IVPInteractiveCanvas.tsx,REACHABLE,WIRED,Dual-viewport CV inspection canvas with genuine EAR/MAR signals and HUD,src/views/IVPLab.tsx:398,2
 src/components/ui/IVPPoseTracker.tsx,ORPHAN,UNREVIEWED,,,
-src/components/ui/IVPSignalOscilloscope.tsx,REACHABLE,UNREVIEWED,,,
+src/components/ui/IVPSignalOscilloscope.tsx,REACHABLE,WIRED,Real-time circular buffer oscilloscope displaying live EAR and MAR waveforms with null states,src/views/IVPLab.tsx:488;src/views/IVPLab.tsx:507,2
 src/components/ui/IVPSyncTracker.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/IVPTelemetryTimeline.tsx,REACHABLE,UNREVIEWED,,,
 src/components/ui/InputFields.tsx,ORPHAN,UNREVIEWED,,,
@@ -304,15 +305,16 @@ src/lib/services/groundingVerifier.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/interviewEvaluation.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/ivpAffectEngine.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/ivpCameraManager.ts,REACHABLE,WIRED,Camera acquisition device resolution fallback and stream lifecycle,src/hooks/useInterviewCamera.ts:25;src/views/IVPLab.tsx:105,1
-src/lib/services/ivpDiagnosticKernels.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/ivpExpressionKernel.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/ivpFeatureFlags.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/ivpDiagnosticKernels.ts,REACHABLE,WIRED,Pure image and landmark kernels including calculateEAR and calculateMAR,src/components/ui/IVPInteractiveCanvas.tsx:10;tests/ycrcbOtsuSegmentation.test.ts:1,2
+src/lib/services/ivpExpressionKernel.ts,REACHABLE,WIRED,Facial expression extraction kernel computing genuine landmark-derived metrics,src/components/ui/IVPInteractiveCanvas.tsx:20;tests/ivpEngine.test.ts:1,2
+src/lib/services/ivpFeatureFlags.ts,REACHABLE,WIRED,Runtime gating and persistence for vision algorithms with reset and raw getters,src/components/ui/IVPInteractiveCanvas.tsx:38;src/components/ivp/canvas/CanvasHeaderControls.tsx:6,2
 src/lib/services/ivpGazeEngine.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/ivpPoseEngine.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/ivpSignalCalculators.ts,REACHABLE,WIRED,Pure physiological signal calculators for blink rate; hysteresis; and speech cadence,src/views/IVPLab.tsx:24;tests/ivpSignalCalculators.test.ts:1,2
 src/lib/services/ivpSyncEngine.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/ivpTimelineTransformer.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/latsEngine.server.ts,REACHABLE,UNREVIEWED,,,
-src/lib/services/microPatchTracker.ts,REACHABLE,UNREVIEWED,,,
+src/lib/services/microPatchTracker.ts,REACHABLE,WIRED,Sub-pixel ZNCC and optical flow micro-template tracker across frames,src/components/ui/IVPInteractiveCanvas.tsx:36;tests/microPatchTrackerPixelMapping.test.ts:1,2
 src/lib/services/onnxInferenceService.ts,REACHABLE,WIRED,Unified ONNX preprocessing model decoding and EMA smoothing,src/hooks/useONNXWorker.ts:11;src/lib/workers/onnxWorker.ts:13,1
 src/lib/services/rateLimiter.server.ts,REACHABLE,UNREVIEWED,,,
 src/lib/services/reflexionEngine.server.ts,REACHABLE,UNREVIEWED,,,
@@ -351,7 +353,7 @@ src/types/themes.ts,REACHABLE,UNREVIEWED,,,
 src/types/workerMessages.ts,REACHABLE,WIRED,Command and response message contracts for vision worker,src/hooks/useVisionWorker.ts:10;src/lib/workers/visionWorker.ts:26,1
 src/views/CareerSetup.tsx,REACHABLE,UNREVIEWED,,,
 src/views/Dashboard.tsx,REACHABLE,UNREVIEWED,,,
-src/views/IVPLab.tsx,REACHABLE,UNREVIEWED,,,
+src/views/IVPLab.tsx,REACHABLE,WIRED,Interactive Vision Pipeline laboratory workbench screen with truthful physiological telemetry,app/(app)/ivp-lab/page.tsx:5,2
 src/views/InterviewSession.tsx,REACHABLE,UNREVIEWED,,,
 src/views/Landing.tsx,REACHABLE,UNREVIEWED,,,
 src/views/Login.tsx,REACHABLE,UNREVIEWED,,,
@@ -399,6 +401,7 @@ tests/ivpCameraContention.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/ivpCameraPreviewMirroring.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/ivpEngine.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/ivpQuestionScoping.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
+tests/ivpSignalCalculators.test.ts,NON_RUNTIME_OR_ASSET,TEST,Unit test suite verifying blink detection hysteresis and sliding window math,npm test -- tests/ivpSignalCalculators.test.ts,2
 tests/ivpTimelineTransformer.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/ivpWorkerIntegration.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,
 tests/landingFaq.test.ts,NON_RUNTIME_OR_ASSET,UNREVIEWED,,,

@@ -2,11 +2,11 @@
 
 | metric | value |
 |---|---|
-| generatedAt | 2026-10-17T11:24:24.580Z |
-| totalFiles | 180 |
-| reachable | 170 |
+| generatedAt | 2026-10-17T11:45:25.690Z |
+| totalFiles | 181 |
+| reachable | 171 |
 | orphanFiles | 10 |
-| deadExports | 14 |
+| deadExports | 11 |
 | testOnlyExports | 87 |
 
 ## Orphan files (not reachable from any app/ entry)
@@ -79,15 +79,13 @@
 | src/lib/services/ivpAffectEngine.ts | calculateComposureScore | TEST_ONLY |
 | src/lib/services/ivpAffectEngine.ts | classifyDiscreteEmotion | TEST_ONLY |
 | src/lib/services/ivpAffectEngine.ts | detectStressSpikes | TEST_ONLY |
-| src/lib/services/ivpDiagnosticKernels.ts | calculateEAR | DEAD |
 | src/lib/services/ivpFeatureFlags.ts | DEFAULT_IVP_FEATURE_FLAGS | INTERNAL_ONLY |
-| src/lib/services/ivpFeatureFlags.ts | getRawIVPFeatureFlags | DEAD |
-| src/lib/services/ivpFeatureFlags.ts | resetIVPFeatureFlags | DEAD |
 | src/lib/services/ivpGazeEngine.ts | computeGazeVector | TEST_ONLY |
 | src/lib/services/ivpGazeEngine.ts | processGazeFrame | INTERNAL_ONLY |
 | src/lib/services/ivpGazeEngine.ts | detectDistractionEvents | TEST_ONLY |
 | src/lib/services/ivpPoseEngine.ts | softArgmaxAngle | TEST_ONLY |
 | src/lib/services/ivpPoseEngine.ts | analyzeGesturalEvents | TEST_ONLY |
+| src/lib/services/ivpSignalCalculators.ts | DEFAULT_BLINK_CONFIG | INTERNAL_ONLY |
 | src/lib/services/ivpSyncEngine.ts | calculateL2Distance | TEST_ONLY |
 | src/lib/services/ivpSyncEngine.ts | evaluateSyncStatus | TEST_ONLY |
 | src/lib/services/ivpSyncEngine.ts | detectSpoofingAlerts | TEST_ONLY |

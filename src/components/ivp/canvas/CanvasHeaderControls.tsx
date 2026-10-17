@@ -2,7 +2,11 @@
 
 import React from 'react';
 import type { DiagnosticMode, DiagnosticMetrics, TrackingLifecycleState } from './types';
-import type { IVPFeatureFlags } from '@/lib/services/ivpFeatureFlags';
+import {
+  type IVPFeatureFlags,
+  getRawIVPFeatureFlags,
+  resetIVPFeatureFlags,
+} from '@/lib/services/ivpFeatureFlags';
 
 export interface CanvasHeaderControlsProps {
   activeMode: DiagnosticMode;
@@ -20,6 +24,7 @@ export interface CanvasHeaderControlsProps {
   onToggleSafeMode: () => void;
   isMicroPaused: boolean;
   onToggleMicroPause: () => void;
+  onResetFlags?: () => void;
 }
 
 export default function CanvasHeaderControls({
@@ -38,6 +43,7 @@ export default function CanvasHeaderControls({
   onToggleSafeMode,
   isMicroPaused,
   onToggleMicroPause,
+  onResetFlags,
 }: CanvasHeaderControlsProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
@@ -167,6 +173,23 @@ export default function CanvasHeaderControls({
           }`}
         >
           {isMicroPaused ? '▶ RESUME MICRO' : '⏸ PAUSE MICRO'}
+        </button>
+
+        {/* Reset Feature Flags Button */}
+        <button
+          id="reset-flags-btn"
+          type="button"
+          onClick={() => {
+            if (onResetFlags) {
+              onResetFlags();
+            } else {
+              resetIVPFeatureFlags();
+            }
+          }}
+          title={`Reset IVP Flags to Defaults (Raw state: ${Object.keys(getRawIVPFeatureFlags()).length} flags registered)`}
+          className="px-2 py-0.5 rounded border border-border bg-surface-alt text-text-secondary hover:text-text-primary text-[10px] font-mono transition-colors cursor-pointer"
+        >
+          🔄 RESET FLAGS
         </button>
       </div>
     </div>

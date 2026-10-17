@@ -10,6 +10,7 @@ import {
   drawProjected3DAxes,
   ensureKernelBuffers,
   histogramMax,
+  calculateEAR,
   calculateMAR,
   type Point2D,
   type LuminanceHistogramResult,
@@ -36,6 +37,7 @@ import {
 import { MicroPatchTracker, type TrackedFeature } from '../../lib/services/microPatchTracker';
 import {
   getIVPFeatureFlags,
+  resetIVPFeatureFlags,
   setIVPFeatureFlag,
   subscribeIVPFeatureFlags,
   type IVPFeatureFlags,
@@ -285,8 +287,8 @@ export default function IVPInteractiveCanvas({
 
   // ── Telemetry state ───────────────────────────────────────────────────────
   const [liveMetrics, setLiveMetrics] = useState<DiagnosticMetrics>({
-    ear: 0.285,
-    mar: 0.145,
+    ear: null,
+    mar: null,
     fps: 60,
     targetLost: false,
   });
@@ -691,8 +693,8 @@ export default function IVPInteractiveCanvas({
     // ── 10. DENSE 70-POINT GEOMETRIC FACIAL LANDMARK & KINEMATIC ENGINE ─────
     let denseRes: SmoothedLandmarksResult = denseSmootherRef.current.getCurrentResult();
     let isFaceGenuinelyDetected = false;
-    let liveEAR = 0.285;
-    let liveMAR = 0.145;
+    let liveEAR: number | null | undefined = null;
+    let liveMAR: number | null | undefined = null;
 
     // Sync worker timeline milestones
     if (workerTimeline) {
@@ -767,8 +769,8 @@ export default function IVPInteractiveCanvas({
       }
 
       isFaceGenuinelyDetected = workerLandmarks.envelope.faceDetected;
-      liveEAR = workerLandmarks.envelope.ear;
-      liveMAR = workerLandmarks.envelope.mar;
+      liveEAR = workerLandmarks.envelope.faceDetected ? workerLandmarks.envelope.ear : null;
+      liveMAR = workerLandmarks.envelope.faceDetected ? workerLandmarks.envelope.mar : null;
 
       const isNewPacket = workerLandmarks.buffer !== lastWorkerBufferRef.current;
       if (isNewPacket) {
@@ -785,6 +787,20 @@ export default function IVPInteractiveCanvas({
           rawPts.push({ x: workerLandmarks.buffer[i * 4], y: workerLandmarks.buffer[i * 4 + 1] });
         }
         lastRawNormPtsRef.current = rawPts;
+
+        if (isFaceGenuinelyDetected && rawPts.length >= 48) {
+          const leftEyeEar = calculateEAR(rawPts.slice(36, 42));
+          const rightEyeEar = calculateEAR(rawPts.slice(42, 48));
+          if (liveEAR === null || liveEAR === undefined || !isFinite(liveEAR)) {
+            liveEAR = Math.round(((leftEyeEar + rightEyeEar) / 2) * 1000) / 1000;
+          }
+        }
+        if (isFaceGenuinelyDetected && rawPts.length >= 58) {
+          const mouthPts = [rawPts[48], rawPts[51], rawPts[54], rawPts[57]];
+          if (liveMAR === null || liveMAR === undefined || !isFinite(liveMAR)) {
+            liveMAR = calculateMAR(mouthPts);
+          }
+        }
 
         // Initialize / refresh micro-patch templates on new inference packet
         if (isFaceGenuinelyDetected && rawImgData) {
@@ -1040,8 +1056,8 @@ export default function IVPInteractiveCanvas({
           : null;
 
         isFaceGenuinelyDetected = !!(liveExpr && liveExpr.faceDetected);
-        liveEAR = liveExpr ? liveExpr.ear : 0.285;
-        liveMAR = liveExpr ? liveExpr.mar : 0.145;
+        liveEAR = liveExpr && liveExpr.faceDetected ? liveExpr.ear : null;
+        liveMAR = liveExpr && liveExpr.faceDetected ? liveExpr.mar : null;
 
         const rawPts70: Array<{ x: number; y: number; confidence?: number }> = [];
         if (liveExpr && liveExpr.faceDetected && liveExpr.landmarks) {
@@ -1195,8 +1211,8 @@ export default function IVPInteractiveCanvas({
     const boxW = rawBoxW > 0 ? rawBoxW : smoothedBoxW;
     const boxH = rawBoxH > 0 ? rawBoxH : smoothedBoxH;
 
-    const isBlink = liveEAR < 0.22;
-    const isSpeaking = liveMAR >= 0.22;
+    const isBlink = liveEAR !== null && liveEAR !== undefined && liveEAR < 0.22;
+    const isSpeaking = liveMAR !== null && liveMAR !== undefined && liveMAR >= 0.22;
     const s = Math.max(0.75, Math.min(1.4, boxW / 200));
 
     // Clamp mouth center within facial envelope to prevent stray vector detachment
@@ -1296,7 +1312,7 @@ export default function IVPInteractiveCanvas({
         }
         ctx.closePath();
 
-        if (isBlink || liveEAR < 0.21) {
+        if (isBlink || (liveEAR !== null && liveEAR !== undefined && liveEAR < 0.21)) {
           // Blink State: Flash Gold/Amber
           ctx.fillStyle = 'rgba(245, 158, 11, 0.35)';
           ctx.fill();
@@ -1308,7 +1324,8 @@ export default function IVPInteractiveCanvas({
           ctx.fillStyle = '#FBBF24';
           ctx.font = 'bold 9px monospace';
           const badgeY = pts[1] ? pts[1].y - 8 : pts[0].y - 8;
-          ctx.fillText(`⚡ BLINK (${liveEAR.toFixed(2)})`, pts[0].x - 6, badgeY);
+          const earBadgeStr = liveEAR !== null && liveEAR !== undefined ? liveEAR.toFixed(2) : '--';
+          ctx.fillText(`⚡ BLINK (${earBadgeStr})`, pts[0].x - 6, badgeY);
         } else {
           // Open State: Cyan Contour Loop
           ctx.fillStyle = 'rgba(6, 182, 212, 0.15)';
@@ -1348,7 +1365,7 @@ export default function IVPInteractiveCanvas({
         }
         ctx.closePath();
 
-        if (isSpeaking || liveMAR >= 0.25) {
+        if (isSpeaking || (liveMAR !== null && liveMAR !== undefined && liveMAR >= 0.25)) {
           // Speech Active: Glowing Neon Green with vertical displacement indicator
           ctx.fillStyle = 'rgba(16, 185, 129, 0.35)';
           ctx.fill();
@@ -1372,7 +1389,8 @@ export default function IVPInteractiveCanvas({
           ctx.font = 'bold 9px monospace';
           ctx.textAlign = 'center';
           const speechAnchorY = mouthPts[6] ? Math.min(boxY + boxH + 20, mouthPts[6].y + 14) : mouthCenter.y + 14;
-          ctx.fillText(`SPEECH [MAR: ${liveMAR.toFixed(2)}]`, mouthCenter.x, speechAnchorY);
+          const marBadgeStr = liveMAR !== null && liveMAR !== undefined ? liveMAR.toFixed(2) : '--';
+          ctx.fillText(`SPEECH [MAR: ${marBadgeStr}]`, mouthCenter.x, speechAnchorY);
         } else {
           // Resting Mouth: Subtle Emerald Loop
           ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
@@ -1519,7 +1537,9 @@ export default function IVPInteractiveCanvas({
 
       ctx.font = '9px monospace';
       ctx.fillStyle = '#9CA3AF';
-      ctx.fillText(`EAR: ${liveEAR.toFixed(3)}  |  MAR: ${liveMAR.toFixed(3)}`, sysX + 8, sysY + 22);
+      const earDisplay = liveEAR !== null && liveEAR !== undefined ? liveEAR.toFixed(3) : '--';
+      const marDisplay = liveMAR !== null && liveMAR !== undefined ? liveMAR.toFixed(3) : '--';
+      ctx.fillText(`EAR: ${earDisplay}  |  MAR: ${marDisplay}`, sysX + 8, sysY + 22);
       ctx.fillText(`POSE: Y:${(poseAngles.yaw || 0).toFixed(0)}° P:${(poseAngles.pitch || 0).toFixed(0)}° R:${(poseAngles.roll || 0).toFixed(0)}°`, sysX + 8, sysY + 34);
       ctx.restore();
     }
@@ -1739,14 +1759,14 @@ export default function IVPInteractiveCanvas({
     // Dispatch metrics reliably: on state change or at least ~15 times per second (every 66ms)
     // so physiological oscilloscopes and blink detectors never miss state transitions
     const nowMs = performance.now();
+    const isBlinkState = typeof liveEAR === 'number' && isFinite(liveEAR) && liveEAR < 0.22;
     if (
       targetLostRef.current !== isTargetLost ||
       !lastMetricsDispatchRef.current ||
       nowMs - lastMetricsDispatchRef.current >= 65 ||
-      (liveEAR < 0.22 && !wasBlinkingRef.current) ||
-      (liveEAR >= 0.22 && wasBlinkingRef.current)
+      (isBlinkState !== wasBlinkingRef.current)
     ) {
-      wasBlinkingRef.current = liveEAR < 0.22;
+      wasBlinkingRef.current = isBlinkState;
       lastMetricsDispatchRef.current = nowMs;
       targetLostRef.current = isTargetLost;
       setLiveMetrics(metrics);
@@ -1848,6 +1868,10 @@ export default function IVPInteractiveCanvas({
           const next = !isMicroPaused;
           isMicroPausedRef.current = next;
           setIsMicroPaused(next);
+        }}
+        onResetFlags={() => {
+          resetIVPFeatureFlags();
+          setFeatureFlags(getIVPFeatureFlags());
         }}
       />
 

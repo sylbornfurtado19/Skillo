@@ -1,10 +1,10 @@
 {
   "summary": {
-    "generatedAt": "2026-10-17T11:24:24.580Z",
-    "totalFiles": 180,
-    "reachable": 170,
+    "generatedAt": "2026-10-17T11:45:25.690Z",
+    "totalFiles": 181,
+    "reachable": 171,
     "orphanFiles": 10,
-    "deadExports": 14,
+    "deadExports": 11,
     "testOnlyExports": 87
   },
   "orphans": [
@@ -387,27 +387,9 @@
       "live": true
     },
     {
-      "file": "src/lib/services/ivpDiagnosticKernels.ts",
-      "name": "calculateEAR",
-      "status": "DEAD",
-      "live": true
-    },
-    {
       "file": "src/lib/services/ivpFeatureFlags.ts",
       "name": "DEFAULT_IVP_FEATURE_FLAGS",
       "status": "INTERNAL_ONLY",
-      "live": true
-    },
-    {
-      "file": "src/lib/services/ivpFeatureFlags.ts",
-      "name": "getRawIVPFeatureFlags",
-      "status": "DEAD",
-      "live": true
-    },
-    {
-      "file": "src/lib/services/ivpFeatureFlags.ts",
-      "name": "resetIVPFeatureFlags",
-      "status": "DEAD",
       "live": true
     },
     {
@@ -438,6 +420,12 @@
       "file": "src/lib/services/ivpPoseEngine.ts",
       "name": "analyzeGesturalEvents",
       "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/ivpSignalCalculators.ts",
+      "name": "DEFAULT_BLINK_CONFIG",
+      "status": "INTERNAL_ONLY",
       "live": true
     },
     {
@@ -1001,7 +989,7 @@
     },
     {
       "file": "src/components/ivp/canvas/CanvasHeaderControls.tsx",
-      "loc": 175,
+      "loc": 198,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
@@ -1134,7 +1122,7 @@
     },
     {
       "file": "src/components/ui/IVPInteractiveCanvas.tsx",
-      "loc": 1893,
+      "loc": 1917,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
@@ -1148,7 +1136,7 @@
     },
     {
       "file": "src/components/ui/IVPSignalOscilloscope.tsx",
-      "loc": 240,
+      "loc": 271,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
@@ -1595,6 +1583,13 @@
       "testedBy": 4
     },
     {
+      "file": "src/lib/services/ivpSignalCalculators.ts",
+      "loc": 199,
+      "reachable": true,
+      "importedBy": 1,
+      "testedBy": 1
+    },
+    {
       "file": "src/lib/services/ivpSyncEngine.ts",
       "loc": 122,
       "reachable": true,
@@ -1897,7 +1892,7 @@
     },
     {
       "file": "src/views/IVPLab.tsx",
-      "loc": 553,
+      "loc": 596,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0

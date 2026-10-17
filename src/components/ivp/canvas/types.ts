@@ -23,8 +23,8 @@ export interface DiagnosticMetrics {
   otsuStats?: OtsuSegmentationResult;
   sobelStats?: SobelGradientResult;
   madStats?: TemporalMADResult;
-  ear: number;
-  mar: number;
+  ear?: number | null;
+  mar?: number | null;
   fps: number;
   targetLost: boolean;
 }

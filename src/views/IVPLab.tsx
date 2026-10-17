@@ -21,6 +21,14 @@ import IVPSignalOscilloscope from '../components/ui/IVPSignalOscilloscope';
 import { useONNXWorker } from '../hooks/useONNXWorker';
 import { useVisionWorker } from '../hooks/useVisionWorker';
 import type { TrackingPreset } from '../lib/services/temporalSmoothing';
+import {
+  computeBlinkRate,
+  computeSpeechActivity,
+  computeSpeechCadence,
+  processBlinkDetection,
+  createInitialBlinkState,
+  type BlinkDetectorState,
+} from '../lib/services/ivpSignalCalculators';
 
 export default function IVPLab() {
   // Active Diagnostic Mode — DEFAULTS IMMEDIATELY TO SOBEL (Unit 4/5) FOR INSTANT VISUAL IMPACT
@@ -63,16 +71,17 @@ export default function IVPLab() {
   });
 
   // Live Physiological Signals (EAR & MAR)
-  const [currentEAR, setCurrentEAR] = useState<number>(0.285);
-  const [currentMAR, setCurrentMAR] = useState<number>(0.145);
+  const [currentEAR, setCurrentEAR] = useState<number | null>(null);
+  const [currentMAR, setCurrentMAR] = useState<number | null>(null);
   const [blinkCount, setBlinkCount] = useState<number>(0);
-  const [blinkRatePerMin, setBlinkRatePerMin] = useState<number>(14.5);
-  const [speechActivePct, setSpeechActivePct] = useState<number>(32);
+  const [blinkRatePerMin, setBlinkRatePerMin] = useState<number | null>(null);
+  const [speechActivePct, setSpeechActivePct] = useState<number | null>(null);
+  const [speechCadencePerMin, setSpeechCadencePerMin] = useState<number | null>(null);
 
   // Diagnostic Canvas Metrics
   const [,setCanvasMetrics] = useState<DiagnosticMetrics>({
-    ear: 0.285,
-    mar: 0.145,
+    ear: null,
+    mar: null,
     fps: 60,
     targetLost: false,
   });
@@ -84,18 +93,34 @@ export default function IVPLab() {
   const offscreenInferCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const inferIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Blink state tracking
-  const wasEyeClosedRef = useRef<boolean>(false);
-  const lastBlinkTimeRef = useRef<number>(0);
-  const blinkTimestampsRef = useRef<number[]>([]);
+  // Session & Physiological Signal Tracking Refs
+  const sessionStartTsRef = useRef<number>(0);
+  const blinkDetectorStateRef = useRef<BlinkDetectorState>(createInitialBlinkState());
+  const marSlidingWindowRef = useRef<Array<{ timestamp: number; mar: number }>>([]);
 
   // 1. Initialize Sample Face Image
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=640';
+    img.src = '/images/sample-face.jpg';
     img.onload = () => {
       sampleImageRef.current = img;
+    };
+    img.onerror = () => {
+      console.warn('Local sample face load warning; initializing offline fallback canvas.');
+      const c = document.createElement('canvas');
+      c.width = 640;
+      c.height = 480;
+      const ctx = c.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, 640, 480);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '16px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('Sample Face Offline Fallback', 320, 240);
+        img.src = c.toDataURL();
+      }
     };
   }, []);
 
@@ -159,8 +184,11 @@ export default function IVPLab() {
       offscreenInferCanvasRef.current = c;
     }
 
-    // Adaptive cadence: default 90ms (~11 FPS) when healthy, throttled to 180ms (~5.5 FPS) under overload
-    const intervalMs = isThrottled ? 180 : 90;
+    // Adaptive cadence: driven by worker suggestedCadenceFps (e.g. 11 FPS default, throttled down under load)
+    const targetFps = suggestedCadenceFps && suggestedCadenceFps > 0
+      ? suggestedCadenceFps
+      : (isThrottled ? 5.5 : 11);
+    const intervalMs = Math.max(16, Math.round(1000 / targetFps));
 
     inferIntervalRef.current = setInterval(async () => {
       // Pause inference loop if tab is hidden / pagehide
@@ -197,7 +225,7 @@ export default function IVPLab() {
     return () => {
       if (inferIntervalRef.current) clearInterval(inferIntervalRef.current);
     };
-  }, [inputSource, processWorkerFrame, submitONNXFrame, isTabPaused, isThrottled]);
+  }, [inputSource, processWorkerFrame, submitONNXFrame, isTabPaused, isThrottled, suggestedCadenceFps, lastLandmarks, mirrored]);
 
   return (
     <div className="space-y-6 text-left max-w-7xl mx-auto pb-16">
@@ -392,26 +420,41 @@ export default function IVPLab() {
               }}
               onMetricsUpdate={(metrics) => {
                 setCanvasMetrics(metrics);
-                if (metrics.ear !== undefined) {
-                  setCurrentEAR(metrics.ear);
-                  const now = performance.now();
-                  // Hysteresis thresholding: trigger close at < 0.22, reopen at >= 0.24, with 70ms debounce
-                  if (metrics.ear < 0.22 && !wasEyeClosedRef.current) {
-                    if (now - lastBlinkTimeRef.current > 70) {
-                      wasEyeClosedRef.current = true;
-                      lastBlinkTimeRef.current = now;
-                      setBlinkCount((prev) => prev + 1);
-                      blinkTimestampsRef.current.push(now);
-                      blinkTimestampsRef.current = blinkTimestampsRef.current.filter((t) => now - t <= 60000);
-                      setBlinkRatePerMin(blinkTimestampsRef.current.length);
-                    }
-                  } else if (metrics.ear >= 0.24 && wasEyeClosedRef.current) {
-                    wasEyeClosedRef.current = false;
-                  }
+                const now = performance.now();
+                if (sessionStartTsRef.current === 0) {
+                  sessionStartTsRef.current = now;
                 }
-                if (metrics.mar !== undefined) {
+
+                if (metrics.ear !== undefined && metrics.ear !== null) {
+                  setCurrentEAR(metrics.ear);
+                  const { state: nextState, didBlink } = processBlinkDetection(
+                    metrics.ear,
+                    now,
+                    blinkDetectorStateRef.current
+                  );
+                  blinkDetectorStateRef.current = nextState;
+                  if (didBlink) {
+                    setBlinkCount(nextState.blinkCount);
+                  }
+                  const rate = computeBlinkRate(nextState.blinkTimestamps, now, sessionStartTsRef.current);
+                  setBlinkRatePerMin(rate);
+                } else {
+                  setCurrentEAR(null);
+                }
+
+                if (metrics.mar !== undefined && metrics.mar !== null) {
                   setCurrentMAR(metrics.mar);
-                  setSpeechActivePct(metrics.mar >= 0.25 ? 76 : 14);
+                  marSlidingWindowRef.current.push({ timestamp: now, mar: metrics.mar });
+                  // Maintain sliding window of the last 10 seconds
+                  marSlidingWindowRef.current = marSlidingWindowRef.current.filter(
+                    (item) => now - item.timestamp <= 10000
+                  );
+                  const marVals = marSlidingWindowRef.current.map((item) => item.mar);
+                  setSpeechActivePct(computeSpeechActivity(marVals, 0.25));
+                  setSpeechCadencePerMin(computeSpeechCadence(marSlidingWindowRef.current, 0.25, 10000));
+                } else {
+                  setCurrentMAR(null);
+                  setSpeechActivePct(null);
                 }
               }}
             />
@@ -489,7 +532,7 @@ export default function IVPLab() {
               stats={{
                 triggerCount: speechActivePct,
                 triggerLabel: 'Speaking Ratio %',
-                ratePerMin: 18.0,
+                ratePerMin: speechCadencePerMin,
                 rateLabel: 'Cadence',
               }}
             />

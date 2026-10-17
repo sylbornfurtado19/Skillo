@@ -6,7 +6,7 @@ import { getThemeColor } from '@/lib/themeColors';
 export interface IVPSignalOscilloscopeProps {
   label: string;
   unit: string;
-  currentValue: number;
+  currentValue: number | null | undefined;
   threshold?: number;
   thresholdLabel?: string;
   minRange?: number;
@@ -16,9 +16,9 @@ export interface IVPSignalOscilloscopeProps {
   /** CSS height of the waveform canvas in logical pixels. Default 95. */
   height?: number;
   stats?: {
-    triggerCount?: number;
+    triggerCount?: number | null;
     triggerLabel?: string;
-    ratePerMin?: number;
+    ratePerMin?: number | null;
     rateLabel?: string;
   };
   className?: string;
@@ -47,19 +47,22 @@ export default function IVPSignalOscilloscope({
   // ── O(1) Circular Ring Buffer — zero array allocations after init ────────
   // Instead of push + shift (which shifts all elements = O(n)), we keep a fixed
   // Float32Array and a write pointer that wraps around.
-  const ringBuf  = useRef<Float32Array>(new Float32Array(historyLength).fill(currentValue));
+  const initialVal = typeof currentValue === 'number' && isFinite(currentValue) ? currentValue : (minRange + maxRange) / 2;
+  const ringBuf  = useRef<Float32Array>(new Float32Array(historyLength).fill(initialVal));
   const writePtr = useRef<number>(0);       // next write position
+  const validSamplesCount = useRef<number>(typeof currentValue === 'number' && isFinite(currentValue) ? 1 : 0);
 
   // Resize ring buffer if historyLength prop changes
   useEffect(() => {
     const old = ringBuf.current;
     if (old.length !== historyLength) {
+      const fillVal = typeof currentValue === 'number' && isFinite(currentValue) ? currentValue : (minRange + maxRange) / 2;
       const next = new Float32Array(historyLength);
-      next.fill(currentValue);
+      next.fill(fillVal);
       ringBuf.current = next;
       writePtr.current = 0;
     }
-  }, [historyLength, currentValue]);
+  }, [historyLength, currentValue, minRange, maxRange]);
 
   // ── High-DPI canvas initialisation ──────────────────────────────────────
   const setupDPI = useCallback(() => {
@@ -85,10 +88,15 @@ export default function IVPSignalOscilloscope({
 
   // ── Write new sample and render ──────────────────────────────────────────
   useEffect(() => {
-    // 1. Write new sample into ring buffer at current write pointer (O(1))
+    const isValValid = typeof currentValue === 'number' && isFinite(currentValue);
     const buf = ringBuf.current;
-    buf[writePtr.current] = currentValue;
-    writePtr.current = (writePtr.current + 1) % buf.length;
+
+    // 1. Write new sample into ring buffer if valid (O(1))
+    if (isValValid) {
+      buf[writePtr.current] = currentValue;
+      writePtr.current = (writePtr.current + 1) % buf.length;
+      validSamplesCount.current = Math.min(buf.length, validSamplesCount.current + 1);
+    }
 
     // 2. Render
     const canvas = canvasRef.current;
@@ -145,6 +153,22 @@ export default function IVPSignalOscilloscope({
       ctx.restore();
     }
 
+    // If no valid data has ever arrived or currentValue is null, show placeholder indicator
+    if (validSamplesCount.current === 0 || !isValValid) {
+      ctx.save();
+      ctx.fillStyle = getThemeColor('text-secondary');
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(
+        currentValue === null ? 'NO FACE DETECTED' : 'WAITING FOR SIGNAL...',
+        W / 2,
+        H / 2
+      );
+      ctx.restore();
+      return;
+    }
+
     // ── Waveform trace ────────────────────────────────────────────────────
     const n   = buf.length;
     const dx  = W / (n - 1);
@@ -160,9 +184,7 @@ export default function IVPSignalOscilloscope({
     ctx.setLineDash([]);
 
     // Read from ring buffer in chronological order
-    // The oldest sample is at writePtr (the slot that was just overwritten is the newest,
-    // so the slot after writePtr is the oldest surviving one).
-    const oldest = writePtr.current;  // next write slot = oldest slot after the latest write
+    const oldest = writePtr.current;
 
     ctx.beginPath();
     for (let i = 0; i < n; i++) {
@@ -191,6 +213,8 @@ export default function IVPSignalOscilloscope({
     ctx.restore();
   }, [currentValue, threshold, thresholdLabel, minRange, maxRange, signalColor, height]);
 
+  const hasValue = typeof currentValue === 'number' && isFinite(currentValue);
+
   return (
     <div className={`bg-bg-surface border border-border shadow-soft rounded-xl p-3 space-y-2 text-left ${className}`}>
       {/* Header */}
@@ -203,8 +227,11 @@ export default function IVPSignalOscilloscope({
             [{minRange}..{maxRange} {unit}]
           </span>
         </div>
-        <span className="text-xs font-bold font-mono" style={{ color: signalColor }}>
-          {currentValue.toFixed(3)} {unit}
+        <span
+          className="text-xs font-bold font-mono"
+          style={{ color: hasValue ? signalColor : undefined }}
+        >
+          {hasValue ? `${currentValue.toFixed(3)} ${unit}` : 'NO SIGNAL'}
         </span>
       </div>
 
@@ -223,13 +250,17 @@ export default function IVPSignalOscilloscope({
           {stats.triggerLabel !== undefined && stats.triggerCount !== undefined && (
             <div>
               <span>{stats.triggerLabel}: </span>
-              <strong className="text-text-primary">{stats.triggerCount}</strong>
+              <strong className="text-text-primary">
+                {stats.triggerCount !== null ? stats.triggerCount : '--'}
+              </strong>
             </div>
           )}
           {stats.rateLabel !== undefined && stats.ratePerMin !== undefined && (
             <div>
               <span>{stats.rateLabel}: </span>
-              <strong className="text-success">{stats.ratePerMin.toFixed(1)}/min</strong>
+              <strong className="text-success">
+                {stats.ratePerMin !== null ? `${stats.ratePerMin.toFixed(1)}/min` : '--/min'}
+              </strong>
             </div>
           )}
         </div>
