@@ -1,14 +1,3 @@
-const mockGetUser = jest.fn(async (token: string) => {
-  if (token === 'valid_test_token') {
-    return { data: { user: { id: 'usr_code_test' } }, error: null };
-  }
-  return { data: { user: null }, error: new Error('Invalid token') };
-});
-
-const mockSupabase = {
-  auth: { getUser: mockGetUser },
-};
-
 const mockCheckRateLimit = jest.fn(async () => ({
   allowed: true,
   limit: 5,
@@ -19,9 +8,6 @@ const mockCheckRateLimit = jest.fn(async () => ({
 const mockCreateRateLimitResponse = jest.fn(
   () => new Response(JSON.stringify({ message: 'Rate limit exceeded' }), { status: 429 })
 );
-
-jest.mock('@/lib/supabase', () => ({ supabase: mockSupabase }));
-jest.mock('../src/lib/supabase', () => ({ supabase: mockSupabase }));
 jest.mock('@/lib/services/rateLimiter.server', () => ({
   checkRateLimit: mockCheckRateLimit,
   createRateLimitResponse: mockCreateRateLimitResponse,

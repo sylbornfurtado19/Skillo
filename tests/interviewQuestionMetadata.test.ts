@@ -115,14 +115,6 @@ jest.mock('../src/components/ui/Toast', () => ({
   useToast: () => ({ showToast: jest.fn() }),
 }));
 
-jest.mock('../src/lib/supabase', () => ({
-  supabase: {
-    auth: {
-      getSession: jest.fn().mockResolvedValue({ data: { session: null } }),
-    },
-  },
-  isSupabaseConfigured: false,
-}));
 
 import InterviewSession from '../src/views/InterviewSession';
 import { performInterviewEvaluation } from '../src/lib/services/interviewEvaluation.server';

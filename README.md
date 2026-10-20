@@ -6,7 +6,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16.2.12-black?style=for-the-badge&logo=nextdotjs)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8_Strict-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.17-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![Supabase](https://img.shields.io/badge/Supabase-Database_%26_Auth-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-Database_%26_Auth-FFCA28?style=for-the-badge&logo=firebase)](https://firebase.google.com/)
 [![Jest](https://img.shields.io/badge/Jest-100%25_Pass-C21325?style=for-the-badge&logo=jest)](https://jestjs.io/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
@@ -36,13 +36,21 @@ npm install
 ### 2. Environment Configuration
 Create a `.env.local` file at the root of the project (see `.env.example` for full reference):
 ```env
-# Backend Provider ('supabase' or 'firebase')
-NEXT_PUBLIC_BACKEND_PROVIDER=supabase
+# Backend Provider
+NEXT_PUBLIC_BACKEND_PROVIDER=firebase
 
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+# Firebase Client Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
+
+# Firebase Server Admin SDK
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_CLIENT_EMAIL=your_service_account_email
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 
 # AI provider for the reasoning & evaluation engines: anthropic | groq
 # (If unset, whichever key below is present is used, Anthropic first.)
@@ -129,8 +137,8 @@ npm run build
                                           │ Structured Evaluation Report
                                           ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                             SUPABASE PERSISTENCE LAYER                                  │
-│           [PostgreSQL]  [Auth API]  [JSONB Skill Memory Store & Traces]                  │
+│                             FIREBASE PERSISTENCE LAYER                                  │
+│             [Firestore]  [Auth API]  [Skill Memory Store & Traces]                              │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -195,7 +203,7 @@ npm run build
 #### 4. Reflexion Agent — *"The Memory Coach"*
 * **Executive Summary**:
   - **Problem it Solves**: Traditional practice tools evaluate attempts in complete isolation, failing to track candidate mistakes or skill growth over time.
-  - **How it Works**: Fires background, non-blocking verbal self-critiques ($SR_t$) post-evaluation and persists reflection payloads into Supabase JSONB. Tracks long-term candidate proficiency transitions across 4 master tiers. Next session, past reflection history is retrieved to tailor future question prompts.
+  - **How it Works**: Fires background, non-blocking verbal self-critiques ($SR_t$) post-evaluation and persists reflection payloads into Firestore skill memory store. Tracks long-term candidate proficiency transitions across 4 master tiers. Next session, past reflection history is retrieved to tailor future question prompts.
   - **Inspiration**: Reflexion: Language Agents with Verbal Reinforcement Learning (Shinn et al., NeurIPS 2023).
   - **In One Line**: *"Let the AI leave itself notes about your weaknesses, and read them back next time."*
 * **Technical Engineering Spec**:
@@ -438,7 +446,7 @@ npm run build
 | **Language & Type System** | TypeScript 5.8 (Strict Mode) | End-to-end type safety (0 `--noEmit` errors) |
 | **Schema Validation** | Zod 4.4 | Safe parsing of all LLM and computer vision JSON payloads |
 | **Backend & API Tier** | Next.js Server Actions & API Routes | Asynchronous engine pipeline processing |
-| **Database & Auth** | Supabase (PostgreSQL, SSR, JSONB) | Persisted candidate skill memory & multi-modal trace logs |
+| **Database & Auth** | Firebase (Firestore, Auth, Admin SDK) | Persisted candidate skill memory & multi-modal trace logs |
 | **Test Automation** | Jest 30, Ts-Jest, Playwright | 22 test suites, 180 unit/integration tests (100% Pass Rate) |
 
 ---

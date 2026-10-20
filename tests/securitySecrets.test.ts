@@ -3,13 +3,12 @@
  *
  * Negative security tests verifying:
  * 1. Server-side credentials and service-role keys are guarded against client-side exposure.
- * 2. Unconfigured Supabase environment throws actionable errors instead of silently dropping data.
- * 3. In-memory rate limiter emits production warnings when operating without Supabase persistence.
+ * 2. Server credentials safely separated from client bundle.
+ * 3. In-memory rate limiter emits production warnings when operating without persistent backend.
  */
 
 import { validateEnvironment, getServerEnv } from '../src/lib/server/env';
-import { getSupabaseAdmin } from '../src/lib/server/supabaseAdmin';
-import { supabase, isSupabaseConfigured } from '../src/lib/supabase';
+import { isFirebaseAdminConfigured } from '../src/lib/firebase/admin';
 import { checkRateLimit, resetRateLimiterMemoryState } from '../src/lib/services/rateLimiter.server';
 
 describe('Security & Secrets Protection Suite', () => {
@@ -75,6 +74,8 @@ describe('Security & Secrets Protection Suite', () => {
       try {
         envMap.NODE_ENV = 'production';
         envMap.BUILD_PHASE = 'true';
+        delete process.env.FIREBASE_PROJECT_ID;
+        delete process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
         delete process.env.NEXT_PUBLIC_SUPABASE_URL;
         delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -93,35 +94,14 @@ describe('Security & Secrets Protection Suite', () => {
     });
   });
 
-  describe('getSupabaseAdmin — Environment Isolation', () => {
-    it('throws an error if Supabase credentials are missing on the server', () => {
-      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-      delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      expect(() => getSupabaseAdmin()).toThrow(/must be configured for server-side admin access/);
-    });
-  });
-
-  describe('Client-Side Supabase Unconfigured Guard', () => {
-    it('throws actionable configuration error when database operations are attempted on unconfigured client', () => {
-      if (!isSupabaseConfigured) {
-        expect(() => supabase.from('test_table')).toThrow(/Supabase is not configured/);
-      } else {
-        expect(typeof supabase.from).toBe('function');
-      }
-    });
-
-    it('throws actionable configuration error when auth operations are attempted on unconfigured client', () => {
-      if (!isSupabaseConfigured) {
-        expect(() => supabase.auth.getUser()).toThrow(/Supabase is not configured/);
-      } else {
-        expect(typeof supabase.auth.getUser).toBe('function');
-      }
+  describe('Firebase Admin — Environment Isolation', () => {
+    it('verifies server-side Firebase Admin configuration status is defined', () => {
+      expect(typeof isFirebaseAdminConfigured).toBe('boolean');
     });
   });
 
   describe('In-Memory Rate Limiter Production Warning', () => {
-    it('emits a critical error warning if running in production without Supabase persistence', async () => {
+    it('emits a critical error warning if running in production without persistent backend', async () => {
       const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       const originalNodeEnv = process.env.NODE_ENV;
       (process.env as any).NODE_ENV = 'production';

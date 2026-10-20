@@ -1,5 +1,3 @@
-import { supabase } from '../lib/supabase';
-import { isFirebaseActive } from './backendProvider';
 import * as firebaseInterview from '../lib/firebase/services/interview.firebase';
 import type { MockInterview, MockInterviewInsert, ServiceResponse, EvaluationReport } from '../types/index';
 import { toServerSafeEvidence } from '../lib/services/ivpEvidenceAggregator';
@@ -38,100 +36,18 @@ export const saveMockInterview = async (
   userId: string,
   interviewData: MockInterviewInsert
 ): Promise<ServiceResponse<MockInterview>> => {
-  if (isFirebaseActive()) {
-    return firebaseInterview.saveMockInterview(userId, interviewData);
-  }
-
-  try {
-    const payload = {
-      user_id: userId,
-      domain: interviewData.domain,
-      role: interviewData.role,
-      experience_level: interviewData.experience_level,
-      interview_type: interviewData.interview_type,
-      persona: interviewData.persona,
-      overall_score: interviewData.overall_score,
-      categories: interviewData.categories,
-      breakdown: interviewData.breakdown,
-      interviewer_comments: interviewData.interviewer_comments,
-      company: interviewData.company ?? 'Generic',
-      duration: interviewData.duration ?? 45,
-      interview_mode_id: interviewData.interview_mode_id ?? 'generic-technical',
-      system_design_diagram: interviewData.system_design_diagram ?? {},
-      ...(interviewData.ivp_evidence ? { ivp_evidence: interviewData.ivp_evidence } : {}),
-      ...(interviewData.session_integrity ? { session_integrity: interviewData.session_integrity } : {}),
-      ...(interviewData.created_at ? { created_at: interviewData.created_at } : {}),
-    };
-
-    let { data, error } = await supabase
-      .from('mock_interviews')
-      .insert([payload])
-      .select()
-      .single();
-
-    // Guard D6: If the database table lacks ivp_evidence or session_integrity column,
-    // safely retry without new fields so interview history is never lost
-    if (error && (payload.ivp_evidence || payload.session_integrity)) {
-      const errMessage = (error.message || '').toLowerCase();
-      const isColError =
-        errMessage.includes('column') ||
-        errMessage.includes('does not exist') ||
-        (error as any).code === '42703' ||
-        (error as any).code === 'PGRST204';
-
-      if (isColError) {
-        console.warn('[saveMockInterview] Undefined column error inserting telemetry/integrity. Retrying without new columns (D6):', error.message);
-        const { ivp_evidence, session_integrity, ...fallbackPayload } = payload;
-        const retry = await supabase
-          .from('mock_interviews')
-          .insert([fallbackPayload])
-          .select()
-          .single();
-        data = retry.data;
-        error = retry.error;
-      }
-    }
-
-    return { data: data as MockInterview, error };
-  } catch (err: unknown) {
-    return { data: null, error: err };
-  }
+  return firebaseInterview.saveMockInterview(userId, interviewData);
 };
 
 export const getMockInterviews = async (
   userId: string
 ): Promise<ServiceResponse<MockInterview[]>> => {
-  if (isFirebaseActive()) {
-    return firebaseInterview.getMockInterviews(userId);
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('mock_interviews')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    return { data: data as MockInterview[], error };
-  } catch (err: unknown) {
-    return { data: null, error: err };
-  }
+  return firebaseInterview.getMockInterviews(userId);
 };
 
 export const getMockInterviewById = async (
   interviewId: string
 ): Promise<ServiceResponse<MockInterview>> => {
-  if (isFirebaseActive()) {
-    return firebaseInterview.getMockInterviewById(interviewId);
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('mock_interviews')
-      .select('*')
-      .eq('id', interviewId)
-      .single();
-    return { data: data as MockInterview, error };
-  } catch (err: unknown) {
-    return { data: null, error: err };
-  }
+  return firebaseInterview.getMockInterviewById(interviewId);
 };
+

@@ -43,7 +43,7 @@ const followupRequestSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    // 1. Auth check (Firebase or Supabase). Fails closed: an auth-service problem returns 500,
+    // 1. Auth check (Firebase). Fails closed: an auth-service problem returns 500,
     // never a canned follow-up served to an unverified caller.
     const auth = await authenticateRequest(request);
     if (!auth.ok) return authFailureResponse(auth);

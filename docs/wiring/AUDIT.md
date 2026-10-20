@@ -2,11 +2,11 @@
 
 | metric | value |
 |---|---|
-| totalFiles | 178 |
-| reachable | 178 |
+| totalFiles | 176 |
+| reachable | 176 |
 | orphanFiles | 0 |
 | deadExports | 0 |
-| testOnlyExports | 101 |
+| testOnlyExports | 103 |
 
 ## Orphan files (not reachable from any app/ entry)
 
@@ -23,6 +23,7 @@
 | src/lib/ai/aiConfig.ts | DEFAULT_GROQ_MODEL | TEST_ONLY |
 | src/lib/ai/aiConfig.ts | resolveAiProvider | TEST_ONLY |
 | src/lib/ai/safeJsonParser.ts | extractJsonString | TEST_ONLY |
+| src/lib/firebase/config.ts | isFirebaseConfigured | INTERNAL_ONLY |
 | src/lib/firebase/services/auth.firebase.ts | normalizeFirebaseUser | INTERNAL_ONLY |
 | src/lib/integrity/integrityLedger.ts | updateQuestionConsumedTime | TEST_ONLY |
 | src/lib/integrity/integrityLedger.ts | markQuestionCompleted | TEST_ONLY |
@@ -37,7 +38,6 @@
 | src/lib/server/authenticateRequest.ts | resolveAuthProvider | TEST_ONLY |
 | src/lib/server/authenticateRequest.ts | extractBearerToken | TEST_ONLY |
 | src/lib/server/sanitize.ts | PROMPT_INJECTION_PATTERNS | INTERNAL_ONLY |
-| src/lib/server/supabaseAdmin.ts | getSupabaseAdmin | TEST_ONLY |
 | src/lib/services/benchmarkRetrieval.server.ts | tokenize | TEST_ONLY |
 | src/lib/services/benchmarkRetrieval.server.ts | resetBenchmarkCorpusCache | TEST_ONLY |
 | src/lib/services/benchmarkRetrieval.server.ts | evaluateRetrievalRouting | TEST_ONLY |
@@ -100,6 +100,7 @@
 | src/lib/services/rateLimiter.server.ts | resetRateLimiterMemoryState | TEST_ONLY |
 | src/lib/services/reflexionService.ts | verbalReflectionSchema | TEST_ONLY |
 | src/lib/services/reflexionService.ts | generateVerbalSelfReflection | TEST_ONLY |
+| src/lib/services/reflexionService.ts | resetReflexionMemoryState | TEST_ONLY |
 | src/lib/services/reflexionService.ts | persistSkillMemoryStore | TEST_ONLY |
 | src/lib/services/resumeAnalysis.server.ts | resumeRewriteItemSchema | INTERNAL_ONLY |
 | src/lib/services/resumeAnalysis.server.ts | computeImpactMetricsScore | TEST_ONLY |
@@ -150,7 +151,8 @@
 | src/lib/workers/visionWorker.ts | tryInitModelWithBackoff | TEST_ONLY |
 | src/lib/workers/visionWorker.ts | cancelPendingModelRetries | TEST_ONLY |
 | src/lib/workers/visionWorker.ts | extractDenseLandmarksFromLearnedModel | TEST_ONLY |
-| src/services/backendProvider.ts | getActiveBackendProvider | INTERNAL_ONLY |
+| src/services/backendProvider.ts | getActiveBackendProvider | TEST_ONLY |
+| src/services/backendProvider.ts | isFirebaseActive | TEST_ONLY |
 | src/services/constants.ts | EvaluationRequestError | TEST_ONLY |
 | src/services/constants.ts | PRESET_QUESTION_POOLS | INTERNAL_ONLY |
 | src/views/Profile.tsx | loadPastReport | TEST_ONLY |

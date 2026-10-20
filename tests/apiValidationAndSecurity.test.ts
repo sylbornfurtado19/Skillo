@@ -11,50 +11,7 @@
  * 7. Resume analyze endpoint rejects oversized documents (> 30,000 chars) with HTTP 422.
  */
 
-var mockGetUser = jest.fn(async (token: string) => {
-  if (token === 'valid_test_token') {
-    return { data: { user: { id: 'usr_valid_123', email: 'candidate@test.com' } }, error: null };
-  }
-  return { data: { user: null }, error: new Error('Invalid authentication token') };
-});
 
-var mockSupabaseClient = {
-  auth: {
-    getUser: mockGetUser,
-  },
-  from: jest.fn(() => ({
-    insert: jest.fn(async () => ({ data: null, error: null })),
-    select: jest.fn(() => ({
-      eq: jest.fn(() => ({
-        gte: jest.fn(async () => ({ count: 0, error: null })),
-      })),
-    })),
-  })),
-};
-
-jest.mock('@/lib/supabase', () => ({
-  __esModule: true,
-  isSupabaseConfigured: true,
-  supabase: mockSupabaseClient,
-}));
-
-jest.mock('../src/lib/supabase', () => ({
-  __esModule: true,
-  isSupabaseConfigured: true,
-  supabase: mockSupabaseClient,
-}));
-
-jest.mock('@/lib/server/supabaseAdmin', () => ({
-  __esModule: true,
-  getSupabaseAdmin: jest.fn(() => mockSupabaseClient),
-  supabaseAdmin: mockSupabaseClient,
-}));
-
-jest.mock('../src/lib/server/supabaseAdmin', () => ({
-  __esModule: true,
-  getSupabaseAdmin: jest.fn(() => mockSupabaseClient),
-  supabaseAdmin: mockSupabaseClient,
-}));
 
 import { POST as evaluateHandler } from '../app/api/interview/evaluate/route';
 import { POST as followupHandler } from '../app/api/interview/followup/route';

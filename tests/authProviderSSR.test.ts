@@ -11,6 +11,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import ProtectedRoute from '../src/components/common/ProtectedRoute';
+import { getActiveBackendProvider, isFirebaseActive } from '../src/services/backendProvider';
 
 // Mock Next.js navigation for ProtectedRoute
 jest.mock('next/navigation', () => ({
@@ -22,18 +23,7 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
 }));
 
-// Mock Supabase
-jest.mock('../src/lib/supabase', () => ({
-  supabase: {
-    auth: {
-      getSession: jest.fn().mockResolvedValue({ data: { session: null } }),
-      onAuthStateChange: jest.fn().mockReturnValue({
-        data: { subscription: { unsubscribe: jest.fn() } },
-      }),
-    },
-  },
-  isSupabaseConfigured: false,
-}));
+
 
 describe('AuthProvider SSR Behavior', () => {
   it('renders children into static markup during SSR (prevents empty HTML shell)', () => {
@@ -86,5 +76,10 @@ describe('AuthProvider SSR Behavior', () => {
     expect(html).toContain('animate-spin');
     // Protected content is safely shielded while loading
     expect(html).not.toContain('Secret Dashboard');
+  });
+
+  it('confirms active backend provider is strictly firebase', () => {
+    expect(getActiveBackendProvider()).toBe('firebase');
+    expect(isFirebaseActive()).toBe(true);
   });
 });

@@ -1,10 +1,10 @@
 {
   "summary": {
-    "totalFiles": 178,
-    "reachable": 178,
+    "totalFiles": 176,
+    "reachable": 176,
     "orphanFiles": 0,
     "deadExports": 0,
-    "testOnlyExports": 101
+    "testOnlyExports": 103
   },
   "orphans": [],
   "exports": [
@@ -36,6 +36,12 @@
       "file": "src/lib/ai/safeJsonParser.ts",
       "name": "extractJsonString",
       "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/firebase/config.ts",
+      "name": "isFirebaseConfigured",
+      "status": "INTERNAL_ONLY",
       "live": true
     },
     {
@@ -120,12 +126,6 @@
       "file": "src/lib/server/sanitize.ts",
       "name": "PROMPT_INJECTION_PATTERNS",
       "status": "INTERNAL_ONLY",
-      "live": true
-    },
-    {
-      "file": "src/lib/server/supabaseAdmin.ts",
-      "name": "getSupabaseAdmin",
-      "status": "TEST_ONLY",
       "live": true
     },
     {
@@ -502,6 +502,12 @@
     },
     {
       "file": "src/lib/services/reflexionService.ts",
+      "name": "resetReflexionMemoryState",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/lib/services/reflexionService.ts",
       "name": "persistSkillMemoryStore",
       "status": "TEST_ONLY",
       "live": true
@@ -803,7 +809,13 @@
     {
       "file": "src/services/backendProvider.ts",
       "name": "getActiveBackendProvider",
-      "status": "INTERNAL_ONLY",
+      "status": "TEST_ONLY",
+      "live": true
+    },
+    {
+      "file": "src/services/backendProvider.ts",
+      "name": "isFirebaseActive",
+      "status": "TEST_ONLY",
       "live": true
     },
     {
@@ -1205,7 +1217,7 @@
     },
     {
       "file": "src/context/AuthContext.tsx",
-      "loc": 128,
+      "loc": 93,
       "reachable": true,
       "importedBy": 2,
       "testedBy": 1
@@ -1324,17 +1336,17 @@
     },
     {
       "file": "src/lib/firebase/admin.ts",
-      "loc": 63,
+      "loc": 62,
       "reachable": true,
-      "importedBy": 2,
-      "testedBy": 6
+      "importedBy": 4,
+      "testedBy": 7
     },
     {
       "file": "src/lib/firebase/config.ts",
       "loc": 78,
       "reachable": true,
-      "importedBy": 5,
-      "testedBy": 18
+      "importedBy": 4,
+      "testedBy": 20
     },
     {
       "file": "src/lib/firebase/services/auth.firebase.ts",
@@ -1352,7 +1364,7 @@
     },
     {
       "file": "src/lib/firebase/services/profile.firebase.ts",
-      "loc": 80,
+      "loc": 83,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
@@ -1401,14 +1413,14 @@
     },
     {
       "file": "src/lib/server/authenticateRequest.ts",
-      "loc": 311,
+      "loc": 266,
       "reachable": true,
       "importedBy": 7,
       "testedBy": 2
     },
     {
       "file": "src/lib/server/env.ts",
-      "loc": 124,
+      "loc": 121,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 13
@@ -1419,13 +1431,6 @@
       "reachable": true,
       "importedBy": 5,
       "testedBy": 3
-    },
-    {
-      "file": "src/lib/server/supabaseAdmin.ts",
-      "loc": 65,
-      "reachable": true,
-      "importedBy": 2,
-      "testedBy": 9
     },
     {
       "file": "src/lib/services/backgroundSegmentation.ts",
@@ -1590,7 +1595,7 @@
     },
     {
       "file": "src/lib/services/rateLimiter.server.ts",
-      "loc": 199,
+      "loc": 155,
       "reachable": true,
       "importedBy": 7,
       "testedBy": 7
@@ -1604,7 +1609,7 @@
     },
     {
       "file": "src/lib/services/reflexionService.ts",
-      "loc": 487,
+      "loc": 456,
       "reachable": true,
       "importedBy": 3,
       "testedBy": 4
@@ -1666,13 +1671,6 @@
       "testedBy": 9
     },
     {
-      "file": "src/lib/supabase.ts",
-      "loc": 65,
-      "reachable": true,
-      "importedBy": 6,
-      "testedBy": 17
-    },
-    {
       "file": "src/lib/themeColors.ts",
       "loc": 61,
       "reachable": true,
@@ -1702,17 +1700,17 @@
     },
     {
       "file": "src/services/auth.ts",
-      "loc": 176,
+      "loc": 69,
       "reachable": true,
       "importedBy": 6,
-      "testedBy": 20
+      "testedBy": 14
     },
     {
       "file": "src/services/backendProvider.ts",
-      "loc": 22,
+      "loc": 11,
       "reachable": true,
-      "importedBy": 4,
-      "testedBy": 0
+      "importedBy": 1,
+      "testedBy": 1
     },
     {
       "file": "src/services/constants.ts",
@@ -1723,14 +1721,14 @@
     },
     {
       "file": "src/services/interview.ts",
-      "loc": 138,
+      "loc": 54,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 37
     },
     {
       "file": "src/services/profile.ts",
-      "loc": 136,
+      "loc": 19,
       "reachable": true,
       "importedBy": 5,
       "testedBy": 8
@@ -1842,7 +1840,7 @@
     },
     {
       "file": "src/views/InterviewSession.tsx",
-      "loc": 1470,
+      "loc": 1471,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 4
@@ -1877,7 +1875,7 @@
     },
     {
       "file": "src/views/ResumeUpload.tsx",
-      "loc": 939,
+      "loc": 940,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0
@@ -1898,7 +1896,7 @@
     },
     {
       "file": "app/(app)/calibration/page.tsx",
-      "loc": 186,
+      "loc": 181,
       "reachable": true,
       "importedBy": 0,
       "testedBy": 12
@@ -1915,7 +1913,7 @@
       "loc": 36,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 31
+      "testedBy": 27
     },
     {
       "file": "app/(app)/interview/page.tsx",
@@ -2027,7 +2025,7 @@
       "loc": 38,
       "reachable": true,
       "importedBy": 0,
-      "testedBy": 31
+      "testedBy": 27
     },
     {
       "file": "app/global-error.tsx",

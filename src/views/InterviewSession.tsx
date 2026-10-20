@@ -758,8 +758,9 @@ export default function InterviewSession() {
             };
             const payload = mapEvaluationToMockInterviewPayload(enrichedReport, effectiveSetup);
             saveMockInterview(authUserId, payload).catch((err) => {
-              console.warn('[InterviewSession] Failed to persist mock interview to Supabase:', err);
+              console.warn('[InterviewSession] Failed to persist mock interview to Firebase:', err);
             });
+
           }
           setGrading(false);
           router.push('/results');

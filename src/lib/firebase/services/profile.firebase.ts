@@ -70,6 +70,9 @@ export const updateProfile = async (
       ...updates,
       updated_at: new Date().toISOString(),
     };
+    if (updates.skillMemoryStore !== undefined) {
+      payload.skill_memory_store = updates.skillMemoryStore;
+    }
 
     await updateDoc(docRef, payload);
     return getProfile(userId);

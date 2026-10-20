@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    // 1. Auth check (Firebase or Supabase, fails closed)
+    // 1. Auth check (Firebase, fails closed)
     const auth = await authenticateRequest(request);
     if (!auth.ok) return authFailureResponse(auth);
     const user = auth.user;

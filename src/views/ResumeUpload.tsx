@@ -281,13 +281,14 @@ B.S. in Computer Science | University of California, Berkeley | 2015 - 2019`;
       const detailedResult = {
         ...apiResult,
         detectedSkills: apiResult.skillsMatched ?? ['React 19', 'TypeScript', 'JavaScript (ES6+)'],
-        detectedTech: ['Next.js App Router', 'Tailwind CSS', 'Zod', 'Supabase Auth'],
+        detectedTech: ['Next.js App Router', 'Tailwind CSS', 'Zod', 'Firebase Auth'],
         projects: [
           {
             name: 'Skillo Evaluation Platform',
-            desc: 'Built an AI mock interview application using Next.js 16, TypeScript, Zod, and Supabase.',
+            desc: 'Built an AI mock interview application using Next.js 16, TypeScript, Zod, and Firebase.',
           },
         ],
+
         experience: [
           {
             company: 'SaaS Tech Corp',

@@ -15,49 +15,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { LATSTreeNode, LATSTreeState } from '../src/types/index';
 
-const mockSupabaseClient = {
-  auth: {
-    getUser: jest.fn(async (token: string) => {
-      if (token === 'valid_test_token') {
-        return { data: { user: { id: 'usr_lats_test_user', email: 'tester@example.com' } }, error: null };
-      }
-      return { data: { user: null }, error: new Error('Invalid token') };
-    }),
-  },
-  from: jest.fn(() => ({
-    select: jest.fn().mockReturnThis(),
-    insert: jest.fn().mockReturnThis(),
-    eq: jest.fn(() => ({
-      single: jest.fn().mockResolvedValue({ data: null, error: null }),
-      gte: jest.fn().mockResolvedValue({ data: [], count: 0, error: null }),
-    })),
-    gte: jest.fn().mockResolvedValue({ data: [], count: 0, error: null }),
-  })),
-};
 
-jest.mock('../src/lib/supabase', () => ({
-  __esModule: true,
-  supabase: mockSupabaseClient,
-  isSupabaseConfigured: true,
-}));
-
-jest.mock('@/lib/supabase', () => ({
-  __esModule: true,
-  supabase: mockSupabaseClient,
-  isSupabaseConfigured: true,
-}));
-
-jest.mock('../src/lib/server/supabaseAdmin', () => ({
-  __esModule: true,
-  getSupabaseAdmin: jest.fn(() => mockSupabaseClient),
-  supabaseAdmin: mockSupabaseClient,
-}));
-
-jest.mock('@/lib/server/supabaseAdmin', () => ({
-  __esModule: true,
-  getSupabaseAdmin: jest.fn(() => mockSupabaseClient),
-  supabaseAdmin: mockSupabaseClient,
-}));
 
 import {
   computeUCT,

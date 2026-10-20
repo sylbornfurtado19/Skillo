@@ -2,17 +2,11 @@
  * Provider-aware API authentication (src/lib/server/authenticateRequest.ts)
  *
  * Covers: provider resolution, Bearer parsing, Firebase ID-token verification,
- * Supabase verification, fail-closed behaviour, and the follow-up route no longer
+ * fail-closed behaviour, and the follow-up route no longer
  * serving a canned LATS question when authentication breaks.
  */
 
-const mockGetUser = jest.fn();
 const mockVerifyIdToken = jest.fn();
-
-jest.mock('@/lib/supabase', () => ({
-  isSupabaseConfigured: true,
-  supabase: { auth: { getUser: (...args: unknown[]) => mockGetUser(...args) } },
-}));
 
 jest.mock('@/lib/firebase/admin', () => ({
   isFirebaseAdminConfigured: true,
@@ -62,16 +56,9 @@ afterAll(() => {
 });
 
 describe('resolveAuthProvider', () => {
-  it('honours an explicit provider', () => {
+  it('resolves to firebase as the unified auth provider', () => {
     expect(resolveAuthProvider({ NEXT_PUBLIC_BACKEND_PROVIDER: 'firebase' })).toBe('firebase');
-    expect(resolveAuthProvider({ NEXT_PUBLIC_BACKEND_PROVIDER: 'SUPABASE' })).toBe('supabase');
-  });
-
-  it('auto-detects firebase from client config and defaults to supabase otherwise', () => {
-    expect(
-      resolveAuthProvider({ NEXT_PUBLIC_FIREBASE_API_KEY: 'abc', NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'proj' })
-    ).toBe('firebase');
-    expect(resolveAuthProvider({})).toBe('supabase');
+    expect(resolveAuthProvider({})).toBe('firebase');
   });
 });
 
@@ -97,7 +84,6 @@ describe('authenticateRequest: firebase provider', () => {
     const result = await authenticateRequest(req({ Authorization: 'Bearer good-token' }));
     expect(result).toEqual({ ok: true, user: { id: 'fb-user-1', email: 'a@b.co', provider: 'firebase' } });
     expect(mockVerifyIdToken).toHaveBeenCalledWith('good-token');
-    expect(mockGetUser).not.toHaveBeenCalled();
   });
 
   it('returns 401 for an expired or invalid Firebase token', async () => {
@@ -166,38 +152,6 @@ describe('authenticateRequest: firebase provider', () => {
   });
 });
 
-describe('authenticateRequest: supabase provider', () => {
-  beforeEach(() => {
-    process.env.NEXT_PUBLIC_BACKEND_PROVIDER = 'supabase';
-  });
-
-  it('accepts a valid Supabase token', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'sb-1', email: 'x@y.z' } }, error: null });
-    const result = await authenticateRequest(req({ Authorization: 'Bearer tok' }));
-    expect(result).toEqual({ ok: true, user: { id: 'sb-1', email: 'x@y.z', provider: 'supabase' } });
-  });
-
-  it('returns 401 when Supabase rejects the token', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'invalid JWT', status: 401 } });
-    const result = await authenticateRequest(req({ Authorization: 'Bearer bad' }));
-    expect(result).toMatchObject({ ok: false, status: 401 });
-  });
-
-  it('fails closed with 500 when the Supabase client throws (e.g. unconfigured)', async () => {
-    mockGetUser.mockImplementation(() => {
-      throw new Error('[Supabase Configuration Notice] Supabase is not configured.');
-    });
-    const result = await authenticateRequest(req({ Authorization: 'Bearer anything' }));
-    expect(result).toMatchObject({ ok: false, status: 500 });
-  });
-
-  it('fails closed with 500 on a Supabase server-side error', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'upstream down', status: 503 } });
-    const result = await authenticateRequest(req({ Authorization: 'Bearer tok' }));
-    expect(result).toMatchObject({ ok: false, status: 500 });
-  });
-});
-
 describe('/api/interview/followup auth behaviour', () => {
   const body = {
     question: 'Explain the CAP theorem',
@@ -212,10 +166,8 @@ describe('/api/interview/followup auth behaviour', () => {
   });
 
   it('returns 500 (not a canned 200 follow-up) when the auth service throws', async () => {
-    process.env.NEXT_PUBLIC_BACKEND_PROVIDER = 'supabase';
-    mockGetUser.mockImplementation(() => {
-      throw new Error('Supabase is not configured');
-    });
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = 'skillo-test';
+    mockVerifyIdToken.mockRejectedValue(new Error('Firebase service failure'));
     const res = await followupHandler(req({ Authorization: 'Bearer fake.token' }, body));
     expect(res.status).toBe(500);
     const json = await res.json();

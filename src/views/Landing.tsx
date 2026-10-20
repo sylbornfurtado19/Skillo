@@ -61,7 +61,7 @@ export default function Landing() {
     },
     {
       q: 'Is there a backend I can connect?',
-      a: 'The application uses a built-in Next.js App Router backend with API routes under app/api/. It natively handles AI evaluation, rate limiting, and Supabase persistence without needing a separate backend server.',
+      a: 'The application uses a built-in Next.js App Router backend with API routes under app/api/. It natively handles AI evaluation, rate limiting, and Firebase Firestore persistence without needing a separate backend server.',
     },
     {
       q: 'Is my data private?',

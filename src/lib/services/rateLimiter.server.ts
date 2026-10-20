@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/server/supabaseAdmin';
 
 /**
  * ARCHITECTURAL NOTE:
  * Rate limiting across serverless runtime instances (such as Vercel or AWS Lambda)
  * requires a centralized persistent store.
  *
- * Supports both Firebase Firestore and Supabase request_logs tables,
+ * Uses Firebase Firestore request_logs collection,
  * falling back gracefully to in-memory sliding window when unconfigured.
  */
 
@@ -23,7 +22,7 @@ export interface RateLimitResult {
   remaining: number;
   resetSeconds: number;
   retryAfterSeconds?: number;
-  store: 'supabase' | 'firebase' | 'in-memory-fallback';
+  store: 'firebase' | 'in-memory-fallback' | 'supabase';
 }
 
 // In-memory sliding window fallback map: key is `${userId}:${action}` -> array of epoch timestamps (ms)
@@ -36,12 +35,11 @@ export async function checkRateLimit(options: RateLimitOptions): Promise<RateLim
   const windowMs = windowSeconds * 1000;
   const cutoffTime = new Date(nowMs - windowMs).toISOString();
 
-  // 1. Try Firebase Admin Firestore if configured and active
-  if (process.env.NEXT_PUBLIC_BACKEND_PROVIDER === 'firebase') {
-    try {
-      const { isFirebaseAdminConfigured, getAdminFirestore } = await import('@/lib/firebase/admin');
-      if (isFirebaseAdminConfigured) {
-        const adminDb = getAdminFirestore();
+  // 1. Try Firebase Admin Firestore if configured
+  try {
+    const { isFirebaseAdminConfigured, getAdminFirestore } = await import('@/lib/firebase/admin');
+    if (isFirebaseAdminConfigured) {
+      const adminDb = getAdminFirestore();
       const snapshot = await adminDb
         .collection('request_logs')
         .where('user_id', '==', userId)
@@ -74,58 +72,15 @@ export async function checkRateLimit(options: RateLimitOptions): Promise<RateLim
         resetSeconds: windowSeconds,
         store: 'firebase',
       };
-      }
-    } catch {
-      // Proceed to Supabase or in-memory fallback
-    }
-  }
-
-  // 2. Try server-side Supabase admin client on request_logs table (bypasses RLS)
-  try {
-    const { count, error } = await supabaseAdmin
-      .from('request_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('action', action)
-      .gte('created_at', cutoffTime);
-
-    if (!error && typeof count === 'number') {
-      if (count >= maxRequests) {
-        return {
-          allowed: false,
-          limit: maxRequests,
-          remaining: 0,
-          resetSeconds: windowSeconds,
-          retryAfterSeconds: windowSeconds,
-          store: 'supabase',
-        };
-      }
-
-      // Log the incoming request asynchronously via admin client
-      void Promise.resolve(
-        supabaseAdmin.from('request_logs').insert({
-          user_id: userId,
-          action,
-          created_at: new Date(nowMs).toISOString(),
-        })
-      ).catch(() => {});
-
-      return {
-        allowed: true,
-        limit: maxRequests,
-        remaining: Math.max(0, maxRequests - (count + 1)),
-        resetSeconds: windowSeconds,
-        store: 'supabase',
-      };
     }
   } catch {
-    // Admin client unconfigured or database operation failed; proceed to in-memory fallback below
+    // Proceed to in-memory fallback
   }
 
   // 2. In-memory sliding window fallback (strictly for development and unit testing)
   if (process.env.NODE_ENV === 'production' && !hasLoggedInMemoryWarning) {
     console.error(
-      '[CRITICAL PRODUCTION WARNING] RateLimiter is running in in-memory fallback mode in PRODUCTION! In-memory rate limits do NOT synchronize across distributed serverless instances. Configure Supabase or Upstash Redis to prevent abuse.'
+      '[CRITICAL PRODUCTION WARNING] RateLimiter is running in in-memory fallback mode in PRODUCTION! In-memory rate limits do NOT synchronize across distributed serverless instances. Configure Firebase Admin SDK to prevent abuse.'
     );
     hasLoggedInMemoryWarning = true;
   } else if (!hasLoggedInMemoryWarning) {
@@ -134,6 +89,7 @@ export async function checkRateLimit(options: RateLimitOptions): Promise<RateLim
     );
     hasLoggedInMemoryWarning = true;
   }
+
 
   const key = `${userId}:${action}`;
   const existingTimestamps = inMemoryStore.get(key) || [];

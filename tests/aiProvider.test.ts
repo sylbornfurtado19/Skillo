@@ -233,8 +233,7 @@ describe('environment validation is provider-aware', () => {
   it('treats a configured Groq key as production ready', () => {
     const result = validateEnvironment({
       NODE_ENV: 'production',
-      NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'a'.repeat(30),
+      FIREBASE_PROJECT_ID: 'test-project',
       AI_PROVIDER: 'groq',
       GROQ_API_KEY: 'gsk_' + 'x'.repeat(30),
     });

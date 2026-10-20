@@ -1,5 +1,5 @@
 /**
- * Focused Unit Tests for Supabase-to-Frontend Profile Mapping for Skill Memory
+ * Focused Unit Tests for Firestore-to-Frontend Profile Mapping for Skill Memory
  * Verifies that:
  * 1. The database field `skill_memory_store` is correctly mapped to `UserProfile.skillMemoryStore`.
  * 2. When `skill_memory_store` is missing, null, or empty, safe empty default (undefined) is used.
@@ -7,27 +7,32 @@
  * 4. `updateProfile` persists `skillMemoryStore` as `skill_memory_store` in the database payload.
  */
 
-const mockSingle = jest.fn();
-const mockEq = jest.fn(() => ({ single: mockSingle }));
-const mockSelect = jest.fn(() => ({ eq: mockEq, single: mockSingle }));
-const mockUpsert = jest.fn(() => ({ select: mockSelect }));
+const mockDocData = jest.fn();
+const mockDocExists = jest.fn(() => true);
+const mockGetDoc = jest.fn(async (_ref?: any) => ({
+  id: 'usr_test_123',
+  exists: mockDocExists,
+  data: mockDocData,
+}));
+const mockUpdateDoc = jest.fn().mockResolvedValue(undefined);
+const mockSetDoc = jest.fn().mockResolvedValue(undefined);
+const mockDoc = jest.fn((_db: any, _col: string, id: string) => ({ id }));
 
-const mockFrom = jest.fn((_table: string) => ({
-  select: mockSelect,
-  upsert: mockUpsert,
+jest.mock('firebase/firestore', () => ({
+  doc: (db: any, col: string, id: string) => mockDoc(db, col, id),
+  getDoc: (ref: any) => mockGetDoc(ref),
+  setDoc: (ref: any, data: any) => mockSetDoc(ref, data),
+  updateDoc: (ref: any, data: any) => mockUpdateDoc(ref, data),
 }));
 
-jest.mock('../src/lib/supabase', () => ({
-  supabase: {
-    from: mockFrom,
-  },
-  isSupabaseConfigured: true,
+jest.mock('../src/lib/firebase/config', () => ({
+  db: {},
 }));
 
 import { getProfile, updateProfile } from '../src/services/profile';
 import type { CandidateSkillMemoryStore } from '../src/types/index';
 
-describe('Supabase-to-Frontend Profile Mapping for Skill Memory Store', () => {
+describe('Firestore-to-Frontend Profile Mapping for Skill Memory Store', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -61,16 +66,13 @@ describe('Supabase-to-Frontend Profile Mapping for Skill Memory Store', () => {
   };
 
   it('correctly maps database field skill_memory_store to UserProfile.skillMemoryStore', async () => {
-    mockSingle.mockResolvedValueOnce({
-      data: {
-        id: 'usr_test_123',
-        email: 'alex@example.com',
-        name: 'Alex Developer',
-        title: 'Staff Engineer',
-        profile_settings: { defaultDifficulty: 'senior' },
-        skill_memory_store: sampleMemoryStore,
-      },
-      error: null,
+    mockDocData.mockReturnValueOnce({
+      id: 'usr_test_123',
+      email: 'alex@example.com',
+      name: 'Alex Developer',
+      title: 'Staff Engineer',
+      profile_settings: { defaultDifficulty: 'senior' },
+      skill_memory_store: sampleMemoryStore,
     });
 
     const response = await getProfile('usr_test_123');
@@ -90,15 +92,12 @@ describe('Supabase-to-Frontend Profile Mapping for Skill Memory Store', () => {
   });
 
   it('uses safe empty default (undefined) when skill_memory_store is null or missing in database', async () => {
-    mockSingle.mockResolvedValueOnce({
-      data: {
-        id: 'usr_no_memory_456',
-        email: 'newuser@example.com',
-        name: 'New User',
-        profile_settings: {},
-        skill_memory_store: null,
-      },
-      error: null,
+    mockDocData.mockReturnValueOnce({
+      id: 'usr_no_memory_456',
+      email: 'newuser@example.com',
+      name: 'New User',
+      profile_settings: {},
+      skill_memory_store: null,
     });
 
     const response = await getProfile('usr_no_memory_456');
@@ -110,21 +109,18 @@ describe('Supabase-to-Frontend Profile Mapping for Skill Memory Store', () => {
     expect(response.data?.skillMemoryStore).toBeUndefined();
 
     // Verify existing fields remain intact
-    expect(response.data?.id).toBe('usr_no_memory_456');
+    expect(response.data?.id).toBe('usr_test_123');
     expect(response.data?.email).toBe('newuser@example.com');
     expect(response.data?.profileSettings).toEqual({});
   });
 
   it('uses safe empty default (undefined) when database skill_memory_store is an empty object {}', async () => {
-    mockSingle.mockResolvedValueOnce({
-      data: {
-        id: 'usr_empty_obj_789',
-        email: 'empty@example.com',
-        name: 'Empty Schema User',
-        profile_settings: null,
-        skill_memory_store: {},
-      },
-      error: null,
+    mockDocData.mockReturnValueOnce({
+      id: 'usr_empty_obj_789',
+      email: 'empty@example.com',
+      name: 'Empty Schema User',
+      profile_settings: null,
+      skill_memory_store: {},
     });
 
     const response = await getProfile('usr_empty_obj_789');
@@ -138,14 +134,11 @@ describe('Supabase-to-Frontend Profile Mapping for Skill Memory Store', () => {
   });
 
   it('updateProfile maps skillMemoryStore in updates to snake_case skill_memory_store in database payload', async () => {
-    mockSingle.mockResolvedValueOnce({
-      data: {
-        id: 'usr_update_101',
-        email: 'update@example.com',
-        name: 'Updated User',
-        skill_memory_store: sampleMemoryStore,
-      },
-      error: null,
+    mockDocData.mockReturnValue({
+      id: 'usr_update_101',
+      email: 'update@example.com',
+      name: 'Updated User',
+      skill_memory_store: sampleMemoryStore,
     });
 
     const response = await updateProfile('usr_update_101', {
@@ -156,10 +149,10 @@ describe('Supabase-to-Frontend Profile Mapping for Skill Memory Store', () => {
     expect(response.error).toBeNull();
     expect(response.data?.skillMemoryStore).toEqual(sampleMemoryStore);
 
-    // Verify upsert payload contains snake_case skill_memory_store
-    expect(mockUpsert).toHaveBeenCalledWith(
+    // Verify update payload contains snake_case skill_memory_store
+    expect(mockUpdateDoc).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({
-        id: 'usr_update_101',
         name: 'Updated User',
         skill_memory_store: sampleMemoryStore,
       })

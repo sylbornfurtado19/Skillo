@@ -287,7 +287,7 @@ src/lib/ai/aiConfig.ts,REACHABLE,WIRED,Unified AI gateway with provider selectio
 src/lib/ai/defaultModel.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/interview/followup/route.ts -> src/lib/ai/aiConfig.ts -> src/lib/ai/defaultModel.ts,7;;;
 src/lib/ai/safeJsonParser.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/interview/evaluate/route.ts -> src/lib/services/interviewEvaluation.server.ts -> src/lib/ai/safeJsonParser.ts,7;;;
 src/lib/chartSetup.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/calibration/page.tsx -> app/(app)/calibration/CalibrationChart.tsx -> src/lib/chartSetup.ts,7;;;
-src/lib/firebase/admin.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/code/run/route.ts -> src/lib/server/authenticateRequest.ts -> src/lib/firebase/admin.ts,7;;;
+src/lib/firebase/admin.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/calibration/page.tsx -> src/lib/firebase/admin.ts,7;;;
 src/lib/firebase/config.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/interview/page.tsx -> src/views/InterviewSession.tsx -> src/services/auth.ts -> src/lib/firebase/config.ts,7;;;
 src/lib/firebase/services/auth.firebase.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/providers.tsx -> src/context/AuthContext.tsx -> src/lib/firebase/services/auth.firebase.ts,7;;;
 src/lib/firebase/services/interview.firebase.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/interview/page.tsx -> src/views/InterviewSession.tsx -> src/services/interview.ts -> src/lib/firebase/services/interview.firebase.ts,7;;;
@@ -301,7 +301,6 @@ src/lib/schemas/graphSchema.ts,REACHABLE,WIRED,Reachable application runtime mod
 src/lib/server/authenticateRequest.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/code/run/route.ts -> src/lib/server/authenticateRequest.ts,7;;;
 src/lib/server/env.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/interview/evaluate/route.ts -> src/lib/server/env.ts,7;;;
 src/lib/server/sanitize.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/interview/followup/route.ts -> src/lib/server/sanitize.ts,7;;;
-src/lib/server/supabaseAdmin.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/code/run/route.ts -> src/lib/services/rateLimiter.server.ts -> src/lib/server/supabaseAdmin.ts,7;;;
 src/lib/services/backgroundSegmentation.ts,REACHABLE,WIRED,Anthropometric person foreground mask and backdrop blur,app/(app)/interview/page.tsx -> src/views/InterviewSession.tsx -> src/hooks/useIVPEvidenceRunner.ts -> src/lib/services/ivpKernelRunner.ts -> src/lib/services/backgroundSegmentation.ts,1;;;
 src/lib/services/benchmarkRetrieval.server.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/interview/evaluate/route.ts -> src/lib/services/interviewEvaluation.server.ts -> src/lib/services/simpoEngine.server.ts -> src/lib/services/benchmarkRetrieval.server.ts,7;;;
 src/lib/services/deliveryComposite.ts,REACHABLE,WIRED,Pure service computing weighted delivery composite and exposing DELIVERY_COMPOSITE_WEIGHTS,app/(app)/results/page.tsx -> src/views/Results.tsx -> src/lib/services/deliveryComposite.ts,3;;;
@@ -336,13 +335,12 @@ src/lib/services/studyPlan.ts,REACHABLE,WIRED,Reachable application runtime modu
 src/lib/services/temporalMotion.ts,REACHABLE,WIRED,Inter-frame temporal motion energy and presence detection,app/(app)/interview/page.tsx -> src/views/InterviewSession.tsx -> src/hooks/useIVPSessionPipeline.ts -> src/hooks/useVisionWorker.ts -> src/lib/workers/visionWorker.ts -> src/lib/services/temporalMotion.ts,1;;;
 src/lib/services/temporalSmoothing.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/interview/page.tsx -> src/views/InterviewSession.tsx -> src/hooks/useIVPSessionPipeline.ts -> src/lib/services/temporalSmoothing.ts,7;;;
 src/lib/services/visionPipeline.ts,REACHABLE,WIRED,Coordinate mapping Face-ROI crop and device profiling,app/(app)/interview/page.tsx -> src/views/InterviewSession.tsx -> src/hooks/useIVPSessionPipeline.ts -> src/hooks/useVisionWorker.ts -> src/lib/services/visionPipeline.ts,1;;;
-src/lib/supabase.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/code/run/route.ts -> src/lib/server/authenticateRequest.ts -> src/lib/supabase.ts,7;;;
 src/lib/themeColors.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/results/page.tsx -> src/views/Results.tsx -> src/lib/themeColors.ts,7;;;
 src/lib/utils/downsample.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/interview/evaluate/route.ts -> src/lib/utils/downsample.ts,7;;;
 src/lib/workers/onnxWorker.ts,REACHABLE,WIRED,Dedicated web worker executing ONNX models with ROI metadata,app/(app)/interview/page.tsx -> src/views/InterviewSession.tsx -> src/hooks/useIVPSessionPipeline.ts -> src/hooks/useONNXWorker.ts -> src/lib/workers/onnxWorker.ts,1;;;
 src/lib/workers/visionWorker.ts,REACHABLE,WIRED,Dedicated web worker executing MediaPipe FaceLandmarker mesh,app/(app)/interview/page.tsx -> src/views/InterviewSession.tsx -> src/hooks/useIVPSessionPipeline.ts -> src/hooks/useVisionWorker.ts -> src/lib/workers/visionWorker.ts,1;;;
 src/services/auth.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/interview/page.tsx -> src/views/InterviewSession.tsx -> src/services/auth.ts,7;;;
-src/services/backendProvider.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/providers.tsx -> src/context/AuthContext.tsx -> src/services/backendProvider.ts,7;;;
+src/services/backendProvider.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/interview/page.tsx -> src/views/InterviewSession.tsx -> src/services/auth.ts -> src/services/backendProvider.ts,7;;;
 src/services/constants.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/api/interview/setup/route.ts -> src/services/constants.ts,7;;;
 src/services/interview.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/interview/page.tsx -> src/views/InterviewSession.tsx -> src/services/interview.ts,7;;;
 src/services/profile.ts,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/dashboard/page.tsx -> src/views/Dashboard.tsx -> src/services/profile.ts,7;;;
@@ -370,7 +368,6 @@ src/views/ResumeUpload.tsx,REACHABLE,WIRED,Resume intelligence workbench renderi
 src/views/Settings.tsx,REACHABLE,WIRED,Reachable application runtime module or component,app/(app)/settings/page.tsx -> src/views/Settings.tsx,7;;;
 startup_handoff_failures.json,REMOVED,REMOVED,Stray benchmark or failure artifact removed from git index,.gitignore,0;;;
 storage.rules,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,Repository source: storage.rules,0;;;
-supabase_schema.sql,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,Repository source: supabase_schema.sql,0;;;
 tailwind.config.js,NON_RUNTIME_OR_ASSET,OFFLINE,Repository configuration or root documentation,Tooling config: tailwind.config.js,0;;;
 tests/adaptiveCadenceAndRelocalization.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/adaptiveCadenceAndRelocalization.test.ts,7;;;
 tests/adaptiveFollowupContract.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/adaptiveFollowupContract.test.ts,7;;;
@@ -431,6 +428,7 @@ tests/mediaReadinessAndNarration.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated 
 tests/microPatchTrackerPixelMapping.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/microPatchTrackerPixelMapping.test.ts,7;;;
 tests/microTrackerPerformance.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/microTrackerPerformance.test.ts,7;;;
 tests/mirroredRoundtrip.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/mirroredRoundtrip.test.ts,7;;;
+tests/mocks/jose.cjs,NON_RUNTIME_OR_ASSET,OFFLINE,,npm test tests/mocks/jose.cjs,
 tests/modelPrestartBackoff.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/modelPrestartBackoff.test.ts,7;;;
 tests/multiFaceSelection.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/multiFaceSelection.test.ts,7;;;
 tests/onboardingWidget.test.ts,NON_RUNTIME_OR_ASSET,OFFLINE,Automated unit and integration test suite,npm test tests/onboardingWidget.test.ts,7;;;

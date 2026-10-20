@@ -8,72 +8,34 @@
 
 var mockFakeStore: Record<string, any> = {};
 var mockProfileUpsert = jest.fn(async (data: any) => {
-  mockFakeStore[`profiles_${data.id || data.user_id}`] = data;
-  return { data: null, error: null };
+  mockFakeStore['profiles_usr_single_reflexion_test'] = data;
+  return { id: 'usr_single_reflexion_test' };
 });
 
-var mockFrom = jest.fn((table: string) => {
-  if (table === 'profiles') {
-    return {
-      upsert: mockProfileUpsert,
-      select: jest.fn(() => ({
-        eq: jest.fn((field: string, val: string) => ({
-          single: jest.fn(async () => {
-            const key = `profiles_${val}`;
-            return { data: mockFakeStore[key] || null, error: null };
-          }),
-        })),
-      })),
-      insert: jest.fn().mockResolvedValue({ data: null, error: null }),
-    };
-  }
-  return {
-    upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-    select: jest.fn(() => ({
-      eq: jest.fn(() => ({
-        single: jest.fn().mockResolvedValue({ data: null, error: null }),
-        gte: jest.fn().mockResolvedValue({ data: [], count: 0, error: null }),
-      })),
-    })),
-    insert: jest.fn().mockResolvedValue({ data: null, error: null }),
-  };
-});
-
-var mockAdminClient = {
-  from: mockFrom,
-  auth: {
-    getUser: jest.fn(async (token: string) => {
+jest.mock('@/lib/firebase/admin', () => ({
+  isFirebaseAdminConfigured: true,
+  getAdminAuth: async () => ({
+    verifyIdToken: jest.fn(async (token: string) => {
       if (token === 'valid_test_token') {
-        return { data: { user: { id: 'usr_single_reflexion_test', email: 'tester@example.com' } }, error: null };
+        return { uid: 'usr_single_reflexion_test', email: 'tester@example.com' };
       }
-      return { data: { user: null }, error: new Error('Invalid token') };
+      throw Object.assign(new Error('Invalid token'), { code: 'auth/invalid-id-token' });
     }),
-    getSession: jest.fn(),
-  },
-};
-
-jest.mock('@/lib/supabase', () => ({
-  __esModule: true,
-  isSupabaseConfigured: true,
-  supabase: mockAdminClient,
-}));
-
-jest.mock('../src/lib/supabase', () => ({
-  __esModule: true,
-  isSupabaseConfigured: true,
-  supabase: mockAdminClient,
-}));
-
-jest.mock('@/lib/server/supabaseAdmin', () => ({
-  __esModule: true,
-  getSupabaseAdmin: jest.fn(() => mockAdminClient),
-  supabaseAdmin: mockAdminClient,
-}));
-
-jest.mock('../src/lib/server/supabaseAdmin', () => ({
-  __esModule: true,
-  getSupabaseAdmin: jest.fn(() => mockAdminClient),
-  supabaseAdmin: mockAdminClient,
+  }),
+  getAdminFirestore: () => ({
+    collection: (col: string) => ({
+      doc: (id: string) => ({
+        get: jest.fn(async () => ({
+          exists: Boolean(mockFakeStore[`${col}_${id}`]),
+          data: () => mockFakeStore[`${col}_${id}`] || null,
+        })),
+        set: mockProfileUpsert,
+      }),
+      where: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({ size: 0, docs: [] }),
+      add: jest.fn().mockResolvedValue({ id: 'log_1' }),
+    }),
+  }),
 }));
 
 import * as reflexionService from '../src/lib/services/reflexionService';

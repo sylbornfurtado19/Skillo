@@ -2,48 +2,50 @@
  * tests/serverRateLimiterAdmin.test.ts
  *
  * Focused verification test suite for the server-side distributed rate limiter:
- * 1. Verifies that checkRateLimit queries request_logs using supabaseAdmin (bypassing RLS)
- * 2. Verifies that incoming allowed requests insert an audit record via supabaseAdmin
- * 3. Verifies that exceeding the limit via supabaseAdmin returns allowed: false and store: 'supabase'
- * 4. Verifies that if supabaseAdmin throws an exception, checkRateLimit catches it and falls back safely to in-memory store
- * 5. Verifies that if supabaseAdmin returns a database error, checkRateLimit falls back safely to in-memory store
+ * 1. Verifies that checkRateLimit queries request_logs using Firebase Admin Firestore
+ * 2. Verifies that incoming allowed requests insert an audit record via Firebase Admin
+ * 3. Verifies that exceeding the limit via Firebase Admin returns allowed: false and store: 'firebase'
+ * 4. Verifies that if Firebase Admin throws an exception, checkRateLimit catches it and falls back safely to in-memory store
+ * 5. Verifies that when unconfigured, checkRateLimit falls back safely to in-memory store
  * 6. Verifies that in-memory fallback correctly enforces rate limits when database is unavailable
  */
 
-const mockGte = jest.fn();
-const mockEqAction = jest.fn(() => ({ gte: mockGte }));
-const mockEqUser = jest.fn(() => ({ eq: mockEqAction }));
-const mockSelect = jest.fn(() => ({ eq: mockEqUser }));
-const mockInsert = jest.fn().mockResolvedValue({ data: null, error: null });
+const mockAdd = jest.fn().mockResolvedValue({ id: 'log_doc_1' });
+const mockGet = jest.fn().mockResolvedValue({ size: 1, docs: [] });
+const mockWhereTime = jest.fn(() => ({ get: mockGet }));
+const mockWhereAction = jest.fn(() => ({ where: mockWhereTime }));
+const mockWhereUser = jest.fn(() => ({ where: mockWhereAction }));
 
-const mockFrom = jest.fn((table: string) => {
-  return {
-    select: mockSelect,
-    insert: mockInsert,
-  };
-});
+const mockCollection = jest.fn((col: string) => ({
+  where: mockWhereUser,
+  add: mockAdd,
+}));
 
-const mockAdminClient = {
-  from: mockFrom,
+const mockAdminDb = {
+  collection: mockCollection,
 };
 
-jest.mock('../src/lib/server/supabaseAdmin', () => ({
-  __esModule: true,
-  getSupabaseAdmin: jest.fn(() => mockAdminClient),
-  supabaseAdmin: mockAdminClient,
+let mockIsConfigured = true;
+
+jest.mock('@/lib/firebase/admin', () => ({
+  get isFirebaseAdminConfigured() {
+    return mockIsConfigured;
+  },
+  getAdminFirestore: jest.fn(() => mockAdminDb),
 }));
 
 import { checkRateLimit, resetRateLimiterMemoryState } from '../src/lib/services/rateLimiter.server';
 
-describe('Server-Side Supabase Admin Rate Limiter Suite', () => {
+describe('Server-Side Firebase Admin Rate Limiter Suite', () => {
   beforeEach(() => {
     resetRateLimiterMemoryState();
     jest.clearAllMocks();
+    mockIsConfigured = true;
   });
 
-  describe('1. Server-Side Supabase Admin Client Usage', () => {
-    it('queries request_logs via supabaseAdmin and logs the request when under limit', async () => {
-      mockGte.mockResolvedValueOnce({ count: 1, error: null });
+  describe('1. Server-Side Firebase Admin Client Usage', () => {
+    it('queries request_logs via Firebase Admin and logs the request when under limit', async () => {
+      mockGet.mockResolvedValueOnce({ size: 1, docs: [] });
 
       const result = await checkRateLimit({
         userId: 'usr_admin_test_1',
@@ -52,20 +54,19 @@ describe('Server-Side Supabase Admin Rate Limiter Suite', () => {
         windowSeconds: 60,
       });
 
-      // Verify supabaseAdmin query chain
-      expect(mockFrom).toHaveBeenCalledWith('request_logs');
-      expect(mockSelect).toHaveBeenCalledWith('id', { count: 'exact', head: true });
-      expect(mockEqUser).toHaveBeenCalledWith('user_id', 'usr_admin_test_1');
-      expect(mockEqAction).toHaveBeenCalledWith('action', 'interview_evaluate');
+      // Verify Firestore query chain
+      expect(mockCollection).toHaveBeenCalledWith('request_logs');
+      expect(mockWhereUser).toHaveBeenCalledWith('user_id', '==', 'usr_admin_test_1');
+      expect(mockWhereAction).toHaveBeenCalledWith('action', '==', 'interview_evaluate');
 
-      // Verify result using supabase store
+      // Verify result using firebase store
       expect(result.allowed).toBe(true);
-      expect(result.store).toBe('supabase');
+      expect(result.store).toBe('firebase');
       expect(result.limit).toBe(5);
       expect(result.remaining).toBe(3); // 5 - (1 + 1)
 
-      // Verify async insert was triggered via supabaseAdmin
-      expect(mockInsert).toHaveBeenCalledWith(
+      // Verify async insert was triggered via Firebase Admin
+      expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: 'usr_admin_test_1',
           action: 'interview_evaluate',
@@ -73,8 +74,8 @@ describe('Server-Side Supabase Admin Rate Limiter Suite', () => {
       );
     });
 
-    it('rejects requests and does not insert new log when count exceeds maxRequests via supabaseAdmin', async () => {
-      mockGte.mockResolvedValueOnce({ count: 5, error: null });
+    it('rejects requests and does not insert new log when count exceeds maxRequests via Firebase Admin', async () => {
+      mockGet.mockResolvedValueOnce({ size: 5, docs: [] });
 
       const result = await checkRateLimit({
         userId: 'usr_admin_test_2',
@@ -83,21 +84,21 @@ describe('Server-Side Supabase Admin Rate Limiter Suite', () => {
         windowSeconds: 60,
       });
 
-      expect(mockFrom).toHaveBeenCalledWith('request_logs');
+      expect(mockCollection).toHaveBeenCalledWith('request_logs');
       expect(result.allowed).toBe(false);
-      expect(result.store).toBe('supabase');
+      expect(result.store).toBe('firebase');
       expect(result.remaining).toBe(0);
       expect(result.retryAfterSeconds).toBe(60);
 
       // Blocked request must NOT insert into request_logs
-      expect(mockInsert).not.toHaveBeenCalled();
+      expect(mockAdd).not.toHaveBeenCalled();
     });
   });
 
   describe('2. Graceful Fallback Handling on Database Failure', () => {
-    it('falls back safely to in-memory store when supabaseAdmin query throws an exception', async () => {
-      mockFrom.mockImplementationOnce(() => {
-        throw new Error('[Supabase Admin Error] SUPABASE_SERVICE_ROLE_KEY unconfigured');
+    it('falls back safely to in-memory store when Firebase Admin query throws an exception', async () => {
+      mockCollection.mockImplementationOnce(() => {
+        throw new Error('[Firebase Admin Error] Firestore unreachable');
       });
 
       const result = await checkRateLimit({
@@ -112,11 +113,8 @@ describe('Server-Side Supabase Admin Rate Limiter Suite', () => {
       expect(result.limit).toBe(5);
     });
 
-    it('falls back safely to in-memory store when supabaseAdmin returns a database error', async () => {
-      mockGte.mockResolvedValueOnce({
-        count: null,
-        error: { message: 'relation "request_logs" does not exist' },
-      });
+    it('falls back safely to in-memory store when Firebase Admin is unconfigured', async () => {
+      mockIsConfigured = false;
 
       const result = await checkRateLimit({
         userId: 'usr_db_error_fallback',
@@ -131,9 +129,7 @@ describe('Server-Side Supabase Admin Rate Limiter Suite', () => {
 
     it('correctly enforces rate limits in in-memory fallback mode across multiple requests', async () => {
       // Simulate database down permanently
-      mockFrom.mockImplementation(() => {
-        throw new Error('Connection refused');
-      });
+      mockIsConfigured = false;
 
       const userId = 'usr_offline_repeated';
       const action = 'test_fallback_enforcement';

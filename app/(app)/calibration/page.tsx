@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { readFile } from 'node:fs/promises';
@@ -44,26 +43,22 @@ async function getServerUserEmail(): Promise<string | null> {
   if (cookieStore.get('skillo_test_admin')?.value === 'true') {
     return 'admin@skillo.ai';
   }
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
+  const token = cookieStore.get('token')?.value || cookieStore.get('session')?.value;
+  if (token) {
+    try {
+      const { isFirebaseAdminConfigured, getAdminAuth } = await import('@/lib/firebase/admin');
+      if (isFirebaseAdminConfigured) {
+        const auth = await getAdminAuth();
+        const decoded = await auth.verifyIdToken(token);
+        return decoded.email?.trim().toLowerCase() ?? null;
+      }
+    } catch {
+      return null;
+    }
   }
-
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll() {
-        // This page only reads the session; refreshing cookies is handled by the app auth flow.
-      },
-    },
-  });
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.email?.trim().toLowerCase() ?? null;
+  return null;
 }
+
 
 function getAdminEmails(): Set<string> {
   const emails = (process.env.ADMIN_EMAILS ?? '')

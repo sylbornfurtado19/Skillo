@@ -2,29 +2,26 @@
  * Focused Unit Tests for Interview Persistence Contract
  * Verifies that:
  * 1. mapEvaluationToMockInterviewPayload maps an EvaluationReport to the exact mock_interviews schema.
- * 2. Database column names (overall_score, experience_level, interview_type, breakdown, etc.) match supabase_schema.sql.
+ * 2. Database column names (overall_score, experience_level, interview_type, breakdown, etc.) match mock_interviews schema.
  * 3. Fallbacks and defaults are applied when optional properties are omitted.
- * 4. saveMockInterview sends the aligned payload to supabase.from('mock_interviews').insert().
+ * 4. saveMockInterview sends the aligned payload to Firestore mock_interviews collection.
  */
 
 import { mapEvaluationToMockInterviewPayload, saveMockInterview } from '../src/services/interview';
 import type { EvaluationReport } from '../src/types/index';
-import { supabase } from '../src/lib/supabase';
 
-// Mock Supabase client
-jest.mock('../src/lib/supabase', () => {
-  const mockSingle = jest.fn();
-  const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
-  const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
-  const mockFrom = jest.fn().mockReturnValue({ insert: mockInsert });
+const mockAddDoc = jest.fn(async (_coll: any, payload: any) => ({ id: 'mock_uuid_123', ...payload }));
+const mockCollection = jest.fn((_db: any, name: string) => ({ name }));
 
-  return {
-    supabase: {
-      from: mockFrom,
-    },
-    isSupabaseConfigured: true,
-  };
-});
+jest.mock('firebase/firestore', () => ({
+  collection: (db: any, name: string) => mockCollection(db, name),
+  addDoc: (coll: any, data: any) => mockAddDoc(coll, data),
+  serverTimestamp: jest.fn(() => 'MOCK_TIMESTAMP'),
+}));
+
+jest.mock('../src/lib/firebase/config', () => ({
+  db: {},
+}));
 
 describe('Interview Persistence Contract & Schema Alignment', () => {
   beforeEach(() => {
@@ -156,27 +153,14 @@ describe('Interview Persistence Contract & Schema Alignment', () => {
   });
 
   describe('2. saveMockInterview Service', () => {
-    it('persists payload with user_id to public.mock_interviews table', async () => {
-      const mockResultRow = {
-        id: 'mock_uuid_123',
-        user_id: 'user_123',
-        domain: 'Cloud Architecture',
-        role: 'Staff Infrastructure Engineer',
-        overall_score: 88,
-      };
-
-      const mockSingle = jest.fn().mockResolvedValue({ data: mockResultRow, error: null });
-      const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
-      const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
-      (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
-
+    it('persists payload with user_id to mock_interviews collection in Firestore', async () => {
       const payload = mapEvaluationToMockInterviewPayload(mockEvaluationReport);
       const res = await saveMockInterview('user_123', payload);
 
-      expect(supabase.from).toHaveBeenCalledWith('mock_interviews');
-      expect(mockInsert).toHaveBeenCalledTimes(1);
+      expect(mockCollection).toHaveBeenCalledWith(expect.anything(), 'mock_interviews');
+      expect(mockAddDoc).toHaveBeenCalledTimes(1);
 
-      const insertedRecord = mockInsert.mock.calls[0][0][0];
+      const insertedRecord = mockAddDoc.mock.calls[0][1];
       expect(insertedRecord.user_id).toBe('user_123');
       expect(insertedRecord.domain).toBe('Cloud Architecture');
       expect(insertedRecord.role).toBe('Staff Infrastructure Engineer');
@@ -188,16 +172,14 @@ describe('Interview Persistence Contract & Schema Alignment', () => {
       expect(insertedRecord.duration).toBe(60);
       expect(insertedRecord.interview_mode_id).toBe('system-design-deep');
 
-      expect(res.data).toEqual(mockResultRow);
+      expect(res.data).toBeDefined();
+      expect(res.data?.id).toBe('mock_uuid_123');
       expect(res.error).toBeNull();
     });
 
-    it('returns error safely when Supabase insert fails', async () => {
+    it('returns error safely when Firestore addDoc fails', async () => {
       const mockDbError = new Error('Database connection failed');
-      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: mockDbError });
-      const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
-      const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
-      (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
+      mockAddDoc.mockRejectedValueOnce(mockDbError);
 
       const payload = mapEvaluationToMockInterviewPayload(mockEvaluationReport);
       const res = await saveMockInterview('user_123', payload);

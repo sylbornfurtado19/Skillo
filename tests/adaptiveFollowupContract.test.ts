@@ -9,34 +9,7 @@
  * 5. Short/negative answers or needsFollowUp: false preserve the question list unchanged
  */
 
-const mockSupabaseClient = {
-  auth: {
-    getUser: jest.fn(async (token: string) => {
-      if (token === 'valid_test_token') {
-        return { data: { user: { id: 'usr_test_lats_123', email: 'tester@example.com' } }, error: null };
-      }
-      return { data: { user: null }, error: new Error('Invalid or expired token') };
-    }),
-  },
-  from: jest.fn(() => ({
-    select: jest.fn().mockReturnThis(),
-    insert: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    gte: jest.fn().mockResolvedValue({ data: [], count: 0, error: null }),
-  })),
-};
 
-jest.mock('../src/lib/supabase', () => ({
-  __esModule: true,
-  supabase: mockSupabaseClient,
-  isSupabaseConfigured: true,
-}));
-
-jest.mock('../src/lib/server/supabaseAdmin', () => ({
-  __esModule: true,
-  getSupabaseAdmin: jest.fn(() => mockSupabaseClient),
-  supabaseAdmin: mockSupabaseClient,
-}));
 
 import { POST as followupHandler } from '../app/api/interview/followup/route';
 

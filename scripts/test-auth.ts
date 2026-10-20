@@ -23,9 +23,6 @@ async function main() {
   });
   console.log('Result 1:', await authenticateRequest(req));
 
-  console.log('--- Test 2: If resolveAuthProvider returns supabase ---');
-  process.env.NEXT_PUBLIC_BACKEND_PROVIDER = 'supabase';
-  console.log('Result 2:', await authenticateRequest(req));
 
   console.log('--- Test 3: If Firebase project id is missing ---');
   process.env.NEXT_PUBLIC_BACKEND_PROVIDER = 'firebase';

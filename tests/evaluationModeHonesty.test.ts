@@ -3,7 +3,6 @@
  * (bad key, missing model, quota), the evaluation must say so.
  */
 
-jest.mock('@/lib/server/supabaseAdmin', () => ({ supabaseAdmin: null }));
 
 import { performInterviewEvaluation } from '../src/lib/services/interviewEvaluation.server';
 

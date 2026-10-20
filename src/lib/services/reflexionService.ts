@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { supabaseAdmin } from '@/lib/server/supabaseAdmin';
 import { executeAnthropicRequest, AI_CONFIG, getAiApiKey } from '@/lib/ai/aiConfig';
 import { sanitizeUserText } from '@/lib/server/sanitize';
 import type {
@@ -336,95 +335,65 @@ export async function retrievePastCritiques(userId: string): Promise<PastCritiqu
   return critiques;
 }
 
+const inMemorySkillStore = new Map<string, CandidateSkillMemoryStore>();
+
+export function resetReflexionMemoryState(): void {
+  inMemorySkillStore.clear();
+}
+
 /**
- * 6. Persist SkillMemoryStore & SkillMemoryNodes JSONB to Supabase
- * Upserts to profiles table (skill_memory_store & skill_memory_nodes JSONB)
- * as well as optional skill_memory_nodes table.
+ * 6. Persist CandidateSkillMemoryStore into Firebase profiles document
  */
 export async function persistSkillMemoryStore(
   userId: string,
   memoryStore: CandidateSkillMemoryStore
 ): Promise<void> {
+
   try {
-    // Build canonical SkillMemoryNodes JSONB map
-    const skillMemoryNodesRecord: Record<string, SkillMemoryNodeRecord> = {};
-    for (const [skillId, node] of Object.entries(memoryStore.nodes)) {
-      skillMemoryNodesRecord[skillId] = {
-        user_id: userId,
-        skill_id: skillId,
-        critique:
-          node.reflections?.[0]?.mistakeSummary ||
-          node.persistentDeficiencies?.[0] ||
-          'Identified technical limitation.',
-        proficiency_level: node.proficiencyLevel,
-        updated_at: node.lastUpdated,
-        attempts_count: node.attemptsCount,
-        remediation_progress: node.remediationProgress,
-      };
-    }
+    inMemorySkillStore.set(userId, memoryStore);
 
-    const { error } = await supabaseAdmin
-      .from('profiles')
-      .upsert({
-        id: userId,
-        skill_memory_store: memoryStore as unknown as Record<string, unknown>,
-        skill_memory_nodes: skillMemoryNodesRecord as unknown as Record<string, unknown>,
-        updated_at: new Date().toISOString(),
-      });
-
-    if (error) {
-      console.warn('[Reflexion Memory] Supabase profiles upsert notice:', error.message);
-    }
-
-    // Optional: Also attempt writing to dedicated skill_memory_nodes table if it exists
-    const rows = Object.values(skillMemoryNodesRecord).map((r) => ({
-      user_id: r.user_id,
-      skill_id: r.skill_id,
-      critique: r.critique,
-      proficiency_level: r.proficiency_level,
-      updated_at: r.updated_at || new Date().toISOString(),
-    }));
-
-    if (rows.length > 0) {
-      void supabaseAdmin
-        .from('skill_memory_nodes')
-        .upsert(rows)
-        .then(
-          ({ error: tableErr }) => {
-            if (tableErr) {
-              // Expected if table does not exist; silent fallback to profiles JSONB
-            }
-          },
-          () => {}
-        );
+    const { isFirebaseAdminConfigured, getAdminFirestore } = await import('@/lib/firebase/admin');
+    if (isFirebaseAdminConfigured) {
+      const adminDb = getAdminFirestore();
+      await adminDb.collection('profiles').doc(userId).set(
+        {
+          skill_memory_store: memoryStore as unknown as Record<string, unknown>,
+          skill_memory_nodes: memoryStore.nodes as unknown as Record<string, unknown>,
+          updated_at: new Date().toISOString(),
+        },
+        { merge: true }
+      );
     }
   } catch (err) {
-    console.warn('[Reflexion Memory] persistSkillMemoryStore failed gracefully:', err);
+    console.warn('[Reflexion Memory] persistSkillMemoryStore notice:', err);
   }
 }
 
 /**
- * 7. Retrieve CandidateSkillMemoryStore from Supabase profiles table
+ * 7. Retrieve CandidateSkillMemoryStore from Firebase profiles document
  */
 export async function retrieveSkillMemoryStore(
   userId: string
 ): Promise<CandidateSkillMemoryStore | undefined> {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('profiles')
-      .select('skill_memory_store')
-      .eq('id', userId)
-      .single();
-
-    if (error || !data) return undefined;
-    const raw = (data as Record<string, unknown>).skill_memory_store;
-    if (!raw || typeof raw !== 'object') return undefined;
-    return raw as CandidateSkillMemoryStore;
+    const { isFirebaseAdminConfigured, getAdminFirestore } = await import('@/lib/firebase/admin');
+    if (isFirebaseAdminConfigured) {
+      const adminDb = getAdminFirestore();
+      const doc = await adminDb.collection('profiles').doc(userId).get();
+      if (doc.exists) {
+        const data = doc.data();
+        const raw = data?.skill_memory_store ?? data?.skillMemoryStore;
+        if (raw && typeof raw === 'object') {
+          return raw as CandidateSkillMemoryStore;
+        }
+      }
+    }
   } catch (err) {
-    console.warn('[Reflexion Memory] retrieveSkillMemoryStore failed:', err);
-    return undefined;
+    console.warn('[Reflexion Memory] retrieveSkillMemoryStore notice:', err);
   }
+  return inMemorySkillStore.get(userId);
 }
+
 
 export interface DispatchReflexionWorkerParams {
   userId: string;

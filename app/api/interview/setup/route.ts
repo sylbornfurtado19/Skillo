@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     const count = setupData.questionCount || 5;
     const activeUserId = user?.id || bodyUserId;
 
-    // 3. Retrieve Candidate Historical Memory from Supabase SkillMemoryNodes
+    // 3. Retrieve Candidate Historical Memory from Firebase SkillMemoryNodes
     let pastCritiques: Array<{
       skillId: string;
       skillName: string;
