@@ -74,13 +74,20 @@ export default function Dashboard() {
     getProfile(user.id)
       .then(({ data, error }) => {
         if (error) {
-          setDashboardError(typeof error === 'string' ? error : 'Failed to retrieve study plan data.');
+          const errStr = typeof error === 'string' ? error : (error as any)?.message || '';
+          if (errStr.includes('not configured') || errStr.includes('Configuration Notice')) {
+            return;
+          }
+          setDashboardError(errStr || 'Failed to retrieve study plan data.');
           return;
         }
         setSkillMemoryStore(data?.skillMemoryStore);
       })
-      .catch(() => {
-        setDashboardError('Failed to retrieve study plan data.');
+      .catch((err) => {
+        const errStr = err instanceof Error ? err.message : String(err);
+        if (!errStr.includes('not configured') && !errStr.includes('Configuration Notice')) {
+          setDashboardError('Failed to retrieve study plan data.');
+        }
       });
   }, [user?.id]);
 

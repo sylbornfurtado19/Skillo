@@ -145,6 +145,15 @@ export const getCurrentUser = async (): Promise<ServiceResponse<unknown>> => {
 };
 
 export const getAuthToken = async (): Promise<string | undefined> => {
+  // Demo/test session override: return the test token so API routes accept the request
+  if (
+    typeof window !== 'undefined' &&
+    (window.localStorage.getItem('skillo_test_session') === 'true' ||
+      document.cookie.includes('skillo_test_session=true'))
+  ) {
+    return 'test-token';
+  }
+
   if (isFirebaseActive()) {
     try {
       const { auth } = await import('../lib/firebase/config');

@@ -165,6 +165,36 @@ export default function ResumeUpload() {
     setCurrentState('idle');
   };
 
+  const handleLoadSampleResume = () => {
+    const sampleText = `Alex Mercer
+alex.mercer@example.com | (555) 123-4567 | San Francisco, CA | github.com/alexmercer | linkedin.com/in/alexmercer
+
+PROFESSIONAL SUMMARY
+Senior Software Engineer with 5+ years of experience designing and building high-performance web applications, distributed microservices, and interactive client-side interfaces. Expert in React, TypeScript, Next.js, Node.js, and cloud architectures.
+
+TECHNICAL SKILLS
+Languages: TypeScript, JavaScript (ES6+), Python, SQL, HTML5, CSS3
+Frontend: React 19, Next.js (App Router), Tailwind CSS, State Management (Zustand, Redux Toolkit)
+Backend: Node.js, Express, PostgreSQL, REST APIs, GraphQL
+DevOps & Tools: Docker, Git, CI/CD pipelines, Jest, Vitest
+
+WORK EXPERIENCE
+Senior Frontend Engineer | CloudScale Systems | 2022 - Present
+- Architected and delivered core UI applications utilizing React 19, Next.js, and TypeScript, serving 500k+ active monthly users.
+- Reduced initial bundle load latency by 42% through code-splitting, dynamic imports, and memoized selector patterns.
+- Mentored junior engineers, established comprehensive unit test coverage, and automated frontend CI checks.
+
+Software Engineer | FinTech Innovations | 2019 - 2022
+- Developed reactive trading dashboard widgets and real-time WebSocket telemetry pipelines.
+- Integrated resilient error boundaries and schema validation layers preventing bad payload state crashes.
+
+EDUCATION
+B.S. in Computer Science | University of California, Berkeley | 2015 - 2019`;
+
+    const sampleFile = new File([sampleText], 'alex_mercer_resume.txt', { type: 'text/plain' });
+    processFile(sampleFile);
+  };
+
   const handleStartAnalysis = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || !jobTitle.trim() || !jobDescription.trim()) return;
@@ -804,6 +834,14 @@ export default function ResumeUpload() {
                       <input id={fileInputId} type="file" className="hidden" accept=".pdf,.docx,.txt" onChange={handleFileSelect} />
                     </label>
                     <p className="text-xs text-text-secondary">or drag and drop resume here</p>
+                    <button
+                      type="button"
+                      id="load-sample-resume-btn"
+                      onClick={handleLoadSampleResume}
+                      className="text-xs text-primary hover:underline font-medium font-mono pt-1 cursor-pointer block mx-auto"
+                    >
+                      Load Sample Resume
+                    </button>
                   </div>
                 </div>
               ) : (

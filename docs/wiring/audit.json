@@ -1401,7 +1401,7 @@
     },
     {
       "file": "src/lib/server/authenticateRequest.ts",
-      "loc": 300,
+      "loc": 311,
       "reachable": true,
       "importedBy": 7,
       "testedBy": 2
@@ -1702,7 +1702,7 @@
     },
     {
       "file": "src/services/auth.ts",
-      "loc": 167,
+      "loc": 176,
       "reachable": true,
       "importedBy": 6,
       "testedBy": 20
@@ -1835,7 +1835,7 @@
     },
     {
       "file": "src/views/Dashboard.tsx",
-      "loc": 814,
+      "loc": 821,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 4
@@ -1856,7 +1856,7 @@
     },
     {
       "file": "src/views/Login.tsx",
-      "loc": 457,
+      "loc": 458,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 1
@@ -1877,7 +1877,7 @@
     },
     {
       "file": "src/views/ResumeUpload.tsx",
-      "loc": 901,
+      "loc": 939,
       "reachable": true,
       "importedBy": 1,
       "testedBy": 0

@@ -274,6 +274,17 @@ export async function authenticateRequest(request: Request): Promise<AuthResult>
   const token = extractBearerToken(request);
   if (!token) return unauthenticated();
 
+  // ── Demo / Test Session (development only) ──────────────────────────────
+  // The literal token 'test-token' is issued by AuthContext when
+  // localStorage.skillo_test_session === 'true'. Accept it only outside
+  // production so it can never be abused in deployed environments.
+  if (token === 'test-token' && process.env.NODE_ENV !== 'production') {
+    return {
+      ok: true,
+      user: { id: 'test-candidate-id', email: 'candidate@skillo.ai', provider: 'supabase' },
+    };
+  }
+
   // If token is a JWT, dynamically detect provider from token claims
   let provider = resolveAuthProvider();
   try {
