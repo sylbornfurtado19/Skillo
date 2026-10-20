@@ -668,11 +668,25 @@ export default function InterviewSession() {
       const sessionIntegrity = integrity.getReport();
 
       if (options.isRetrySubmit && retryQuestionIndex !== null) {
+        const retryQuestionId = currentQuestion.id || activeQuestionId;
+        const retryTelemetry = getCapturedTelemetry(activeQuestionId);
+        const retrySyncWindows = capturedSyncWindows.filter(
+          (w) => w.questionId === activeQuestionId || w.questionId === retryQuestionId
+        );
+        const retryIvpEvidence = ivpEvidence
+          ? {
+              ...ivpEvidence,
+              perQuestion: ivpEvidence.perQuestion.filter(
+                (q) => q.questionId === activeQuestionId || q.questionId === retryQuestionId
+              ),
+            }
+          : undefined;
+
         const finalAnswer = responseMode === 'type' ? typedAnswer : transcriptText;
         submitInterviewAnswers(
           setupData,
           [{
-            id: currentQuestion.id || activeQuestionId,
+            id: retryQuestionId,
             question: currentQuestion.question,
             hint: currentQuestion.hint,
             duration: currentQuestion.duration,
@@ -681,19 +695,19 @@ export default function InterviewSession() {
           }],
           [{ answerText: finalAnswer || 'No response provided.' }],
           undefined,
-          capturedGazeFrames,
-          capturedPoseFrames,
-          capturedAffectFrames,
-          capturedSyncWindows,
+          retryTelemetry.capturedGazeFrames,
+          retryTelemetry.capturedPoseFrames,
+          retryTelemetry.capturedAffectFrames,
+          retrySyncWindows,
           isCodingMode ? codeAnswer : undefined,
           options.speechAnalytics,
-          ivpEvidence,
+          retryIvpEvidence,
           sessionIntegrity
         )
           .then((finalReport) => {
             const enriched = {
               ...finalReport,
-              ivpEvidence: ivpEvidence ?? finalReport.ivpEvidence,
+              ivpEvidence: retryIvpEvidence ?? finalReport.ivpEvidence,
               sessionIntegrity: sessionIntegrity ?? finalReport.sessionIntegrity,
             };
             const { newScore, feedback } = handleRetryEvaluationSuccess(enriched);

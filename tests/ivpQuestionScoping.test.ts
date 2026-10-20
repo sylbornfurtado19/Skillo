@@ -22,12 +22,14 @@ import { processGazeFrames } from '../src/lib/services/ivpGazeEngine';
 import { analyzeHeadPoseAndGestures } from '../src/lib/services/ivpPoseEngine';
 import { processAffectFrames } from '../src/lib/services/ivpAffectEngine';
 import { processLipSyncWindows } from '../src/lib/services/ivpSyncEngine';
+import { calculateDeliveryComposite } from '../src/lib/services/deliveryComposite';
 import type {
   GazeFrameInput,
   HeadPoseFrameInput,
   AffectFrameInput,
   SyncWindowInput,
 } from '../src/types/index';
+import type { IVPEvidenceReceipt } from '../src/types/ivpEvidence';
 
 describe('REM-4: Per-Question Telemetry Scoping Suite', () => {
   describe('1. Basic Attribution & Distinguishability', () => {
@@ -303,6 +305,164 @@ describe('REM-4: Per-Question Telemetry Scoping Suite', () => {
       expect(report.breakdown[0].eyeContactMetrics?.gazeFrames.length).toBe(3);
       expect(report.breakdown[0].eyeContactMetrics?.eyeContactPercentage).toBe(100);
     });
+
+    it('ISSUE-09: scopes retry telemetry, sync windows, and IVP evidence strictly to retried questionId', async () => {
+      // Session has accumulated frames across multiple questions (Q1, Q2, Q3)
+      const sessionGazeFrames: GazeFrameInput[] = [
+        { timestampMs: 100, pitchDegrees: 1, yawDegrees: 2, questionId: 'q_1', questionIndex: 0 },
+        { timestampMs: 200, pitchDegrees: -1, yawDegrees: -2, questionId: 'q_2', questionIndex: 1 },
+        { timestampMs: 300, pitchDegrees: 0, yawDegrees: 0, questionId: 'q_2', questionIndex: 1 },
+        { timestampMs: 400, pitchDegrees: 5, yawDegrees: 5, questionId: 'q_3', questionIndex: 2 },
+      ];
+      const sessionPoseFrames: HeadPoseFrameInput[] = [
+        { timestampMs: 100, yawDegrees: 0, pitchDegrees: 0, rollDegrees: 0, questionId: 'q_1', questionIndex: 0 },
+        { timestampMs: 200, yawDegrees: 2, pitchDegrees: 1, rollDegrees: 0, questionId: 'q_2', questionIndex: 1 },
+        { timestampMs: 400, yawDegrees: 10, pitchDegrees: 5, rollDegrees: 0, questionId: 'q_3', questionIndex: 2 },
+      ];
+      const sessionAffectFrames: AffectFrameInput[] = [
+        { timestampMs: 100, valence: 0.2, arousal: 0.1, questionId: 'q_1', questionIndex: 0 },
+        { timestampMs: 200, valence: 0.5, arousal: 0.3, questionId: 'q_2', questionIndex: 1 },
+        { timestampMs: 400, valence: -0.1, arousal: 0.2, questionId: 'q_3', questionIndex: 2 },
+      ];
+      const sessionSyncWindows: SyncWindowInput[] = [
+        { timestampMs: 100, visualDistance: 0.9, offsetMs: 10, audioEnergy: 0.5, questionId: 'q_1', questionIndex: 0 },
+        { timestampMs: 200, visualDistance: 0.8, offsetMs: 12, audioEnergy: 0.6, questionId: 'q_2', questionIndex: 1 },
+        { timestampMs: 400, visualDistance: 0.7, offsetMs: 15, audioEnergy: 0.4, questionId: 'q_3', questionIndex: 2 },
+      ];
+      const sessionIvpEvidence: IVPEvidenceReceipt = {
+        kernelVersion: '1.0.0',
+        samplingHz: 10,
+        framesAnalyzed: 100,
+        kernelCounts: { histogramEq: 10, otsuYCrCb: 10, sobel: 10, temporalMAD: 10, earMar: 10 },
+        avgKernelMs: 2.5,
+        perQuestion: [
+          { questionId: 'q_1', questionIndex: 0, frames: 30, meanLuminance: 120, contrastStdDev: 40, clippedPct: 1, illumination: 'ok', skinMaskCoveragePct: 25, presenceRatio: 0.9, sobelEdgeDensity: 0.15, sharpnessScore: 80, motionEnergy: 0.05, evidenceId: 'IVP-Q1' },
+          { questionId: 'q_2', questionIndex: 1, frames: 35, meanLuminance: 125, contrastStdDev: 42, clippedPct: 1, illumination: 'ok', skinMaskCoveragePct: 28, presenceRatio: 0.95, sobelEdgeDensity: 0.18, sharpnessScore: 85, motionEnergy: 0.04, evidenceId: 'IVP-Q2' },
+          { questionId: 'q_3', questionIndex: 2, frames: 35, meanLuminance: 118, contrastStdDev: 39, clippedPct: 2, illumination: 'ok', skinMaskCoveragePct: 24, presenceRatio: 0.88, sobelEdgeDensity: 0.14, sharpnessScore: 78, motionEnergy: 0.06, evidenceId: 'IVP-Q3' },
+        ],
+        digestSha256: 'mock_digest',
+        provenance: 'client-reported',
+        consumedByEvaluator: false,
+        transmitted: true,
+      };
+
+      // Pipeline getCapturedTelemetry simulation with filterQuestionId
+      const getCapturedTelemetry = (filterQuestionId?: string) => {
+        if (filterQuestionId !== undefined) {
+          return {
+            capturedGazeFrames: sessionGazeFrames.filter((f) => f.questionId === filterQuestionId),
+            capturedPoseFrames: sessionPoseFrames.filter((f) => f.questionId === filterQuestionId),
+            capturedAffectFrames: sessionAffectFrames.filter((f) => f.questionId === filterQuestionId),
+          };
+        }
+        return {
+          capturedGazeFrames: [...sessionGazeFrames],
+          capturedPoseFrames: [...sessionPoseFrames],
+          capturedAffectFrames: [...sessionAffectFrames],
+        };
+      };
+
+      // In the retry path for Question 2:
+      const activeQuestionId = 'q_2';
+      const retryTelemetry = getCapturedTelemetry(activeQuestionId);
+      const retrySyncWindows = sessionSyncWindows.filter((w) => w.questionId === activeQuestionId);
+      const retryIvpEvidence = sessionIvpEvidence
+        ? {
+            ...sessionIvpEvidence,
+            perQuestion: sessionIvpEvidence.perQuestion.filter((q) => q.questionId === activeQuestionId),
+          }
+        : undefined;
+
+      // Assert scoped payloads contain ONLY q_2 frames and zero cross-question frames
+      expect(retryTelemetry.capturedGazeFrames).toHaveLength(2);
+      expect(retryTelemetry.capturedGazeFrames.every((f) => f.questionId === 'q_2')).toBe(true);
+      expect(retryTelemetry.capturedPoseFrames).toHaveLength(1);
+      expect(retryTelemetry.capturedPoseFrames.every((f) => f.questionId === 'q_2')).toBe(true);
+      expect(retryTelemetry.capturedAffectFrames).toHaveLength(1);
+      expect(retryTelemetry.capturedAffectFrames.every((f) => f.questionId === 'q_2')).toBe(true);
+
+      expect(retrySyncWindows).toHaveLength(1);
+      expect(retrySyncWindows[0].questionId).toBe('q_2');
+
+      expect(retryIvpEvidence?.perQuestion).toHaveLength(1);
+      expect(retryIvpEvidence?.perQuestion[0].questionId).toBe('q_2');
+
+      // Evaluator receives only the retried question
+      const retryEvalInput = {
+        setupData: { role: 'Staff Backend Engineer' },
+        questionsList: [{ id: 'q_2', question: 'How do LSM-trees work?' }],
+        answersList: [{ answerText: 'LSM-trees write sequentially to a memtable and flush to SSTables in tiered levels.' }],
+        gazeFrames: retryTelemetry.capturedGazeFrames,
+        headPoseFrames: retryTelemetry.capturedPoseFrames,
+        affectFrames: retryTelemetry.capturedAffectFrames,
+        syncWindows: retrySyncWindows,
+        ivpEvidence: retryIvpEvidence,
+      };
+
+      const report = await performInterviewEvaluation(retryEvalInput, 'user-retry-scoped');
+      expect(report.breakdown).toHaveLength(1);
+      expect(report.breakdown[0].id).toBe('q_2');
+      expect(report.breakdown[0].eyeContactMetrics?.gazeFrames).toHaveLength(2);
+      expect(report.eyeContactMetrics?.gazeFrames).toHaveLength(2);
+      expect(report.ivpEvidence?.perQuestion).toHaveLength(1);
+      expect(report.ivpEvidence?.perQuestion[0].questionId).toBe('q_2');
+    });
+
+    it('ISSUE-09: normal (non-retry) submission preserves whole-session telemetry and evidence across all questions', async () => {
+      const sessionGazeFrames: GazeFrameInput[] = [
+        { timestampMs: 100, pitchDegrees: 0, yawDegrees: 0, questionId: 'q_1', questionIndex: 0 },
+        { timestampMs: 200, pitchDegrees: 0, yawDegrees: 0, questionId: 'q_2', questionIndex: 1 },
+      ];
+      const sessionPoseFrames: HeadPoseFrameInput[] = [
+        { timestampMs: 100, yawDegrees: 0, pitchDegrees: 0, rollDegrees: 0, questionId: 'q_1', questionIndex: 0 },
+        { timestampMs: 200, yawDegrees: 0, pitchDegrees: 0, rollDegrees: 0, questionId: 'q_2', questionIndex: 1 },
+      ];
+      const sessionSyncWindows: SyncWindowInput[] = [
+        { timestampMs: 100, visualDistance: 0.9, offsetMs: 10, audioEnergy: 0.5, questionId: 'q_1', questionIndex: 0 },
+        { timestampMs: 200, visualDistance: 0.8, offsetMs: 12, audioEnergy: 0.6, questionId: 'q_2', questionIndex: 1 },
+      ];
+
+      const getCapturedTelemetry = (filterQuestionId?: string) => {
+        if (filterQuestionId !== undefined) {
+          return {
+            capturedGazeFrames: sessionGazeFrames.filter((f) => f.questionId === filterQuestionId),
+            capturedPoseFrames: sessionPoseFrames.filter((f) => f.questionId === filterQuestionId),
+            capturedAffectFrames: [],
+          };
+        }
+        return {
+          capturedGazeFrames: [...sessionGazeFrames],
+          capturedPoseFrames: [...sessionPoseFrames],
+          capturedAffectFrames: [],
+        };
+      };
+
+      // Normal submit calls getCapturedTelemetry() without filter
+      const normalTelemetry = getCapturedTelemetry();
+      expect(normalTelemetry.capturedGazeFrames).toHaveLength(2);
+      expect(normalTelemetry.capturedPoseFrames).toHaveLength(2);
+      expect(sessionSyncWindows).toHaveLength(2);
+
+      const normalEvalInput = {
+        setupData: { role: 'Full Stack Engineer' },
+        questionsList: [
+          { id: 'q_1', question: 'Q1' },
+          { id: 'q_2', question: 'Q2' },
+        ],
+        answersList: [
+          { answerText: 'Answer 1' },
+          { answerText: 'Answer 2' },
+        ],
+        gazeFrames: normalTelemetry.capturedGazeFrames,
+        headPoseFrames: normalTelemetry.capturedPoseFrames,
+        syncWindows: sessionSyncWindows,
+      };
+
+      const report = await performInterviewEvaluation(normalEvalInput, 'user-normal-submit');
+      expect(report.breakdown).toHaveLength(2);
+      expect(report.eyeContactMetrics?.gazeFrames).toHaveLength(2);
+      expect(report.headPoseMetrics?.totalFramesAnalyzed).toBe(2);
+    });
   });
 
   describe('6. Edge Cases: Empty Telemetry & Skipped Questions', () => {
@@ -331,6 +491,50 @@ describe('REM-4: Per-Question Telemetry Scoping Suite', () => {
       // Question 2 (skipped with 0 frames) has undefined per-question metrics
       expect(report.breakdown[1].eyeContactMetrics).toBeUndefined();
       expect(report.breakdown[1].headPoseMetrics).toBeUndefined();
+    });
+
+    it('ISSUE-09: handles empty/zero frames on retry gracefully without NaN in eyeContactMetrics or deliveryComposite', async () => {
+      // When a retried question has 0 frames captured (camera dropped or failed)
+      const emptyGaze: GazeFrameInput[] = [];
+      const metrics = processGazeFrames(emptyGaze);
+
+      // Verify zero-state metrics with NO NaN values
+      expect(metrics.totalVideoDurationSeconds).toBe(0);
+      expect(metrics.eyeContactPercentage).toBe(0);
+      expect(metrics.averagePitch).toBe(0);
+      expect(metrics.averageYaw).toBe(0);
+      expect(metrics.focusStabilityScore).toBe(100);
+      expect(metrics.gazeFrames).toHaveLength(0);
+      expect(Number.isNaN(metrics.eyeContactPercentage)).toBe(false);
+      expect(Number.isNaN(metrics.averagePitch)).toBe(false);
+      expect(Number.isNaN(metrics.averageYaw)).toBe(false);
+
+      // calculateDeliveryComposite with all undefined signals returns undefined without NaN
+      const compositeEmpty = calculateDeliveryComposite({
+        eyeContactRatio: undefined,
+        postureStability: undefined,
+        affectComposure: undefined,
+        speechDeliveryScore: undefined,
+      });
+      expect(compositeEmpty).toBeUndefined();
+
+      // performInterviewEvaluation with empty telemetry arrays completes safely without NaN
+      const emptyRetryEvalInput = {
+        setupData: { role: 'Frontend Engineer' },
+        questionsList: [{ id: 'q_retry_empty', question: 'What is CSS containment?' }],
+        answersList: [{ answerText: 'CSS containment isolates a subtree to optimize rendering.' }],
+        gazeFrames: [],
+        headPoseFrames: [],
+        affectFrames: [],
+        syncWindows: [],
+      };
+
+      const report = await performInterviewEvaluation(emptyRetryEvalInput, 'user-empty-retry');
+      expect(report.breakdown).toHaveLength(1);
+      expect(report.breakdown[0].eyeContactMetrics).toBeUndefined();
+      expect(report.eyeContactMetrics).toBeUndefined();
+      expect(report.deliveryComposite).toBeUndefined();
+      expect(Number.isNaN(report.overallScore)).toBe(false);
     });
   });
 });
