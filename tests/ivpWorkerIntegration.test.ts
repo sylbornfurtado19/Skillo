@@ -109,6 +109,27 @@ describe('REM-3: InterviewSession Worker + ONNX Architecture Integration', () =>
       expect(zone).toBe('CENTER_SCREEN');
     });
 
+    it('applies GazeAngleEMA smoothing on degree telemetry and triggers distraction when deviating', () => {
+      const gazeEma = new GazeAngleEMA(0.35);
+      const degreeSamples = [
+        { gazeYawDegrees: 0, gazePitchDegrees: 0 },
+        { gazeYawDegrees: 25, gazePitchDegrees: 5 },
+        { gazeYawDegrees: 35, gazePitchDegrees: 8 },
+      ];
+
+      const smoothedGaze = degreeSamples.map((s) =>
+        gazeEma.update({ pitchDegrees: s.gazePitchDegrees, yawDegrees: s.gazeYawDegrees })
+      );
+
+      const latest = smoothedGaze[smoothedGaze.length - 1];
+      expect(latest.yawDegrees).toBeGreaterThan(15);
+      const isContact = evaluateEyeContact(latest.pitchDegrees, latest.yawDegrees);
+      const zone = classifyFocusZone(latest.pitchDegrees, latest.yawDegrees);
+
+      expect(isContact).toBe(false);
+      expect(zone).toBe('LOOKING_RIGHT');
+    });
+
     it('applies HeadPoseEMA smoothing and detects gestures from ONNX head pose', () => {
       const poseEma = new HeadPoseEMA(0.35);
       let lastResult: HeadPoseFrameResult | undefined = undefined;

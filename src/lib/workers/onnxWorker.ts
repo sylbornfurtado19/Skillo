@@ -34,6 +34,10 @@ let smoothedState: SmoothedTelemetry = {
   yaw: 0,
   pitch: 0,
   roll: 0,
+  gazeYawDegrees: 0,
+  gazePitchDegrees: 0,
+  normalizedGazeX: 0,
+  normalizedGazeY: 0,
   gazeX: 0,
   gazeY: 0,
   composure: 85,
@@ -218,8 +222,8 @@ if (typeof self !== 'undefined') {
           let rawYaw = smoothedState.yaw;
           let rawPitch = smoothedState.pitch;
           let rawRoll = smoothedState.roll;
-          let rawGazeX = smoothedState.gazeX;
-          let rawGazeY = smoothedState.gazeY;
+          let rawGazeYaw = smoothedState.gazeYawDegrees;
+          let rawGazePitch = smoothedState.gazePitchDegrees;
           let rawComposure = smoothedState.composure;
           let rawEmotion = smoothedState.dominantEmotion;
 
@@ -249,8 +253,8 @@ if (typeof self !== 'undefined') {
               const outNames = sessionCache.gaze.outputNames;
               const outData = res[outNames[0]].data as Float32Array;
               const decoded = decodeGazeOutput(outData);
-              rawGazeX = decoded.yawDegrees / 30.0;
-              rawGazeY = decoded.pitchDegrees / 30.0;
+              rawGazeYaw = decoded.yawDegrees;
+              rawGazePitch = decoded.pitchDegrees;
             } catch (err) {
               console.warn('[ONNXWorker] Gaze inference error:', err);
             }
@@ -271,14 +275,34 @@ if (typeof self !== 'undefined') {
           }
 
           // 5. Exponential Moving Average (EMA) Smoothing
-          const alpha = typeof customAlphas === 'number' ? customAlphas : 0.35;
+          const isNum = typeof customAlphas === 'number';
+          const alphaPose = isNum ? customAlphas : (customAlphas?.pose ?? 0.35);
+          const alphaGaze = isNum ? customAlphas : (customAlphas?.gaze ?? 0.35);
+          const alphaComposure = isNum ? customAlphas : (customAlphas?.composure ?? 0.35);
+
+          const nextYaw = Math.round((smoothedState.yaw + alphaPose * (rawYaw - smoothedState.yaw)) * 10) / 10;
+          const nextPitch = Math.round((smoothedState.pitch + alphaPose * (rawPitch - smoothedState.pitch)) * 10) / 10;
+          const nextRoll = Math.round((smoothedState.roll + alphaPose * (rawRoll - smoothedState.roll)) * 10) / 10;
+
+          const nextGazeYaw = Math.round((smoothedState.gazeYawDegrees + alphaGaze * (rawGazeYaw - smoothedState.gazeYawDegrees)) * 10) / 10;
+          const nextGazePitch = Math.round((smoothedState.gazePitchDegrees + alphaGaze * (rawGazePitch - smoothedState.gazePitchDegrees)) * 10) / 10;
+
+          const normX = Math.max(-1, Math.min(1, Math.tan((nextGazeYaw * Math.PI) / 180)));
+          const normY = Math.max(-1, Math.min(1, Math.tan((nextGazePitch * Math.PI) / 180)));
+          const normalizedGazeX = Math.round(normX * 100) / 100;
+          const normalizedGazeY = Math.round(normY * 100) / 100;
+
           smoothedState = {
-            yaw: Math.round((smoothedState.yaw + alpha * (rawYaw - smoothedState.yaw)) * 10) / 10,
-            pitch: Math.round((smoothedState.pitch + alpha * (rawPitch - smoothedState.pitch)) * 10) / 10,
-            roll: Math.round((smoothedState.roll + alpha * (rawRoll - smoothedState.roll)) * 10) / 10,
-            gazeX: Math.round((smoothedState.gazeX + alpha * (rawGazeX - smoothedState.gazeX)) * 100) / 100,
-            gazeY: Math.round((smoothedState.gazeY + alpha * (rawGazeY - smoothedState.gazeY)) * 100) / 100,
-            composure: Math.round(smoothedState.composure + alpha * (rawComposure - smoothedState.composure)),
+            yaw: nextYaw,
+            pitch: nextPitch,
+            roll: nextRoll,
+            gazeYawDegrees: nextGazeYaw,
+            gazePitchDegrees: nextGazePitch,
+            normalizedGazeX,
+            normalizedGazeY,
+            gazeX: normalizedGazeX,
+            gazeY: normalizedGazeY,
+            composure: Math.round(smoothedState.composure + alphaComposure * (rawComposure - smoothedState.composure)),
             dominantEmotion: rawEmotion,
             totalInferenceTimeMs: Math.round(performance.now() - t0),
             isBlurry: false,

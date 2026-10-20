@@ -179,8 +179,8 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
 
       // ── 1. Gaze Processing (L2CS-Net + GazeAngleEMA) ──────────────────────────
       const smoothedGaze = telemetrySmootherRef.current.gaze.update({
-        pitchDegrees: telemetry.gazeY,
-        yawDegrees: telemetry.gazeX,
+        pitchDegrees: telemetry.gazePitchDegrees ?? telemetry.gazeY,
+        yawDegrees: telemetry.gazeYawDegrees ?? telemetry.gazeX,
       });
 
       const isEyeContact = evaluateEyeContact(smoothedGaze.pitchDegrees, smoothedGaze.yawDegrees);

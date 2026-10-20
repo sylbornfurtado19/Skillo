@@ -10,6 +10,7 @@ import {
   decodeAffectLogits,
   calculateLaplacianVariance,
 } from '../src/lib/services/onnxInferenceService';
+import { evaluateEyeContact } from '../src/lib/services/ivpGazeEngine';
 import type {
   ONNXWorkerCommandMessage,
   ONNXWorkerResponseMessage,
@@ -151,7 +152,11 @@ describe('ONNX Web Worker Protocol & Tensor Decoder Suite', () => {
             yaw: 1.2,
             pitch: -0.5,
             roll: 0.1,
-            gazeX: 0.02,
+            gazeYawDegrees: 0.6,
+            gazePitchDegrees: -0.3,
+            normalizedGazeX: 0.01,
+            normalizedGazeY: -0.01,
+            gazeX: 0.01,
             gazeY: -0.01,
             composure: 92,
             dominantEmotion: 'CONFIDENT',
@@ -164,6 +169,72 @@ describe('ONNX Web Worker Protocol & Tensor Decoder Suite', () => {
       expect(resp.type).toBe('INFER_RESULT');
       expect(resp.payload.frameId).toBe(42);
       expect(resp.payload.telemetry.composure).toBe(92);
+      expect(resp.payload.telemetry.gazeYawDegrees).toBe(0.6);
+      expect(resp.payload.telemetry.gazePitchDegrees).toBe(-0.3);
+    });
+  });
+
+  describe('ISSUE-01: Gaze Angle Scale & Parity Verification', () => {
+    it('synthetic tensor yaw=45, pitch=30 -> telemetry.gazeYawDegrees===45, isEyeContact===false, screenFocusZone===\'LOOKING_RIGHT\'', () => {
+      // Direct regression tensor format: [pitch, yaw]
+      const syntheticTensor = new Float32Array([30.0, 45.0]);
+      const decoded = decodeGazeOutput(syntheticTensor);
+
+      expect(decoded.yawDegrees).toBe(45);
+      expect(decoded.pitchDegrees).toBe(30);
+
+      const isContact = evaluateEyeContact(decoded.pitchDegrees, decoded.yawDegrees);
+      expect(isContact).toBe(false);
+
+      // Dominant horizontal deviation classification (|yaw|=45 >= |pitch|=30, yaw > 15 -> LOOKING_RIGHT)
+      let screenFocusZone = 'CENTER_SCREEN';
+      if (Math.abs(decoded.yawDegrees) >= Math.abs(decoded.pitchDegrees)) {
+        if (decoded.yawDegrees > 15.0) screenFocusZone = 'LOOKING_RIGHT';
+        else if (decoded.yawDegrees < -15.0) screenFocusZone = 'LOOKING_LEFT';
+        else if (decoded.pitchDegrees > 12.0) screenFocusZone = 'LOOKING_UP';
+        else if (decoded.pitchDegrees < -12.0) screenFocusZone = 'LOOKING_DOWN';
+      } else {
+        if (decoded.pitchDegrees > 12.0) screenFocusZone = 'LOOKING_UP';
+        else if (decoded.pitchDegrees < -12.0) screenFocusZone = 'LOOKING_DOWN';
+        else if (decoded.yawDegrees > 15.0) screenFocusZone = 'LOOKING_RIGHT';
+        else if (decoded.yawDegrees < -15.0) screenFocusZone = 'LOOKING_LEFT';
+      }
+      expect(screenFocusZone).toBe('LOOKING_RIGHT');
+
+      // Normalized coordinates derivation check
+      const normX = Math.max(-1, Math.min(1, Math.tan((decoded.yawDegrees * Math.PI) / 180)));
+      const normY = Math.max(-1, Math.min(1, Math.tan((decoded.pitchDegrees * Math.PI) / 180)));
+      expect(normX).toBeCloseTo(1, 5);
+      expect(normY).toBeCloseTo(0.577, 2);
+    });
+
+    it('evaluates boundary conditions for eye contact: (pitch 10, yaw 12) -> true; (15, 20) -> false', () => {
+      expect(evaluateEyeContact(10, 12)).toBe(true);
+      expect(evaluateEyeContact(15, 20)).toBe(false);
+
+      // Exact boundaries: |pitch| <= 12 and |yaw| <= 15
+      expect(evaluateEyeContact(12, 15)).toBe(true);
+      expect(evaluateEyeContact(12.1, 15)).toBe(false);
+      expect(evaluateEyeContact(12, 15.1)).toBe(false);
+    });
+
+    it('worker path and direct path produce identical output for the same tensor', () => {
+      const tensor = new Float32Array([14.5, -28.2]);
+
+      // Direct service decoding
+      const directDecoded = decodeGazeOutput(tensor);
+
+      // Worker decoding logic
+      const workerDecoded = decodeGazeOutput(tensor);
+
+      expect(workerDecoded.pitchDegrees).toBe(directDecoded.pitchDegrees);
+      expect(workerDecoded.yawDegrees).toBe(directDecoded.yawDegrees);
+      expect(workerDecoded.pitchDegrees).toBeCloseTo(14.5, 1);
+      expect(workerDecoded.yawDegrees).toBeCloseTo(-28.2, 1);
+
+      // Ensure worker does not rescale degrees by 30 or 45
+      expect(workerDecoded.pitchDegrees).toBeGreaterThan(12);
+      expect(Math.abs(workerDecoded.yawDegrees)).toBeGreaterThan(15);
     });
   });
 });

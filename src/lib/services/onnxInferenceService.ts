@@ -455,10 +455,17 @@ async function runGazeONNX(
   const isEyeContact = Math.abs(pitchDegrees) <= 12.0 && Math.abs(yawDegrees) <= 15.0;
 
   let screenFocusZone = 'CENTER_SCREEN';
-  if (pitchDegrees > 12.0) screenFocusZone = 'LOOKING_UP';
-  else if (pitchDegrees < -12.0) screenFocusZone = 'LOOKING_DOWN';
-  else if (yawDegrees < -15.0) screenFocusZone = 'LOOKING_LEFT';
-  else if (yawDegrees > 15.0) screenFocusZone = 'LOOKING_RIGHT';
+  if (Math.abs(yawDegrees) >= Math.abs(pitchDegrees)) {
+    if (yawDegrees > 15.0) screenFocusZone = 'LOOKING_RIGHT';
+    else if (yawDegrees < -15.0) screenFocusZone = 'LOOKING_LEFT';
+    else if (pitchDegrees > 12.0) screenFocusZone = 'LOOKING_UP';
+    else if (pitchDegrees < -12.0) screenFocusZone = 'LOOKING_DOWN';
+  } else {
+    if (pitchDegrees > 12.0) screenFocusZone = 'LOOKING_UP';
+    else if (pitchDegrees < -12.0) screenFocusZone = 'LOOKING_DOWN';
+    else if (yawDegrees > 15.0) screenFocusZone = 'LOOKING_RIGHT';
+    else if (yawDegrees < -15.0) screenFocusZone = 'LOOKING_LEFT';
+  }
 
   const inferenceTimeMs = Math.round((performance.now() - t0) * 10) / 10;
 
@@ -650,8 +657,12 @@ export interface SmoothedTelemetry {
   yaw: number;
   pitch: number;
   roll: number;
-  gazeX: number;
-  gazeY: number;
+  gazeYawDegrees: number;
+  gazePitchDegrees: number;
+  normalizedGazeX?: number;
+  normalizedGazeY?: number;
+  gazeX?: number;
+  gazeY?: number;
   composure: number;
   dominantEmotion: DiscreteEmotion;
   totalInferenceTimeMs: number;
@@ -664,6 +675,10 @@ let smoothedState: SmoothedTelemetry = {
   yaw: 0,
   pitch: 0,
   roll: 0,
+  gazeYawDegrees: 0,
+  gazePitchDegrees: 0,
+  normalizedGazeX: 0,
+  normalizedGazeY: 0,
   gazeX: 0,
   gazeY: 0,
   composure: 85,
@@ -723,8 +738,12 @@ export async function runContinuousUnifiedONNX(
         yaw:                 Math.round(smoothedState.yaw   * 10) / 10,
         pitch:               Math.round(smoothedState.pitch * 10) / 10,
         roll:                Math.round(smoothedState.roll  * 10) / 10,
-        gazeX:               Math.round(smoothedState.gazeX  * 100) / 100,
-        gazeY:               Math.round(smoothedState.gazeY  * 100) / 100,
+        gazeYawDegrees:      Math.round(smoothedState.gazeYawDegrees * 10) / 10,
+        gazePitchDegrees:    Math.round(smoothedState.gazePitchDegrees * 10) / 10,
+        normalizedGazeX:     smoothedState.normalizedGazeX ?? 0,
+        normalizedGazeY:     smoothedState.normalizedGazeY ?? 0,
+        gazeX:               smoothedState.gazeX ?? 0,
+        gazeY:               smoothedState.gazeY ?? 0,
         composure:           Math.round(smoothedState.composure),
         dominantEmotion:     smoothedState.dominantEmotion,
         totalInferenceTimeMs: smoothedState.totalInferenceTimeMs,
@@ -753,8 +772,14 @@ export async function runContinuousUnifiedONNX(
     }
 
     if (gaze) {
-      smoothedState.gazeX = smoothedState.gazeX * (1 - alphaGaze) + (gaze.yawDegrees   / 45.0) * alphaGaze;
-      smoothedState.gazeY = smoothedState.gazeY * (1 - alphaGaze) + (gaze.pitchDegrees / 45.0) * alphaGaze;
+      smoothedState.gazeYawDegrees = smoothedState.gazeYawDegrees * (1 - alphaGaze) + gaze.yawDegrees * alphaGaze;
+      smoothedState.gazePitchDegrees = smoothedState.gazePitchDegrees * (1 - alphaGaze) + gaze.pitchDegrees * alphaGaze;
+      const normX = Math.max(-1, Math.min(1, Math.tan((smoothedState.gazeYawDegrees * Math.PI) / 180)));
+      const normY = Math.max(-1, Math.min(1, Math.tan((smoothedState.gazePitchDegrees * Math.PI) / 180)));
+      smoothedState.normalizedGazeX = Math.round(normX * 100) / 100;
+      smoothedState.normalizedGazeY = Math.round(normY * 100) / 100;
+      smoothedState.gazeX = smoothedState.normalizedGazeX;
+      smoothedState.gazeY = smoothedState.normalizedGazeY;
     }
 
     if (affect) {
@@ -773,8 +798,12 @@ export async function runContinuousUnifiedONNX(
     yaw:                 Math.round(smoothedState.yaw   * 10) / 10,
     pitch:               Math.round(smoothedState.pitch * 10) / 10,
     roll:                Math.round(smoothedState.roll  * 10) / 10,
-    gazeX:               Math.round(smoothedState.gazeX  * 100) / 100,
-    gazeY:               Math.round(smoothedState.gazeY  * 100) / 100,
+    gazeYawDegrees:      Math.round(smoothedState.gazeYawDegrees * 10) / 10,
+    gazePitchDegrees:    Math.round(smoothedState.gazePitchDegrees * 10) / 10,
+    normalizedGazeX:     smoothedState.normalizedGazeX ?? 0,
+    normalizedGazeY:     smoothedState.normalizedGazeY ?? 0,
+    gazeX:               smoothedState.gazeX ?? 0,
+    gazeY:               smoothedState.gazeY ?? 0,
     composure:           Math.round(smoothedState.composure),
     dominantEmotion:     smoothedState.dominantEmotion,
     totalInferenceTimeMs: smoothedState.totalInferenceTimeMs,
