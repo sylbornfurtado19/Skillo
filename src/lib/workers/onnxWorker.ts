@@ -49,15 +49,34 @@ let smoothedState: SmoothedTelemetry = {
 
 async function getOrt(): Promise<any> {
   if (!ortModulePromise) {
-    ortModulePromise = import('onnxruntime-web').then((ort) => {
-      try {
-        ort.env.wasm.numThreads = 1;
-        ort.env.wasm.simd = true;
-      } catch (err) {
-        console.warn('[ONNXWorker] WebAssembly setup warning:', err);
-      }
-      return ort;
-    });
+    ortModulePromise = import('onnxruntime-web')
+      .then((ort) => {
+        try {
+          // Configure same-origin wasmPaths to prevent CSP violations and support offline/self-hosted execution
+          ort.env.wasm.wasmPaths = '/wasm/';
+
+          // Multi-threading requires crossOriginIsolated (SharedArrayBuffer)
+          const isIsolated =
+            typeof crossOriginIsolated !== 'undefined'
+              ? crossOriginIsolated
+              : typeof self !== 'undefined' && 'crossOriginIsolated' in self
+                ? (self as any).crossOriginIsolated
+                : false;
+          const hardwareCores =
+            typeof navigator !== 'undefined' && navigator.hardwareConcurrency
+              ? navigator.hardwareConcurrency
+              : 1;
+          ort.env.wasm.numThreads = isIsolated ? Math.min(4, Math.max(1, hardwareCores - 1)) : 1;
+          ort.env.wasm.simd = true;
+        } catch (err) {
+          console.error('[ONNXWorker] WebAssembly setup error:', err);
+        }
+        return ort;
+      })
+      .catch((err) => {
+        console.error('[ONNXWorker] Failed to load onnxruntime-web package:', err);
+        throw err;
+      });
   }
   return ortModulePromise;
 }
@@ -109,6 +128,21 @@ if (typeof self !== 'undefined') {
 
         try {
           const ort = await getOrt();
+
+          // Configure wasm options from payload if provided
+          const isIsolated =
+            typeof crossOriginIsolated !== 'undefined'
+              ? crossOriginIsolated
+              : typeof self !== 'undefined' && 'crossOriginIsolated' in self
+                ? (self as any).crossOriginIsolated
+                : false;
+          if (payload.wasmThreads !== undefined) {
+            ort.env.wasm.numThreads = isIsolated ? payload.wasmThreads : 1;
+          }
+          if (payload.enableSimd !== undefined) {
+            ort.env.wasm.simd = payload.enableSimd;
+          }
+
           const modelKeys: ONNXModelType[] = ['affect', 'gaze', 'pose'];
 
           await Promise.all(
@@ -121,7 +155,7 @@ if (typeof self !== 'undefined') {
                 sessionCache[key] = session;
                 loadedModels[key] = true;
               } catch (err) {
-                console.warn(`[ONNXWorker] Failed to load ${key} model from ${modelPaths[key]}:`, err);
+                console.error(`[ONNXWorker] Failed to load ${key} model from ${modelPaths[key]}:`, err);
                 loadedModels[key] = false;
               }
             })
@@ -136,6 +170,7 @@ if (typeof self !== 'undefined') {
             },
           });
         } catch (err: any) {
+          console.error('[ONNXWorker] Fatal initialization failure:', err);
           postResponse({
             type: 'INIT_FAILURE',
             payload: { error: err?.message || 'Failed to initialize ONNX Runtime Web in worker' },

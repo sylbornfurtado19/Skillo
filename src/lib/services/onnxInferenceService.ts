@@ -45,15 +45,26 @@ async function getOrt(): Promise<any> {
   }
 
   if (!ortModulePromise) {
-    ortModulePromise = import('onnxruntime-web').then((ort) => {
-      try {
-        ort.env.wasm.numThreads = 1;
-        ort.env.wasm.simd = true;
-      } catch (err) {
-        console.warn('ONNX WebAssembly setup warning:', err);
-      }
-      return ort;
-    });
+    ortModulePromise = import('onnxruntime-web')
+      .then((ort) => {
+        try {
+          // Configure same-origin wasmPaths to prevent CSP violations and support offline/self-hosted execution
+          ort.env.wasm.wasmPaths = '/wasm/';
+
+          // Multi-threading requires crossOriginIsolated (SharedArrayBuffer)
+          const isIsolated = typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated;
+          const hardwareCores = typeof navigator !== 'undefined' && navigator.hardwareConcurrency ? navigator.hardwareConcurrency : 1;
+          ort.env.wasm.numThreads = isIsolated ? Math.min(4, Math.max(1, hardwareCores - 1)) : 1;
+          ort.env.wasm.simd = true;
+        } catch (err) {
+          console.error('[ONNX] WebAssembly setup error:', err);
+        }
+        return ort;
+      })
+      .catch((err) => {
+        console.error('[ONNX] Failed to load onnxruntime-web package:', err);
+        throw err;
+      });
   }
 
   return ortModulePromise;
@@ -82,7 +93,7 @@ async function getONNXSession(modelType: ONNXModelType): Promise<any> {
     sessionCache[modelType] = session;
     return session;
   } catch (error) {
-    console.warn(`Failed to load ONNX model [${modelType}] from ${modelPaths[modelType]}:`, error);
+    console.error(`[ONNX] Failed to load ONNX model [${modelType}] from ${modelPaths[modelType]}:`, error);
     throw error;
   }
 }

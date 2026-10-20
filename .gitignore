@@ -58,4 +58,7 @@ test-results/
 replay_report.json
 microtrack_perf_benchmark.json
 startup_handoff_failures.json
+
+# onnxruntime-web copied assets (copied via prebuild/postinstall)
+public/wasm/ort-wasm-*
 baseline_fail_1.png

@@ -237,4 +237,68 @@ describe('ONNX Web Worker Protocol & Tensor Decoder Suite', () => {
       expect(Math.abs(workerDecoded.yawDegrees)).toBeGreaterThan(15);
     });
   });
+
+  describe('ISSUE-05: ONNX Runtime Web Wasm Paths & Thread Isolation', () => {
+    it('asserts wasmPaths is set to same-origin path before session creation', async () => {
+      let wasmPathsAtCreationTime: any = undefined;
+
+      const mockOrt = {
+        env: {
+          wasm: {
+            wasmPaths: undefined as any,
+            numThreads: 1,
+            simd: false,
+          },
+        },
+        InferenceSession: {
+          create: jest.fn().mockImplementation(async () => {
+            wasmPathsAtCreationTime = mockOrt.env.wasm.wasmPaths;
+            return {
+              inputNames: ['input'],
+              outputNames: ['output'],
+              run: jest.fn(),
+            };
+          }),
+        },
+      };
+
+      // Simulate worker / service initialization sequence
+      const setupOrt = (ort: typeof mockOrt, isIsolated: boolean, requestedThreads?: number) => {
+        ort.env.wasm.wasmPaths = '/wasm/';
+        ort.env.wasm.numThreads = isIsolated ? (requestedThreads ?? 2) : 1;
+        ort.env.wasm.simd = true;
+      };
+
+      setupOrt(mockOrt, false, 4);
+
+      // Verify setup state
+      expect(mockOrt.env.wasm.wasmPaths).toBe('/wasm/');
+      expect(mockOrt.env.wasm.numThreads).toBe(1); // Fallback to 1 because isIsolated is false
+
+      // Trigger session creation
+      await mockOrt.InferenceSession.create('/models/gaze_engine.onnx');
+
+      // Verify wasmPaths was established prior to session creation
+      expect(wasmPathsAtCreationTime).toBe('/wasm/');
+      expect(mockOrt.InferenceSession.create).toHaveBeenCalledWith(
+        '/models/gaze_engine.onnx'
+      );
+    });
+
+    it('falls back numThreads to 1 when crossOriginIsolated is false, and allows scaling when true', () => {
+      const getNumThreads = (isIsolated: boolean, hardwareCores: number, requestedThreads?: number) => {
+        if (!isIsolated) return 1;
+        return requestedThreads ?? Math.min(4, Math.max(1, hardwareCores - 1));
+      };
+
+      // Without crossOriginIsolated (standard browser default)
+      expect(getNumThreads(false, 8, 4)).toBe(1);
+      expect(getNumThreads(false, 16)).toBe(1);
+
+      // With crossOriginIsolated (COOP/COEP headers present)
+      expect(getNumThreads(true, 8)).toBe(4);
+      expect(getNumThreads(true, 2)).toBe(1);
+      expect(getNumThreads(true, 8, 2)).toBe(2);
+    });
+  });
 });

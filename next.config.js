@@ -27,6 +27,18 @@ const nextConfig = {
     ];
   },
   async headers() {
+    const cspHeader = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' 'unsafe-inline' blob: https://cdn.jsdelivr.net",
+      "worker-src 'self' blob:",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://images.unsplash.com https://api.dicebear.com",
+      "connect-src 'self' blob: https:",
+      "font-src 'self' data:",
+      "object-src 'none'",
+      "base-uri 'self'",
+    ].join('; ');
+
     return [
       {
         source: '/:path*',
@@ -34,12 +46,33 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Content-Security-Policy', value: cspHeader },
+        ],
+      },
+      {
+        source: '/wasm/:path*.wasm',
+        headers: [
+          { key: 'Content-Type', value: 'application/wasm' },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/wasm/:path*.mjs',
+        headers: [
+          { key: 'Content-Type', value: 'text/javascript' },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/wasm/:path*.js',
+        headers: [
+          { key: 'Content-Type', value: 'text/javascript' },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
       {
         source: '/wasm/:path*',
         headers: [
-          { key: 'Content-Type', value: 'application/wasm' },
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },

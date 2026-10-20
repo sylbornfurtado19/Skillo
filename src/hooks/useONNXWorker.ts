@@ -98,7 +98,7 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
       workerRef.current = worker;
       setIsWorkerActive(true);
     } catch (err: any) {
-      console.warn('[useONNXWorker] Worker instantiation failed, falling back to direct execution:', err);
+      console.error('[useONNXWorker] Worker instantiation failed, falling back to direct execution:', err);
       setActiveMode('direct-geometric');
       setIsReady(true);
       return;
@@ -117,7 +117,7 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
         }
 
         case 'INIT_FAILURE': {
-          console.warn('[useONNXWorker] Model init failure, falling back to direct mode:', msg.payload.error);
+          console.error('[useONNXWorker] Model init failure, falling back to direct mode:', msg.payload.error);
           setWorkerError(msg.payload.error);
           setActiveMode('direct-geometric');
           setIsReady(true);
