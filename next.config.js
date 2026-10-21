@@ -27,12 +27,23 @@ const nextConfig = {
     ];
   },
   async headers() {
+    // Firebase Auth loads scripts and iframes from Google at sign-in time: reCAPTCHA Enterprise
+    // (email/password protection), gapi for signInWithPopup, and the auth handler iframe on the
+    // authDomain. If CSP blocks any of them the SDK only reports auth/internal-error.
+    const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+    const firebaseFrameSources = [
+      'https://*.firebaseapp.com',
+      'https://*.web.app',
+      authDomain ? `https://${authDomain}` : '',
+    ].filter(Boolean);
+
     const cspHeader = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' 'unsafe-inline' blob: https://cdn.jsdelivr.net",
+      "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://apis.google.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net",
+      `frame-src 'self' ${firebaseFrameSources.join(' ')} https://www.google.com https://recaptcha.google.com https://www.recaptcha.net`,
       "worker-src 'self' blob:",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://images.unsplash.com https://api.dicebear.com",
+      "img-src 'self' data: blob: https://images.unsplash.com https://api.dicebear.com https://lh3.googleusercontent.com https://www.gstatic.com",
       "connect-src 'self' blob: https:",
       "font-src 'self' data:",
       "object-src 'none'",
