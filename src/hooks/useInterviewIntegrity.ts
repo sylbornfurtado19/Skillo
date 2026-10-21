@@ -20,6 +20,37 @@ import {
 
 const INTEGRITY_STORAGE_KEY_PREFIX = 'skillo_integrity_ledger_';
 
+export interface MultiTabBroadcastMessage {
+  type: 'NEW_TAB_JOIN';
+  tabId: string;
+  sessionKey: string;
+}
+
+/**
+ * Type guard to validate structured BroadcastChannel messages.
+ * Ignores raw strings and malformed payloads.
+ */
+export function isMultiTabBroadcastMessage(data: unknown): data is MultiTabBroadcastMessage {
+  if (!data || typeof data !== 'object') {
+    return false;
+  }
+  const msg = data as Partial<MultiTabBroadcastMessage>;
+  return (
+    msg.type === 'NEW_TAB_JOIN' &&
+    typeof msg.tabId === 'string' &&
+    msg.tabId.trim().length > 0 &&
+    typeof msg.sessionKey === 'string' &&
+    msg.sessionKey.trim().length > 0
+  );
+}
+
+export function generateTabId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `tab_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
 export interface UseInterviewIntegrityOptions {
   sessionKey: string;
   activeQuestionId?: string;
@@ -55,6 +86,9 @@ export function useInterviewIntegrity({
 }: UseInterviewIntegrityOptions): UseInterviewIntegrityReturn {
   const sessionStartTsRef = useRef<number>(Date.now());
   const storageKey = `${INTEGRITY_STORAGE_KEY_PREFIX}${sessionKey}`;
+
+  // Per-tab instance ID for multi-tab BroadcastChannel communication (ISSUE-10)
+  const tabIdRef = useRef<string>(generateTabId());
 
   // 1. Initialize or restore ledger state from sessionStorage (D4)
   const [ledger, setLedger] = useState<IntegrityLedgerState>(() => {
@@ -323,17 +357,35 @@ export function useInterviewIntegrity({
     };
 
     // I. BroadcastChannel Single-Interview Lock
+    // Note: A same-origin script can still read a nonce/tabId, so this is not an
+    // absolute security boundary; it is defense-in-depth hardening against
+    // accidental cross-tab crosstalk and naive/unstructured payload injection.
     let channel: BroadcastChannel | null = null;
+    const currentTabId = tabIdRef.current;
+
     try {
-      channel = new BroadcastChannel(`skillo_exam_lock_${sessionKey}`);
-      channel.onmessage = (event) => {
-        if (event.data === 'NEW_TAB_JOIN') {
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel(`skillo_exam_lock_${sessionKey}`);
+        channel.onmessage = (event: MessageEvent) => {
+          if (!isMultiTabBroadcastMessage(event.data)) {
+            return;
+          }
+          if (event.data.tabId === currentTabId) {
+            return;
+          }
+          if (event.data.sessionKey !== sessionKey) {
+            return;
+          }
           recordViolation('multi_tab', 'multi_tab', false);
-        }
-      };
-      channel.postMessage('NEW_TAB_JOIN');
+        };
+        channel.postMessage({
+          type: 'NEW_TAB_JOIN',
+          tabId: currentTabId,
+          sessionKey,
+        } satisfies MultiTabBroadcastMessage);
+      }
     } catch {
-      // Fallback for older browsers
+      // Fallback for environments where BroadcastChannel is unsupported or restricted
     }
 
     // J. Camera permission status listener
