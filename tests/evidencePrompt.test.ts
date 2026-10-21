@@ -45,6 +45,7 @@ describe('Evidence Prompt Formatter & Sanitizer', () => {
   it('contains mandatory fairness disclaimer forbidding criterion score penalties', () => {
     const block = buildEvidencePromptBlock(dummyReceipt);
     expect(block).toContain('CRITICAL FAIRNESS NOTICE FOR EVALUATOR');
+    expect(block).toContain('Skin-mask coverage is a lighting-sensitive heuristic and must not be used as evidence of absence');
     expect(block).toContain('MUST NOT alter, reduce, or bias the 4 core technical rubric scores');
     expect(block).toContain('technicalAccuracy, systemDesignLogic, edgeCaseHandling, communicationClarity');
   });
@@ -54,9 +55,19 @@ describe('Evidence Prompt Formatter & Sanitizer', () => {
     expect(block).toContain('[IVP-Q1] Q1:');
     expect(block).toContain('Illumination: ok');
     expect(block).toContain('Face Presence: 98%');
+    expect(block).toContain('skinMaskCoverage: 22.4%');
     expect(block).toContain('16 blinks/min');
     expect(block).toContain('38.5% speech/mouth activity');
     expect(block).toContain('Digest: a1b2c3d4e5f6...');
+  });
+
+  it('formats unknown presence gracefully when presenceRatio is null', () => {
+    const receiptWithNullPresence: IVPEvidenceReceipt = {
+      ...dummyReceipt,
+      perQuestion: [{ ...dummyQuestionEvidence, presenceRatio: null }],
+    };
+    const block = buildEvidencePromptBlock(receiptWithNullPresence);
+    expect(block).toContain('Face Presence: unknown');
   });
 
   it('sanitizes and filters AI-generated ivpObservations strictly', () => {

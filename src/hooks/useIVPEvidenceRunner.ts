@@ -36,6 +36,7 @@ export interface UseIVPEvidenceRunnerOptions {
   isThrottled?: boolean;
   isInterviewerSpeaking?: boolean;
   faceRoi?: FaceRoi | null;
+  faceDetected?: boolean | null;
   ear?: number | null;
   mar?: number | null;
   enabled?: boolean;
@@ -62,6 +63,7 @@ export function useIVPEvidenceRunner({
   isThrottled = false,
   isInterviewerSpeaking = false,
   faceRoi = null,
+  faceDetected = null,
   ear = null,
   mar = null,
   enabled = true,
@@ -170,6 +172,7 @@ export function useIVPEvidenceRunner({
         // Execute 5 classical kernels sequentially
         const result = runner.executeFrame(video, {
           faceRoi,
+          faceDetected,
           captureThumbKind,
           evidenceId,
           blinkRatePerMin: blinkRate,
@@ -206,6 +209,7 @@ export function useIVPEvidenceRunner({
     isInterviewerSpeaking,
     intervalMs,
     faceRoi,
+    faceDetected,
     ear,
     mar,
     videoRef,

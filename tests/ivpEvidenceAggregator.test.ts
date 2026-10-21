@@ -15,6 +15,8 @@ describe('IVP Evidence Aggregator & Digest Suite', () => {
     maxVal: 220,
     clippedPixelsPct: 1.5,
     skinPixelRatio: 0.22,
+    skinMaskCoverage: 0.22,
+    faceDetected: true,
     sobelMeanMagnitude: 35.4,
     sobelEdgeRatio: 0.08,
     madScore: 2.1,
@@ -40,6 +42,7 @@ describe('IVP Evidence Aggregator & Digest Suite', () => {
       ...dummySample,
       meanLuminance: 140,
       skinPixelRatio: 0.28,
+      skinMaskCoverage: 0.28,
       sobelMeanMagnitude: 45.0,
       sobelEdgeRatio: 0.12,
       madScore: 3.5,
@@ -51,11 +54,23 @@ describe('IVP Evidence Aggregator & Digest Suite', () => {
     expect(summary.frames).toBe(2);
     expect(summary.meanLuminance).toBe(130);
     expect(summary.skinMaskCoveragePct).toBe(25); // (0.22 + 0.28) / 2 * 100
-    expect(summary.presenceRatio).toBe(1); // both > 0.05
+    expect(summary.presenceRatio).toBe(1); // both faceDetected = true
     expect(summary.sharpnessScore).toBe(40.2); // (35.4 + 45.0) / 2
     expect(summary.motionEnergy).toBe(2.8); // (2.1 + 3.5) / 2
     expect(summary.blinkRatePerMin).toBe(20); // (18 + 22) / 2
     expect(summary.mouthActivityPct).toBe(50); // 1 active out of 2 = 50%
+  });
+
+  it('degrades presence to null (unknown) when vision worker detection is unavailable', () => {
+    let acc = createQuestionAccumulator('q-nodetect', 0);
+    acc = addSampleToAccumulator(acc, {
+      ...dummySample,
+      faceDetected: null, // worker unavailable
+      skinMaskCoverage: 0.25, // even if skin pixels exist!
+    });
+    const summary = summarizeQuestionEvidence(acc);
+    expect(summary.presenceRatio).toBeNull();
+    expect(summary.skinMaskCoveragePct).toBe(25);
   });
 
   it('classifies lighting illumination properly', () => {

@@ -19,7 +19,8 @@ export function buildEvidencePromptBlock(evidence?: IVPEvidenceReceipt | null): 
   const lines: string[] = [
     '',
     '=== CANDIDATE DELIVERY & CAPTURE TELEMETRY (IVP EDGE SENSOR EVIDENCE) ===',
-    'CRITICAL FAIRNESS NOTICE FOR EVALUATOR: The following measurements were computed locally on the candidate device via real-time computer vision (histogram radiometric analysis, Otsu binarization, Sobel edge gradients, and inter-frame motion MAD).',
+    'CRITICAL FAIRNESS NOTICE FOR EVALUATOR: The following measurements were computed locally on the candidate device via real-time computer vision (MediaPipe facial tracking, histogram radiometric analysis, Sobel edge gradients, and inter-frame motion MAD).',
+    'MANDATORY FAIRNESS NOTICE: Skin-mask coverage is a lighting-sensitive heuristic and must not be used as evidence of absence. Face presence is derived authoritatively from MediaPipe face detection.',
     'MANDATORY CONSTRAINT: This telemetry is provided SOLELY for physical delivery commentary (composure, eye contact, speaking cadence, capture lighting). You MUST NOT alter, reduce, or bias the 4 core technical rubric scores (technicalAccuracy, systemDesignLogic, edgeCaseHandling, communicationClarity) based on these sensor metrics.',
     '',
     `Session Telemetry Summary: ${evidence.framesAnalyzed} frames analyzed @ ~${evidence.samplingHz} Hz (Avg kernel latency: ${evidence.avgKernelMs}ms, Digest: ${evidence.digestSha256.slice(0, 12)}...)`,
@@ -29,8 +30,12 @@ export function buildEvidencePromptBlock(evidence?: IVPEvidenceReceipt | null): 
   for (const q of evidence.perQuestion) {
     const blinkStr = q.blinkRatePerMin !== undefined ? `${q.blinkRatePerMin} blinks/min` : 'N/A';
     const mouthStr = q.mouthActivityPct !== undefined ? `${q.mouthActivityPct}% speech/mouth activity` : 'N/A';
+    const presenceStr =
+      q.presenceRatio !== null && q.presenceRatio !== undefined
+        ? `${(q.presenceRatio * 100).toFixed(0)}%`
+        : 'unknown';
     lines.push(
-      `- [${q.evidenceId}] Q${q.questionIndex + 1}: Illumination: ${q.illumination} (mean: ${q.meanLuminance}, contrast std: ${q.contrastStdDev}) | Face Presence: ${(q.presenceRatio * 100).toFixed(0)}% (skin coverage: ${q.skinMaskCoveragePct}%) | Sharpness: ${q.sharpnessScore} | Motion: ${q.motionEnergy} | Dynamics: ${blinkStr}, ${mouthStr}`
+      `- [${q.evidenceId}] Q${q.questionIndex + 1}: Illumination: ${q.illumination} (mean: ${q.meanLuminance}, contrast std: ${q.contrastStdDev}) | Face Presence: ${presenceStr} (skinMaskCoverage: ${q.skinMaskCoveragePct}%) | Sharpness: ${q.sharpnessScore} | Motion: ${q.motionEnergy} | Dynamics: ${blinkStr}, ${mouthStr}`
     );
   }
 

@@ -71,6 +71,7 @@ export interface UseIVPSessionPipelineReturn {
   lastEar: number | null;
   lastMar: number | null;
   faceBox: { x: number; y: number; width: number; height: number } | null;
+  faceDetected: boolean | null;
   clearPerQuestionFrames: () => void;
   getCapturedTelemetry: (filterQuestionId?: string) => {
     capturedGazeFrames: GazeFrameInput[];
@@ -389,6 +390,9 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
     lastEar: lastLandmarks?.envelope.faceDetected ? lastLandmarks.envelope.ear : null,
     lastMar: lastLandmarks?.envelope.faceDetected ? lastLandmarks.envelope.mar : null,
     faceBox: lastLandmarks?.envelope.faceDetected ? lastLandmarks.envelope.faceBox : null,
+    faceDetected: lastLandmarks
+      ? lastLandmarks.envelope.faceDetected && (lastLandmarks.envelope.regionConfidences?.overall ?? 1) >= 0.5
+      : null,
     clearPerQuestionFrames,
     getCapturedTelemetry,
     getQuestionTelemetry,

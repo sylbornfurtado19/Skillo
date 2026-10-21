@@ -21,6 +21,7 @@ import {
 import { renderSegmentedBackground } from './backgroundSegmentation';
 import { getRawIVPFeatureFlags, subscribeIVPFeatureFlags, type IVPFeatureFlags } from './ivpFeatureFlags';
 import { MicroPatchTracker } from './microPatchTracker';
+import { AdaptiveSkinCalibrator } from './adaptiveSkinCalibrator';
 import type { KernelSampleStats } from './ivpEvidenceAggregator';
 import type { IVPKernelCounts, IVPEvidenceThumbnail } from '@/types/ivpEvidence';
 
@@ -65,6 +66,7 @@ export class IVPKernelRunner {
 
   private isRunning = false;
   private patchTracker = new MicroPatchTracker();
+  private skinCalibrator = new AdaptiveSkinCalibrator();
 
   constructor() {
     this.initBuffers();
@@ -122,7 +124,12 @@ export class IVPKernelRunner {
     if (this.prevData) {
       this.prevData.data.fill(0);
     }
+    this.skinCalibrator.reset();
     this.isRunning = false;
+  }
+
+  public getSkinCalibrator(): AdaptiveSkinCalibrator {
+    return this.skinCalibrator;
   }
 
   /**
@@ -198,6 +205,7 @@ export class IVPKernelRunner {
     source: HTMLVideoElement | ImageData,
     options: {
       faceRoi?: FaceRoi | null;
+      faceDetected?: boolean | null;
       captureThumbKind?: 'equalized' | 'otsu' | 'sobel' | 'motion';
       evidenceId?: string;
       blinkRatePerMin?: number;
@@ -229,6 +237,16 @@ export class IVPKernelRunner {
         this.srcData!.data.set(read.data);
       }
 
+      // Adaptive skin chrominance calibration on confirmed face detections
+      this.skinCalibrator.addFrame(
+        this.srcData!,
+        RUNNER_WIDTH,
+        RUNNER_HEIGHT,
+        options.faceRoi,
+        options.faceDetected
+      );
+      const skinRange = this.skinCalibrator.getRange();
+
       // 2. Unit 2: Luminance Histogram Analysis
       const histRes = computeLuminanceHistogram(this.srcData!, RUNNER_WIDTH, RUNNER_HEIGHT);
 
@@ -242,7 +260,8 @@ export class IVPKernelRunner {
         this.otsuData!,
         RUNNER_WIDTH,
         RUNNER_HEIGHT,
-        options.faceRoi
+        options.faceRoi,
+        skinRange
       );
       this.kernelCounts.otsuYCrCb += 1;
 
@@ -284,6 +303,8 @@ export class IVPKernelRunner {
         maxVal: histRes.maxVal,
         clippedPixelsPct: clippedPct,
         skinPixelRatio: otsuRes.skinPixelRatio / 100,
+        skinMaskCoverage: (otsuRes.skinMaskCoverage ?? otsuRes.skinPixelRatio) / 100,
+        faceDetected: options.faceDetected,
         sobelMeanMagnitude: sobelRes.meanMagnitude,
         sobelEdgeRatio: sobelRes.edgePixelRatio / 100,
         madScore: madRes.madScore,

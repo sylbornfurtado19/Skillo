@@ -179,7 +179,9 @@ export default function IVPEvidenceCard({
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-text-secondary">
-                    {(q.presenceRatio * 100).toFixed(0)}% (skin: {q.skinMaskCoveragePct}%)
+                    {q.presenceRatio !== null && q.presenceRatio !== undefined
+                      ? `${(q.presenceRatio * 100).toFixed(0)}% (skin: ${q.skinMaskCoveragePct}%)`
+                      : `Unknown (skin: ${q.skinMaskCoveragePct}%)`}
                   </td>
                   <td className="py-2.5 px-3 text-text-secondary">{q.sharpnessScore.toFixed(0)} / 100</td>
                   <td className="py-2.5 px-3 text-text-secondary">{q.motionEnergy.toFixed(2)}</td>

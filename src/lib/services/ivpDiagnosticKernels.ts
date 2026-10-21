@@ -47,6 +47,8 @@ export function ensureKernelBuffers(numPixels: number): void {
 // RESULT INTERFACES
 // =============================================================================
 
+import type { SkinChrominanceRange } from './adaptiveSkinCalibrator';
+
 export interface LuminanceHistogramResult {
   hist: Uint32Array;
   pdf: Float32Array;
@@ -58,7 +60,8 @@ export interface LuminanceHistogramResult {
 
 export interface OtsuSegmentationResult {
   otsuThreshold: number;
-  skinPixelRatio: number;
+  skinPixelRatio: number; // legacy alias for backward compatibility
+  skinMaskCoverage: number;
   skinPixelCount: number;
   centroidX: number;
   centroidY: number;
@@ -88,6 +91,7 @@ const _histResult: LuminanceHistogramResult = {
 const _otsuResult: OtsuSegmentationResult = {
   otsuThreshold: 138,
   skinPixelRatio: 0,
+  skinMaskCoverage: 0,
   skinPixelCount: 0,
   centroidX: 160,
   centroidY: 120,
@@ -212,8 +216,13 @@ export function applyYCrCbOtsuSegmentation(
   dstData: ImageData,
   width: number,
   height: number,
-  faceRoi?: FaceRoi | null
+  faceRoi?: FaceRoi | null,
+  skinRange?: SkinChrominanceRange | null
 ): OtsuSegmentationResult {
+  const effectiveCrMin = skinRange?.crMin ?? 133;
+  const effectiveCrMax = skinRange?.crMax ?? 180;
+  const effectiveCbMin = skinRange?.cbMin ?? 77;
+  const effectiveCbMax = skinRange?.cbMax ?? 130;
   const src = srcData.data;
   const dst = dstData.data;
   const numPixels = width * height;
@@ -264,7 +273,7 @@ export function applyYCrCbOtsuSegmentation(
         const i = row + px;
         const cr = _crBuf[i];
         const cb = _cbBuf[i];
-        if (cr >= 133 && cr <= 175 && cb >= 77 && cb <= 128 && cr >= cb) {
+        if (cr >= effectiveCrMin && cr <= effectiveCrMax && cb >= effectiveCbMin && cb <= effectiveCbMax && cr >= cb) {
           sumX += px;
           sumY += py;
           count++;
@@ -370,7 +379,7 @@ export function applyYCrCbOtsuSegmentation(
         const i = row + px;
         const cr = _crBuf[i];
         const cb = _cbBuf[i];
-        if (cr >= optThresh && cr <= 178 && cb >= 77 && cb <= 130 && cr >= cb) {
+        if (cr >= Math.min(optThresh, effectiveCrMin) && cr <= effectiveCrMax && cb >= effectiveCbMin && cb <= effectiveCbMax && cr >= cb) {
           sumCrSkin += cr;
           sumCbSkin += cb;
           countSkin++;
@@ -431,10 +440,10 @@ export function applyYCrCbOtsuSegmentation(
       // Inclusive human skin classification condition:
       // Accepts Fitzpatrick types I-VI and indoor webcam lighting, while rejecting eyes/mouth/hair
       const isSkin =
-        cr >= optThresh &&
-        cr <= 180 &&
-        cb >= 77 &&
-        cb <= 130 &&
+        cr >= Math.min(optThresh, effectiveCrMin) &&
+        cr <= effectiveCrMax &&
+        cb >= effectiveCbMin &&
+        cb <= effectiveCbMax &&
         cr >= cb &&
         r >= g - 6 &&
         r > b &&
@@ -507,8 +516,10 @@ export function applyYCrCbOtsuSegmentation(
     }
   }
 
+  const skinCoveragePct = numPixels > 0 ? (finalSkinCount / numPixels) * 100 : 0;
   _otsuResult.otsuThreshold = optThresh;
-  _otsuResult.skinPixelRatio = numPixels > 0 ? (finalSkinCount / numPixels) * 100 : 0;
+  _otsuResult.skinPixelRatio = skinCoveragePct;
+  _otsuResult.skinMaskCoverage = skinCoveragePct;
   _otsuResult.skinPixelCount = finalSkinCount;
   _otsuResult.centroidX = skinCount > 0 ? Math.round(sumX / skinCount) : Math.round(width / 2);
   _otsuResult.centroidY = skinCount > 0 ? Math.round(sumY / skinCount) : Math.round(height / 2);

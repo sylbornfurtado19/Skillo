@@ -313,6 +313,7 @@ export default function InterviewSession() {
     lastEar,
     lastMar,
     faceBox,
+    faceDetected,
     clearPerQuestionFrames,
     getCapturedTelemetry,
   } = useIVPSessionPipeline({
@@ -340,6 +341,7 @@ export default function InterviewSession() {
           height: faceBox.height,
         }
       : null,
+    faceDetected,
     ear: lastEar,
     mar: lastMar,
     enabled: preflightDone && !grading,

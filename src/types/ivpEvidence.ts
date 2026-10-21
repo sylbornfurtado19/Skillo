@@ -22,7 +22,7 @@ export interface IVPQuestionEvidence {
   clippedPct: number; // histogram stats
   illumination: 'underexposed' | 'ok' | 'overexposed' | 'uneven';
   skinMaskCoveragePct: number;
-  presenceRatio: number; // YCrCb+Otsu
+  presenceRatio: number | null; // MediaPipe face detection presence ratio (null = vision worker unavailable)
   sobelEdgeDensity: number;
   sharpnessScore: number; // focus/blur
   motionEnergy: number; // temporal MAD

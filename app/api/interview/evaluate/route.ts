@@ -144,7 +144,7 @@ const ivpQuestionEvidenceSchema = z.object({
   clippedPct: z.number().finite(),
   illumination: z.enum(['underexposed', 'ok', 'overexposed', 'uneven']),
   skinMaskCoveragePct: z.number().finite(),
-  presenceRatio: z.number().finite(),
+  presenceRatio: z.number().finite().nullable(),
   sobelEdgeDensity: z.number().finite(),
   sharpnessScore: z.number().finite(),
   motionEnergy: z.number().finite(),

@@ -18,7 +18,9 @@ export interface KernelSampleStats {
   minVal: number;
   maxVal: number;
   clippedPixelsPct: number;
-  skinPixelRatio: number;
+  skinPixelRatio?: number; // legacy alias
+  skinMaskCoverage?: number;
+  faceDetected?: boolean | null;
   sobelMeanMagnitude: number;
   sobelEdgeRatio: number;
   madScore: number;
@@ -90,6 +92,7 @@ export function summarizeQuestionEvidence(acc: QuestionSampleAccumulator): IVPQu
   let sumLum = 0;
   let sumClipped = 0;
   let sumSkin = 0;
+  let validDetectionCount = 0;
   let presentCount = 0;
   let sumSobelMean = 0;
   let sumSobelEdge = 0;
@@ -101,8 +104,13 @@ export function summarizeQuestionEvidence(acc: QuestionSampleAccumulator): IVPQu
   for (const s of acc.samples) {
     sumLum += s.meanLuminance;
     sumClipped += s.clippedPixelsPct;
-    sumSkin += s.skinPixelRatio;
-    if (s.skinPixelRatio > 0.05) presentCount += 1;
+    sumSkin += s.skinMaskCoverage !== undefined ? s.skinMaskCoverage : (s.skinPixelRatio ?? 0);
+    if (s.faceDetected !== undefined && s.faceDetected !== null) {
+      validDetectionCount += 1;
+      if (s.faceDetected === true) {
+        presentCount += 1;
+      }
+    }
     sumSobelMean += s.sobelMeanMagnitude;
     sumSobelEdge += s.sobelEdgeRatio;
     sumMad += s.madScore;
@@ -133,6 +141,9 @@ export function summarizeQuestionEvidence(acc: QuestionSampleAccumulator): IVPQu
     illumination = 'uneven';
   }
 
+  const presenceRatio =
+    validDetectionCount > 0 ? Math.round((presentCount / validDetectionCount) * 100) / 100 : null;
+
   return {
     questionId: acc.questionId,
     questionIndex: acc.questionIndex,
@@ -142,7 +153,7 @@ export function summarizeQuestionEvidence(acc: QuestionSampleAccumulator): IVPQu
     clippedPct: Math.round((sumClipped / n) * 10) / 10,
     illumination,
     skinMaskCoveragePct: Math.round((sumSkin / n) * 1000) / 10,
-    presenceRatio: Math.round((presentCount / n) * 100) / 100,
+    presenceRatio,
     sobelEdgeDensity: Math.round((sumSobelEdge / n) * 1000) / 1000,
     sharpnessScore: Math.round((sumSobelMean / n) * 10) / 10,
     motionEnergy: Math.round((sumMad / n) * 10) / 10,

@@ -20,6 +20,7 @@
  */
 
 import type { DiscreteEmotion, ValenceArousal2D } from '@/types/index';
+import type { SkinChrominanceRange } from './adaptiveSkinCalibrator';
 
 export interface LandmarkPoint {
   x: number;
@@ -60,7 +61,8 @@ export interface FacialExpressionResult {
 export function extractFacialExpressions(
   data: Uint8ClampedArray | Uint8Array,
   width: number,
-  height: number
+  height: number,
+  skinRange?: SkinChrominanceRange | null
 ): FacialExpressionResult {
   if (width < 32 || height < 32 || data.length < width * height * 4) {
     return createDefaultExpressionResult(width, height, false);
@@ -68,6 +70,11 @@ export function extractFacialExpressions(
 
   // 1. LIGHTING-INVARIANT VERTICAL HEAD DENSITY & ANTHROPOMETRIC LOCALIZATION
   // Human skin chrominance locus that rejects warm office walls, beige ceilings, and clothing
+  const crMin = skinRange?.crMin ?? 136;
+  const crMax = skinRange?.crMax ?? 180;
+  const cbMin = skinRange?.cbMin ?? 75;
+  const cbMax = skinRange?.cbMax ?? 126;
+
   const yHist = new Uint16Array(height);
   const skinX: number[] = [];
   const skinY: number[] = [];
@@ -90,11 +97,11 @@ export function extractFacialExpressions(
       // High Cr relative to Cb, high R relative to B, and realistic indoor face luminance
       const isSkin =
         luma >= 35 && luma <= 215 &&
-        cr >= 136 && cr <= 180 &&
-        cb >= 75 && cb <= 126 &&
-        (cr - cb) >= 16 &&
-        (r - b) >= 18 &&
-        r > g * 1.04;
+        cr >= crMin && cr <= crMax &&
+        cb >= cbMin && cb <= cbMax &&
+        (cr - cb) >= (skinRange ? 8 : 16) &&
+        (r - b) >= (skinRange ? 10 : 18) &&
+        r > g * 1.02;
 
       if (isSkin) {
         totalSkinCount++;
