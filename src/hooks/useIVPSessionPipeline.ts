@@ -32,6 +32,7 @@ import {
 } from '@/lib/services/ivpGazeEngine';
 import { processPoseFrame } from '@/lib/services/ivpPoseEngine';
 import { processAffectFrame } from '@/lib/services/ivpAffectEngine';
+import { BoundedTelemetryBuffer } from '@/lib/utils/telemetryBuffer';
 import type {
   GazeFrameResult,
   HeadPoseFrameResult,
@@ -111,6 +112,11 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
   useEffect(() => {
     currentQuestionIdRef.current = questionId;
     currentQuestionIndexRef.current = questionIndex;
+    if (questionId !== undefined) {
+      capturedGazeFramesRef.current.setActiveQuestion(questionId);
+      capturedPoseFramesRef.current.setActiveQuestion(questionId);
+      capturedAffectFramesRef.current.setActiveQuestion(questionId);
+    }
   }, [questionId, questionIndex]);
 
   // Single authoritative video DOM element reference
@@ -128,10 +134,10 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
   // Session start time for monotonically increasing timestamps
   const sessionStartRef = useRef<number>(Date.now());
 
-  // Frame telemetry buffers
-  const capturedGazeFramesRef = useRef<GazeFrameInput[]>([]);
-  const capturedPoseFramesRef = useRef<HeadPoseFrameInput[]>([]);
-  const capturedAffectFramesRef = useRef<AffectFrameInput[]>([]);
+  // Bounded frame telemetry buffers (per-question cap: 200, global hard ceiling: 2000)
+  const capturedGazeFramesRef = useRef<BoundedTelemetryBuffer<GazeFrameInput>>(new BoundedTelemetryBuffer());
+  const capturedPoseFramesRef = useRef<BoundedTelemetryBuffer<HeadPoseFrameInput>>(new BoundedTelemetryBuffer());
+  const capturedAffectFramesRef = useRef<BoundedTelemetryBuffer<AffectFrameInput>>(new BoundedTelemetryBuffer());
 
   // Unified temporal smoothing pipeline
   const telemetrySmootherRef = useRef(new VisionTelemetrySmoother());
@@ -204,7 +210,7 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
         confidence: gazeResult.confidenceScore,
         questionId: qId,
         questionIndex: qIdx,
-      });
+      }, currentQuestionIdRef.current);
 
       setLiveGazeFrame(gazeResult);
 
@@ -245,7 +251,7 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
         questionIndex: qIdx,
       };
 
-      capturedPoseFramesRef.current.push(poseInput);
+      capturedPoseFramesRef.current.push(poseInput, currentQuestionIdRef.current);
 
       const poseResult = processPoseFrame(poseInput, lastPoseResultRef.current || undefined);
       lastPoseResultRef.current = poseResult;
@@ -279,7 +285,7 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
         questionIndex: qIdx,
       };
 
-      capturedAffectFramesRef.current.push(affectInput);
+      capturedAffectFramesRef.current.push(affectInput, currentQuestionIdRef.current);
 
       const rawAffectResult = processAffectFrame(affectInput);
       const affectResult: AffectFrameResult = {
@@ -345,25 +351,18 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
 
   // Retrieve captured telemetry for submission to evaluation server
   const getCapturedTelemetry = useCallback((filterQuestionId?: string) => {
-    if (filterQuestionId !== undefined) {
-      return {
-        capturedGazeFrames: capturedGazeFramesRef.current.filter((f) => f.questionId === filterQuestionId),
-        capturedPoseFrames: capturedPoseFramesRef.current.filter((f) => f.questionId === filterQuestionId),
-        capturedAffectFrames: capturedAffectFramesRef.current.filter((f) => f.questionId === filterQuestionId),
-      };
-    }
     return {
-      capturedGazeFrames: [...capturedGazeFramesRef.current],
-      capturedPoseFrames: [...capturedPoseFramesRef.current],
-      capturedAffectFrames: [...capturedAffectFramesRef.current],
+      capturedGazeFrames: capturedGazeFramesRef.current.getFrames(filterQuestionId),
+      capturedPoseFrames: capturedPoseFramesRef.current.getFrames(filterQuestionId),
+      capturedAffectFrames: capturedAffectFramesRef.current.getFrames(filterQuestionId),
     };
   }, []);
 
   const getQuestionTelemetry = useCallback((targetQuestionId: string) => {
     return {
-      capturedGazeFrames: capturedGazeFramesRef.current.filter((f) => f.questionId === targetQuestionId),
-      capturedPoseFrames: capturedPoseFramesRef.current.filter((f) => f.questionId === targetQuestionId),
-      capturedAffectFrames: capturedAffectFramesRef.current.filter((f) => f.questionId === targetQuestionId),
+      capturedGazeFrames: capturedGazeFramesRef.current.getFrames(targetQuestionId),
+      capturedPoseFrames: capturedPoseFramesRef.current.getFrames(targetQuestionId),
+      capturedAffectFrames: capturedAffectFramesRef.current.getFrames(targetQuestionId),
     };
   }, []);
 

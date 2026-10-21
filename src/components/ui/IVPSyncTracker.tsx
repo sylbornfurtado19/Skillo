@@ -16,10 +16,12 @@ import React, {
   forwardRef,
 } from 'react';
 import { processSyncWindow } from '@/lib/services/ivpSyncEngine';
+import { RingBuffer } from '@/lib/utils/telemetryBuffer';
 import type { SyncWindowInput, SyncWindowResult } from '@/types/index';
 
 const SAMPLE_FPS = 1;
 const RAF_SKIP = Math.round(60 / SAMPLE_FPS);
+export const DEFAULT_MAX_SYNC_WINDOWS = 1000;
 
 export interface IVPSyncTrackerHandle {
   start(providedStream?: MediaStream | null): Promise<void>;
@@ -58,7 +60,7 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
 
     const rafIdRef = useRef<number>(0);
     const rafCountRef = useRef<number>(0);
-    const windowsRef = useRef<SyncWindowInput[]>([]);
+    const windowsRef = useRef<RingBuffer<SyncWindowInput>>(new RingBuffer(DEFAULT_MAX_SYNC_WINDOWS));
     const sessionStartRef = useRef<number>(Date.now());
     const isRunningRef = useRef(false);
 
@@ -168,7 +170,7 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
 
             samplerCanvasRef.current = document.createElement('canvas');
             sessionStartRef.current = Date.now();
-            windowsRef.current = [];
+            windowsRef.current.clear();
             isRunningRef.current = true;
             runSamplingLoop();
           } catch (err: unknown) {
@@ -187,10 +189,10 @@ const IVPSyncTracker = forwardRef<IVPSyncTrackerHandle, IVPSyncTrackerProps>(
           // Shared MediaStream tracks are owned and stopped by the parent session
         },
         getFrames() {
-          return [...windowsRef.current];
+          return windowsRef.current.toArray();
         },
         clearFrames() {
-          windowsRef.current = [];
+          windowsRef.current.clear();
         },
         getAudioLevel() {
           if (!analyserRef.current) return 0;
