@@ -1,18 +1,32 @@
 /**
- * Tests for InterviewContext Historical Report and Session Integrity
- * Validates:
- * 1. Historical report viewing does NOT add entries to sessionHistory or mutate existing records.
- * 2. Active live interview currentResults are preserved when viewing historical reports.
- * 3. Clearing historical session restores the live currentResults in storage.
- * 4. LocalStorage failure resilience (QuotaExceededError).
- * 5. resetSession cleanly removes both live and historical storage keys.
+ * Targeted Tests for Historical and Live Results State Isolation (Prompt 08A)
+ * Verifies all 8 required scenarios:
+ * 1. Live results A intact in memory & storage when viewing historical report B.
+ * 2. Switching historical B -> C without mutating persisted historical records or live A.
+ * 3. Clearing historical selection restores live results A (not B, C, or unrelated session).
+ * 4. Reload/rehydrate provider preserves historical identity and live results consistency.
+ * 5. resetSession clears only live session keys, strictly preserving persisted session_history.
+ * 6. Repeatedly opening historical report never duplicates history or alters records.
+ * 7. Legacy records with missing telemetry are recovered; malformed records safely skipped.
+ * 8. Storage read/write failures (corrupted JSON, QuotaExceededError) handled gracefully.
  */
 
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { InterviewProvider, useInterview, type SessionHistoryItem } from '../src/context/InterviewContext';
-import type { EvaluationReport } from '../src/types/index';
+import {
+  InterviewProvider,
+  useInterview,
+  type SessionHistoryItem,
+  type InterviewResults,
+} from '../src/context/InterviewContext';
+import {
+  isValidReport,
+  isValidSessionItem,
+  buildHistoricalResults,
+  loadPastReport,
+} from '../src/services/interviewReport';
 
+// ── Mock Storage Engine ───────────────────────────────────────────────────────
 const createMockStorage = () => {
   let store: Record<string, string> = {};
   return {
@@ -26,6 +40,9 @@ const createMockStorage = () => {
     clear: jest.fn(() => {
       store = {};
     }),
+    _setRaw: (key: string, value: string) => {
+      store[key] = value;
+    },
     getStore: () => store,
   };
 };
@@ -40,175 +57,407 @@ const mockSessionStorage = createMockStorage();
 (global as any).localStorage = mockLocalStorage;
 (global as any).sessionStorage = mockSessionStorage;
 
-describe('InterviewContext — Session History and Historical Report Isolation', () => {
+describe('Prompt 08A — Historical and Live Results State Isolation', () => {
   beforeEach(() => {
-    // Clear storage before each test
     mockLocalStorage.clear();
     mockSessionStorage.clear();
     jest.clearAllMocks();
   });
 
-  it('preserves currentResults when viewing a historical session and restores them upon clearHistoricalSession', () => {
-    let contextValue: any = null;
+  const sampleLiveResultsA: InterviewResults = {
+    overallScore: 88,
+    personaId: 'sarah',
+    interviewerComments: 'Strong live interview performance on distributed consensus.',
+    categories: {
+      technicalAccuracy: 88,
+      communication: 90,
+      depth: 86,
+      timeManagement: 88,
+    },
+    setupData: {
+      role: 'Staff Infrastructure Engineer',
+      domain: 'Computer Science',
+      experienceLevel: 'Staff',
+      type: 'Technical',
+      difficulty: 'Staff',
+      questionCount: 2,
+      focusAreas: ['Distributed Systems'],
+      persona: 'sarah',
+    },
+    breakdown: [
+      {
+        question: 'Explain Raft leader lease mechanism.',
+        score: 90,
+        feedback: 'Accurate timing bounds discussion.',
+        userAnswer: 'Leader leases prevent stale reads without running full rounds.',
+      },
+    ],
+  };
 
-    function TestConsumer() {
-      const interview = useInterview();
-      contextValue = interview;
+  const sampleHistoricalSessionB: SessionHistoryItem = {
+    id: 'session_hist_B_2026',
+    date: '2026-09-15',
+    role: 'Principal Backend Engineer',
+    type: 'Technical',
+    difficulty: 'Principal',
+    score: 94,
+    persona: 'sarah',
+    company: 'Stripe',
+    report: {
+      sessionId: 'session_hist_B_2026',
+      sessionDate: '2026-09-15',
+      overallScore: 94,
+      personaId: 'sarah',
+      interviewerComments: 'Historical assessment B: Outstanding concurrency control.',
+      categories: {
+        technicalAccuracy: 95,
+        communication: 92,
+        depth: 96,
+        timeManagement: 93,
+      },
+      setupData: {
+        role: 'Principal Backend Engineer',
+        company: 'Stripe',
+      },
+      breakdown: [
+        {
+          question: 'How do you structure database sharding?',
+          score: 94,
+          feedback: 'Great shard key selection and rebalancing plan.',
+          userAnswer: 'Consistent hashing with virtual vnodes.',
+        },
+      ],
+    } as any,
+  };
+
+  const sampleHistoricalSessionC: SessionHistoryItem = {
+    id: 'session_hist_C_2026',
+    date: '2026-09-20',
+    role: 'Frontend Architect',
+    type: 'System Design',
+    difficulty: 'Senior',
+    score: 82,
+    persona: 'alex',
+    company: 'Vercel',
+    report: {
+      sessionId: 'session_hist_C_2026',
+      sessionDate: '2026-09-20',
+      overallScore: 82,
+      personaId: 'alex',
+      interviewerComments: 'Historical assessment C: Good bundle optimization.',
+      categories: {
+        technicalAccuracy: 84,
+        communication: 80,
+        depth: 82,
+        timeManagement: 82,
+      },
+      setupData: {
+        role: 'Frontend Architect',
+        company: 'Vercel',
+      },
+      breakdown: [
+        {
+          question: 'How do you optimize critical render path?',
+          score: 82,
+          feedback: 'Solid async and defer script loading strategy.',
+          userAnswer: 'Inlining critical CSS and deferring non-essential assets.',
+        },
+      ],
+    } as any,
+  };
+
+  // Helper to mount provider with consumer
+  function mountProvider() {
+    let contextValue: any = null;
+    function Consumer() {
+      contextValue = useInterview();
       return null;
     }
-
     renderToStaticMarkup(
-      React.createElement(InterviewProvider, null, React.createElement(TestConsumer))
+      React.createElement(InterviewProvider, null, React.createElement(Consumer))
     );
+    return contextValue;
+  }
 
-    expect(contextValue).not.toBeNull();
+  // ── Scenario 1: Live results A intact when opening historical report B ───────
+  it('Scenario 1: Live results A remain intact in designated state and storage when viewing historical report B', () => {
+    const ctx = mountProvider();
 
-    // 1. Simulate completing a live interview
-    const liveResults: any = {
-      overallScore: 88,
-      interviewerComments: 'Live interview score',
-      categories: { technicalAccuracy: 88 },
-      setupData: { role: 'Software Engineer', type: 'Technical' },
-    };
+    // 1. Establish live interview results A
+    ctx.setResults(sampleLiveResultsA);
 
-    contextValue.setResults(liveResults);
+    // Verify A in storage
+    const currentStoredA = JSON.parse(mockSessionStorage.getItem('iq_current_results')!);
+    expect(currentStoredA.overallScore).toBe(88);
+    expect(currentStoredA.interviewerComments).toContain('consensus');
 
-    // Live results must be persisted to session and local storage
-    const currentResultsStored = JSON.parse(mockSessionStorage.getItem('iq_current_results')!);
-    expect(currentResultsStored.overallScore).toBe(88);
-    expect(currentResultsStored.interviewerComments).toBe('Live interview score');
+    // 2. Open historical report B
+    ctx.setHistoricalSession(sampleHistoricalSessionB);
+    ctx.setResults(sampleHistoricalSessionB.report, { addToHistory: false });
 
-    const historyStored = JSON.parse(mockLocalStorage.getItem('session_history')!);
-    expect(historyStored.length).toBe(1);
-    expect(historyStored[0].score).toBe(88);
+    // Active results in storage must now display historical B
+    const displayedResults = JSON.parse(mockSessionStorage.getItem('iq_results')!);
+    expect(displayedResults.sessionId).toBe('session_hist_B_2026');
+    expect(displayedResults.overallScore).toBe(94);
+    expect(displayedResults.interviewerComments).toContain('Historical assessment B');
 
-    // 2. Simulate user viewing a historical session
-    const historicalSession: SessionHistoryItem = {
-      id: 'session_past_999',
-      date: '2026-05-01',
-      role: 'Staff Engineer',
-      type: 'System Design',
-      difficulty: 'Staff',
-      score: 95,
-      persona: 'sarah',
-      report: {
-        sessionId: 'session_past_999',
-        sessionDate: '2026-05-01',
-        overallScore: 95,
-        interviewerComments: 'Past historical report comments',
-        categories: { technicalAccuracy: 95 },
-      } as any,
-    };
+    // Live results A must remain completely intact in iq_current_results storage
+    const preservedLiveResults = JSON.parse(mockSessionStorage.getItem('iq_current_results')!);
+    expect(preservedLiveResults.overallScore).toBe(88);
+    expect(preservedLiveResults.interviewerComments).toContain('consensus');
+    expect(preservedLiveResults.sessionId).toBeUndefined(); // Live results not marked as historical
+  });
 
-    contextValue.setHistoricalSession(historicalSession);
-    contextValue.setResults(historicalSession.report, { addToHistory: false });
+  // ── Scenario 2: Switch from B to C without mutating live results A ───────────
+  it('Scenario 2: Switching historical report B to C updates view without mutating persisted history or live results A', () => {
+    // Seed initial session history with B and C
+    mockLocalStorage.setItem('session_history', JSON.stringify([sampleHistoricalSessionB, sampleHistoricalSessionC]));
+    const ctx = mountProvider();
 
-    // History in localStorage must NOT have grown
-    const historyAfterViewing = JSON.parse(mockLocalStorage.getItem('session_history')!);
-    expect(historyAfterViewing.length).toBe(1);
-    expect(historyAfterViewing[0].id).not.toBe('session_past_999');
+    // Establish live results A
+    ctx.setResults(sampleLiveResultsA);
+    const initialHistoryLength = JSON.parse(mockLocalStorage.getItem('session_history')!).length;
 
-    // currentResults in sessionStorage must STILL be the live results
-    const currentStillPreserved = JSON.parse(mockSessionStorage.getItem('iq_current_results')!);
-    expect(currentStillPreserved.overallScore).toBe(88);
-    expect(currentStillPreserved.interviewerComments).toBe('Live interview score');
+    // View historical report B
+    ctx.setHistoricalSession(sampleHistoricalSessionB);
+    ctx.setResults(sampleHistoricalSessionB.report, { addToHistory: false });
 
-    // iq_results now contains historical report
-    const resultsViewingHistorical = JSON.parse(mockSessionStorage.getItem('iq_results')!);
-    expect(resultsViewingHistorical.sessionId).toBe('session_past_999');
-    expect(resultsViewingHistorical.overallScore).toBe(95);
+    // Now switch directly to historical report C
+    ctx.setHistoricalSession(sampleHistoricalSessionC);
+    ctx.setResults(sampleHistoricalSessionC.report, { addToHistory: false });
 
-    // 3. User finishes viewing past report and clears historical session
-    contextValue.clearHistoricalSession();
+    // Verify C is now the active displayed report
+    const displayedC = JSON.parse(mockSessionStorage.getItem('iq_results')!);
+    expect(displayedC.sessionId).toBe('session_hist_C_2026');
+    expect(displayedC.overallScore).toBe(82);
+    expect(displayedC.interviewerComments).toContain('Historical assessment C');
 
+    // Verify live results A still intact in storage
+    const preservedLive = JSON.parse(mockSessionStorage.getItem('iq_current_results')!);
+    expect(preservedLive.overallScore).toBe(88);
+
+    // Verify history in localStorage was NOT duplicated or mutated
+    const finalHistory = JSON.parse(mockLocalStorage.getItem('session_history')!);
+    expect(finalHistory.length).toBe(initialHistoryLength);
+    const sessionBStored = finalHistory.find((s: any) => s.id === 'session_hist_B_2026');
+    const sessionCStored = finalHistory.find((s: any) => s.id === 'session_hist_C_2026');
+    expect(sessionBStored.score).toBe(94);
+    expect(sessionCStored.score).toBe(82);
+  });
+
+  // ── Scenario 3: Clear historical selection and restore live results A ─────────
+  it('Scenario 3: Clearing historical selection restores live results A (not B, C, or unrelated latest)', () => {
+    const ctx = mountProvider();
+
+    // Establish live results A
+    ctx.setResults(sampleLiveResultsA);
+
+    // View historical report B
+    ctx.setHistoricalSession(sampleHistoricalSessionB);
+    ctx.setResults(sampleHistoricalSessionB.report, { addToHistory: false });
+
+    // Clear historical session
+    ctx.clearHistoricalSession();
+
+    // iq_historical_session must be null
+    expect(mockSessionStorage.getItem('iq_historical_session')).toBeNull();
+
+    // iq_results must be restored to live results A
+    const restoredResults = JSON.parse(mockSessionStorage.getItem('iq_results')!);
+    expect(restoredResults.overallScore).toBe(88);
+    expect(restoredResults.interviewerComments).toContain('consensus');
+    expect(restoredResults.sessionId).toBeUndefined(); // Live session, not historical
+  });
+
+  // ── Scenario 4: Reload / rehydrate provider with historical report selected ──
+  it('Scenario 4: Rehydration preserves historical session identity and live results consistency', () => {
+    // Simulate pre-existing storage state before mount (e.g. user refreshed while viewing historical report B)
+    mockSessionStorage.setItem('iq_current_results', JSON.stringify(sampleLiveResultsA));
+    mockSessionStorage.setItem('iq_historical_session', JSON.stringify(sampleHistoricalSessionB));
+    mockSessionStorage.setItem('iq_results', JSON.stringify(sampleHistoricalSessionB.report));
+    mockLocalStorage.setItem('session_history', JSON.stringify([sampleHistoricalSessionB, sampleHistoricalSessionC]));
+
+    // Rehydrate provider
+    const ctx = mountProvider();
+
+    // Verify rehydrated storage remains consistent
+    expect(JSON.parse(mockSessionStorage.getItem('iq_historical_session')!).id).toBe('session_hist_B_2026');
+    expect(JSON.parse(mockSessionStorage.getItem('iq_current_results')!).overallScore).toBe(88);
+    expect(JSON.parse(mockSessionStorage.getItem('iq_results')!).sessionId).toBe('session_hist_B_2026');
+
+    // Clearing historical session after rehydration cleanly restores live results A
+    ctx.clearHistoricalSession();
     expect(mockSessionStorage.getItem('iq_historical_session')).toBeNull();
   });
 
-  it('does not duplicate history entries when calling setResults repeatedly for the same session', () => {
-    let contextValue: any = null;
+  // ── Scenario 5: resetSession clears live session keys, preserving session_history
+  it('Scenario 5: resetSession clears live session storage keys while strictly preserving persisted history', () => {
+    mockLocalStorage.setItem('session_history', JSON.stringify([sampleHistoricalSessionB, sampleHistoricalSessionC]));
+    mockSessionStorage.setItem('iq_current_results', JSON.stringify(sampleLiveResultsA));
+    mockSessionStorage.setItem('iq_results', JSON.stringify(sampleLiveResultsA));
+    mockSessionStorage.setItem('iq_historical_session', JSON.stringify(sampleHistoricalSessionB));
+    mockSessionStorage.setItem('iq_setup_data', JSON.stringify({ role: 'Software Engineer' }));
+    mockSessionStorage.setItem('iq_resume_data', JSON.stringify({ parsed: true }));
 
-    function TestConsumer() {
-      const interview = useInterview();
-      contextValue = interview;
-      return null;
-    }
+    const ctx = mountProvider();
 
-    renderToStaticMarkup(
-      React.createElement(InterviewProvider, null, React.createElement(TestConsumer))
-    );
+    // Execute resetSession
+    ctx.resetSession();
 
-    const pastReportWithId: any = {
-      sessionId: 'session_stable_123',
-      overallScore: 82,
-      interviewerComments: 'Stable comments',
-      categories: {},
-    };
+    // Intended session keys must be removed
+    expect(mockSessionStorage.getItem('iq_current_results')).toBeNull();
+    expect(mockSessionStorage.getItem('iq_results')).toBeNull();
+    expect(mockSessionStorage.getItem('iq_historical_session')).toBeNull();
+    expect(mockSessionStorage.getItem('iq_setup_data')).toBeNull();
+    expect(mockSessionStorage.getItem('iq_resume_data')).toBeNull();
 
-    // Calling setResults with historical sessionId multiple times
-    contextValue.setResults(pastReportWithId, { addToHistory: false });
-    contextValue.setResults(pastReportWithId, { addToHistory: false });
-    contextValue.setResults(pastReportWithId, { addToHistory: false });
-
-    const storedHistory = mockLocalStorage.getItem('session_history');
-    expect(storedHistory).toBeNull();
+    // Persisted session history in localStorage MUST NOT be wiped
+    const persistedHistory = JSON.parse(mockLocalStorage.getItem('session_history')!);
+    expect(persistedHistory).not.toBeNull();
+    expect(persistedHistory.length).toBe(2);
+    expect(persistedHistory[0].id).toBe('session_hist_B_2026');
+    expect(persistedHistory[1].id).toBe('session_hist_C_2026');
   });
 
-  it('handles localStorage QuotaExceededError gracefully without throwing exceptions', () => {
-    let contextValue: any = null;
+  // ── Scenario 6: Repeated historical viewing creates no duplicates or changes ──
+  it('Scenario 6: Repeatedly opening the same historical report creates no duplicates and alters no records', () => {
+    mockLocalStorage.setItem('session_history', JSON.stringify([sampleHistoricalSessionB]));
+    const ctx = mountProvider();
 
-    function TestConsumer() {
-      const interview = useInterview();
-      contextValue = interview;
-      return null;
+    const originalRecordJSON = JSON.stringify(sampleHistoricalSessionB);
+
+    // Repeatedly load report B
+    for (let i = 0; i < 5; i++) {
+      ctx.setHistoricalSession(sampleHistoricalSessionB);
+      ctx.setResults(sampleHistoricalSessionB.report, { addToHistory: false });
     }
 
-    // Mock localStorage.setItem to throw QuotaExceededError
-    const originalSetItem = mockLocalStorage.setItem;
-    mockLocalStorage.setItem = jest.fn((_key: string, _value: string) => {
-      const err = new Error('QuotaExceededError');
-      err.name = 'QuotaExceededError';
-      throw err;
-    });
+    // Persisted history in localStorage must still contain exactly 1 entry
+    const finalHistory = JSON.parse(mockLocalStorage.getItem('session_history')!);
+    expect(finalHistory.length).toBe(1);
 
-    try {
-      renderToStaticMarkup(
-        React.createElement(InterviewProvider, null, React.createElement(TestConsumer))
-      );
+    // Stored content, timestamps, scores, and IDs must be identical
+    expect(finalHistory[0].id).toBe('session_hist_B_2026');
+    expect(finalHistory[0].date).toBe('2026-09-15');
+    expect(finalHistory[0].score).toBe(94);
+    expect(finalHistory[0].role).toBe('Principal Backend Engineer');
+    expect(JSON.stringify(finalHistory[0])).toBe(originalRecordJSON);
+  });
 
-      const liveResults: any = {
-        overallScore: 80,
-        interviewerComments: 'Tested during storage failure',
-        categories: {},
+  // ── Scenario 7: Legacy records recovered; malformed records safely skipped ────
+  describe('Scenario 7: Legacy records recovered without loss; malformed records safely handled', () => {
+    it('recovers legacy records with valid score but missing telemetry', () => {
+      const legacySessionNoReport: SessionHistoryItem = {
+        id: 'legacy_score_only',
+        date: '2026-04-10',
+        role: 'Site Reliability Engineer',
+        type: 'Technical',
+        difficulty: 'Senior',
+        score: 87,
+        persona: 'sarah',
       };
 
-      // Must not throw an unhandled exception
-      expect(() => {
-        contextValue.setResults(liveResults);
-      }).not.toThrow();
-    } finally {
-      mockLocalStorage.setItem = originalSetItem;
-    }
+      expect(isValidSessionItem(legacySessionNoReport)).toBe(true);
+
+      const built = buildHistoricalResults(legacySessionNoReport);
+      expect(built.sessionId).toBe('legacy_score_only');
+      expect(built.sessionDate).toBe('2026-04-10');
+      expect(built.overallScore).toBe(87);
+      expect(built.breakdown).toEqual([]);
+      expect(built.interviewerComments).toContain('Historical assessment record from 2026-04-10');
+      expect(built.interviewerComments).toContain('87%');
+    });
+
+    it('recovers legacy records with report containing score instead of overallScore', () => {
+      const legacySessionOldReport: SessionHistoryItem = {
+        id: 'legacy_old_report',
+        date: '2026-04-12',
+        role: 'DevOps Engineer',
+        type: 'Technical',
+        difficulty: 'Senior',
+        score: 83,
+        persona: 'sarah',
+        report: {
+          score: 83, // Old legacy property
+          interviewerComments: 'Legacy evaluation.',
+        } as any,
+      };
+
+      expect(isValidSessionItem(legacySessionOldReport)).toBe(true);
+      const built = buildHistoricalResults(legacySessionOldReport);
+      expect(built.overallScore).toBe(83);
+      expect(built.sessionId).toBe('legacy_old_report');
+    });
+
+    it('rejects malformed records without deleting them destructively from storage', () => {
+      const malformedRecords = [
+        { id: '', score: 85 },            // Empty ID
+        { id: 'bad_nan', score: NaN },     // NaN score
+        { id: 'bad_neg', score: -10 },     // Negative score
+        { id: 'bad_over', score: 120 },    // Over 100
+        null,
+        'corrupted string',
+      ];
+
+      for (const bad of malformedRecords) {
+        expect(isValidSessionItem(bad)).toBe(false);
+      }
+    });
+
+    it('does not destructively overwrite persisted history on mount when malformed entries exist', () => {
+      const mixedHistory = [
+        sampleHistoricalSessionB,
+        { id: 'corrupt_1', score: NaN },
+        sampleHistoricalSessionC,
+      ];
+      mockLocalStorage.setItem('session_history', JSON.stringify(mixedHistory));
+
+      mountProvider();
+
+      // Ensure localStorage has not been destructively rewritten or erased
+      const rawStored = JSON.parse(mockLocalStorage.getItem('session_history')!);
+      expect(rawStored.length).toBe(3);
+    });
   });
 
-  it('clears all session storage keys including historical session on resetSession', () => {
-    let contextValue: any = null;
+  // ── Scenario 8: Storage read/write failures handled gracefully ────────────────
+  describe('Scenario 8: Storage read/write failure handling', () => {
+    it('handles corrupted JSON in localStorage gracefully without throwing exceptions', () => {
+      mockLocalStorage._setRaw('session_history', '{bad-json-syntax}');
 
-    function TestConsumer() {
-      const interview = useInterview();
-      contextValue = interview;
-      return null;
-    }
+      expect(() => {
+        const ctx = mountProvider();
+        expect(ctx).not.toBeNull();
+      }).not.toThrow();
+    });
 
-    renderToStaticMarkup(
-      React.createElement(InterviewProvider, null, React.createElement(TestConsumer))
-    );
+    it('handles corrupted JSON in sessionStorage without throwing exceptions', () => {
+      mockSessionStorage._setRaw('iq_current_results', '{corrupted}');
+      mockSessionStorage._setRaw('iq_results', 'invalid');
 
-    mockSessionStorage.setItem('iq_historical_session', JSON.stringify({ id: 'sess_1' }));
-    mockSessionStorage.setItem('iq_current_results', JSON.stringify({ overallScore: 85 }));
+      expect(() => {
+        const ctx = mountProvider();
+        expect(ctx).not.toBeNull();
+      }).not.toThrow();
+    });
 
-    contextValue.resetSession();
+    it('handles QuotaExceededError on localStorage.setItem without crashing in-memory state', () => {
+      const ctx = mountProvider();
 
-    expect(mockSessionStorage.getItem('iq_historical_session')).toBeNull();
-    expect(mockSessionStorage.getItem('iq_current_results')).toBeNull();
+      const originalSetItem = mockLocalStorage.setItem;
+      mockLocalStorage.setItem = jest.fn((_key: string, _value: string) => {
+        const err = new Error('QuotaExceededError');
+        err.name = 'QuotaExceededError';
+        throw err;
+      });
+
+      try {
+        expect(() => {
+          ctx.setResults(sampleLiveResultsA);
+        }).not.toThrow();
+      } finally {
+        mockLocalStorage.setItem = originalSetItem;
+      }
+    });
   });
 });

@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { InterviewQuestion, EvaluationReport } from '../types/index';
 import type { IVPEvidenceReceipt } from '@/types/ivpEvidence';
 import type { SessionIntegrityReport } from '@/types/integrity';
-import { isValidSessionItem } from '../services/interviewReport';
+import { isValidSessionItem, buildHistoricalResults } from '../services/interviewReport';
 
 export type { InterviewQuestion };
 export type QuestionItem = string | InterviewQuestion;
@@ -318,9 +318,13 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
   const clearHistoricalSession = () => {
     setHistoricalSessionState(null);
     safeSessionSet('iq_historical_session', null);
-    if (currentResults) {
-      _setResults(currentResults);
-      safeSessionSet('iq_results', currentResults);
+    const live = currentResults || safeSessionGet<InterviewResults | null>('iq_current_results', null);
+    if (live) {
+      _setResults(live);
+      safeSessionSet('iq_results', live);
+    } else {
+      _setResults(null);
+      safeSessionSet('iq_results', null);
     }
   };
 
@@ -339,7 +343,12 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
     setHistoricalSessionState(savedHistorical);
 
     const savedResults = safeSessionGet<InterviewResults | null>('iq_results', null);
-    _setResults(savedResults ?? savedCurrent);
+    _setResults(
+      savedResults ??
+      (savedHistorical && isValidSessionItem(savedHistorical)
+        ? buildHistoricalResults(savedHistorical)
+        : savedCurrent)
+    );
 
     const rawHistory = safeLocalGet<SessionHistoryItem[]>('session_history', []);
     const validHistory = Array.isArray(rawHistory)
