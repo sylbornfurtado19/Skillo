@@ -21,6 +21,8 @@ import {
   FaCommentDots,
   FaPause,
   FaVideoSlash,
+  FaChartLine,
+  FaRocket,
 } from 'react-icons/fa';
 
 
@@ -32,6 +34,12 @@ const Radar = dynamic(() => import('react-chartjs-2').then((m) => m.Radar), { ss
 
 import { INTERVIEWER_PERSONAS } from '../services/constants';
 import { useInterview } from '../context/InterviewContext';
+import {
+  isValidReport,
+  findLatestValidSessionReport,
+  buildHistoricalResults,
+  loadPastReport,
+} from '../services/interviewReport';
 import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult, ContrastiveEvaluationResult, BenchmarkDeltaCard, LATSTreeState } from '../types/index';
 import { useToast } from '../components/ui/Toast';
 import { useChartTheme } from '../hooks/useChartTheme';
@@ -114,8 +122,9 @@ export default function Results() {
   const { showToast } = useToast();
   const chartTheme = useChartTheme();
   const {
-    results,
+    results: contextResults,
     setResults,
+    setSetupData,
     setQuestions,
     setCurrentQuestionIndex,
     setAnswers,
@@ -124,6 +133,34 @@ export default function Results() {
     setIsRetry,
     setRetryQuestionIndex,
   } = useInterview();
+
+  const latestValidSession = useMemo(() => {
+    return findLatestValidSessionReport(sessionHistory);
+  }, [sessionHistory]);
+
+  const activeResults = useMemo(() => {
+    if (isValidReport(contextResults)) {
+      return contextResults;
+    }
+    if (latestValidSession) {
+      return buildHistoricalResults(latestValidSession);
+    }
+    return null;
+  }, [contextResults, latestValidSession]);
+
+  // Synchronize restored historical session into context state in background if needed
+  useEffect(() => {
+    if (!isValidReport(contextResults) && latestValidSession) {
+      loadPastReport(latestValidSession, {
+        setResults,
+        setSetupData,
+        setQuestions,
+        setAnswers,
+      });
+    }
+  }, [contextResults, latestValidSession, setResults, setSetupData, setQuestions, setAnswers]);
+
+  const results = activeResults;
 
   const handleRetryQuestion = (questionIndex: number, questionText: string) => {
     setIsRetry(true);
@@ -247,7 +284,42 @@ export default function Results() {
     }
   };
 
-  if (!results) return null;
+  if (!results) {
+    return (
+      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 space-y-8 animate-fadeIn text-center">
+        <Card variant="default" className="p-8 sm:p-12 flex flex-col items-center justify-center border border-border shadow-soft">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-3xl sm:text-4xl mb-6 shadow-sm">
+            <FaChartLine aria-hidden="true" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-text-primary mb-3">
+            No assessment results yet
+          </h2>
+          <p className="text-sm sm:text-base text-text-secondary max-w-md mx-auto mb-8 leading-relaxed">
+            Results become available after completing a mock interview. Choose your target role, difficulty, and practice with real-time AI feedback.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <Button
+              onClick={() => router.push('/setup')}
+              variant="primary"
+              size="lg"
+              className="w-full sm:w-auto px-8"
+              icon={FaRocket}
+            >
+              Start Mock Interview
+            </Button>
+            <Button
+              onClick={() => router.push('/dashboard')}
+              variant="secondary"
+              size="lg"
+              className="w-full sm:w-auto px-6"
+            >
+              Return to Dashboard
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const persona = INTERVIEWER_PERSONAS[results.personaId as keyof typeof INTERVIEWER_PERSONAS] || INTERVIEWER_PERSONAS.sarah;
 

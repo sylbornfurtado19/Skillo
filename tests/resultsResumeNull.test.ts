@@ -118,18 +118,165 @@ describe('Results View - Rendering without resumeData', () => {
     expect(html).toContain('Strong technical articulation and system design fundamentals.');
   });
 
-  it('should still return empty output when results is null even if resumeData is null', () => {
+  it('should render the designed empty state when results is null and session history is empty', () => {
     mockInterviewState = {
       ...mockInterviewState,
       resumeData: null,
       results: null,
+      sessionHistory: [],
     };
 
     const html = renderToStaticMarkup(React.createElement(Results));
 
-    // Results guard: if (!results) return null;
-    expect(html).toBe('');
+    expect(html).toContain('No assessment results yet');
+    expect(html).toContain('Start Mock Interview');
+    expect(html).toContain('Return to Dashboard');
     expect(html).not.toContain('Resume Required');
+  });
+
+  it('should restore and render latest valid historical session report when results is null', () => {
+    mockInterviewState = {
+      ...mockInterviewState,
+      resumeData: null,
+      results: null,
+      sessionHistory: [
+        {
+          id: 'session_hist_001',
+          role: 'Staff Infrastructure Engineer',
+          type: 'Technical',
+          difficulty: 'Senior',
+          date: '2026-10-25',
+          score: 92,
+          persona: 'sarah',
+          company: 'Datadog',
+          categories: { technicalAccuracy: 95, communication: 90 },
+          report: {
+            overallScore: 92,
+            personaId: 'sarah',
+            interviewerComments: 'Superb architecture deep-dive on distributed consensus.',
+            categories: { technicalAccuracy: 95, communication: 90 },
+            setupData: {
+              role: 'Staff Infrastructure Engineer',
+              company: 'Datadog',
+              experienceLevel: 'Senior',
+            },
+            breakdown: [
+              {
+                id: 'q_hist_1',
+                question: 'Explain raft consensus and leader election dynamics.',
+                userAnswer: 'Nodes transition from follower to candidate upon election timeout.',
+                score: 95,
+                feedback: 'Clear explanation of term leadership.',
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(React.createElement(Results));
+
+    expect(html).not.toContain('No assessment results yet');
+    expect(html).toContain('92');
+    expect(html).toContain('Staff Infrastructure Engineer');
+    expect(html).toContain('Datadog');
+    expect(html).toContain('Superb architecture deep-dive on distributed consensus.');
+    expect(html).toContain('Explain raft consensus and leader election dynamics.');
+  });
+
+  it('should skip malformed or incomplete latest session and restore previous valid report', () => {
+    mockInterviewState = {
+      ...mockInterviewState,
+      resumeData: null,
+      results: null,
+      sessionHistory: [
+        // Malformed / incomplete session at index 0
+        {
+          id: 'session_corrupt_001',
+          role: 'Corrupt Role',
+          type: 'Technical',
+          difficulty: 'Senior',
+          date: '2026-10-26',
+          score: NaN,
+          persona: 'sarah',
+          report: {
+            corrupted: true,
+          } as any,
+        },
+        // Valid session at index 1
+        {
+          id: 'session_valid_002',
+          role: 'Principal Systems Architect',
+          type: 'Technical',
+          difficulty: 'Principal',
+          date: '2026-10-24',
+          score: 89,
+          persona: 'sarah',
+          company: 'Cloudflare',
+          report: {
+            overallScore: 89,
+            personaId: 'sarah',
+            interviewerComments: 'Strong systems acumen and network architecture analysis.',
+            categories: { technicalAccuracy: 88, communication: 90 },
+            setupData: {
+              role: 'Principal Systems Architect',
+              company: 'Cloudflare',
+              experienceLevel: 'Principal',
+            },
+            breakdown: [
+              {
+                id: 'q_valid_1',
+                question: 'Design an Anycast edge CDN architecture.',
+                userAnswer: 'BGP Anycast routing directing clients to closest PoP with tier-1 peering.',
+                score: 89,
+                feedback: 'Good BGP routing overview.',
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(React.createElement(Results));
+
+    expect(html).not.toContain('No assessment results yet');
+    expect(html).toContain('89');
+    expect(html).toContain('Principal Systems Architect');
+    expect(html).toContain('Cloudflare');
+    expect(html).toContain('Design an Anycast edge CDN architecture.');
+  });
+
+  it('should render empty state gracefully when all historical sessions are malformed', () => {
+    mockInterviewState = {
+      ...mockInterviewState,
+      resumeData: null,
+      results: null,
+      sessionHistory: [
+        { id: 'corrupt_1', report: null, score: NaN } as any,
+        { id: 'corrupt_2', report: {} } as any,
+      ],
+    };
+
+    const html = renderToStaticMarkup(React.createElement(Results));
+
+    expect(html).toContain('No assessment results yet');
+    expect(html).toContain('Start Mock Interview');
+  });
+
+  it('should handle optional and missing analytics safely without crashing', () => {
+    mockInterviewState = {
+      ...mockInterviewState,
+      resumeData: null,
+      results: {
+        overallScore: 78,
+      },
+      sessionHistory: [],
+    };
+
+    const html = renderToStaticMarkup(React.createElement(Results));
+
+    expect(html).not.toContain('No assessment results yet');
+    expect(html).toContain('78');
   });
 
   it('should also render when resumeData is present without errors', () => {

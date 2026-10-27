@@ -23,82 +23,9 @@ import { generateStudyPlan } from '../lib/services/studyPlan';
 
 const Doughnut = dynamic(() => import('react-chartjs-2').then((m) => m.Doughnut), { ssr: false });
 
-export function loadPastReport(
-  interview: SessionHistoryItem,
-  callbacks: {
-    setResults: (results: any) => void;
-    setSetupData: (data: any) => void;
-    setQuestions: (q: string[]) => void;
-    setAnswers: (a: any[]) => void;
-    router: { push: (path: string) => void };
-  }
-) {
-  const { setResults, setSetupData, setQuestions, setAnswers, router } = callbacks;
-  if (interview.report) {
-    setResults(interview.report);
-    if (interview.report.setupData) {
-      setSetupData(interview.report.setupData as any);
-    } else {
-      setSetupData({
-        domain: 'Computer Science',
-        role: interview.role || 'Software Engineer',
-        experienceLevel: interview.difficulty || 'Mid-Level',
-        type: interview.type || 'Technical',
-        difficulty: interview.difficulty || 'Mid-Level',
-        questionCount: Array.isArray(interview.report.breakdown) ? interview.report.breakdown.length : 3,
-        focusAreas: ['Core Architecture', 'System Logic'],
-        persona: interview.persona || 'sarah',
-        company: interview.company || 'Generic',
-        duration: interview.duration || 45,
-      });
-    }
+import { loadPastReport } from '../services/interviewReport';
+export { loadPastReport };
 
-    if (Array.isArray(interview.report.breakdown) && interview.report.breakdown.length > 0) {
-      setQuestions(interview.report.breakdown.map((b) => b.question));
-      setAnswers(
-        interview.report.breakdown.map((b) => ({
-          answerText: b.userAnswer || b.answerText || '',
-        }))
-      );
-    } else {
-      setQuestions([]);
-      setAnswers([]);
-    }
-    router.push('/results');
-    return;
-  }
-
-  const setupDataObj = {
-    domain: 'Computer Science',
-    role: interview.role || 'Software Engineer',
-    experienceLevel: interview.difficulty || 'Mid-Level',
-    type: interview.type || 'Technical',
-    difficulty: interview.difficulty || 'Mid-Level',
-    questionCount: 0,
-    focusAreas: [interview.role || 'Software Engineering'],
-    persona: interview.persona || 'sarah',
-    company: interview.company || 'Generic',
-    duration: interview.duration || 45,
-  };
-  setSetupData(setupDataObj);
-  const cats = interview.categories || {};
-  setResults({
-    overallScore: interview.score,
-    categories: {
-      technicalAccuracy: cats.technicalAccuracy ?? cats.techKnowledge ?? interview.score,
-      communication: cats.communication ?? interview.score,
-      depth: cats.depth ?? cats.confidence ?? interview.score,
-      timeManagement: cats.timeManagement ?? cats.problemSolving ?? interview.score,
-    },
-    breakdown: [],
-    interviewerComments: `Historical assessment record from ${interview.date}. Overall score: ${interview.score}%.`,
-    personaId: interview.persona || 'sarah',
-    setupData: setupDataObj,
-  });
-  setQuestions([]);
-  setAnswers([]);
-  router.push('/results');
-}
 
 export default function Profile() {
   const router = useRouter();

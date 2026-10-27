@@ -34,7 +34,7 @@ import type { CandidateSkillMemoryStore, EvaluationCategories } from '../types/i
 
 
 
-import { getQuestionsForSetup } from '../services/constants';
+import { loadPastReport } from '../services/interviewReport';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -257,46 +257,13 @@ export default function Dashboard() {
     'Candidate';
 
   const handleRowClick = (item: SessionHistoryItem) => {
-    const setupDataObj = {
-      domain: 'Computer Science',
-      role: item.role,
-      experienceLevel: item.difficulty,
-      type: item.type,
-      difficulty: item.difficulty,
-      questionCount: 3,
-      focusAreas: ['Core Architecture', 'System Logic'],
-      persona: item.persona || 'sarah',
-    };
-
-    const questionsList = getQuestionsForSetup(setupDataObj);
-
-    setSetupData(setupDataObj);
-    setQuestions(questionsList.map((q) => q.question));
-    setAnswers([
-      { answerText: 'Demonstrated strong modular architecture and technical depth.' },
-      { answerText: 'Detailed error handling and edge cases.' },
-    ]);
-
-    setResults({
-      overallScore: item.score,
-      categories: {
-        technicalAccuracy: item.score,
-        communication: item.score + 2,
-        depth: item.score - 3,
-        timeManagement: item.score + 1,
-      },
-      breakdown: questionsList.map((q, idx) => ({
-        question: q.question,
-        score: item.score + (idx % 2 === 0 ? 2 : -2),
-        feedback: 'Solid answer demonstrating good domain familiarity.',
-        strengths: ['Clear terminology', 'Structured thought process'],
-      })),
-      interviewerComments: 'Comprehensive response showing clear engineering competence.',
-      personaId: item.persona || 'sarah',
-      setupData: setupDataObj,
+    loadPastReport(item, {
+      setResults,
+      setSetupData,
+      setQuestions,
+      setAnswers,
+      router,
     });
-
-    router.push('/results');
   };
 
   if (loading) {

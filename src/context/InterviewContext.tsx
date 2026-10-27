@@ -99,7 +99,7 @@ export interface InterviewContextValue {
   answers: AnswerRecord[];
   setAnswers: (answers: AnswerRecord[]) => void;
   results: InterviewResults | null;
-  setResults: (results: InterviewResults | null) => void;
+  setResults: (results: InterviewResults | null, options?: { addToHistory?: boolean }) => void;
   sessionHistory: SessionHistoryItem[];
   setSessionHistory: React.Dispatch<React.SetStateAction<SessionHistoryItem[]>>;
   isRetry: boolean;
@@ -335,9 +335,12 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
     safeSessionSet('iq_results', results);
   }, [results]);
 
-  const setResults = (newResults: InterviewResults | null) => {
+  const setResults = (
+    newResults: InterviewResults | null,
+    options?: { addToHistory?: boolean }
+  ) => {
     _setResults(newResults);
-    if (newResults) {
+    if (newResults && options?.addToHistory !== false) {
       const cats = (newResults.categories || {}) as Record<string, number>;
       const historyItem: SessionHistoryItem = {
         id: `session_${Date.now()}`,
@@ -362,6 +365,10 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
         report: newResults,
       };
       setSessionHistory((prev) => {
+        const alreadyExists = prev.some(
+          (item) => item.report === newResults || (item.id && (newResults as any).sessionId === item.id)
+        );
+        if (alreadyExists) return prev;
         const updated = [historyItem, ...prev].slice(0, SESSION_HISTORY_MAX);
         safeLocalSet('session_history', updated);
         return updated;
