@@ -25,9 +25,12 @@ export const metadata: Metadata = {
   },
   description: 'Practice realistic, AI-driven behavioral and technical interviews tailored to your exact industry, role, and experience level.',
   icons: {
-    icon: '/favicon.svg',
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.png', type: 'image/png' },
+    ],
     shortcut: '/favicon.svg',
-    apple: '/favicon.svg',
+    apple: '/favicon.png',
   },
   openGraph: {
     title: 'Skillo | Intelligent Resume Screening & AI Interview Assistant',

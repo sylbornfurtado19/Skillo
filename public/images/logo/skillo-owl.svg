@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 139 173" width="139" height="173" fill="none">
+  <!-- Head & Ears -->
+  <path d="M 12 5 
+           C 28 17, 48 12, 69.5 17 
+           C 91 12, 111 17, 127 5 
+           C 121 28, 127 53, 119 73 
+           L 20 73 
+           C 12 53, 18 28, 12 5 Z" 
+        fill="#93251A" />
+
+  <!-- Beak -->
+  <polygon points="69.5,98 56,63 83,63" fill="#4E130E" />
+
+  <!-- Eyeglasses Outer Rings (Grey) -->
+  <circle cx="46.2" cy="58.2" r="28" fill="#62676B" />
+  <circle cx="89.2" cy="58.2" r="28" fill="#62676B" />
+
+  <!-- White of Eyes -->
+  <circle cx="46.2" cy="58.2" r="18.5" fill="#FFFFFF" />
+  <circle cx="89.2" cy="58.2" r="18.5" fill="#FFFFFF" />
+
+  <!-- Dark Pupils -->
+  <circle cx="46.2" cy="58.2" r="10.2" fill="#3D1411" />
+  <circle cx="89.2" cy="58.2" r="10.2" fill="#3D1411" />
+
+  <!-- Gold Dot in Right Eye -->
+  <circle cx="95.5" cy="52" r="3.4" fill="#D48B28" />
+
+  <!-- Open Book Left Page -->
+  <path d="M 4 79 
+           C 23 86, 48 91, 65 104 
+           L 65 159 
+           C 48 146, 23 141, 4 147 Z" 
+        fill="#93251A" />
+  
+  <!-- Open Book Right Page -->
+  <path d="M 135 79 
+           C 116 86, 91 91, 74 104 
+           L 74 159 
+           C 91 146, 116 141, 135 147 Z" 
+        fill="#93251A" />
+
+  <!-- Book Spine Center -->
+  <polygon points="65,104 74,104 74,171 69.5,173 65,171" fill="#4E130E" />
+</svg>
