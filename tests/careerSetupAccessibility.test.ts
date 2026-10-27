@@ -284,14 +284,30 @@ describe('CareerSetup Keyboard Accessibility and Navigation', () => {
     });
   });
 
-  describe('6. Resume Required Guard', () => {
-    it('renders accessible Resume Required state when resumeData is missing', () => {
+  describe('6. Resume Requirement and Onboarding Guidance', () => {
+    it('renders welcoming Standard Simulation banner when resumeData is missing on standard track', () => {
       mockResumeData = null;
 
       const html = renderSetup();
 
-      expect(html).toContain('Resume Required');
-      expect(html).toContain('Go to Upload Page');
+      expect(html).toContain('Standard Simulation Mode');
+      expect(html).toContain('Resume Optional');
+      expect(html).toContain('Upload Resume (Optional)');
+      expect(html).not.toContain('Go to Upload Page');
+    });
+
+    it('renders actionable guidance and requirement message when track requires resume but none uploaded', () => {
+      mockResumeData = null;
+      mockSetupData = {
+        ...mockSetupData,
+        type: 'Resume Deep Dive',
+      };
+
+      const html = renderSetup({ initialStep: 3 });
+
+      expect(html).toContain('Resume Required for Deep Dive Track');
+      expect(html).toContain('Upload Resume');
+      expect(html).toContain('Switch to Standard Track');
     });
   });
 

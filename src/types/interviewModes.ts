@@ -11,7 +11,7 @@ export type TargetRoleOption =
   | 'Product Manager'
   | 'Custom';
 
-export type InterviewTypeOption = 'Coding' | 'System Design' | 'Behavioral' | 'Technical' | 'Mixed';
+export type InterviewTypeOption = 'Coding' | 'System Design' | 'Behavioral' | 'Technical' | 'Mixed' | 'Resume Deep Dive';
 
 export type DifficultyOption = 'Easy' | 'Medium' | 'Hard' | 'Expert';
 
@@ -52,6 +52,7 @@ export interface InterviewMode {
   allowedQuestionTypes: string[];
   systemPromptConfig: SystemPromptConfig;
   skillsEvaluated: string[];
+  requiresResume?: boolean;
 }
 
 // ── Preset Registries ─────────────────────────────────────────────────────────
@@ -364,6 +365,51 @@ export const INTERVIEW_MODE_PRESETS: Record<string, InterviewMode> = {
     },
     skillsEvaluated: ['Communication', 'Teamwork', 'Conflict Resolution', 'Ownership'],
   },
+
+  'generic-resume-deep-dive': {
+    id: 'generic-resume-deep-dive',
+    company: 'Generic',
+    role: 'Software Engineer',
+    interviewType: 'Resume Deep Dive',
+    difficulty: 'Hard',
+    duration: 45,
+    requiresResume: true,
+    questionCategories: [
+      'Resume Project Verification',
+      'Past Technical Leadership',
+      'System Architecture in Prior Roles',
+      'Impact & Metric Validation',
+    ],
+    evaluationRubric: {
+      technicalWeight: 0.35,
+      architectureWeight: 0.25,
+      edgeCaseWeight: 0.15,
+      communicationWeight: 0.25,
+      specificFocus: [
+        'Accuracy of claims on resume',
+        'Deep understanding of stated tech stack',
+        'STAR methodology on stated accomplishments',
+        'Technical trade-offs made in past projects',
+      ],
+    },
+    interviewerStyle: {
+      tone: 'Probing, detail-oriented, interrogating past project claims',
+      followUpPacing: 'probing',
+      timePressure: 'standard',
+      probingDepth: 'deep',
+    },
+    allowedQuestionTypes: ['RESUME_VERIFICATION', 'PROJECT_DEEP_DIVE', 'TRADE_OFF_PROBE'],
+    systemPromptConfig: {
+      companyContextPrompt:
+        'Resume & Project Experience Deep Dive: Inquire specifically into technologies, claims, and architectures listed on the candidate resume.',
+      interviewerPersonaOverride: 'marcus',
+      evaluationFocusPrompt:
+        'Verify depth of ownership, truthfulness of technical claims, and clear articulation of past outcomes.',
+      expectedAnswerStyle:
+        'Context of past project -> Individual ownership -> Technical architecture -> Quantifiable impact.',
+    },
+    skillsEvaluated: ['Past Technical Ownership', 'Resume Experience', 'Architecture Breadth', 'Outcome Measurement'],
+  },
 };
 
 // ── Resolver Helper ───────────────────────────────────────────────────────────
@@ -432,6 +478,18 @@ export function resolveInterviewMode(input: {
   }
 
   // 3. Generic Fallbacks based on Interview Type
+  if (typeKey.includes('resume')) {
+    const base = INTERVIEW_MODE_PRESETS['generic-resume-deep-dive'];
+    return {
+      ...base,
+      company: input.company || 'Generic',
+      role: input.role || 'Software Engineer',
+      difficulty: input.difficulty || 'Hard',
+      duration: input.duration || 45,
+      requiresResume: true,
+    };
+  }
+
   if (typeKey.includes('system')) {
     const base = INTERVIEW_MODE_PRESETS['generic-system-design'];
     return {

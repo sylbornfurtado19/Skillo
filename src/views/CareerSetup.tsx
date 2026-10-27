@@ -10,6 +10,9 @@ import {
   FaChevronRight,
   FaCheckCircle,
   FaExclamationTriangle,
+  FaInfoCircle,
+  FaFileUpload,
+  FaFileAlt,
 } from 'react-icons/fa';
 import { CAREER_DOMAINS, getQuestionsForSetup } from '../services/constants';
 import { useAuth } from '../hooks/useAuth';
@@ -41,7 +44,7 @@ const TARGET_ROLES = [
   'Product Manager',
   'Custom',
 ];
-const INTERVIEW_TYPES = ['Coding', 'System Design', 'Behavioral', 'Technical', 'Mixed'];
+const INTERVIEW_TYPES = ['Coding', 'System Design', 'Behavioral', 'Technical', 'Mixed', 'Resume Deep Dive'];
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Expert'];
 const DURATIONS = [15, 30, 45, 60];
 
@@ -263,7 +266,28 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
     };
   }, [stream]);
 
+  const activeMode = resolveInterviewMode({
+    company: setupData.company,
+    role: setupData.role,
+    interviewType: setupData.type,
+    difficulty: setupData.difficulty,
+    duration: setupData.duration,
+    interviewModeId: setupData.interviewModeId,
+  });
+
+  const isResumeRequired = Boolean(
+    activeMode?.requiresResume ||
+    setupData?.requiresResume ||
+    setupData?.type === 'Resume Deep Dive'
+  );
+  const isMissingRequiredResume = isResumeRequired && !resumeData;
+
   const handleStartInterview = async () => {
+    if (isMissingRequiredResume) {
+      setSetupError('The selected interview mode requires resume data. Please upload a resume or select a standard track.');
+      return;
+    }
+
     setStartingSession(true);
     // Clear persisted wizard progress upon starting session
     if (typeof window !== 'undefined') {
@@ -321,24 +345,6 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
 
     router.push('/interview');
   };
-
-
-  if (!resumeData) {
-    return (
-      <div className="bg-[var(--bg-surface)] rounded-2xl p-8 border border-[var(--danger)]/20 bg-[var(--danger)]/5 text-center max-w-md mx-auto mt-12 space-y-6 shadow-[var(--shadow)]">
-        <div className="h-12 w-12 rounded-full bg-[var(--danger)]/10 border border-[var(--danger)]/20 flex items-center justify-center text-[var(--danger)] text-xl mx-auto">
-          <FaExclamationTriangle />
-        </div>
-        <h3 className="text-lg font-heading font-bold text-[var(--text-primary)]">Resume Required</h3>
-        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-          You must upload your resume and specify job details before you can configure or start mock interview sessions.
-        </p>
-        <Button onClick={() => router.push('/resume')} variant="primary" size="md">
-          Go to Upload Page
-        </Button>
-      </div>
-    );
-  }
 
   
   
@@ -451,6 +457,69 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
           </div>
           <Button onClick={() => setSetupError(null)} variant="danger" size="sm">
             Dismiss
+          </Button>
+        </div>
+      )}
+
+      {/* Welcoming Resume State Banner */}
+      {!resumeData ? (
+        <div className="bg-bg-surface border border-primary/20 rounded-2xl p-4 sm:p-5 shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary flex items-center justify-center shrink-0 text-lg mt-0.5 sm:mt-0">
+              <FaInfoCircle aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-heading font-bold text-text-primary uppercase tracking-wider">
+                  Standard Simulation Mode
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-bg-surface-alt border border-border text-text-secondary">
+                  Resume Optional
+                </span>
+              </div>
+              <p className="text-xs text-text-secondary leading-relaxed max-w-2xl">
+                No resume uploaded. You can configure and run full mock interviews using curated industry benchmarks. Uploading a resume is optional and enables personalized past-project questions.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => router.push('/resume')}
+            variant="default"
+            size="sm"
+            className="shrink-0 w-full sm:w-auto"
+            icon={FaFileUpload}
+          >
+            Upload Resume (Optional)
+          </Button>
+        </div>
+      ) : (
+        <div className="bg-bg-surface border border-success/20 rounded-2xl p-4 sm:p-5 shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="h-10 w-10 rounded-xl bg-success/10 text-success flex items-center justify-center shrink-0 text-lg mt-0.5 sm:mt-0">
+              <FaCheckCircle aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-heading font-bold text-text-primary uppercase tracking-wider">
+                  Resume Connected
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-success/15 border border-success/30 text-success">
+                  Personalized Mode
+                </span>
+              </div>
+              <p className="text-xs text-text-secondary leading-relaxed max-w-2xl">
+                Your uploaded resume will be used to tailor questions and probe your past technical projects and architectural decisions.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => router.push('/resume')}
+            variant="ghost"
+            size="sm"
+            className="shrink-0 w-full sm:w-auto text-text-secondary hover:text-text-primary"
+            icon={FaFileAlt}
+          >
+            Change Resume
           </Button>
         </div>
       )}
@@ -699,6 +768,8 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
                         const isSelected = setupData.type === t;
                         const hasSelection = INTERVIEW_TYPES.includes(setupData.type as string);
                         const tabIndex = isSelected || (!hasSelection && index === 0) ? 0 : -1;
+                        const trackRequiresResume = t === 'Resume Deep Dive';
+
                         return (
                           <button
                             key={t}
@@ -714,12 +785,52 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
                                 : 'border-border bg-bg-surface text-text-primary hover:border-primary/40'
                             }`}
                           >
-                            <span className="text-xs font-semibold">{t} Track</span>
+                            <div className="space-y-0.5">
+                              <span className="text-xs font-semibold block">{t} Track</span>
+                              {trackRequiresResume && (
+                                <span className={`text-[10px] font-mono block ${!resumeData ? 'text-warning font-medium' : 'text-text-secondary'}`}>
+                                  Requires Resume
+                                </span>
+                              )}
+                            </div>
                             {isSelected && <FaCheckCircle className="text-primary text-sm shrink-0" aria-hidden="true" />}
                           </button>
                         );
                       })}
                     </div>
+
+                    {isMissingRequiredResume && (
+                      <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 space-y-3 mt-4 text-left">
+                        <div className="flex items-start gap-3">
+                          <FaExclamationTriangle className="text-warning text-base shrink-0 mt-0.5" aria-hidden="true" />
+                          <div className="space-y-1">
+                            <p className="text-xs font-bold text-text-primary">
+                              Resume Required for Deep Dive Track
+                            </p>
+                            <p className="text-xs text-text-secondary leading-relaxed">
+                              The Resume Deep Dive track specifically validates past work history, project claims, and metrics extracted from your resume. To practice this track, please upload your resume or choose another track above.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 pt-1 pl-7">
+                          <Button
+                            onClick={() => router.push('/resume')}
+                            variant="primary"
+                            size="sm"
+                            icon={FaFileUpload}
+                          >
+                            Upload Resume
+                          </Button>
+                          <Button
+                            onClick={() => selectOption('type', 'Technical')}
+                            variant="default"
+                            size="sm"
+                          >
+                            Switch to Standard Track
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 )}
 
@@ -824,6 +935,39 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
                       Review Simulation Parameters
                     </h3>
                     <InterviewModePreviewCard setupData={setupData} />
+
+                    {isMissingRequiredResume && (
+                      <div className="p-4 rounded-xl border border-danger/30 bg-danger/5 space-y-3 text-left">
+                        <div className="flex items-start gap-3">
+                          <FaExclamationTriangle className="text-danger text-base shrink-0 mt-0.5" aria-hidden="true" />
+                          <div className="space-y-1">
+                            <p className="text-xs font-bold text-text-primary">
+                              Resume Required to Start
+                            </p>
+                            <p className="text-xs text-text-secondary leading-relaxed">
+                              The selected &ldquo;Resume Deep Dive&rdquo; mode requires an uploaded resume to generate candidate-specific questions. Please upload a resume or switch back to a standard interview track to continue.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 pt-1 pl-7">
+                          <Button
+                            onClick={() => router.push('/resume')}
+                            variant="primary"
+                            size="sm"
+                            icon={FaFileUpload}
+                          >
+                            Upload Resume
+                          </Button>
+                          <Button
+                            onClick={() => selectOption('type', 'Technical')}
+                            variant="default"
+                            size="sm"
+                          >
+                            Switch to Technical Track
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -940,15 +1084,28 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
                 </div>
               )}
 
+              {isMissingRequiredResume && (
+                <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 text-xs text-warning space-y-1">
+                  <p className="font-semibold">Resume Required for Selected Track</p>
+                  <p className="text-[11px] text-text-secondary">
+                    Upload your resume or switch to a standard track to begin assessment.
+                  </p>
+                </div>
+              )}
+
               <Button
                 onClick={handleStartInterview}
-                disabled={startingSession}
+                disabled={startingSession || isMissingRequiredResume}
                 variant="primary"
                 size="lg"
                 className="w-full"
                 icon={FaPlay}
               >
-                {startingSession ? 'Conditioning Interview Memory...' : 'Begin Assessment'}
+                {startingSession
+                  ? 'Conditioning Interview Memory...'
+                  : isMissingRequiredResume
+                  ? 'Resume Required for Track'
+                  : 'Begin Assessment'}
               </Button>
             </div>
           </Card>

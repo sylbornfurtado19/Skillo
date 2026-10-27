@@ -1218,7 +1218,12 @@ export default function InterviewSession() {
       ? [setupData.role, 'Performance', 'Logical Scope', 'Complexity']
       : ['STAR Method', 'Leadership', 'Execution', 'Trade-offs'];
 
-  if (!resumeData) {
+  const isResumeRequired = Boolean(
+    setupData?.requiresResume ||
+    setupData?.type === 'Resume Deep Dive'
+  );
+
+  if (isResumeRequired && !resumeData) {
     return (
       <div className="glass-card rounded-2xl p-8 border border-danger/30 bg-danger/5 text-center max-w-md mx-auto mt-12 space-y-6">
         <div className="h-12 w-12 rounded-full bg-danger/10 border border-danger/20 flex items-center justify-center text-danger text-xl mx-auto">
@@ -1226,11 +1231,16 @@ export default function InterviewSession() {
         </div>
         <h3 className="text-lg font-heading font-bold text-text-primary">Resume Required</h3>
         <p className="text-xs text-text-secondary leading-relaxed">
-          You must upload your resume and specify job details before you can start active mock interviews.
+          The selected interview mode requires resume data to analyze your background and past project claims. Please upload your resume or return to setup to select a standard simulation track.
         </p>
-        <Button onClick={() => router.push('/resume')} variant="primary" size="md">
-          Go to Upload Page
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button onClick={() => router.push('/resume')} variant="primary" size="md">
+            Upload Resume
+          </Button>
+          <Button onClick={() => router.push('/setup')} variant="default" size="md">
+            Return to Setup
+          </Button>
+        </div>
       </div>
     );
   }
