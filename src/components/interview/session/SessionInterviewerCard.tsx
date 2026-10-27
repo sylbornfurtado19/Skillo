@@ -48,7 +48,7 @@ export interface SessionInterviewerCardProps {
   children?: React.ReactNode;
 }
 
-export default function SessionInterviewerCard({
+const SessionInterviewerCard = React.memo(function SessionInterviewerCard({
   persona,
   interviewerSpeaking,
   followUpBadgeSet,
@@ -305,4 +305,6 @@ export default function SessionInterviewerCard({
       </Card>
     </div>
   );
-}
+});
+
+export default SessionInterviewerCard;

@@ -464,8 +464,13 @@ export function useInterviewIntegrity({
 
   const saveCurrentQuestionRemainingSec = useCallback(
     (questionId: string, remainingSec: number) => {
+      const remainingMs = remainingSec * 1000;
+      const record = ledgerRef.current.questionTimers[questionId];
+      if (record && record.remainingMs === remainingMs) {
+        return;
+      }
       setLedger((prev: IntegrityLedgerState) => {
-        return setQuestionRemainingTime(prev, questionId, remainingSec * 1000);
+        return setQuestionRemainingTime(prev, questionId, remainingMs);
       });
     },
     []

@@ -118,6 +118,7 @@ export function setQuestionRemainingTime(
   if (!record) return state;
 
   const clampedRemaining = Math.max(0, Math.min(record.allocatedMs, remainingMs));
+  if (record.remainingMs === clampedRemaining) return state;
   const newConsumed = record.allocatedMs - clampedRemaining;
 
   return {

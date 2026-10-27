@@ -26,6 +26,7 @@ import SessionStatusBar from '../components/interview/session/SessionStatusBar';
 import IVPLivePanel from '../components/interview/session/IVPLivePanel';
 import { useInterviewIntegrity } from '../hooks/useInterviewIntegrity';
 import { useIVPEvidenceRunner } from '../hooks/useIVPEvidenceRunner';
+import { useInterviewCountdown } from '../hooks/useInterviewCountdown';
 
 import dynamic from 'next/dynamic';
 
@@ -166,7 +167,6 @@ export default function InterviewSession() {
   const [typedAnswer, setTypedAnswer] = useState('');
   const [transcriptText, setTranscriptText] = useState('');
   const [recording, setRecording] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(currentQuestion.duration);
   const [interviewerSpeaking, setInterviewerSpeaking] = useState(() => {
     return typeof window !== 'undefined' && 'speechSynthesis' in window;
   });
@@ -1042,60 +1042,24 @@ export default function InterviewSession() {
   ]);
 
   // Question countdown timer.
-  // handleNextQuestion changes identity on every keystroke / interim transcript update, so it is
-  // read through a ref: the timer must not restart (and the limit must not be pushed back) while
-  // the candidate is typing or speaking. It is deadline-based, and the expiry side effect runs
-  // outside any state updater so it fires exactly once (also under React Strict Mode).
-  const handleNextQuestionRef = useRef(handleNextQuestion);
-  useEffect(() => {
-    handleNextQuestionRef.current = handleNextQuestion;
-  }, [handleNextQuestion]);
+  // Interview Question Countdown Timer (PROMPT 05: 1s Cadence, Absolute Deadline, Tab Visibility Sync, No 250ms polling)
+  const isClockActive =
+    preflightDone &&
+    !interviewerSpeaking &&
+    !checkingFollowUp &&
+    !grading &&
+    devicesReady &&
+    !integrity.isPaused;
 
-  useEffect(() => {
-    // Never run the clock unless preflight is complete, question has been read, devices are live, and not paused
-    if (
-      !preflightDone ||
-      interviewerSpeaking ||
-      checkingFollowUp ||
-      grading ||
-      !devicesReady ||
-      integrity.isPaused
-    ) {
-      return;
-    }
-
-    const durationSec = currentQuestion.duration;
-    let currentRemaining = integrity.getQuestionRemainingSec(activeQuestionId, durationSec);
-    if (currentRemaining <= 0) {
-      currentRemaining = integrity.startQuestionClock(activeQuestionId, durationSec);
-    }
-    setTimeLeft(currentRemaining);
-
-    let fired = false;
-    const deadline = Date.now() + currentRemaining * 1000;
-    const timer = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-      setTimeLeft(remaining);
-      integrity.saveCurrentQuestionRemainingSec(activeQuestionId, remaining);
-      if (remaining <= 0 && !fired) {
-        fired = true;
-        clearInterval(timer);
-        handleNextQuestionRef.current();
-      }
-    }, 250);
-
-    return () => clearInterval(timer);
-  }, [
-    preflightDone,
-    currentQuestionIndex,
+  const timeLeft = useInterviewCountdown({
     activeQuestionId,
-    interviewerSpeaking,
-    checkingFollowUp,
-    grading,
-    devicesReady,
-    integrity.isPaused,
-    currentQuestion.duration,
-  ]);
+    durationSec: currentQuestion.duration,
+    isActive: isClockActive,
+    getRemainingSec: integrity.getQuestionRemainingSec,
+    startQuestionClock: integrity.startQuestionClock,
+    saveRemainingSec: integrity.saveCurrentQuestionRemainingSec,
+    onTimeout: handleNextQuestion,
+  });
 
   // Unsaved Content Navigation Guard (Tab close / refresh)
   const activeAnswerContent = responseMode === 'type' ? typedAnswer : transcriptText;
