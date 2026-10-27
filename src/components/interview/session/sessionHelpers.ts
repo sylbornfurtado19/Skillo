@@ -179,3 +179,41 @@ export function handleRetryEvaluationFailure(_error?: unknown): RetryEvaluationF
     grading: false,
   };
 }
+
+/**
+ * Merges two text drafts (e.g. typed draft and speech transcript) cleanly without duplicate words or missing spaces.
+ * Preserves existing punctuation and spacing.
+ */
+export function mergeDrafts(baseText: string | undefined | null, newText: string | undefined | null): string {
+  const base = baseText ?? '';
+  const addition = newText ?? '';
+
+  if (!base.trim()) return addition.trim();
+  if (!addition.trim()) return base.trim();
+
+  const baseTrimmed = base.trim();
+  const additionTrimmed = addition.trim();
+
+  // Prevent duplicate exact text
+  if (baseTrimmed.toLowerCase() === additionTrimmed.toLowerCase()) return baseTrimmed;
+  if (baseTrimmed.toLowerCase().endsWith(additionTrimmed.toLowerCase())) return baseTrimmed;
+  if (additionTrimmed.toLowerCase().startsWith(baseTrimmed.toLowerCase())) return additionTrimmed;
+
+  // Check punctuation and capitalization
+  const lastChar = baseTrimmed.slice(-1);
+  const hasTerminalPunctuation = ['.', '!', '?', ';', ':'].includes(lastChar);
+
+  // If base ends with sentence punctuation or addition starts with an uppercase letter
+  const firstChar = additionTrimmed.charAt(0);
+  const isFirstCharUpper = firstChar === firstChar.toUpperCase() && firstChar !== firstChar.toLowerCase();
+
+  let separator = ' ';
+  if (hasTerminalPunctuation) {
+    separator = ' ';
+  } else if (isFirstCharUpper) {
+    separator = '. ';
+  }
+
+  return `${baseTrimmed}${separator}${additionTrimmed}`;
+}
+

@@ -83,6 +83,28 @@ export default function SessionAnswerWorkspace({
   setDiagramState,
   className = '',
 }: SessionAnswerWorkspaceProps) {
+  const handleSwitchToEditor = () => {
+    if (responseMode === 'type') return;
+
+    if (recording) {
+      handleToggleRecord();
+    }
+
+    if (transcriptText.trim()) {
+      setTypedAnswer(transcriptText);
+    }
+    setResponseMode('type');
+  };
+
+  const handleSwitchToSpeech = () => {
+    if (responseMode === 'speak') return;
+
+    if (typedAnswer.trim()) {
+      setTranscriptText(typedAnswer);
+    }
+    setResponseMode('speak');
+  };
+
   return (
     <div className={`flex flex-col justify-between bg-bg-surface border border-border rounded-2xl p-6 relative space-y-6 shadow-soft ${className}`} data-secure="input">
       <div>
@@ -101,33 +123,40 @@ export default function SessionAnswerWorkspace({
             </span>
           </div>
 
-          <div className="bg-bg-surface-alt p-1 rounded-xl border border-border flex gap-1">
+          <div
+            role="tablist"
+            aria-label="Answer input mode"
+            className="bg-bg-surface-alt p-1 rounded-xl border border-border flex gap-1"
+          >
             <button
               type="button"
-              onClick={() => {
-                setResponseMode('type');
-                setTranscriptText('');
-                setRecording(false);
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition duration-200 cursor-pointer ${
+              role="tab"
+              id="mode-tab-editor"
+              aria-selected={responseMode === 'type'}
+              aria-controls="answer-input-panel"
+              aria-label="Editor input mode"
+              onClick={handleSwitchToEditor}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                 responseMode === 'type' ? 'bg-primary text-text-on-primary shadow-soft' : 'text-text-secondary hover:text-text-primary'
               }`}
             >
-              <FaKeyboard size={10} />
+              <FaKeyboard size={10} aria-hidden="true" />
               <span>Editor</span>
             </button>
 
             <button
               type="button"
-              onClick={() => {
-                setResponseMode('speak');
-                setTypedAnswer('');
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition duration-200 cursor-pointer ${
+              role="tab"
+              id="mode-tab-speech"
+              aria-selected={responseMode === 'speak'}
+              aria-controls="answer-input-panel"
+              aria-label="Speech transcription mode"
+              onClick={handleSwitchToSpeech}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                 responseMode === 'speak' ? 'bg-primary text-text-on-primary shadow-soft' : 'text-text-secondary hover:text-text-primary'
               }`}
             >
-              <FaMicrophone size={10} />
+              <FaMicrophone size={10} aria-hidden="true" />
               <span>Speech</span>
             </button>
           </div>
@@ -148,13 +177,19 @@ export default function SessionAnswerWorkspace({
           </div>
         )}
 
-        <div className="min-h-[220px] relative">
+        <div
+          id="answer-input-panel"
+          role="tabpanel"
+          aria-labelledby={responseMode === 'type' ? 'mode-tab-editor' : 'mode-tab-speech'}
+          className="min-h-[220px] relative"
+        >
           {responseMode === 'type' ? (
             <div className="space-y-2">
               <textarea
                 value={typedAnswer}
                 onChange={(e) => setTypedAnswer(e.target.value)}
                 disabled={interviewerSpeaking}
+                aria-label="Written answer draft"
                 placeholder="Provide your response here..."
                 className="w-full h-56 rounded-xl bg-bg-surface border border-border p-4 text-xs sm:text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/25 transition duration-200 resize-none font-mono disabled:opacity-40"
               />
@@ -196,7 +231,7 @@ export default function SessionAnswerWorkspace({
                   </div>
                 </div>
               ) : (
-                <div className="text-center space-y-4">
+                <div className="w-full flex flex-col items-center text-center space-y-4">
                   <button
                     type="button"
                     onClick={handleToggleRecord}
@@ -207,9 +242,17 @@ export default function SessionAnswerWorkspace({
                     <FaMicrophone aria-hidden="true" />
                   </button>
                   <div className="space-y-1">
-                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Capture Speech</p>
+                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">
+                      {transcriptText ? 'Resume Speech Capture' : 'Capture Speech'}
+                    </p>
                     <p className="text-xs text-text-secondary">Audio captures are transcribed locally in real-time.</p>
                   </div>
+
+                  {transcriptText && (
+                    <div className="w-full bg-bg-surface-alt border border-border rounded-xl p-4 text-xs font-mono text-text-secondary leading-relaxed min-h-[60px] text-left">
+                      {transcriptText}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

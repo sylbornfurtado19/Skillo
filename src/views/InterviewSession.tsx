@@ -46,6 +46,7 @@ import {
   handleRetryEvaluationFailure,
   buildFollowUpQuestion,
   resolveQuestionId,
+  mergeDrafts,
 } from '../components/interview/session/sessionHelpers';
 import SessionGradingOverlay from '../components/interview/session/SessionGradingOverlay';
 import SessionInterviewerCard from '../components/interview/session/SessionInterviewerCard';
@@ -557,6 +558,11 @@ export default function InterviewSession() {
   const lastSpeechResultMsRef = useRef(0);
   const speechAnalyticsRef = useRef<Record<string, SpeechAnalytics>>({});
   const [, setSpeechAnalyticsByQuestion] = useState<Record<string, SpeechAnalytics>>({});
+  const speechBaseDraftRef = useRef<string>('');
+  const responseModeRef = useRef(responseMode);
+  useEffect(() => {
+    responseModeRef.current = responseMode;
+  }, [responseMode]);
 
   const finalizeSpeechAnalytics = useCallback((questionId: string) => {
     if (speechSegmentsRef.current.length === 0) {
@@ -583,6 +589,11 @@ export default function InterviewSession() {
         rec.lang = 'en-US';
 
         rec.onresult = (event: any) => {
+          // Stale callback protection: if candidate switched to editor mode, discard late transcript updates
+          if (responseModeRef.current !== 'speak') {
+            return;
+          }
+
           let currentText = '';
           for (let i = 0; i < event.results.length; ++i) {
             currentText += event.results[i][0].transcript;
@@ -602,7 +613,9 @@ export default function InterviewSession() {
               }
             }
           }
-          setTranscriptText(currentText);
+          const combined = mergeDrafts(speechBaseDraftRef.current, currentText);
+          setTranscriptText(combined);
+          setTypedAnswer(combined);
         };
 
         rec.onerror = (event: any) => {
@@ -866,6 +879,7 @@ export default function InterviewSession() {
     setTypedAnswer('');
     setTranscriptText('');
     setRecording(false);
+    speechBaseDraftRef.current = '';
     setInterviewerSpeaking(true);
     setShowHint(false);
 
@@ -880,11 +894,9 @@ export default function InterviewSession() {
         const nextIndex = currentQuestionIndex + 1;
         const nextAnswerObj = updatedAnswers[nextIndex];
         const nextAnswer = typeof nextAnswerObj === 'string' ? nextAnswerObj : nextAnswerObj?.answerText ?? '';
-        if (responseMode === 'type') {
-          setTypedAnswer(nextAnswer);
-        } else {
-          setTranscriptText(nextAnswer);
-        }
+        setTypedAnswer(nextAnswer);
+        setTranscriptText(nextAnswer);
+        speechBaseDraftRef.current = nextAnswer;
         setCurrentQuestionIndex(nextIndex);
       } else {
         finalizeAndSubmit({
@@ -1133,6 +1145,7 @@ export default function InterviewSession() {
     setTypedAnswer('');
     setTranscriptText('');
     setRecording(false);
+    speechBaseDraftRef.current = '';
     setInterviewerSpeaking(true);
     setShowHint(false);
 
@@ -1140,11 +1153,9 @@ export default function InterviewSession() {
       const nextIndex = currentQuestionIndex + 1;
       const nextAnswerObj = newAnswers[nextIndex];
       const nextAnswer = typeof nextAnswerObj === 'string' ? nextAnswerObj : nextAnswerObj?.answerText ?? '';
-      if (responseMode === 'type') {
-        setTypedAnswer(nextAnswer);
-      } else {
-        setTranscriptText(nextAnswer);
-      }
+      setTypedAnswer(nextAnswer);
+      setTranscriptText(nextAnswer);
+      speechBaseDraftRef.current = nextAnswer;
       setCurrentQuestionIndex(nextIndex);
     } else {
       finalizeAndSubmit({
@@ -1190,11 +1201,9 @@ export default function InterviewSession() {
       const prevIndex = currentQuestionIndex - 1;
       const prevAnswerObj = newAnswers[prevIndex];
       const prevAnswer = typeof prevAnswerObj === 'string' ? prevAnswerObj : prevAnswerObj?.answerText ?? '';
-      if (responseMode === 'type') {
-        setTypedAnswer(prevAnswer);
-      } else {
-        setTranscriptText(prevAnswer);
-      }
+      setTypedAnswer(prevAnswer);
+      setTranscriptText(prevAnswer);
+      speechBaseDraftRef.current = prevAnswer;
       setRecording(false);
       setInterviewerSpeaking(true);
       setCurrentQuestionIndex(prevIndex);
@@ -1217,7 +1226,10 @@ export default function InterviewSession() {
         }
       }
     } else {
-      setTranscriptText('');
+      const currentDraft = (responseMode === 'type' ? typedAnswer : transcriptText).trim();
+      speechBaseDraftRef.current = currentDraft;
+      setTranscriptText(currentDraft);
+      setTypedAnswer(currentDraft);
       speechSegmentsRef.current = [];
       processedSpeechResultIndicesRef.current.clear();
       answerStartedAtRef.current = Date.now();
