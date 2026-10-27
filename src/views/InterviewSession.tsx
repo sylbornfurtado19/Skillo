@@ -23,7 +23,6 @@ import SessionDeviceGate from '../components/interview/session/SessionDeviceGate
 import SessionPreflight from '../components/interview/session/SessionPreflight';
 import SessionIntegrityOverlay from '../components/interview/session/SessionIntegrityOverlay';
 import SessionStatusBar from '../components/interview/session/SessionStatusBar';
-import IVPLivePanel from '../components/interview/session/IVPLivePanel';
 import { useInterviewIntegrity } from '../hooks/useInterviewIntegrity';
 import { useIVPEvidenceRunner } from '../hooks/useIVPEvidenceRunner';
 import { useInterviewCountdown } from '../hooks/useInterviewCountdown';
@@ -1455,12 +1454,6 @@ export default function InterviewSession() {
             onWindow={handleSyncWindow}
             onAudioLevel={setMicAudioLevel}
             visible={!interviewerSpeaking}
-          />
-
-          {/* Classical IVP Live Diagnostic Panel (O4 / REM-3) */}
-          <IVPLivePanel
-            runner={ivpRunner}
-            sparklineSignal={typeof lastEar === 'number' ? lastEar : 0.3}
           />
         </div>
       </div>
