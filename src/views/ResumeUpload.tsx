@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useId } from 'react';
+import React, { useState, useId, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -52,6 +52,8 @@ export default function ResumeUpload() {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState<'uploading' | 'processing' | 'complete'>('uploading');
+  const [extractedText, setExtractedText] = useState<string>('');
   const [currentState, setCurrentState] = useState<'idle' | 'uploading' | 'analyzing' | 'complete' | 'failed'>(
     resumeData && analysisResult ? 'complete' : 'idle'
   );
@@ -60,6 +62,20 @@ export default function ResumeUpload() {
   const [suggestedRewrites, setSuggestedRewrites] = useState<ResumeRewriteItem[]>([]);
   const [rewritesLoading, setRewritesLoading] = useState(false);
   const [copiedRewrite, setCopiedRewrite] = useState<number | null>(null);
+
+  const uploadIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   // ── LayoutLMv3 visual canvas state ──────────────────────────────────────
   const [activePageNumber] = useState(1);
@@ -101,7 +117,14 @@ export default function ResumeUpload() {
     setDragging(false);
   };
 
+  const MAX_RESUME_SIZE = 5 * 1024 * 1024; // 5 MB (aligns with server-side MAX_RESUME_FILE_SIZE)
+
   const processFile = (selectedFile: File) => {
+    // Prevent concurrent upload attempts
+    if (currentState === 'uploading' || currentState === 'analyzing') {
+      return;
+    }
+
     const fileNameLower = selectedFile.name.toLowerCase();
     const isAllowedExt =
       fileNameLower.endsWith('.pdf') ||
@@ -121,28 +144,113 @@ export default function ResumeUpload() {
       return;
     }
 
+    if (selectedFile.size > MAX_RESUME_SIZE) {
+      const msg = 'Resume file exceeds maximum allowed size (5 MB). Please upload a smaller document.';
+      setErrorMessage(msg);
+      showToast(msg, 'error');
+      setCurrentState('failed');
+      return;
+    }
+
+    // Abort any earlier upload in flight and revoke old object URL
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const currentUploadId = ++uploadIdRef.current;
+
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+
     setErrorMessage('');
     setFile(selectedFile);
+    setUploadProgress(0);
+    setUploadStage('uploading');
     setCurrentState('uploading');
 
-    let prog = 0;
-    const interval = setInterval(() => {
-      prog += 20;
-      setUploadProgress(prog);
-      if (prog >= 100) {
-        clearInterval(interval);
-        setCurrentState('idle');
-        setResumeData({
-          fileName: selectedFile.name,
-          fileSize: `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`,
+    (async () => {
+      let parsedText = '';
+      try {
+        const extraction = await extractResumeTextApi(selectedFile, {
+          signal: controller.signal,
+          onProgress: (p) => {
+            if (uploadIdRef.current !== currentUploadId || controller.signal.aborted) return;
+            setUploadProgress(p.percent);
+            setUploadStage(p.stage);
+          },
         });
+
+        if (uploadIdRef.current !== currentUploadId || controller.signal.aborted) return;
+
+        if (!extraction.text || extraction.charCount < 100) {
+          throw new Error('scanned PDF, no selectable text');
+        }
+        parsedText = extraction.text;
+      } catch (extractErr: unknown) {
+        if (uploadIdRef.current !== currentUploadId || controller.signal.aborted) return;
+
+        console.warn('Server text extraction failed, attempting client fallback:', extractErr);
+
+        // Client-side fallback for text files and docx
+        const fileNameLower = selectedFile.name.toLowerCase();
+        if (selectedFile.type.startsWith('text/') || fileNameLower.endsWith('.txt') || fileNameLower.endsWith('.text')) {
+          try {
+            const clientText = await selectedFile.text();
+            if (clientText && clientText.trim().length >= 100) {
+              parsedText = clientText.trim();
+            }
+          } catch (clientReadErr) {
+            console.warn('Client-side text read error:', clientReadErr);
+          }
+        } else if (fileNameLower.endsWith('.docx') || selectedFile.type.includes('wordprocessingml')) {
+          try {
+            const { default: mammoth } = await import('mammoth');
+            const arrayBuffer = await selectedFile.arrayBuffer();
+            const docxResult = await mammoth.extractRawText({ arrayBuffer });
+            if (docxResult?.value && docxResult.value.trim().length >= 100) {
+              parsedText = docxResult.value.trim();
+            }
+          } catch (docxErr) {
+            console.warn('Client-side docx extraction error:', docxErr);
+          }
+        }
+
+        if (!parsedText || parsedText.length < 100) {
+          let errMsg = 'Could not extract text from the resume file.';
+          if (extractErr instanceof Error) {
+            if (extractErr.message.includes('scanned PDF') || extractErr.message.includes('too short')) {
+              errMsg = 'Resume text is too short or could not be extracted (scanned PDF without selectable text). Please upload a text-selectable document.';
+            } else if (extractErr.message.toLowerCase().includes('authentication') || extractErr.message.toLowerCase().includes('sign in')) {
+              errMsg = 'Your session has expired or authentication is required. Please sign in again to analyze your resume.';
+            } else {
+              errMsg = extractErr.message;
+            }
+          }
+          setUploadProgress(0);
+          setErrorMessage(errMsg);
+          setCurrentState('failed');
+          return;
+        }
       }
-    }, 150);
+
+      if (uploadIdRef.current !== currentUploadId || controller.signal.aborted) return;
+
+      setExtractedText(parsedText);
+      setUploadProgress(100);
+      setUploadStage('complete');
+      setResumeData({
+        fileName: selectedFile.name,
+        fileSize: `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`,
+      });
+      setCurrentState('idle');
+    })();
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
+    if (currentState === 'uploading' || currentState === 'analyzing') return;
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile) {
       processFile(droppedFile);
@@ -150,6 +258,7 @@ export default function ResumeUpload() {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (currentState === 'uploading' || currentState === 'analyzing') return;
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       processFile(selectedFile);
@@ -157,8 +266,15 @@ export default function ResumeUpload() {
   };
 
   const handleRemoveFile = () => {
+    abortControllerRef.current?.abort();
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
     setFile(null);
+    setExtractedText('');
     setUploadProgress(0);
+    setUploadStage('uploading');
     setResumeData(null);
     setAnalysisResult(null);
     setErrorMessage('');
@@ -198,6 +314,7 @@ B.S. in Computer Science | University of California, Berkeley | 2015 - 2019`;
   const handleStartAnalysis = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || !jobTitle.trim() || !jobDescription.trim()) return;
+    if (currentState === 'uploading' || currentState === 'analyzing') return;
 
     setErrorMessage('');
     setCurrentState('analyzing');
@@ -211,56 +328,61 @@ B.S. in Computer Science | University of California, Berkeley | 2015 - 2019`;
       }
     }, 800);
 
-    // Resume text extraction (server extraction with client fallback for text files)
-    let extractedText = '';
-    try {
-      const extraction = await extractResumeTextApi(file, showToast);
-      if (!extraction.text || extraction.charCount < 100) {
-        throw new Error('scanned PDF, no selectable text');
-      }
-      extractedText = extraction.text;
-    } catch (extractErr: unknown) {
-      console.warn('Server text extraction failed, attempting client fallback:', extractErr);
+    // Resume text extraction (uses cached text from upload stage or falls back to extraction)
+    let textToAnalyze = extractedText;
+    if (!textToAnalyze || textToAnalyze.trim().length < 100) {
+      try {
+        const extraction = await extractResumeTextApi(file, showToast);
+        if (!extraction.text || extraction.charCount < 100) {
+          throw new Error('scanned PDF, no selectable text');
+        }
+        textToAnalyze = extraction.text;
+        setExtractedText(textToAnalyze);
+      } catch (extractErr: unknown) {
+        console.warn('Server text extraction failed, attempting client fallback:', extractErr);
 
-      // Client-side fallback for text files and docx
-      const fileNameLower = file.name.toLowerCase();
-      if (file.type.startsWith('text/') || fileNameLower.endsWith('.txt') || fileNameLower.endsWith('.text')) {
-        try {
-          const clientText = await file.text();
-          if (clientText && clientText.trim().length >= 100) {
-            extractedText = clientText.trim();
+        // Client-side fallback for text files and docx
+        const fileNameLower = file.name.toLowerCase();
+        if (file.type.startsWith('text/') || fileNameLower.endsWith('.txt') || fileNameLower.endsWith('.text')) {
+          try {
+            const clientText = await file.text();
+            if (clientText && clientText.trim().length >= 100) {
+              textToAnalyze = clientText.trim();
+              setExtractedText(textToAnalyze);
+            }
+          } catch (clientReadErr) {
+            console.warn('Client-side text read error:', clientReadErr);
           }
-        } catch (clientReadErr) {
-          console.warn('Client-side text read error:', clientReadErr);
-        }
-      } else if (fileNameLower.endsWith('.docx') || file.type.includes('wordprocessingml')) {
-        try {
-          const { default: mammoth } = await import('mammoth');
-          const arrayBuffer = await file.arrayBuffer();
-          const docxResult = await mammoth.extractRawText({ arrayBuffer });
-          if (docxResult?.value && docxResult.value.trim().length >= 100) {
-            extractedText = docxResult.value.trim();
+        } else if (fileNameLower.endsWith('.docx') || file.type.includes('wordprocessingml')) {
+          try {
+            const { default: mammoth } = await import('mammoth');
+            const arrayBuffer = await file.arrayBuffer();
+            const docxResult = await mammoth.extractRawText({ arrayBuffer });
+            if (docxResult?.value && docxResult.value.trim().length >= 100) {
+              textToAnalyze = docxResult.value.trim();
+              setExtractedText(textToAnalyze);
+            }
+          } catch (docxErr) {
+            console.warn('Client-side docx extraction error:', docxErr);
           }
-        } catch (docxErr) {
-          console.warn('Client-side docx extraction error:', docxErr);
         }
-      }
 
-      if (!extractedText || extractedText.length < 100) {
-        clearInterval(interval);
-        let errMsg = 'Could not extract text from the resume file.';
-        if (extractErr instanceof Error) {
-          if (extractErr.message.includes('scanned PDF') || extractErr.message.includes('too short')) {
-            errMsg = 'Resume text is too short or could not be extracted (scanned PDF without selectable text). Please upload a text-selectable document.';
-          } else if (extractErr.message.toLowerCase().includes('authentication') || extractErr.message.toLowerCase().includes('sign in')) {
-            errMsg = 'Your session has expired or authentication is required. Please sign in again to analyze your resume.';
-          } else {
-            errMsg = extractErr.message;
+        if (!textToAnalyze || textToAnalyze.length < 100) {
+          clearInterval(interval);
+          let errMsg = 'Could not extract text from the resume file.';
+          if (extractErr instanceof Error) {
+            if (extractErr.message.includes('scanned PDF') || extractErr.message.includes('too short')) {
+              errMsg = 'Resume text is too short or could not be extracted (scanned PDF without selectable text). Please upload a text-selectable document.';
+            } else if (extractErr.message.toLowerCase().includes('authentication') || extractErr.message.toLowerCase().includes('sign in')) {
+              errMsg = 'Your session has expired or authentication is required. Please sign in again to analyze your resume.';
+            } else {
+              errMsg = extractErr.message;
+            }
           }
+          setErrorMessage(errMsg);
+          setCurrentState('failed');
+          return;
         }
-        setErrorMessage(errMsg);
-        setCurrentState('failed');
-        return;
       }
     }
 
@@ -273,7 +395,7 @@ B.S. in Computer Science | University of California, Berkeley | 2015 - 2019`;
         cleanJobTitle,
         cleanJobDescription,
         showToast,
-        extractedText || undefined
+        textToAnalyze || undefined
       );
       clearInterval(interval);
       setAnalysisStep(analysisSteps.length - 1);
@@ -311,7 +433,7 @@ B.S. in Computer Science | University of California, Berkeley | 2015 - 2019`;
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
-            resumeText: extractedText,
+            resumeText: textToAnalyze,
             jobTitle: cleanJobTitle,
             jobDescription: cleanJobDescription,
           }),
@@ -376,13 +498,37 @@ B.S. in Computer Science | University of California, Berkeley | 2015 - 2019`;
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             className="bg-bg-surface rounded-2xl p-10 border border-border shadow-soft flex flex-col items-center justify-center min-h-[300px] text-center"
+            role="status"
+            aria-live="polite"
           >
             <div className="h-14 w-14 rounded-full bg-primary-soft border border-primary/20 flex items-center justify-center text-primary text-2xl mb-4 animate-bounce">
-              <FaCloudUploadAlt />
+              <FaCloudUploadAlt aria-hidden="true" />
             </div>
-            <h3 className="text-lg font-heading font-bold text-text-primary mb-2">Uploading Document</h3>
-            <p className="text-xs text-text-secondary mb-6 font-mono">Transferring package payload...</p>
-            <Progress value={uploadProgress} max={100} showLabel={true} label="Upload Status" className="max-w-xs" />
+            <h3 className="text-lg font-heading font-bold text-text-primary mb-2">
+              {uploadStage === 'processing'
+                ? 'Processing Resume Document'
+                : uploadStage === 'complete'
+                ? 'Resume Upload Complete'
+                : 'Uploading Resume'}
+            </h3>
+            <p className="text-xs text-text-secondary mb-6 font-mono">
+              {uploadStage === 'processing'
+                ? 'Upload complete • Extracting text layers and validating structure...'
+                : uploadStage === 'complete'
+                ? 'File validated and ready for job alignment analysis.'
+                : `Transferring ${file?.name || 'document'} (${uploadProgress}%)...`}
+            </p>
+            <Progress
+              value={uploadProgress}
+              max={100}
+              showLabel={true}
+              label={
+                uploadStage === 'processing'
+                  ? 'Processing text extraction'
+                  : 'Upload Status'
+              }
+              className="max-w-xs"
+            />
           </motion.div>
         )}
 
@@ -445,13 +591,14 @@ B.S. in Computer Science | University of California, Berkeley | 2015 - 2019`;
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             className="bg-bg-surface rounded-2xl p-10 border border-danger/30 bg-danger/5 flex flex-col items-center justify-center min-h-[300px] text-center"
+            role="alert"
           >
             <div className="h-12 w-12 rounded-full bg-danger/10 border border-danger/20 flex items-center justify-center text-danger text-xl mb-4">
               <FaExclamationTriangle aria-hidden="true" />
             </div>
-            <h3 className="text-lg font-heading font-bold text-text-primary mb-2">Analysis Error</h3>
+            <h3 className="text-lg font-heading font-bold text-text-primary mb-2">Upload or Analysis Error</h3>
             <p className="text-xs text-text-secondary leading-relaxed max-w-sm mb-6">
-              {errorMessage || 'Could not complete analysis. Ensure you are signed in and have entered valid job details.'}
+              {errorMessage || 'Could not complete resume upload or analysis. Please ensure your document contains selectable text and try again.'}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               {(errorMessage.toLowerCase().includes('session') ||
@@ -462,8 +609,26 @@ B.S. in Computer Science | University of California, Berkeley | 2015 - 2019`;
                   Sign In to Continue
                 </Button>
               )}
-              <Button onClick={() => setCurrentState('idle')} variant="secondary" size="sm" icon={FaRedo}>
-                Retry Upload
+              {file && (
+                <Button
+                  onClick={() => {
+                    processFile(file);
+                  }}
+                  variant="primary"
+                  size="sm"
+                  icon={FaRedo}
+                >
+                  Retry Upload
+                </Button>
+              )}
+              <Button
+                onClick={() => {
+                  handleRemoveFile();
+                }}
+                variant="secondary"
+                size="sm"
+              >
+                Choose Different File
               </Button>
             </div>
           </motion.div>
@@ -865,7 +1030,7 @@ B.S. in Computer Science | University of California, Berkeley | 2015 - 2019`;
               )}
 
               <div className="w-full text-center text-xs text-text-secondary">
-                Data processed locally. Max file size limit: 12MB.
+                Data processed locally & securely. Max file size limit: 5MB.
               </div>
             </div>
 

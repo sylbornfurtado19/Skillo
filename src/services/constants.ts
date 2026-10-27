@@ -525,13 +525,165 @@ export const submitInterviewAnswers = async (
 };
 
 
+export interface ResumeUploadProgress {
+  loaded: number;
+  total: number;
+  percent: number;
+  stage: 'uploading' | 'processing' | 'complete';
+}
+
+export interface ExtractResumeOptions {
+  onProgress?: (progress: ResumeUploadProgress) => void;
+  signal?: AbortSignal;
+  showToast?: (message: string, variant?: 'info' | 'success' | 'error') => void;
+}
+
 export const extractResumeTextApi = async (
   file: File,
-  showToast?: (message: string, variant?: 'info' | 'success' | 'error') => void
+  showToastOrOptions?:
+    | ((message: string, variant?: 'info' | 'success' | 'error') => void)
+    | ExtractResumeOptions
 ): Promise<{ text: string; pageCount: number; charCount: number }> => {
+  const options: ExtractResumeOptions =
+    typeof showToastOrOptions === 'function'
+      ? { showToast: showToastOrOptions }
+      : showToastOrOptions || {};
+
+  const { onProgress, signal, showToast } = options;
+
+  if (signal?.aborted) {
+    throw new DOMException('Upload aborted', 'AbortError');
+  }
+
   const token = await getAuthToken();
+
+  // If XMLHttpRequest is available (browser runtime), use it for real byte-level upload progress tracking
+  if (typeof XMLHttpRequest !== 'undefined') {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const formData = new FormData();
+      formData.append('file', file);
+
+      if (signal?.aborted) {
+        return reject(new DOMException('Upload aborted', 'AbortError'));
+      }
+
+      const onAbort = () => {
+        xhr.abort();
+        reject(new DOMException('Upload aborted', 'AbortError'));
+      };
+
+      if (signal) {
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
+
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (event: ProgressEvent) => {
+          if (event.lengthComputable && event.total > 0) {
+            const rawPercent = Math.round((event.loaded / event.total) * 100);
+            const percent = Math.min(99, rawPercent);
+            const stage = percent >= 99 ? 'processing' : 'uploading';
+            onProgress({
+              loaded: event.loaded,
+              total: event.total,
+              percent,
+              stage,
+            });
+          }
+        };
+
+        xhr.upload.onload = () => {
+          onProgress({
+            loaded: file.size,
+            total: file.size,
+            percent: 99,
+            stage: 'processing',
+          });
+        };
+      }
+
+      xhr.onload = () => {
+        if (signal) {
+          signal.removeEventListener('abort', onAbort);
+        }
+
+        let body: any = {};
+        try {
+          body = JSON.parse(xhr.responseText);
+        } catch {
+          // Non-JSON response
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const text = body.text ?? body.data?.text ?? '';
+          const pageCount = body.pageCount ?? body.data?.pageCount ?? 1;
+          const charCount = body.charCount ?? body.data?.charCount ?? text.length;
+
+          if (!text || text.trim().length < 100) {
+            const errorMsg = 'scanned PDF, no selectable text';
+            if (showToast) {
+              showToast(errorMsg, 'error');
+            }
+            return reject(new Error(errorMsg));
+          }
+
+          onProgress?.({
+            loaded: file.size,
+            total: file.size,
+            percent: 100,
+            stage: 'complete',
+          });
+
+          resolve({ text, pageCount, charCount });
+        } else {
+          const message = body.message || `Text extraction failed with status ${xhr.status}`;
+          if (showToast) {
+            showToast(message, 'error');
+          }
+          reject(new Error(message));
+        }
+      };
+
+      xhr.onerror = () => {
+        if (signal) {
+          signal.removeEventListener('abort', onAbort);
+        }
+        const message = 'Network error during resume upload. Please check your connection and retry.';
+        if (showToast) {
+          showToast(message, 'error');
+        }
+        reject(new Error(message));
+      };
+
+      xhr.ontimeout = () => {
+        if (signal) {
+          signal.removeEventListener('abort', onAbort);
+        }
+        const message = 'Resume upload timed out. Please try again.';
+        if (showToast) {
+          showToast(message, 'error');
+        }
+        reject(new Error(message));
+      };
+
+      xhr.open('POST', '/api/resume/extract');
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+      xhr.send(formData);
+    });
+  }
+
+  // Fallback for environments without XHR (Node, SSR, mock test environments)
   const formData = new FormData();
   formData.append('file', file);
+
+  onProgress?.({
+    loaded: 0,
+    total: file.size,
+    percent: 0,
+    stage: 'uploading',
+  });
 
   const response = await fetch('/api/resume/extract', {
     method: 'POST',
@@ -539,6 +691,14 @@ export const extractResumeTextApi = async (
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: formData,
+    signal,
+  });
+
+  onProgress?.({
+    loaded: file.size,
+    total: file.size,
+    percent: 99,
+    stage: 'processing',
   });
 
   const body = await response.json().catch(() => ({}));
@@ -562,6 +722,13 @@ export const extractResumeTextApi = async (
     }
     throw new Error(errorMsg);
   }
+
+  onProgress?.({
+    loaded: file.size,
+    total: file.size,
+    percent: 100,
+    stage: 'complete',
+  });
 
   return { text, pageCount, charCount };
 };

@@ -43,6 +43,7 @@ import {
 import type { EvaluationCategories, AnswerBreakdown, SUQEvaluationResult, ContrastiveEvaluationResult, BenchmarkDeltaCard, LATSTreeState } from '../types/index';
 import { useToast } from '../components/ui/Toast';
 import { useChartTheme } from '../hooks/useChartTheme';
+import { useResultsScrollSpy, type ResultsNavItem, type ResultsTabKey } from '../hooks/useResultsScrollSpy';
 import { getThemeColor } from '../lib/themeColors';
 import { calculateDeliveryComposite, DELIVERY_COMPOSITE_WEIGHTS } from '../lib/services/deliveryComposite';
 import Button from '../components/ui/Button';
@@ -175,15 +176,41 @@ export default function Results() {
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'confidence' | 'contrastive' | 'lats' | 'gaze' | 'pose' | 'affect' | 'sync' | 'responses'>('overview');
 
   const timelineEvents = useMemo(() => {
     return extractTelemetryTimelineEvents(results);
   }, [results]);
 
+  const navItems = useMemo<ResultsNavItem[]>(() => {
+    if (!results) return [];
+    const items: ResultsNavItem[] = [
+      { id: 'sec-overview', tab: 'overview', label: 'Overview' },
+      { id: 'sec-confidence', tab: 'confidence', label: 'Confidence Analysis' },
+      { id: 'sec-contrastive', tab: 'contrastive', label: 'Contrastive Analysis' },
+    ];
+    if (isLATSTreeState(results.latsTreeState)) {
+      items.push({ id: 'sec-lats', tab: 'lats', label: 'Adaptive Tree (LATS)' });
+    }
+    if (isEyeContactMetrics(results.eyeContactMetrics)) {
+      items.push({ id: 'sec-gaze', tab: 'gaze', label: 'Gaze Analytics' });
+    }
+    if (isHeadPoseMetrics(results.headPoseMetrics)) {
+      items.push({ id: 'sec-pose', tab: 'pose', label: 'Posture & Gestures' });
+    }
+    if (isAffectiveMetrics(results.affectiveMetrics)) {
+      items.push({ id: 'sec-affect', tab: 'affect', label: 'Facial Composure' });
+    }
+    if (isLipSyncMetrics(results.lipSyncMetrics)) {
+      items.push({ id: 'sec-sync', tab: 'sync', label: 'Audio & Latency' });
+    }
+    items.push({ id: 'sec-responses', tab: 'responses', label: 'Detailed Responses' });
+    return items;
+  }, [results]);
 
-
-
+  const { activeTab, scrollToSection } = useResultsScrollSpy({
+    navItems,
+    defaultTab: 'overview',
+  });
 
   const [,setMounted] = useState(false);
   const [resultsError, setResultsError] = useState<string | null>(null);
@@ -191,18 +218,6 @@ export default function Results() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  const scrollToSection = (id: string, tab: 'overview' | 'confidence' | 'contrastive' | 'lats' | 'gaze' | 'pose' | 'affect' | 'sync' | 'responses') => {
-
-
-
-
-    setActiveTab(tab);
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
 
   const shareCardRef = useRef<HTMLDivElement | null>(null);
   const [sharing, setSharing] = useState(false);
@@ -725,124 +740,31 @@ export default function Results() {
       </div>
 
       {/* 1. Docked In-Page Navigation Bar */}
-      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-bg-surface border-b border-border shadow-soft">
+      <nav
+        aria-label="Assessment report sections"
+        className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-bg-surface border-b border-border shadow-soft"
+      >
         <div className="flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1">
-          <button
-            type="button"
-            onClick={() => scrollToSection('sec-overview', 'overview')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'overview'
-                ? 'bg-primary text-text-on-primary shadow-sm'
-                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            onClick={() => scrollToSection('sec-confidence', 'confidence')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'confidence'
-                ? 'bg-primary text-text-on-primary shadow-sm'
-                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
-            }`}
-          >
-            Confidence Analysis
-          </button>
-          <button
-            type="button"
-            onClick={() => scrollToSection('sec-contrastive', 'contrastive')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'contrastive'
-                ? 'bg-primary text-text-on-primary shadow-sm'
-                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
-            }`}
-          >
-            Contrastive Analysis
-          </button>
-          {/* Adaptive Decision Tree tab — only shown when LATS state is available */}
-          {isLATSTreeState(results.latsTreeState) && (
-            <button
-              type="button"
-              onClick={() => scrollToSection('sec-lats', 'lats')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
-                activeTab === 'lats'
-                  ? 'bg-primary text-text-on-primary shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
-              }`}
-            >
-              Adaptive Tree (LATS)
-            </button>
-          )}
-          {/* Gaze tab — only shown when metrics are available */}
-          {isEyeContactMetrics(results.eyeContactMetrics) && (
-            <button
-              type="button"
-              onClick={() => scrollToSection('sec-gaze', 'gaze')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
-                activeTab === 'gaze'
-                  ? 'bg-primary text-text-on-primary shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
-              }`}
-            >
-              Gaze Analytics
-            </button>
-          )}
-          {/* Head Pose & Gestures tab — only shown when metrics are available */}
-          {isHeadPoseMetrics(results.headPoseMetrics) && (
-            <button
-              type="button"
-              onClick={() => scrollToSection('sec-pose', 'pose')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
-                activeTab === 'pose'
-                  ? 'bg-primary text-text-on-primary shadow-sm'
-                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
-              }`}
-            >
-              Posture &amp; Gestures
-            </button>
-          )}
-          {/* Affect & Composure tab — only shown when metrics are available */}
-          {isAffectiveMetrics(results.affectiveMetrics) && (
-            <button
-              type="button"
-              onClick={() => scrollToSection('sec-affect', 'affect')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
-                activeTab === 'affect'
-                  ? 'bg-primary text-text-on-primary shadow-sm'
-                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
-              }`}
-            >
-              Facial Composure
-            </button>
-          )}
-          {/* Audio Presence & Latency tab — only shown when metrics are available */}
-          {isLipSyncMetrics(results.lipSyncMetrics) && (
-            <button
-              type="button"
-              onClick={() => scrollToSection('sec-sync', 'sync')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
-                activeTab === 'sync'
-                  ? 'bg-primary text-text-on-primary shadow-sm'
-                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
-              }`}
-            >
-              Audio &amp; Latency
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => scrollToSection('sec-responses', 'responses')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'responses'
-                ? 'bg-primary text-text-on-primary shadow-sm'
-                : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
-            }`}
-          >
-            Detailed Responses
-          </button>
+          {navItems.map((item) => {
+            const isActive = activeTab === item.tab;
+            return (
+              <button
+                key={item.tab}
+                type="button"
+                onClick={() => scrollToSection(item.id, item.tab)}
+                aria-current={isActive ? 'location' : undefined}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+                  isActive
+                    ? 'bg-primary text-text-on-primary shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
-      </div>
+      </nav>
 
 
       {/* SECTION 1: OVERVIEW & COMPARISON */}
