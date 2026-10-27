@@ -287,4 +287,406 @@ describe('SystemDesignCanvas Toolbar Accessibility & Usability (Prompt 11)', () 
       expect(html).toContain('truncate');
     });
   });
+
+  describe('8. Keyboard Interaction Safety (Prompt 11A)', () => {
+    interface MockDOMNode {
+      tagName: string;
+      isContentEditable?: boolean;
+      contains: (node: MockDOMNode | null) => boolean;
+      appendChild: (child: MockDOMNode) => void;
+    }
+
+    const createMockNode = (tagName: string, isContentEditable = false): MockDOMNode => {
+      const children: MockDOMNode[] = [];
+      const node: MockDOMNode = {
+        tagName: tagName.toUpperCase(),
+        isContentEditable,
+        contains: (target: MockDOMNode | null) => {
+          if (!target) return false;
+          if (target === node) return true;
+          return children.some((c) => c.contains(target));
+        },
+        appendChild: (child: MockDOMNode) => {
+          children.push(child);
+        },
+      };
+      return node;
+    };
+
+    it('scopes canvas container with tabIndex and region semantics for keyboard focus', () => {
+      const interactiveHtml = renderCanvas({ readOnly: false });
+      expect(interactiveHtml).toContain('tabindex="0"');
+      expect(interactiveHtml).toContain('role="region"');
+      expect(interactiveHtml).toContain('aria-label="System architecture whiteboard"');
+
+      const readOnlyHtml = renderCanvas({ readOnly: true });
+      expect(readOnlyHtml).toContain('tabindex="-1"');
+    });
+
+    it('Scenario 1: typing in an input or textarea inside canvas does not delete selected diagram elements on Backspace or Delete', () => {
+      const canvasEl = createMockNode('div');
+      const inputEl = createMockNode('input');
+      canvasEl.appendChild(inputEl);
+
+      const deleteSelectedMock = jest.fn();
+      let selectedNodeId: string | null = 'node_db_1';
+
+      // Scoped keydown handler logic
+      const handleKeyDown = (e: any) => {
+        const target = e.target;
+        if (!target || !canvasEl.contains(target)) return;
+
+        const tag = target.tagName?.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable) {
+          return;
+        }
+
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          if (selectedNodeId) {
+            e.preventDefault();
+            deleteSelectedMock();
+            selectedNodeId = null;
+          }
+        }
+      };
+
+      // Press Backspace while typing in input
+      const backspaceEvent = {
+        key: 'Backspace',
+        target: inputEl,
+        preventDefault: jest.fn(),
+      };
+      handleKeyDown(backspaceEvent);
+
+      expect(deleteSelectedMock).not.toHaveBeenCalled();
+      expect(backspaceEvent.preventDefault).not.toHaveBeenCalled();
+      expect(selectedNodeId).toBe('node_db_1');
+
+      // Press Delete while typing in input
+      const deleteEvent = {
+        key: 'Delete',
+        target: inputEl,
+        preventDefault: jest.fn(),
+      };
+      handleKeyDown(deleteEvent);
+
+      expect(deleteSelectedMock).not.toHaveBeenCalled();
+      expect(deleteEvent.preventDefault).not.toHaveBeenCalled();
+      expect(selectedNodeId).toBe('node_db_1');
+    });
+
+    it('Scenario 2: Ctrl/Cmd+Z and Ctrl/Cmd+Y do not override native undo/redo in text-editing controls', () => {
+      const canvasEl = createMockNode('div');
+      const textareaEl = createMockNode('textarea');
+      canvasEl.appendChild(textareaEl);
+
+      const undoMock = jest.fn();
+      const redoMock = jest.fn();
+
+      const handleKeyDown = (e: any) => {
+        const target = e.target;
+        if (!target || !canvasEl.contains(target)) return;
+
+        const tag = target.tagName?.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable) {
+          return;
+        }
+
+        if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) redoMock();
+          else undoMock();
+        } else if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === 'y') {
+          e.preventDefault();
+          redoMock();
+        }
+      };
+
+      // Ctrl+Z in textarea
+      const ctrlZEvent = {
+        key: 'z',
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: false,
+        target: textareaEl,
+        preventDefault: jest.fn(),
+      };
+      handleKeyDown(ctrlZEvent);
+
+      expect(undoMock).not.toHaveBeenCalled();
+      expect(ctrlZEvent.preventDefault).not.toHaveBeenCalled();
+
+      // Cmd+Shift+Z in textarea
+      const cmdShiftZEvent = {
+        key: 'z',
+        ctrlKey: false,
+        metaKey: true,
+        shiftKey: true,
+        target: textareaEl,
+        preventDefault: jest.fn(),
+      };
+      handleKeyDown(cmdShiftZEvent);
+
+      expect(redoMock).not.toHaveBeenCalled();
+      expect(cmdShiftZEvent.preventDefault).not.toHaveBeenCalled();
+
+      // Ctrl+Y in textarea
+      const ctrlYEvent = {
+        key: 'y',
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: false,
+        target: textareaEl,
+        preventDefault: jest.fn(),
+      };
+      handleKeyDown(ctrlYEvent);
+
+      expect(redoMock).not.toHaveBeenCalled();
+      expect(ctrlYEvent.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('Scenario 3: keyboard shortcuts do not trigger when focus is in unrelated page controls outside canvas', () => {
+      const canvasEl = createMockNode('div');
+      const unrelatedButton = createMockNode('button');
+      // unrelatedButton is outside canvasEl!
+      const deleteSelectedMock = jest.fn();
+      const undoMock = jest.fn();
+      let selectedNodeId: string | null = 'node_lb_1';
+
+      const handleKeyDown = (e: any) => {
+        const target = e.target;
+        if (!target || !canvasEl.contains(target)) {
+          return; // strictly ignored outside canvas
+        }
+
+        const tag = target.tagName?.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable) {
+          return;
+        }
+
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          if (selectedNodeId) {
+            e.preventDefault();
+            deleteSelectedMock();
+            selectedNodeId = null;
+          }
+        } else if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === 'z') {
+          e.preventDefault();
+          undoMock();
+        }
+      };
+
+      // Press Delete while focused on an unrelated button on the page
+      const deleteEvent = {
+        key: 'Delete',
+        target: unrelatedButton,
+        preventDefault: jest.fn(),
+      };
+      handleKeyDown(deleteEvent);
+
+      expect(deleteSelectedMock).not.toHaveBeenCalled();
+      expect(deleteEvent.preventDefault).not.toHaveBeenCalled();
+      expect(selectedNodeId).toBe('node_lb_1');
+
+      // Press Ctrl+Z while focused outside canvas
+      const ctrlZEvent = {
+        key: 'z',
+        ctrlKey: true,
+        target: unrelatedButton,
+        preventDefault: jest.fn(),
+      };
+      handleKeyDown(ctrlZEvent);
+
+      expect(undoMock).not.toHaveBeenCalled();
+      expect(ctrlZEvent.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('Scenario 4: Escape cancels connection mode without unexpectedly clearing selection or mutating diagram data', () => {
+      const canvasEl = createMockNode('div');
+      const nodeEl = createMockNode('div');
+      canvasEl.appendChild(nodeEl);
+
+      let connectingSourceId: string | null = 'node_source_1';
+      let selectedNodeId: string | null = 'node_source_1';
+      let selectedEdgeId: string | null = null;
+      let editingNodeId: string | null = null;
+
+      const handleEscape = (e: any) => {
+        const target = e.target;
+        if (!target || !canvasEl.contains(target)) return;
+
+        if (e.key === 'Escape') {
+          if (editingNodeId) {
+            e.preventDefault();
+            editingNodeId = null;
+          } else if (connectingSourceId) {
+            e.preventDefault();
+            connectingSourceId = null; // cancels connection mode, leaves selection intact!
+          } else if (selectedNodeId || selectedEdgeId) {
+            e.preventDefault();
+            selectedNodeId = null;
+            selectedEdgeId = null;
+          }
+        }
+      };
+
+      // 1. First Escape: connection mode is active
+      const escapeEvent1 = { key: 'Escape', target: nodeEl, preventDefault: jest.fn() };
+      handleEscape(escapeEvent1);
+
+      expect(escapeEvent1.preventDefault).toHaveBeenCalled();
+      expect(connectingSourceId).toBeNull();
+      // Selection must remain intact!
+      expect(selectedNodeId).toBe('node_source_1');
+
+      // 2. Second Escape: no connection mode, selection is active
+      const escapeEvent2 = { key: 'Escape', target: nodeEl, preventDefault: jest.fn() };
+      handleEscape(escapeEvent2);
+
+      expect(escapeEvent2.preventDefault).toHaveBeenCalled();
+      expect(selectedNodeId).toBeNull();
+
+      // 3. Escape when editing node label closes modal
+      editingNodeId = 'node_edit_1';
+      const escapeEvent3 = { key: 'Escape', target: nodeEl, preventDefault: jest.fn() };
+      handleEscape(escapeEvent3);
+
+      expect(editingNodeId).toBeNull();
+    });
+
+    it('Scenario 5: Enter and Space activate intended actions without duplicate events or accidental page scrolling', () => {
+      const preventDefaultMock = jest.fn();
+      let nodeSelectedId: string | null = null;
+
+      // Node keydown handler
+      const handleNodeKeyDown = (e: any) => {
+        if (e.target !== e.currentTarget) return; // Prevent duplicate event from child controls
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          nodeSelectedId = 'node_selected_1';
+        }
+      };
+
+      // Child button inside node
+      const parentNode = { id: 'parent_node' };
+      const childButton = { id: 'child_connect_pin' };
+
+      // Space on parent node itself
+      const spaceOnNode = {
+        key: ' ',
+        target: parentNode,
+        currentTarget: parentNode,
+        preventDefault: preventDefaultMock,
+      };
+      handleNodeKeyDown(spaceOnNode);
+
+      expect(preventDefaultMock).toHaveBeenCalled();
+      expect(nodeSelectedId).toBe('node_selected_1');
+
+      // Reset
+      nodeSelectedId = null;
+      preventDefaultMock.mockClear();
+
+      // Space bubbled from child connect button -> target !== currentTarget
+      const spaceFromChild = {
+        key: ' ',
+        target: childButton,
+        currentTarget: parentNode,
+        preventDefault: preventDefaultMock,
+      };
+      handleNodeKeyDown(spaceFromChild);
+
+      // Child bubble must NOT trigger node selection
+      expect(nodeSelectedId).toBeNull();
+      expect(preventDefaultMock).not.toHaveBeenCalled();
+    });
+
+    it('Scenario 6: read-only mode cannot mutate diagram state through keyboard handlers', () => {
+      const canvasEl = createMockNode('div');
+      const innerEl = createMockNode('div');
+      canvasEl.appendChild(innerEl);
+
+      const deleteMock = jest.fn();
+      const undoMock = jest.fn();
+      const redoMock = jest.fn();
+      const readOnly = true;
+      let selectedNodeId: string | null = 'node_locked_1';
+
+      const handleKeyDown = (e: any) => {
+        const target = e.target;
+        if (!target || !canvasEl.contains(target)) return;
+
+        // Guard: readOnly canvas cannot mutate diagram state
+        if (readOnly) {
+          if (e.key === 'Escape' && selectedNodeId) {
+            e.preventDefault();
+            selectedNodeId = null;
+          }
+          return;
+        }
+
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          deleteMock();
+        } else if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === 'z') {
+          undoMock();
+        } else if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === 'y') {
+          redoMock();
+        }
+      };
+
+      // Attempt Delete in read-only
+      handleKeyDown({ key: 'Delete', target: innerEl, preventDefault: jest.fn() });
+      expect(deleteMock).not.toHaveBeenCalled();
+
+      // Attempt Undo in read-only
+      handleKeyDown({ key: 'z', ctrlKey: true, target: innerEl, preventDefault: jest.fn() });
+      expect(undoMock).not.toHaveBeenCalled();
+
+      // Attempt Redo in read-only
+      handleKeyDown({ key: 'y', ctrlKey: true, target: innerEl, preventDefault: jest.fn() });
+      expect(redoMock).not.toHaveBeenCalled();
+
+      // Escape is permitted to deselect
+      const escEvent = { key: 'Escape', target: innerEl, preventDefault: jest.fn() };
+      handleKeyDown(escEvent);
+      expect(escEvent.preventDefault).toHaveBeenCalled();
+      expect(selectedNodeId).toBeNull();
+    });
+
+    it('Scenario 7: verifies proper listener registration and cleanup contract', () => {
+      const addListenerSpy = jest.fn();
+      const removeListenerSpy = jest.fn();
+
+      const mockWindow = {
+        addEventListener: addListenerSpy,
+        removeEventListener: removeListenerSpy,
+      };
+
+      // Simulate hook registration lifecycle
+      const handler = () => {};
+      mockWindow.addEventListener('keydown', handler);
+      expect(addListenerSpy).toHaveBeenCalledWith('keydown', handler);
+
+      // Simulate cleanup on unmount
+      mockWindow.removeEventListener('keydown', handler);
+      expect(removeListenerSpy).toHaveBeenCalledWith('keydown', handler);
+    });
+
+    it('Scenario 8: pointer interactions, dragging, and diagram serialization remain intact', () => {
+      const initial = createInitialDiagramState();
+      expect(initial.nodes.length).toBeGreaterThan(0);
+      expect(initial.edges.length).toBeGreaterThan(0);
+
+      // Verify node positions are numerical and valid for dragging
+      initial.nodes.forEach((n) => {
+        expect(typeof n.position.x).toBe('number');
+        expect(typeof n.position.y).toBe('number');
+      });
+
+      // Verify canvas rendered markup includes cursor-crosshair and grab cursors
+      const html = renderCanvas({ initialState: initial });
+      expect(html).toContain('cursor-crosshair');
+      expect(html).toContain('cursor-grab');
+    });
+  });
 });

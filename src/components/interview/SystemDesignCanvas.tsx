@@ -100,7 +100,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
   };
 
   const containerRef = useRef<HTMLDivElement>(null);
-
+  const canvasRootRef = useRef<HTMLDivElement>(null);
 
   // Helper: Commit new state with Undo push
   const updateState = useCallback(
@@ -113,9 +113,9 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
     [diagramState, onChange]
   );
 
-  // Undo / Redo Actions
+  // Undo / Redo Actions (guarded against readOnly)
   const handleUndo = () => {
-    if (historyStack.length === 0) return;
+    if (readOnly || historyStack.length === 0) return;
     const previous = historyStack[historyStack.length - 1];
     setHistoryStack((prev) => prev.slice(0, prev.length - 1));
     setRedoStack((prev) => [diagramState, ...prev]);
@@ -124,7 +124,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
   };
 
   const handleRedo = () => {
-    if (redoStack.length === 0) return;
+    if (readOnly || redoStack.length === 0) return;
     const next = redoStack[0];
     setRedoStack((prev) => prev.slice(1));
     setHistoryStack((prev) => [...prev, diagramState]);
@@ -256,7 +256,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
 
   // Rename Node Label
   const handleSaveNodeLabel = () => {
-    if (!editingNodeId) return;
+    if (readOnly || !editingNodeId) return;
     updateState({
       ...diagramState,
       nodes: diagramState.nodes.map((n) =>
@@ -279,23 +279,48 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  // Keyboard navigation & shortcuts for canvas
+  // Keyboard navigation & shortcuts for canvas (scoped to canvas boundaries)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      const canvasEl = canvasRootRef.current;
+      if (!canvasEl) return;
+
       const target = e.target as HTMLElement | null;
-      const tag = target?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable) {
+      // Guard: strictly ignore keyboard events when focus is outside this canvas
+      if (!target || !canvasEl.contains(target)) {
         return;
       }
 
+      // Guard: do not intercept typing inside text inputs, textareas, selects, or contenteditable
+      const tag = target.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable) {
+        return;
+      }
+
+      // Guard: readOnly canvas cannot mutate diagram state via keyboard
+      if (readOnly) {
+        if (e.key === 'Escape' && (selectedNodeId || selectedEdgeId)) {
+          e.preventDefault();
+          setSelectedNodeId(null);
+          setSelectedEdgeId(null);
+        }
+        return;
+      }
+
+      // 1. Delete / Backspace: delete selected element
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (!readOnly && (selectedNodeId || selectedEdgeId)) {
+        if (selectedNodeId || selectedEdgeId) {
           e.preventDefault();
           handleDeleteSelected();
         }
-      } else if (e.key === 'Escape') {
-        if (connectingSourceId) {
+      }
+      // 2. Escape: hierarchical cancel (rename modal -> connection mode -> deselect)
+      else if (e.key === 'Escape') {
+        if (editingNodeId) {
+          e.preventDefault();
+          setEditingNodeId(null);
+        } else if (connectingSourceId) {
           e.preventDefault();
           setConnectingSourceId(null);
         } else if (selectedNodeId || selectedEdgeId) {
@@ -303,23 +328,51 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
           setSelectedNodeId(null);
           setSelectedEdgeId(null);
         }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      }
+      // 3. F2: rename selected component node
+      else if (e.key === 'F2') {
+        if (selectedNodeId) {
+          const node = diagramState.nodes.find((n) => n.id === selectedNodeId);
+          if (node) {
+            e.preventDefault();
+            setEditingNodeId(node.id);
+            setEditLabelText(node.label);
+          }
+        }
+      }
+      // 4. Undo / Redo: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl/Cmd+Y
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         if (e.shiftKey) {
-          e.preventDefault();
-          handleRedo();
+          if (redoStack.length > 0) {
+            e.preventDefault();
+            handleRedo();
+          }
         } else {
-          e.preventDefault();
-          handleUndo();
+          if (historyStack.length > 0) {
+            e.preventDefault();
+            handleUndo();
+          }
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        handleRedo();
+        if (redoStack.length > 0) {
+          e.preventDefault();
+          handleRedo();
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeId, selectedEdgeId, connectingSourceId, historyStack, redoStack, readOnly]);
+  }, [
+    selectedNodeId,
+    selectedEdgeId,
+    connectingSourceId,
+    editingNodeId,
+    diagramState.nodes,
+    historyStack,
+    redoStack,
+    readOnly,
+  ]);
 
   // Render Icon for Preset
   const renderIcon = (type: SystemDesignNodeType) => {
@@ -350,7 +403,13 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-bg-surface border border-border rounded-2xl overflow-hidden shadow-2xl relative select-none">
+    <div
+      ref={canvasRootRef}
+      tabIndex={readOnly ? -1 : 0}
+      role="region"
+      aria-label="System architecture whiteboard"
+      className="flex flex-col h-full w-full bg-bg-surface border border-border rounded-2xl overflow-hidden shadow-2xl relative select-none focus:outline-none"
+    >
       {/* ── TOP TOOLBAR ──────────────────────────────────────────────────────── */}
       <div
         role="toolbar"
@@ -686,6 +745,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
                   aria-selected={isSelected}
                   onKeyDown={(e) => {
                     if (readOnly) return;
+                    if (e.target !== e.currentTarget) return;
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       if (connectingSourceId) {
@@ -757,6 +817,11 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
                         e.stopPropagation();
                         setConnectingSourceId(isConnectSource ? null : node.id);
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                        }
+                      }}
                       aria-label={
                         isConnectSource
                           ? `Cancel connecting edge from ${node.label}`
@@ -786,6 +851,13 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
           role="dialog"
           aria-modal="true"
           aria-labelledby="rename-node-dialog-title"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+              setEditingNodeId(null);
+            }
+          }}
           className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-30 p-4"
         >
           <div className="bg-bg-surface border border-border rounded-2xl p-5 max-w-xs w-full space-y-4 shadow-soft">
@@ -800,8 +872,14 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
               value={editLabelText}
               onChange={(e) => setEditLabelText(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSaveNodeLabel();
-                if (e.key === 'Escape') setEditingNodeId(null);
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSaveNodeLabel();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setEditingNodeId(null);
+                }
               }}
               autoFocus
               aria-label="Component node label"
