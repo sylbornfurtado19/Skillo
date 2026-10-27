@@ -77,40 +77,6 @@
     --color-secondary: var(--secondary);
     --color-accent: var(--secondary);
   }
-
-  [data-theme="slate"] {
-    --bg-page: #1E2229;
-    --bg-surface: #262B34;
-    --bg-surface-alt: #303641;
-    --bg-surface-translucent: rgba(38, 43, 52, 0.94);
-    --border: #3E4654;
-    --primary: #9B2218;
-    --primary-hover: #B3281E;
-    --primary-active: #C93024;
-    --primary-soft: #382525;
-    --secondary: #8B949E;
-    --secondary-hover: #A1ABB6;
-    --text-primary: #F0F3F6;
-    --text-secondary: #9DA7B3;
-    --text-on-primary: #FFFFFF;
-    --success: #3A7552;
-    --warning: #C98A1B;
-    --text-warning: #966007;
-    --danger: #B3261E;
-    --info: #4A6B8A;
-    --shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-    --focus-ring: 0 0 0 3px rgba(155, 34, 24, 0.35);
-
-    --color-background: var(--bg-page);
-    --color-background-rgb: 30 34 41;
-    --color-card: var(--bg-surface);
-    --color-card-rgb: 38 43 52;
-    --color-card-border: var(--border);
-    --color-primary: var(--primary);
-    --color-primary-dark: var(--primary-hover);
-    --color-secondary: var(--secondary);
-    --color-accent: var(--secondary);
-  }
 }
 
 /* Dynamic theme custom property utility classes */

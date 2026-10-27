@@ -1,4 +1,4 @@
-export type ThemeId = 'onyx' | 'cyberpunk' | 'slate';
+export type ThemeId = 'onyx' | 'cyberpunk';
 
 export interface ThemePreset {
   id: ThemeId;
@@ -36,18 +36,6 @@ export const THEME_PRESETS: Record<ThemeId, ThemePreset> = {
     primaryHex: '#EC4899',
     secondaryHex: '#F472B6',
     accentHex: '#F472B6',
-    isLight: false,
-  },
-  slate: {
-    id: 'slate',
-    name: 'Enterprise Slate',
-    subtitle: 'Executive Slate Navy & Cyan',
-    description: 'Refined executive slate navy background with cool balanced surfaces and authoritative cyan highlights.',
-    bgHex: '#0F172A',
-    cardHex: '#1E293B',
-    primaryHex: '#38BDF8',
-    secondaryHex: '#7DD3FC',
-    accentHex: '#7DD3FC',
     isLight: false,
   },
 };

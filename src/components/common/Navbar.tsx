@@ -113,7 +113,7 @@ export default function Navbar() {
           <button
             onClick={() => {
               const currentPreset = getThemePreset(theme);
-              const themeKeys: ThemeId[] = ['onyx', 'cyberpunk', 'slate'];
+              const themeKeys: ThemeId[] = ['onyx', 'cyberpunk'];
               const nextIndex = (themeKeys.indexOf(currentPreset.id) + 1) % themeKeys.length;
               setTheme(themeKeys[nextIndex]);
             }}
@@ -237,7 +237,7 @@ export default function Navbar() {
               <button
                 onClick={() => {
                   const currentPreset = getThemePreset(theme);
-                  const themeKeys: ThemeId[] = ['onyx', 'cyberpunk', 'slate'];
+                  const themeKeys: ThemeId[] = ['onyx', 'cyberpunk'];
                   const nextIndex = (themeKeys.indexOf(currentPreset.id) + 1) % themeKeys.length;
                   setTheme(themeKeys[nextIndex]);
                 }}

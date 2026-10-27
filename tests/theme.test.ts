@@ -6,10 +6,10 @@
 import { THEME_PRESETS, getThemePreset } from '../src/types/themes';
 
 describe('Custom Visual Studio Themes', () => {
-  it('should contain all 3 custom visual studio theme presets', () => {
+  it('should contain custom visual studio theme presets and not contain slate', () => {
     expect(THEME_PRESETS.onyx).toBeDefined();
     expect(THEME_PRESETS.cyberpunk).toBeDefined();
-    expect(THEME_PRESETS.slate).toBeDefined();
+    expect((THEME_PRESETS as Record<string, unknown>).slate).toBeUndefined();
   });
 
   it('Onyx Glass preset should have deep space black background (#030712)', () => {
@@ -26,22 +26,19 @@ describe('Custom Visual Studio Themes', () => {
     expect(cyberpunk.primaryHex).toBe('#EC4899');
   });
 
-  it('Enterprise Slate preset should have executive slate background (#0F172A)', () => {
-    const slate = THEME_PRESETS.slate;
-    expect(slate.name).toBe('Enterprise Slate');
-    expect(slate.bgHex).toBe('#0F172A');
-    expect(slate.primaryHex).toBe('#38BDF8');
-  });
-
   it('getThemePreset should resolve exact preset by valid id', () => {
     const preset = getThemePreset('cyberpunk');
     expect(preset.id).toBe('cyberpunk');
     expect(preset.name).toBe('Cyberpunk Dark');
   });
 
-  it('getThemePreset should fallback cleanly to Onyx Glass when given unknown theme id', () => {
+  it('getThemePreset should fallback cleanly to Onyx Glass when given unknown theme id or removed slate id', () => {
     const fallback = getThemePreset('invalid-theme-key');
     expect(fallback.id).toBe('onyx');
     expect(fallback.name).toBe('Onyx Glass');
+
+    const slateFallback = getThemePreset('slate');
+    expect(slateFallback.id).toBe('onyx');
+    expect(slateFallback.name).toBe('Onyx Glass');
   });
 });
