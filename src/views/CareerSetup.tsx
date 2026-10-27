@@ -10,7 +10,6 @@ import {
   FaChevronRight,
   FaCheckCircle,
   FaExclamationTriangle,
-  FaKeyboard,
 } from 'react-icons/fa';
 import { CAREER_DOMAINS, getQuestionsForSetup } from '../services/constants';
 import { useAuth } from '../hooks/useAuth';
@@ -46,7 +45,11 @@ const INTERVIEW_TYPES = ['Coding', 'System Design', 'Behavioral', 'Technical', '
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Expert'];
 const DURATIONS = [15, 30, 45, 60];
 
-export default function CareerSetup() {
+export interface CareerSetupProps {
+  initialStep?: number;
+}
+
+export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}): React.JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -70,7 +73,14 @@ export default function CareerSetup() {
   const fromStudyPlan = searchParams.get('from') === 'plan';
 
   // Wizard Step State & Persistence
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(() => {
+    const stepParam = searchParams.get('step');
+    if (stepParam) {
+      const parsed = parseInt(stepParam, 10);
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 6) return parsed;
+    }
+    return initialStep;
+  });
   const totalSteps = 6;
 
   // Restore step and setupData from sessionStorage on mount
@@ -312,33 +322,6 @@ export default function CareerSetup() {
     router.push('/interview');
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeEl = document.activeElement;
-      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
-        return;
-      }
-
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (currentStep < totalSteps) {
-          setCurrentStep((prev) => prev + 1);
-        } else {
-          handleStartInterview();
-        }
-      } else if (e.key === 'Backspace' || e.key === 'ArrowLeft') {
-        e.preventDefault();
-        if (currentStep > 1) {
-          setCurrentStep((prev) => prev - 1);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [currentStep, totalSteps, setupData, stream]);
 
   if (!resumeData) {
     return (
@@ -381,9 +364,44 @@ export default function CareerSetup() {
     }
 
     setSetupData(updatedSetup);
+  };
 
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
+  const handleRadioKeyDown = (
+    e: React.KeyboardEvent<HTMLButtonElement>,
+    field: string,
+    options: readonly (string | number)[],
+    currentValue: string | number
+  ) => {
+    const currentIndex = options.indexOf(currentValue);
+    if (currentIndex === -1) return;
+
+    let nextIndex: number | null = null;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      nextIndex = (currentIndex + 1) % options.length;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      nextIndex = (currentIndex - 1 + options.length) % options.length;
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      nextIndex = options.length - 1;
+    } else if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      selectOption(field, currentValue);
+      return;
+    }
+
+    if (nextIndex !== null) {
+      const nextValue = options[nextIndex];
+      selectOption(field, nextValue);
+      const radiogroup = e.currentTarget.closest('[role="radiogroup"]');
+      if (radiogroup) {
+        const radios = Array.from(radiogroup.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+        radios[nextIndex]?.focus();
+      }
     }
   };
 
@@ -471,7 +489,7 @@ export default function CareerSetup() {
                   key={stepNum}
                   type="button"
                   onClick={() => setCurrentStep(stepNum)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                  className={`h-1.5 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-surface ${
                     stepNum === currentStep
                       ? 'bg-primary shadow-sm scale-105'
                       : stepNum < currentStep
@@ -479,6 +497,7 @@ export default function CareerSetup() {
                       : 'bg-border'
                   }`}
                   aria-label={`Jump to Step ${stepNum}: ${stepTitles[stepNum - 1]}`}
+                  aria-current={stepNum === currentStep ? 'step' : undefined}
                 />
               );
             })}
@@ -525,20 +544,35 @@ export default function CareerSetup() {
                     <h3 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider mb-4">
                       Select Target Company Preset
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {COMPANY_OPTIONS.map((comp) => (
-                        <Card
-                          key={comp}
-                          onClick={() => selectOption('company', comp)}
-                          variant="default"
-                          className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
-                            setupData.company === comp ? 'border-primary bg-primary-soft text-primary' : 'border-border text-text-primary'
-                          }`}
-                        >
-                          <span className="text-xs font-semibold">{comp} Style</span>
-                          {setupData.company === comp && <FaCheckCircle className="text-primary text-sm" aria-hidden="true" />}
-                        </Card>
-                      ))}
+                    <div
+                      role="radiogroup"
+                      aria-label="Target Company Preset"
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                    >
+                      {COMPANY_OPTIONS.map((comp, index) => {
+                        const isSelected = setupData.company === comp;
+                        const hasSelection = COMPANY_OPTIONS.includes(setupData.company as string);
+                        const tabIndex = isSelected || (!hasSelection && index === 0) ? 0 : -1;
+                        return (
+                          <button
+                            key={comp}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            tabIndex={tabIndex}
+                            onClick={() => selectOption('company', comp)}
+                            onKeyDown={(e) => handleRadioKeyDown(e, 'company', COMPANY_OPTIONS, comp)}
+                            className={`rounded-2xl border p-4 px-5 relative overflow-hidden text-left flex items-center justify-between transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-surface hover:scale-[1.01] shadow-soft ${
+                              isSelected
+                                ? 'border-primary bg-primary-soft text-primary'
+                                : 'border-border bg-bg-surface text-text-primary hover:border-primary/40'
+                            }`}
+                          >
+                            <span className="text-xs font-semibold">{comp} Style</span>
+                            {isSelected && <FaCheckCircle className="text-primary text-sm shrink-0" aria-hidden="true" />}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {setupData.company === 'Custom' && (
@@ -576,21 +610,36 @@ export default function CareerSetup() {
                     <h3 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider mb-4">
                       Select Target Role
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
+                    <div
+                      role="radiogroup"
+                      aria-label="Target Role"
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1"
+                    >
                       {TARGET_ROLES.length > 0 ? (
-                        TARGET_ROLES.map((r) => (
-                          <Card
-                            key={r}
-                            onClick={() => selectOption('role', r)}
-                            variant="default"
-                            className={`hover:scale-[1.01] transition-all py-3.5 px-4 border flex items-center justify-between cursor-pointer ${
-                              setupData.role === r ? 'border-primary bg-primary-soft text-primary' : 'border-border text-text-primary'
-                            }`}
-                          >
-                            <span className="text-xs font-semibold">{r}</span>
-                            {setupData.role === r && <FaCheckCircle className="text-primary text-sm" aria-hidden="true" />}
-                          </Card>
-                        ))
+                        TARGET_ROLES.map((r, index) => {
+                          const isSelected = setupData.role === r;
+                          const hasSelection = TARGET_ROLES.includes(setupData.role as string);
+                          const tabIndex = isSelected || (!hasSelection && index === 0) ? 0 : -1;
+                          return (
+                            <button
+                              key={r}
+                              type="button"
+                              role="radio"
+                              aria-checked={isSelected}
+                              tabIndex={tabIndex}
+                              onClick={() => selectOption('role', r)}
+                              onKeyDown={(e) => handleRadioKeyDown(e, 'role', TARGET_ROLES, r)}
+                              className={`rounded-2xl border py-3.5 px-4 relative overflow-hidden text-left flex items-center justify-between transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-surface hover:scale-[1.01] shadow-soft ${
+                                isSelected
+                                  ? 'border-primary bg-primary-soft text-primary'
+                                  : 'border-border bg-bg-surface text-text-primary hover:border-primary/40'
+                              }`}
+                            >
+                              <span className="text-xs font-semibold">{r}</span>
+                              {isSelected && <FaCheckCircle className="text-primary text-sm shrink-0" aria-hidden="true" />}
+                            </button>
+                          );
+                        })
                       ) : (
                         <div className="col-span-2 p-6 bg-bg-surface-alt rounded-xl border border-border text-center space-y-3">
                           <p className="text-xs text-text-secondary">No roles found for this configuration.</p>
@@ -641,20 +690,35 @@ export default function CareerSetup() {
                     <h3 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider mb-4">
                       Select Interview Type / Track
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {INTERVIEW_TYPES.map((t) => (
-                        <Card
-                          key={t}
-                          onClick={() => selectOption('type', t)}
-                          variant="default"
-                          className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
-                            setupData.type === t ? 'border-primary bg-primary-soft text-primary' : 'border-border text-text-primary'
-                          }`}
-                        >
-                          <span className="text-xs font-semibold">{t} Track</span>
-                          {setupData.type === t && <FaCheckCircle className="text-primary text-sm" aria-hidden="true" />}
-                        </Card>
-                      ))}
+                    <div
+                      role="radiogroup"
+                      aria-label="Interview Track"
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                    >
+                      {INTERVIEW_TYPES.map((t, index) => {
+                        const isSelected = setupData.type === t;
+                        const hasSelection = INTERVIEW_TYPES.includes(setupData.type as string);
+                        const tabIndex = isSelected || (!hasSelection && index === 0) ? 0 : -1;
+                        return (
+                          <button
+                            key={t}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            tabIndex={tabIndex}
+                            onClick={() => selectOption('type', t)}
+                            onKeyDown={(e) => handleRadioKeyDown(e, 'type', INTERVIEW_TYPES, t)}
+                            className={`rounded-2xl border p-4 px-5 relative overflow-hidden text-left flex items-center justify-between transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-surface hover:scale-[1.01] shadow-soft ${
+                              isSelected
+                                ? 'border-primary bg-primary-soft text-primary'
+                                : 'border-border bg-bg-surface text-text-primary hover:border-primary/40'
+                            }`}
+                          >
+                            <span className="text-xs font-semibold">{t} Track</span>
+                            {isSelected && <FaCheckCircle className="text-primary text-sm shrink-0" aria-hidden="true" />}
+                          </button>
+                        );
+                      })}
                     </div>
                   </motion.div>
                 )}
@@ -670,20 +734,35 @@ export default function CareerSetup() {
                     <h3 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider mb-4">
                       Select Difficulty Mode
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {DIFFICULTIES.map((diff) => (
-                        <Card
-                          key={diff}
-                          onClick={() => selectOption('difficulty', diff)}
-                          variant="default"
-                          className={`hover:scale-[1.01] transition-all py-4 px-5 border flex items-center justify-between cursor-pointer ${
-                            setupData.difficulty === diff ? 'border-primary bg-primary-soft text-primary' : 'border-border text-text-primary'
-                          }`}
-                        >
-                          <span className="text-xs font-semibold">{diff}</span>
-                          {setupData.difficulty === diff && <FaCheckCircle className="text-primary text-sm" aria-hidden="true" />}
-                        </Card>
-                      ))}
+                    <div
+                      role="radiogroup"
+                      aria-label="Difficulty Level"
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                    >
+                      {DIFFICULTIES.map((diff, index) => {
+                        const isSelected = setupData.difficulty === diff;
+                        const hasSelection = DIFFICULTIES.includes(setupData.difficulty as string);
+                        const tabIndex = isSelected || (!hasSelection && index === 0) ? 0 : -1;
+                        return (
+                          <button
+                            key={diff}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            tabIndex={tabIndex}
+                            onClick={() => selectOption('difficulty', diff)}
+                            onKeyDown={(e) => handleRadioKeyDown(e, 'difficulty', DIFFICULTIES, diff)}
+                            className={`rounded-2xl border p-4 px-5 relative overflow-hidden text-left flex items-center justify-between transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-surface hover:scale-[1.01] shadow-soft ${
+                              isSelected
+                                ? 'border-primary bg-primary-soft text-primary'
+                                : 'border-border bg-bg-surface text-text-primary hover:border-primary/40'
+                            }`}
+                          >
+                            <span className="text-xs font-semibold">{diff}</span>
+                            {isSelected && <FaCheckCircle className="text-primary text-sm shrink-0" aria-hidden="true" />}
+                          </button>
+                        );
+                      })}
                     </div>
                   </motion.div>
                 )}
@@ -699,20 +778,36 @@ export default function CareerSetup() {
                     <h3 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider mb-4">
                       Select Interview Duration
                     </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {DURATIONS.map((dur) => (
-                        <Card
-                          key={dur}
-                          onClick={() => selectOption('duration', dur)}
-                          variant="default"
-                          className={`hover:scale-[1.01] transition-all py-6 px-4 border flex flex-col items-center justify-center gap-2 cursor-pointer text-center ${
-                            setupData.duration === dur ? 'border-primary bg-primary-soft text-primary' : 'border-border text-text-primary'
-                          }`}
-                        >
-                          <span className="text-2xl font-heading font-extrabold">{dur}</span>
-                          <span className="text-xs text-text-secondary font-mono uppercase">Minutes</span>
-                        </Card>
-                      ))}
+                    <div
+                      role="radiogroup"
+                      aria-label="Session Duration"
+                      className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+                    >
+                      {DURATIONS.map((dur, index) => {
+                        const isSelected = setupData.duration === dur;
+                        const hasSelection = DURATIONS.includes(setupData.duration as number);
+                        const tabIndex = isSelected || (!hasSelection && index === 0) ? 0 : -1;
+                        return (
+                          <button
+                            key={dur}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            aria-label={`${dur} Minutes`}
+                            tabIndex={tabIndex}
+                            onClick={() => selectOption('duration', dur)}
+                            onKeyDown={(e) => handleRadioKeyDown(e, 'duration', DURATIONS, dur)}
+                            className={`rounded-2xl border py-6 px-4 relative overflow-hidden text-center flex flex-col items-center justify-center gap-2 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-surface hover:scale-[1.01] shadow-soft ${
+                              isSelected
+                                ? 'border-primary bg-primary-soft text-primary'
+                                : 'border-border bg-bg-surface text-text-primary hover:border-primary/40'
+                            }`}
+                          >
+                            <span className="text-2xl font-heading font-extrabold">{dur}</span>
+                            <span className="text-xs text-text-secondary font-mono uppercase">Minutes</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </motion.div>
                 )}
@@ -735,7 +830,7 @@ export default function CareerSetup() {
             </div>
           </div>
 
-          <div className="pt-6 border-t border-border space-y-3">
+          <div className="pt-6 border-t border-border">
             <div className="flex justify-between items-center">
               <Button
                 onClick={handleBack}
@@ -755,12 +850,6 @@ export default function CareerSetup() {
               >
                 Next Step
               </Button>
-            </div>
-
-            {/* Keyboard Shortcuts Hint */}
-            <div className="flex items-center justify-center gap-1.5 text-xs font-mono text-text-secondary pt-1">
-              <FaKeyboard className="text-text-secondary text-xs" aria-hidden="true" />
-              <span>Keyboard Shortcuts: Press <kbd className="px-1 py-0.5 bg-bg-surface-alt border border-border rounded text-text-primary">Enter</kbd> for Next, <kbd className="px-1 py-0.5 bg-bg-surface-alt border border-border rounded text-text-primary">←</kbd> or <kbd className="px-1 py-0.5 bg-bg-surface-alt border border-border rounded text-text-primary">Backspace</kbd> for Previous</span>
             </div>
           </div>
         </div>
