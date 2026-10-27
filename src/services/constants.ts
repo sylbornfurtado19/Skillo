@@ -346,22 +346,54 @@ export const PRESET_QUESTION_POOLS: Record<string, QuestionItem[]> = {
       hint: 'Discuss RFC 7807 Problem Details, error codes, doc links, and 429 Retry-After headers.',
     },
   ],
+  'Resume Deep Dive': [
+    {
+      question:
+        '[Resume Project Deep Dive] Walk through the most complex system architecture listed on your resume. What key trade-offs did you evaluate, and how did you measure success in production?',
+      duration: 180,
+      hint: 'Clearly separate your individual contribution from team deliverables. Highlight trade-offs, metrics, and scale.',
+    },
+    {
+      question:
+        '[Technical Claim Verification] Looking at the primary programming language or database featured on your resume, explain a non-trivial failure mode or performance bottleneck you diagnosed and resolved.',
+      duration: 180,
+      hint: 'Focus on profiling, telemetry, root-cause analysis, and specific code/query optimizations.',
+    },
+    {
+      question:
+        '[Leadership & Delivery] Describe a situation from your stated work experience where you had to push back on a technical requirement or architectural decision. What was the outcome?',
+      duration: 150,
+      hint: 'Use the STAR format: context, competing priorities, data-driven negotiation, and measurable outcome.',
+    },
+    {
+      question:
+        '[Incident Postmortem] Describe the most critical production incident you owned or triaged in the roles described on your resume. What was the root cause and long-term mitigation?',
+      duration: 180,
+      hint: 'Detail blast radius, time to detect, mitigation steps, and preventative systemic architectural changes.',
+    },
+  ],
 };
 
 export const getQuestionsForSetup = (setupData: {
   company?: string;
   domain?: string;
   interviewType?: string;
+  type?: string;
+  interviewModeId?: string;
   questionCount?: number;
   [key: string]: unknown;
 }) => {
   const company = setupData.company || 'Generic';
   const domain = setupData.domain || 'Computer Science';
   const count = setupData.questionCount || 5;
+  const track = (setupData.type || setupData.interviewType || '') as string;
+  const isResumeMode = track === 'Resume Deep Dive' || setupData.interviewModeId === 'generic-resume-deep-dive';
 
   let pool: QuestionItem[] = [];
 
-  if (PRESET_QUESTION_POOLS[company]) {
+  if (isResumeMode && PRESET_QUESTION_POOLS['Resume Deep Dive']) {
+    pool = PRESET_QUESTION_POOLS['Resume Deep Dive'];
+  } else if (PRESET_QUESTION_POOLS[company]) {
     pool = PRESET_QUESTION_POOLS[company];
   } else {
     pool = QUESTION_DATABASE[domain]?.technical || QUESTION_DATABASE['Computer Science'].technical;

@@ -414,6 +414,49 @@ export const INTERVIEW_MODE_PRESETS: Record<string, InterviewMode> = {
 
 // ── Resolver Helper ───────────────────────────────────────────────────────────
 
+/**
+ * Canonical helper to check if a setup or mode configuration genuinely requires resume data.
+ * Checks the stable preset ID, the explicit requiresResume boolean, and the interview track type.
+ * Ensures that if a user switches to a standard track (like Coding or Technical), any stale
+ * resume requirement is cleared so the standard track remains completely usable without a resume.
+ */
+export function isResumeRequiredMode(setupOrMode?: {
+  interviewModeId?: string;
+  type?: string;
+  interviewType?: string;
+  requiresResume?: boolean;
+}): boolean {
+  if (!setupOrMode) return false;
+
+  const track = setupOrMode.type || setupOrMode.interviewType;
+  const modeId = setupOrMode.interviewModeId;
+
+  // 1. If the selected track is explicitly a standard non-resume track,
+  // and modeId is not a resume mode, it does NOT require a resume.
+  // This guarantees that switching from Resume Deep Dive back to a standard track
+  // immediately clears any stale requiresResume: true flag.
+  if (track && !track.toLowerCase().includes('resume') && (!modeId || !modeId.toLowerCase().includes('resume'))) {
+    return false;
+  }
+
+  // 2. Stable mode identifier check
+  if (typeof modeId === 'string' && (modeId === 'generic-resume-deep-dive' || modeId.toLowerCase().includes('resume'))) {
+    return true;
+  }
+
+  // 3. Track name check
+  if (typeof track === 'string' && (track === 'Resume Deep Dive' || track.toLowerCase().includes('resume'))) {
+    return true;
+  }
+
+  // 4. Explicit boolean check
+  if (setupOrMode.requiresResume === true) {
+    return true;
+  }
+
+  return false;
+}
+
 export function resolveInterviewMode(input: {
   company?: string;
   role?: string;
@@ -423,62 +466,29 @@ export function resolveInterviewMode(input: {
   interviewModeId?: string;
 }): InterviewMode {
   const modeId = input.interviewModeId;
+  const typeKey = (input.interviewType || 'Technical').toLowerCase();
+  const isResumeType = typeKey.includes('resume');
 
-  // 1. Direct preset lookup if valid preset ID
+  // 1. Direct preset lookup if valid preset ID AND matches the requested type category
   if (modeId && INTERVIEW_MODE_PRESETS[modeId]) {
     const basePreset = INTERVIEW_MODE_PRESETS[modeId];
-    return {
-      ...basePreset,
-      company: input.company || basePreset.company,
-      role: input.role || basePreset.role,
-      interviewType: input.interviewType || basePreset.interviewType,
-      difficulty: input.difficulty || basePreset.difficulty,
-      duration: input.duration || basePreset.duration,
-    };
+    const presetIsResume = Boolean(basePreset.requiresResume || basePreset.id.includes('resume'));
+
+    // Only preserve direct preset if the resume requirement category matches the requested interviewType
+    if (presetIsResume === isResumeType) {
+      return {
+        ...basePreset,
+        company: input.company || basePreset.company,
+        role: input.role || basePreset.role,
+        interviewType: input.interviewType || basePreset.interviewType,
+        difficulty: input.difficulty || basePreset.difficulty,
+        duration: input.duration || basePreset.duration,
+      };
+    }
   }
 
-  // 2. Lookup matching preset based on company & type
-  const companyKey = (input.company || 'Generic').toLowerCase();
-  const typeKey = (input.interviewType || 'Technical').toLowerCase();
-
-  if (companyKey.includes('google')) {
-    return {
-      ...INTERVIEW_MODE_PRESETS['google-swe-coding'],
-      role: input.role || 'Software Engineer',
-      difficulty: input.difficulty || 'Hard',
-      duration: input.duration || 45,
-    };
-  }
-
-  if (companyKey.includes('meta')) {
-    return {
-      ...INTERVIEW_MODE_PRESETS['meta-swe-coding'],
-      role: input.role || 'Software Engineer',
-      difficulty: input.difficulty || 'Hard',
-      duration: input.duration || 45,
-    };
-  }
-
-  if (companyKey.includes('amazon')) {
-    return {
-      ...INTERVIEW_MODE_PRESETS['amazon-behavioral'],
-      role: input.role || 'Software Engineer',
-      difficulty: input.difficulty || 'Medium',
-      duration: input.duration || 45,
-    };
-  }
-
-  if (companyKey.includes('stripe')) {
-    return {
-      ...INTERVIEW_MODE_PRESETS['stripe-backend'],
-      role: input.role || 'Backend Engineer',
-      difficulty: input.difficulty || 'Hard',
-      duration: input.duration || 60,
-    };
-  }
-
-  // 3. Generic Fallbacks based on Interview Type
-  if (typeKey.includes('resume')) {
+  // 2. If resume type is requested, resolve generic-resume-deep-dive
+  if (isResumeType) {
     const base = INTERVIEW_MODE_PRESETS['generic-resume-deep-dive'];
     return {
       ...base,
@@ -490,6 +500,50 @@ export function resolveInterviewMode(input: {
     };
   }
 
+  // 3. Lookup matching preset based on company & type
+  const companyKey = (input.company || 'Generic').toLowerCase();
+
+  if (companyKey.includes('google')) {
+    return {
+      ...INTERVIEW_MODE_PRESETS['google-swe-coding'],
+      role: input.role || 'Software Engineer',
+      interviewType: input.interviewType || 'Coding',
+      difficulty: input.difficulty || 'Hard',
+      duration: input.duration || 45,
+    };
+  }
+
+  if (companyKey.includes('meta')) {
+    return {
+      ...INTERVIEW_MODE_PRESETS['meta-swe-coding'],
+      role: input.role || 'Software Engineer',
+      interviewType: input.interviewType || 'Coding',
+      difficulty: input.difficulty || 'Hard',
+      duration: input.duration || 45,
+    };
+  }
+
+  if (companyKey.includes('amazon')) {
+    return {
+      ...INTERVIEW_MODE_PRESETS['amazon-behavioral'],
+      role: input.role || 'Software Engineer',
+      interviewType: input.interviewType || 'Behavioral',
+      difficulty: input.difficulty || 'Medium',
+      duration: input.duration || 45,
+    };
+  }
+
+  if (companyKey.includes('stripe')) {
+    return {
+      ...INTERVIEW_MODE_PRESETS['stripe-backend'],
+      role: input.role || 'Backend Engineer',
+      interviewType: input.interviewType || 'System Design',
+      difficulty: input.difficulty || 'Hard',
+      duration: input.duration || 60,
+    };
+  }
+
+  // 4. Generic Fallbacks based on Interview Type
   if (typeKey.includes('system')) {
     const base = INTERVIEW_MODE_PRESETS['generic-system-design'];
     return {

@@ -53,7 +53,7 @@ import SessionGradingOverlay from '../components/interview/session/SessionGradin
 import SessionInterviewerCard from '../components/interview/session/SessionInterviewerCard';
 import SessionAnswerWorkspace from '../components/interview/session/SessionAnswerWorkspace';
 import CodeWorkspace from '../components/interview/CodeWorkspace';
-import { INTERVIEW_MODE_PRESETS } from '../types/interviewModes';
+import { INTERVIEW_MODE_PRESETS, isResumeRequiredMode } from '../types/interviewModes';
 import type { SyncWindowResult, InterviewQuestion, CodeAnswer } from '@/types/index';
 import { analyzeSpeech, type RecognitionSegment, type SpeechAnalytics } from '@/lib/services/speechAnalytics';
 
@@ -1218,10 +1218,7 @@ export default function InterviewSession() {
       ? [setupData.role, 'Performance', 'Logical Scope', 'Complexity']
       : ['STAR Method', 'Leadership', 'Execution', 'Trade-offs'];
 
-  const isResumeRequired = Boolean(
-    setupData?.requiresResume ||
-    setupData?.type === 'Resume Deep Dive'
-  );
+  const isResumeRequired = isResumeRequiredMode(setupData);
 
   if (isResumeRequired && !resumeData) {
     return (

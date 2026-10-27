@@ -25,7 +25,7 @@ import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import { Progress } from '../components/ui/Loader';
 import { Skeleton } from '../components/ui/Skeleton';
 import { InterviewModePreviewCard } from '../components/interview/InterviewModePreviewCard';
-import { resolveInterviewMode } from '../types/interviewModes';
+import { resolveInterviewMode, isResumeRequiredMode } from '../types/interviewModes';
 
 import { getAuthToken } from '../services/auth';
 import { generateStudyPlan } from '../lib/services/studyPlan';
@@ -275,16 +275,13 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
     interviewModeId: setupData.interviewModeId,
   });
 
-  const isResumeRequired = Boolean(
-    activeMode?.requiresResume ||
-    setupData?.requiresResume ||
-    setupData?.type === 'Resume Deep Dive'
-  );
+  const isResumeRequired = isResumeRequiredMode(setupData) || Boolean(activeMode?.requiresResume);
   const isMissingRequiredResume = isResumeRequired && !resumeData;
 
   const handleStartInterview = async () => {
     if (isMissingRequiredResume) {
       setSetupError('The selected interview mode requires resume data. Please upload a resume or select a standard track.');
+      setStartingSession(false);
       return;
     }
 
@@ -307,7 +304,14 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ setupData }),
+        body: JSON.stringify({
+          setupData: {
+            ...setupData,
+            interviewModeId: activeMode.id,
+            requiresResume: isResumeRequired,
+          },
+          resumeText: (resumeData as { text?: string } | null)?.text || undefined,
+        }),
       });
 
       if (res.ok) {
@@ -326,14 +330,34 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
           router.push('/interview');
           return;
         }
+      } else {
+        const errJson = await res.json().catch(() => null);
+        if (errJson?.message) {
+          setSetupError(errJson.message);
+          setStartingSession(false);
+          return;
+        }
       }
     } catch (err) {
       console.warn('[CareerSetup] Setup API fallback to local preset pool:', err);
+      if (isMissingRequiredResume) {
+        setSetupError('The selected interview mode requires resume data. Please upload a resume or select a standard track.');
+        setStartingSession(false);
+        return;
+      }
       setSetupError('Using local simulation fallback due to network response.');
     }
 
+    if (isMissingRequiredResume) {
+      setStartingSession(false);
+      return;
+    }
+
     // Fallback Question Pool Selection if API call is skipped or fails
-    const questList = getQuestionsForSetup(setupData);
+    const questList = getQuestionsForSetup({
+      ...setupData,
+      interviewModeId: activeMode.id,
+    });
     const limitedQuestions = questList.slice(0, setupData.questionCount);
     setQuestions(limitedQuestions);
     setCurrentQuestionIndex(0);
@@ -345,13 +369,6 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
 
     router.push('/interview');
   };
-
-  
-  
-  
-  
-  
-  
 
   const selectOption = (field: string, value: unknown) => {
     let updatedSetup = { ...setupData, [field]: value };
@@ -366,6 +383,30 @@ export default function CareerSetup({ initialStep = 1 }: CareerSetupProps = {}):
         type: mode.interviewType,
         difficulty: mode.difficulty,
         duration: mode.duration,
+        requiresResume: Boolean(mode.requiresResume),
+      };
+    } else if (field === 'type' && typeof value === 'string') {
+      const isResumeType = value === 'Resume Deep Dive' || value.toLowerCase().includes('resume');
+      const targetModeId = isResumeType
+        ? 'generic-resume-deep-dive'
+        : setupData.interviewModeId === 'generic-resume-deep-dive'
+        ? undefined
+        : (setupData.interviewModeId as string | undefined);
+
+      const mode = resolveInterviewMode({
+        company: (setupData.company as string),
+        role: (setupData.role as string),
+        interviewType: value,
+        difficulty: (setupData.difficulty as string),
+        duration: (setupData.duration as number),
+        interviewModeId: targetModeId,
+      });
+
+      updatedSetup = {
+        ...updatedSetup,
+        type: value,
+        interviewModeId: mode.id,
+        requiresResume: Boolean(mode.requiresResume),
       };
     }
 

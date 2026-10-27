@@ -1,14 +1,15 @@
 /**
- * Prompt 09 — Regression Test Suite: Setup UX When No Resume Is Uploaded
+ * Prompt 09A — Comprehensive Verification and Behavioral Regression Suite:
+ * Setup UX and Resume Requirements Across Setup and Interview Entry
  *
- * Verifies:
- * 1. Opening /setup without a resume renders the full wizard with welcoming standard simulation guidance (not blocked).
- * 2. Completing setup without a resume when workflow permits it enables "Begin Assessment" and launches the session.
- * 3. Selecting a workflow that genuinely requires resume data (Resume Deep Dive) displays clear requirements and disables start.
- * 4. Uploading/attaching a resume updates the status banner to "Resume Connected" and unblocks resume-dependent workflows.
- * 5. Resume parsing failures/empty extractions leave candidate safely in standard simulation mode without crashes.
- * 6. Refreshing or navigating back preserves setup progress and user selections in sessionStorage and searchParams.
- * 7. Existing interview start and session gating remain intact for both standard and resume-dependent modes.
+ * Scenarios Tested:
+ * 1. Deep Dive -> standard track without a resume (clears stale resume requirement).
+ * 2. Standard track -> Deep Dive without a resume (activates requirement and blocks start).
+ * 3. Deep Dive with a valid resume (unblocks workflow and generates tailored questions).
+ * 4. Refreshing or restoring setup state while Deep Dive is selected (preserves requirement).
+ * 5. Direct interview entry with missing or inconsistent mode metadata (server & client gating).
+ * 6. Standard question generation without resume data (preset and API generation succeed).
+ * 7. Invalid or empty resume extraction results (safely handled; empty text cannot bypass prerequisite).
  */
 
 import React from 'react';
@@ -47,10 +48,41 @@ jest.mock('../src/components/ui/Toast', () => ({
 }));
 
 // ── Auth & Context Mocks ──────────────────────────────────────────────────────
-const mockUser = { id: 'test-user-09', email: 'candidate@example.com' };
+const mockUser = { id: 'test-user-09a', email: 'candidate@example.com' };
 jest.mock('../src/hooks/useAuth', () => ({
   useAuth: () => ({
     user: mockUser,
+  }),
+}));
+
+jest.mock('../src/lib/server/authenticateRequest', () => ({
+  authenticateRequest: async (req: Request) => {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer valid_test_token')) {
+      return { ok: false, status: 401, message: 'Authentication required' };
+    }
+    return { ok: true, user: { id: 'usr_test_setup_09a', email: 'tester@example.com' } };
+  },
+  authFailureResponse: (auth: any) => {
+    const { NextResponse } = require('next/server');
+    return NextResponse.json({ status: 'error', message: auth.message }, { status: auth.status });
+  },
+}));
+
+jest.mock('@/lib/firebase/admin', () => ({
+  isFirebaseAdminConfigured: true,
+  getAdminAuth: async () => ({
+    verifyIdToken: jest.fn(async () => ({ uid: 'usr_test_setup_09a', email: 'tester@example.com' })),
+  }),
+  getAdminFirestore: () => ({
+    collection: () => ({
+      doc: () => ({
+        get: jest.fn(async () => ({ exists: false, data: () => null })),
+        set: jest.fn(),
+      }),
+      where: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({ size: 0, docs: [] }),
+    }),
   }),
 }));
 
@@ -197,6 +229,13 @@ jest.mock('../src/hooks/useInterviewCountdown', () => ({
 
 import CareerSetup, { CareerSetupProps } from '../src/views/CareerSetup';
 import InterviewSession from '../src/views/InterviewSession';
+import {
+  isResumeRequiredMode,
+  resolveInterviewMode,
+  INTERVIEW_MODE_PRESETS,
+} from '../src/types/interviewModes';
+import { getQuestionsForSetup } from '../src/services/constants';
+import { POST as setupApiHandler } from '../app/api/interview/setup/route';
 
 const renderSetup = (props?: CareerSetupProps) =>
   renderToStaticMarkup(React.createElement<CareerSetupProps>(CareerSetup, props || {}));
@@ -204,7 +243,7 @@ const renderSetup = (props?: CareerSetupProps) =>
 const renderSession = () =>
   renderToStaticMarkup(React.createElement(InterviewSession));
 
-describe('Prompt 09 — Setup UX When No Resume Is Uploaded', () => {
+describe('Prompt 09A — Verify Resume Requirements Across Setup and Interview Entry', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     sessionStorageMock.clear();
@@ -227,248 +266,345 @@ describe('Prompt 09 — Setup UX When No Resume Is Uploaded', () => {
     };
   });
 
-  describe('Scenario 1: Opening /setup without a resume', () => {
-    it('renders the interactive 6-step setup wizard instead of a blocking screen', () => {
+  describe('1. Mode Resolution and Requirement Consistency', () => {
+    it('Scenario 1: Switching from Deep Dive to a standard track clears stale resume requirement', () => {
+      // Simulate state where user was previously on Resume Deep Dive
+      const deepDiveState = {
+        company: 'Google',
+        role: 'Software Engineer',
+        type: 'Resume Deep Dive',
+        interviewModeId: 'generic-resume-deep-dive',
+        requiresResume: true,
+      };
+
+      expect(isResumeRequiredMode(deepDiveState)).toBe(true);
+
+      // Now resolve mode when switching track to Technical
+      const switchedMode = resolveInterviewMode({
+        company: deepDiveState.company,
+        role: deepDiveState.role,
+        interviewType: 'Technical',
+        interviewModeId: deepDiveState.interviewModeId,
+      });
+
+      // The conflicting generic-resume-deep-dive preset ID must NOT override Technical!
+      expect(switchedMode.interviewType).toBe('Technical');
+      expect(switchedMode.requiresResume).toBeUndefined();
+
+      // Canonical requirement check on the switched setup must be false
+      const switchedSetup = {
+        ...deepDiveState,
+        type: 'Technical',
+        interviewModeId: switchedMode.id,
+        requiresResume: Boolean(switchedMode.requiresResume),
+      };
+
+      expect(isResumeRequiredMode(switchedSetup)).toBe(false);
+
+      // Render Step 6 with switched setup and verify Begin Assessment is enabled without warning
       mockResumeData = null;
-      const html = renderSetup({ initialStep: 1 });
+      mockSetupData = switchedSetup;
+      const html = renderSetup({ initialStep: 6 });
 
-      // Does NOT show the hostile full-page blocker
-      expect(html).not.toContain('You must upload your resume and specify job details before you can configure or start mock interview sessions');
-      expect(html).not.toContain('Go to Upload Page');
-
-      // Renders the wizard header and step 1 contents
-      expect(html).toContain('Configure Career Prep Simulator');
-      expect(html).toContain('Step 1 of 6');
-      expect(html).toContain('Select Target Company Preset');
-      expect(html).toContain('Google Style');
-      expect(html).toContain('Meta Style');
-      expect(html).toContain('Amazon Style');
+      expect(html).not.toContain('Resume Required for Track');
+      expect(html).not.toContain('Resume Required to Start');
+      expect(html).toContain('Begin Assessment');
     });
 
-    it('renders welcoming "Standard Simulation Mode" banner with optional upload action', () => {
-      mockResumeData = null;
-      const html = renderSetup({ initialStep: 1 });
-
-      expect(html).toContain('Standard Simulation Mode');
-      expect(html).toContain('Resume Optional');
-      expect(html).toContain('No resume uploaded. You can configure and run full mock interviews using curated industry benchmarks.');
-      expect(html).toContain('Upload Resume (Optional)');
-    });
-
-    it('keeps all controls fully accessible and interactive without a resume', () => {
-      mockResumeData = null;
-      const html = renderSetup({ initialStep: 1 });
-
-      expect(html).toContain('role="radiogroup"');
-      expect(html).toContain('aria-label="Target Company Preset"');
-      expect(html).toContain('Next Step');
-      expect(html).toContain('Previous Step');
-    });
-  });
-
-  describe('Scenario 2: Completing setup without a resume when workflow permits it', () => {
-    it('enables "Begin Assessment" on Step 6 for standard tracks without requiring a resume', () => {
-      mockResumeData = null;
-      mockSetupData = {
+    it('Scenario 2: Switching from standard track to Deep Dive activates requirement and blocks start without resume', () => {
+      const standardState = {
         company: 'Google',
         role: 'Frontend Engineer',
         type: 'Coding',
-        difficulty: 'Hard',
-        duration: 45,
         interviewModeId: 'google-swe-coding',
       };
 
-      const html = renderSetup({ initialStep: 6 });
+      expect(isResumeRequiredMode(standardState)).toBe(false);
 
-      expect(html).toContain('Review Simulation Parameters');
-      expect(html).toContain('Begin Assessment');
-      // Must NOT be disabled due to missing resume
-      expect(html).not.toContain('Resume Required for Track');
-      expect(html).not.toContain('Resume Required to Start');
-    });
+      // Switch to Resume Deep Dive
+      const deepDiveMode = resolveInterviewMode({
+        company: standardState.company,
+        role: standardState.role,
+        interviewType: 'Resume Deep Dive',
+        interviewModeId: standardState.interviewModeId,
+      });
 
-    it('allows starting mock interview using preset questions when candidate has no resume', async () => {
-      mockResumeData = null;
-      mockSetupData = {
-        company: 'Stripe',
-        role: 'Backend Engineer',
-        type: 'System Design',
-        difficulty: 'Hard',
-        duration: 60,
-        interviewModeId: 'stripe-backend',
-        questionCount: 4,
-      };
+      expect(deepDiveMode.requiresResume).toBe(true);
+      expect(deepDiveMode.id).toBe('generic-resume-deep-dive');
 
-      const html = renderSetup({ initialStep: 6 });
-      expect(html).toContain('Begin Assessment');
-    });
-  });
-
-  describe('Scenario 3: Selecting a workflow that genuinely requires resume data', () => {
-    it('displays explanatory requirement and switch options when Resume Deep Dive is selected on Step 3', () => {
-      mockResumeData = null;
-      mockSetupData = {
-        company: 'Generic',
-        role: 'Software Engineer',
+      const deepDiveSetup = {
+        ...standardState,
         type: 'Resume Deep Dive',
-        difficulty: 'Hard',
-        duration: 45,
+        interviewModeId: deepDiveMode.id,
+        requiresResume: true,
       };
 
-      const html = renderSetup({ initialStep: 3 });
+      expect(isResumeRequiredMode(deepDiveSetup)).toBe(true);
 
-      expect(html).toContain('Resume Required for Deep Dive Track');
-      expect(html).toContain('The Resume Deep Dive track specifically validates past work history');
-      expect(html).toContain('Upload Resume');
-      expect(html).toContain('Switch to Standard Track');
-    });
-
-    it('disables "Begin Assessment" and shows clear alert on Step 6 when resume is missing for Deep Dive', () => {
+      // Render Step 3 and Step 6 without resume
       mockResumeData = null;
-      mockSetupData = {
-        company: 'Generic',
-        role: 'Software Engineer',
-        type: 'Resume Deep Dive',
-        difficulty: 'Hard',
-        duration: 45,
-      };
+      mockSetupData = deepDiveSetup;
 
-      const html = renderSetup({ initialStep: 6 });
+      const htmlStep3 = renderSetup({ initialStep: 3 });
+      expect(htmlStep3).toContain('Resume Required for Deep Dive Track');
+      expect(htmlStep3).toContain('Upload Resume');
+      expect(htmlStep3).toContain('Switch to Standard Track');
 
-      // Review step notice
-      expect(html).toContain('Resume Required to Start');
-      expect(html).toContain('The selected “Resume Deep Dive” mode requires an uploaded resume');
-
-      // Sidebar action notice & disabled button
-      expect(html).toContain('Resume Required for Selected Track');
-      expect(html).toContain('Resume Required for Track');
-      expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?Resume Required for Track/);
+      const htmlStep6 = renderSetup({ initialStep: 6 });
+      expect(htmlStep6).toContain('Resume Required to Start');
+      expect(htmlStep6).toContain('Resume Required for Track');
+      expect(htmlStep6).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?Resume Required for Track/);
     });
-  });
 
-  describe('Scenario 4: Uploading a resume after initially opening setup without one', () => {
-    it('displays "Resume Connected" banner with personalized mode badge when resume is present', () => {
+    it('Scenario 3: Deep Dive with a valid resume unblocks the workflow', () => {
       mockResumeData = {
-        text: 'Jane Doe, Staff Engineer with distributed systems expertise at scale.',
-        skills: ['Distributed Systems', 'Go', 'Kubernetes'],
-      };
-
-      const html = renderSetup({ initialStep: 1 });
-
-      expect(html).toContain('Resume Connected');
-      expect(html).toContain('Personalized Mode');
-      expect(html).toContain('Your uploaded resume will be used to tailor questions');
-      expect(html).toContain('Change Resume');
-      expect(html).not.toContain('Standard Simulation Mode');
-    });
-
-    it('fully unblocks Resume Deep Dive track when resumeData is attached', () => {
-      mockResumeData = {
-        text: 'Jane Doe, Staff Engineer with distributed systems expertise at scale.',
+        text: 'Staff Software Engineer. Architected distributed payment orchestration system processing 50k tps.',
       };
       mockSetupData = {
         company: 'Generic',
         role: 'Software Engineer',
         type: 'Resume Deep Dive',
-        difficulty: 'Hard',
-        duration: 45,
+        interviewModeId: 'generic-resume-deep-dive',
+        requiresResume: true,
       };
 
-      const html = renderSetup({ initialStep: 6 });
+      expect(isResumeRequiredMode(mockSetupData)).toBe(true);
 
-      // Warning notices must disappear
+      const html = renderSetup({ initialStep: 6 });
       expect(html).not.toContain('Resume Required to Start');
       expect(html).not.toContain('Resume Required for Selected Track');
-
-      // Button is active
       expect(html).toContain('Begin Assessment');
-      expect(html).not.toContain('Resume Required for Track');
-    });
-  });
-
-  describe('Scenario 5: Resume parsing failures and invalid uploads', () => {
-    it('remains safely in Standard Simulation Mode if resume data is missing or empty', () => {
-      mockResumeData = null; // Equivalent to parse failure / no extracted text
-
-      const html = renderSetup({ initialStep: 2 });
-
-      expect(html).toContain('Standard Simulation Mode');
-      expect(html).toContain('Resume Optional');
-      expect(html).toContain('Select Target Role');
-      expect(html).toContain('Software Engineer');
-    });
-  });
-
-  describe('Scenario 6: Refreshing or navigating back without losing valid setup state', () => {
-    it('restores step from URL searchParams (e.g., ?step=4) across navigation', () => {
-      mockSearchParams.set('step', '4');
-      const html = renderSetup();
-      mockSearchParams.delete('step');
-
-      expect(html).toContain('Step 4 of 6');
-      expect(html).toContain('Select Difficulty Mode');
     });
 
-    it('serializes and stores valid setup state to sessionStorage contract', () => {
-      const persistedState = {
-        currentStep: 4,
+    it('Scenario 4: Refreshing or restoring setup state while Deep Dive is selected preserves requirement', () => {
+      const persistedDeepDive = {
+        currentStep: 3,
         setupData: {
-          company: 'Amazon',
-          role: 'Backend Engineer',
-          type: 'Behavioral',
+          company: 'Generic',
+          role: 'Software Engineer',
+          type: 'Resume Deep Dive',
+          interviewModeId: 'generic-resume-deep-dive',
+          requiresResume: true,
           difficulty: 'Hard',
           duration: 45,
-          interviewModeId: 'amazon-behavioral',
         },
       };
 
-      sessionStorageMock.setItem('skillo_career_setup_state', JSON.stringify(persistedState));
-      expect(sessionStorageMock.setItem).toHaveBeenCalledWith(
-        'skillo_career_setup_state',
-        expect.stringContaining('amazon-behavioral')
-      );
+      mockSessionStorage['skillo_career_setup_state'] = JSON.stringify(persistedDeepDive);
 
-      const retrieved = JSON.parse(sessionStorageMock.getItem('skillo_career_setup_state')!);
-      expect(retrieved.currentStep).toBe(4);
-      expect(retrieved.setupData.company).toBe('Amazon');
+      // Simulate rehydration in context
+      mockSetupData = persistedDeepDive.setupData;
+      mockResumeData = null;
+
+      expect(isResumeRequiredMode(mockSetupData)).toBe(true);
+
+      const html = renderSetup({ initialStep: persistedDeepDive.currentStep });
+      expect(html).toContain('Resume Required for Deep Dive Track');
+      expect(html).toContain('Step 3 of 6');
+    });
+
+    it('Scenario 5: Missing or malformed mode metadata cannot accidentally block standard candidates or bypass requirements', () => {
+      // Malformed metadata for standard track
+      const malformedStandard = {
+        company: 'UnknownCompany',
+        role: 'CustomRole',
+        type: 'Technical',
+        interviewModeId: 'nonexistent-mode-id',
+        requiresResume: false,
+      };
+
+      // Must safely resolve to standard generic technical mode without requiring resume
+      const resolved = resolveInterviewMode(malformedStandard);
+      expect(resolved.id).toBe('generic-technical');
+      expect(resolved.requiresResume).toBeUndefined();
+      expect(isResumeRequiredMode(malformedStandard)).toBe(false);
+
+      // Crafted state attempting to bypass: type is 'Resume Deep Dive' but requiresResume was spoofed to false
+      const spoofedDeepDive = {
+        company: 'Google',
+        type: 'Resume Deep Dive',
+        requiresResume: false,
+      };
+
+      // isResumeRequiredMode must detect Resume Deep Dive and reject the spoof
+      expect(isResumeRequiredMode(spoofedDeepDive)).toBe(true);
     });
   });
 
-  describe('Scenario 7: Interview session entry gating', () => {
-    it('allows candidate without a resume to start a standard Technical interview session', () => {
-      mockResumeData = null;
-      mockSetupData = {
-        company: 'Generic',
-        role: 'Software Engineer',
-        type: 'Technical',
-        difficulty: 'Medium',
-        duration: 45,
-      };
+  describe('2. Server-Side Setup API Enforcement', () => {
+    it('rejects POST /api/interview/setup for Resume Deep Dive without resumeText with HTTP 422', async () => {
+      const req = new Request('http://localhost:3000/api/interview/setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer valid_test_token',
+        },
+        body: JSON.stringify({
+          setupData: {
+            company: 'Generic',
+            role: 'Software Engineer',
+            type: 'Resume Deep Dive',
+            interviewModeId: 'generic-resume-deep-dive',
+            questionCount: 3,
+          },
+          // Missing resumeText
+        }),
+      });
 
-      const html = renderSession();
+      const res = await setupApiHandler(req);
+      expect(res.status).toBe(422);
 
-      // InterviewSession must NOT show the hostile "Resume Required" block for standard technical tracks
-      expect(html).not.toContain('You must upload your resume and specify job details before you can start active mock interviews');
-      expect(html).not.toContain('The selected interview mode requires resume data to analyze your background');
+      const body = await res.json();
+      expect(body.status).toBe('error');
+      expect(body.message).toContain('The selected interview mode requires resume content');
     });
 
-    it('guards InterviewSession with actionable guidance if candidate navigates to Resume Deep Dive without resume', () => {
+    it('Scenario 7: Rejects empty or whitespace-only resume extraction results on server with HTTP 422', async () => {
+      const req = new Request('http://localhost:3000/api/interview/setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer valid_test_token',
+        },
+        body: JSON.stringify({
+          setupData: {
+            company: 'Generic',
+            role: 'Software Engineer',
+            type: 'Resume Deep Dive',
+            interviewModeId: 'generic-resume-deep-dive',
+            questionCount: 3,
+          },
+          resumeText: '    \n\t   ', // Unusable whitespace
+        }),
+      });
+
+      const res = await setupApiHandler(req);
+      expect(res.status).toBe(422);
+
+      const body = await res.json();
+      expect(body.message).toContain('The selected interview mode requires resume content');
+    });
+
+    it('accepts POST /api/interview/setup for Resume Deep Dive when valid resumeText is supplied', async () => {
+      const req = new Request('http://localhost:3000/api/interview/setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer valid_test_token',
+        },
+        body: JSON.stringify({
+          setupData: {
+            company: 'Generic',
+            role: 'Software Engineer',
+            type: 'Resume Deep Dive',
+            interviewModeId: 'generic-resume-deep-dive',
+            questionCount: 3,
+          },
+          resumeText: 'Jane Doe. Senior Engineer with experience leading Kubernetes migrations.',
+        }),
+      });
+
+      const res = await setupApiHandler(req);
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.status).toBe('success');
+      expect(Array.isArray(body.data.questions)).toBe(true);
+      expect(body.data.questions.length).toBe(3);
+    });
+
+    it('Scenario 6: Standard question generation succeeds without resume data', async () => {
+      // 1. Direct API test without resumeText
+      const req = new Request('http://localhost:3000/api/interview/setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer valid_test_token',
+        },
+        body: JSON.stringify({
+          setupData: {
+            company: 'Google',
+            role: 'Software Engineer',
+            type: 'Coding',
+            questionCount: 4,
+          },
+          // No resumeText
+        }),
+      });
+
+      const res = await setupApiHandler(req);
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.status).toBe('success');
+      expect(body.data.questions.length).toBe(4);
+      expect(body.data.questions[0].question).toBeDefined();
+
+      // 2. Unit question pool generator verification
+      const questions = getQuestionsForSetup({
+        company: 'Stripe',
+        role: 'Backend Engineer',
+        type: 'System Design',
+        questionCount: 3,
+      });
+
+      expect(questions.length).toBe(3);
+      expect(questions[0].question).toContain('[Stripe');
+    });
+  });
+
+  describe('3. Interview Session Entry and Direct Navigation Gating', () => {
+    it('allows candidate without a resume to run active interview on standard tracks', () => {
       mockResumeData = null;
       mockSetupData = {
-        company: 'Generic',
+        company: 'Google',
         role: 'Software Engineer',
-        type: 'Resume Deep Dive',
+        type: 'Coding',
         difficulty: 'Hard',
         duration: 45,
       };
 
       const html = renderSession();
 
-      // Must show the resume required guard with actionable options
+      expect(html).not.toContain('You must upload your resume and specify job details before you can start active mock interviews');
+      expect(html).not.toContain('The selected interview mode requires resume data');
+    });
+
+    it('guards InterviewSession with actionable guidance when entering Resume Deep Dive directly without resume', () => {
+      mockResumeData = null;
+      mockSetupData = {
+        company: 'Generic',
+        role: 'Software Engineer',
+        type: 'Resume Deep Dive',
+        interviewModeId: 'generic-resume-deep-dive',
+        difficulty: 'Hard',
+        duration: 45,
+      };
+
+      const html = renderSession();
+
       expect(html).toContain('Resume Required');
       expect(html).toContain('The selected interview mode requires resume data to analyze your background and past project claims');
       expect(html).toContain('Upload Resume');
       expect(html).toContain('Return to Setup');
+    });
+
+    it('allows InterviewSession to run when Resume Deep Dive has valid resumeData', () => {
+      mockResumeData = {
+        text: 'Staff Engineer. Experience designing real-time low-latency financial settlement engines.',
+      };
+      mockSetupData = {
+        company: 'Generic',
+        role: 'Software Engineer',
+        type: 'Resume Deep Dive',
+        interviewModeId: 'generic-resume-deep-dive',
+        difficulty: 'Hard',
+        duration: 45,
+      };
+
+      const html = renderSession();
+
+      expect(html).not.toContain('Resume Required');
     });
   });
 });

@@ -8,6 +8,7 @@ import {
 import { getQuestionsForSetup } from '@/services/constants';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/services/rateLimiter.server';
 import { AI_CONFIG, executeAnthropicRequest, getAiApiKey } from '@/lib/ai/aiConfig';
+import { isResumeRequiredMode } from '@/types/interviewModes';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +24,13 @@ const setupDataSchema = z.object({
   focusAreas: z.array(z.string()).default([]),
   persona: z.string().default('sarah'),
   interviewModeId: z.string().optional(),
+  requiresResume: z.boolean().optional(),
 });
 
 const setupRequestSchema = z.object({
   setupData: setupDataSchema,
   userId: z.string().optional(),
+  resumeText: z.string().optional(),
 });
 
 export interface GeneratedQuestionItem {
@@ -88,9 +91,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const { setupData, userId: bodyUserId } = parseResult.data;
+    const { setupData, userId: bodyUserId, resumeText } = parseResult.data;
     const count = setupData.questionCount || 5;
     const activeUserId = user?.id || bodyUserId;
+
+    // Enforce resume prerequisite if the selected mode requires it
+    const requiresResume = isResumeRequiredMode(setupData);
+    const hasUsableResume = typeof resumeText === 'string' && resumeText.trim().length > 0;
+
+    if (requiresResume && !hasUsableResume) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          message: 'The selected interview mode requires resume content. Please upload a resume before continuing.',
+        },
+        { status: 422 }
+      );
+    }
 
     // 3. Retrieve Candidate Historical Memory from Firebase SkillMemoryNodes
     let pastCritiques: Array<{
@@ -123,12 +140,16 @@ export async function POST(request: Request) {
     const anthropicApiKey = getAiApiKey();
     let generatedQuestions: GeneratedQuestionItem[] = [];
 
-    if (anthropicApiKey && hasHistoricalMemory) {
+    if (anthropicApiKey && (hasHistoricalMemory || (requiresResume && hasUsableResume))) {
       try {
-        const systemPrompt = `You are a Principal FAANG Technical Interviewer conducting a ${setupData.type} interview for a ${setupData.experienceLevel} ${setupData.role} at ${setupData.company}.
-${memoryConditioning}
+        const resumeSection = hasUsableResume
+          ? `\nCandidate Resume Summary:\n${resumeText.slice(0, 2000)}\n\nFor Resume Deep Dive, probe specific projects, architectural decisions, and metrics mentioned in the resume.`
+          : '';
 
-Generate exactly ${count} structured interview questions. Ensure at least 1-2 questions directly and adaptively probe the candidate's recorded historical weak points.
+        const systemPrompt = `You are a Principal FAANG Technical Interviewer conducting a ${setupData.type} interview for a ${setupData.experienceLevel} ${setupData.role} at ${setupData.company}.
+${memoryConditioning}${resumeSection}
+
+Generate exactly ${count} structured interview questions. Ensure questions test technical depth and probe the candidate's background.
 
 Output strict JSON with format:
 {
