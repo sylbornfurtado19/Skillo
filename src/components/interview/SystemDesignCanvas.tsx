@@ -279,100 +279,186 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  // Keyboard navigation & shortcuts for canvas
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable) {
+        return;
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (!readOnly && (selectedNodeId || selectedEdgeId)) {
+          e.preventDefault();
+          handleDeleteSelected();
+        }
+      } else if (e.key === 'Escape') {
+        if (connectingSourceId) {
+          e.preventDefault();
+          setConnectingSourceId(null);
+        } else if (selectedNodeId || selectedEdgeId) {
+          e.preventDefault();
+          setSelectedNodeId(null);
+          setSelectedEdgeId(null);
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          handleRedo();
+        } else {
+          e.preventDefault();
+          handleUndo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNodeId, selectedEdgeId, connectingSourceId, historyStack, redoStack, readOnly]);
+
   // Render Icon for Preset
   const renderIcon = (type: SystemDesignNodeType) => {
     switch (type) {
       case 'client':
-        return <FaDesktop />;
+        return <FaDesktop aria-hidden="true" />;
       case 'load_balancer':
-        return <FaNetworkWired />;
+        return <FaNetworkWired aria-hidden="true" />;
       case 'api_gateway':
-        return <FaDoorOpen />;
+        return <FaDoorOpen aria-hidden="true" />;
       case 'microservice':
-        return <FaCogs />;
+        return <FaCogs aria-hidden="true" />;
       case 'cache':
-        return <FaMemory />;
+        return <FaMemory aria-hidden="true" />;
       case 'database':
-        return <FaDatabase />;
+        return <FaDatabase aria-hidden="true" />;
       case 'message_queue':
-        return <FaStream />;
+        return <FaStream aria-hidden="true" />;
       case 'cloud':
-        return <FaCloud />;
+        return <FaCloud aria-hidden="true" />;
       case 'container':
-        return <FaBox />;
+        return <FaBox aria-hidden="true" />;
       case 'rectangle':
-        return <FaSquare />;
+        return <FaSquare aria-hidden="true" />;
       case 'circle':
-        return <FaCircle />;
+        return <FaCircle aria-hidden="true" />;
     }
   };
 
   return (
     <div className="flex flex-col h-full w-full bg-bg-surface border border-border rounded-2xl overflow-hidden shadow-2xl relative select-none">
       {/* ── TOP TOOLBAR ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2 bg-bg-surface-alt border-b border-border text-xs gap-2 flex-wrap z-20">
+      <div
+        role="toolbar"
+        aria-label="System design canvas toolbar"
+        className="flex items-center justify-between px-3 sm:px-4 py-2 bg-bg-surface-alt border-b border-border text-xs gap-2 flex-wrap z-20"
+      >
         {/* Undo/Redo & Zoom Controls */}
-        <div className="flex items-center gap-1">
+        <div
+          role="group"
+          aria-label="History and zoom controls"
+          className="flex items-center gap-1 sm:gap-1.5 flex-wrap"
+        >
           <button
+            type="button"
             onClick={handleUndo}
             disabled={historyStack.length === 0 || readOnly}
-            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary disabled:opacity-40 transition-all border border-border"
-            title="Undo"
+            aria-label="Undo canvas change"
+            title="Undo canvas change (Ctrl+Z)"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[36px] sm:min-w-[36px] p-2 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-border flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
           >
-            <FaUndo size={11} />
+            <FaUndo size={12} aria-hidden="true" />
           </button>
           <button
+            type="button"
             onClick={handleRedo}
             disabled={redoStack.length === 0 || readOnly}
-            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary disabled:opacity-40 transition-all border border-border"
-            title="Redo"
+            aria-label="Redo canvas change"
+            title="Redo canvas change (Ctrl+Y)"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[36px] sm:min-w-[36px] p-2 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-border flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
           >
-            <FaRedo size={11} />
+            <FaRedo size={12} aria-hidden="true" />
           </button>
-          <div className="h-4 w-px bg-border mx-1" />
+          <div className="h-5 w-px bg-border mx-1" aria-hidden="true" />
           <button
+            type="button"
             onClick={() => setZoom((z) => Math.min(2, z + 0.1))}
-            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary transition-all border border-border"
+            aria-label="Zoom in canvas"
             title="Zoom In"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[36px] sm:min-w-[36px] p-2 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary transition-all border border-border flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
           >
-            <FaSearchPlus size={11} />
+            <FaSearchPlus size={12} aria-hidden="true" />
           </button>
-          <span className="text-[10px] font-mono text-text-secondary w-10 text-center">
+          <span
+            aria-live="polite"
+            aria-atomic="true"
+            className="text-[11px] font-mono text-text-secondary min-w-[40px] text-center select-none"
+          >
             {Math.round(zoom * 100)}%
           </span>
           <button
+            type="button"
             onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
-            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary transition-all border border-border"
+            aria-label="Zoom out canvas"
             title="Zoom Out"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[36px] sm:min-w-[36px] p-2 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary transition-all border border-border flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
           >
-            <FaSearchMinus size={11} />
+            <FaSearchMinus size={12} aria-hidden="true" />
           </button>
           <button
+            type="button"
             onClick={() => {
               setZoom(1);
               setPan({ x: 0, y: 0 });
             }}
-            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary transition-all border border-border"
+            aria-label="Reset zoom and center view"
             title="Reset View"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[36px] sm:min-w-[36px] p-2 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary transition-all border border-border flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
           >
-            <FaExpandArrowsAlt size={11} />
+            <FaExpandArrowsAlt size={12} aria-hidden="true" />
           </button>
         </div>
 
         {/* Mode Indicators */}
-        <div className="flex items-center gap-2">
+        <div
+          role="group"
+          aria-label="Connection mode and protocol settings"
+          className="flex items-center gap-2"
+        >
           {connectingSourceId ? (
-            <span className="animate-pulse flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-warning/20 border border-warning/40 text-warning">
-              <FaPlug size={10} />
-              Click target node to connect edge ({connectLabel})
-            </span>
+            <div className="flex items-center gap-2">
+              <span
+                role="status"
+                aria-live="polite"
+                className="animate-pulse flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono font-bold bg-warning/20 border border-warning/40 text-warning"
+              >
+                <FaPlug size={11} aria-hidden="true" />
+                Click target node to connect edge ({connectLabel})
+              </span>
+              <button
+                type="button"
+                onClick={() => setConnectingSourceId(null)}
+                aria-label="Cancel active connection"
+                className="min-h-[36px] px-2.5 py-1 text-xs font-semibold rounded-lg bg-bg-surface hover:bg-border/40 text-text-secondary border border-border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
           ) : (
-            <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-secondary">
-              <span>Protocol Label:</span>
+            <div className="flex items-center gap-1.5 text-xs font-mono text-text-secondary">
+              <label htmlFor="system-design-protocol-select" className="shrink-0 cursor-pointer text-text-secondary">
+                Protocol:
+              </label>
               <select
+                id="system-design-protocol-select"
                 value={connectLabel}
                 onChange={(e) => setConnectLabel(e.target.value)}
-                className="bg-bg-surface border border-border rounded px-1.5 py-0.5 text-text-primary font-mono text-[10px]"
+                aria-label="Connection protocol label"
+                className="min-h-[38px] bg-bg-surface border border-border rounded-lg px-2.5 py-1 text-text-primary font-mono text-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
               >
                 <option value="HTTPS">HTTPS</option>
                 <option value="gRPC">gRPC</option>
@@ -386,39 +472,54 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
         </div>
 
         {/* Delete, Clear, Export, Save */}
-        <div className="flex items-center gap-1.5">
+        <div
+          role="group"
+          aria-label="Canvas actions"
+          className="flex items-center gap-1.5 flex-wrap"
+        >
           {(selectedNodeId || selectedEdgeId) && (
             <button
+              type="button"
               onClick={handleDeleteSelected}
               disabled={readOnly}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-danger/20 hover:bg-danger/30 text-danger border border-danger/30 transition-all text-[10px] font-semibold"
+              aria-label={selectedNodeId ? 'Delete selected component' : 'Delete selected connection'}
+              title={selectedNodeId ? 'Delete component (Delete/Backspace)' : 'Delete connection (Delete/Backspace)'}
+              className="min-h-[40px] sm:min-h-[36px] flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/20 hover:bg-danger/30 text-danger border border-danger/30 transition-all text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
-              <FaTrash size={10} />
-              Delete
+              <FaTrash size={11} aria-hidden="true" />
+              <span>Delete</span>
             </button>
           )}
           <button
+            type="button"
             onClick={handleClearCanvas}
             disabled={readOnly}
-            className="p-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-secondary transition-all border border-border"
+            aria-label="Clear whiteboard canvas"
             title="Clear Whiteboard"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[36px] sm:min-w-[36px] p-2 rounded-lg bg-bg-surface hover:bg-border/40 text-text-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-border flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 cursor-pointer"
           >
-            <FaTimes size={11} />
+            <FaTimes size={12} aria-hidden="true" />
           </button>
           <button
+            type="button"
             onClick={handleExportJSON}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary border border-border transition-all text-[10px] font-semibold"
+            aria-label="Export diagram as JSON file"
+            title="Export diagram JSON"
+            className="min-h-[40px] sm:min-h-[36px] flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-surface hover:bg-border/40 text-text-primary border border-border transition-all text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 cursor-pointer"
           >
-            <FaDownload size={10} />
-            Export JSON
+            <FaDownload size={11} aria-hidden="true" />
+            <span>Export JSON</span>
           </button>
           {onSave && (
             <button
+              type="button"
               onClick={() => onSave(diagramState)}
-              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-primary hover:bg-primary/90 text-text-on-primary font-bold transition-all text-[10px] shadow-soft"
+              aria-label="Save system design diagram"
+              title="Save diagram"
+              className="min-h-[40px] sm:min-h-[36px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-text-on-primary font-bold transition-all text-xs shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
             >
-              <FaSave size={10} />
-              Save Design
+              <FaSave size={11} aria-hidden="true" />
+              <span>Save Design</span>
             </button>
           )}
         </div>
@@ -428,8 +529,12 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
       <div className="flex-1 flex relative overflow-hidden">
         {/* Left Side Tool Palette */}
         {!readOnly && (
-          <div className="w-14 bg-bg-surface-alt border-r border-border flex flex-col items-center py-3 gap-2 z-10 shrink-0 overflow-y-auto">
-            <span className="text-[8px] font-mono text-text-secondary uppercase tracking-tighter mb-1">
+          <aside
+            role="toolbar"
+            aria-label="Component node palette"
+            className="w-16 bg-bg-surface-alt border-r border-border flex flex-col items-center py-3 gap-2.5 z-10 shrink-0 overflow-y-auto"
+          >
+            <span className="text-[9px] font-mono text-text-secondary uppercase tracking-tight mb-1 select-none font-semibold">
               Nodes
             </span>
             {(Object.keys(NODE_PRESET_CONFIGS) as SystemDesignNodeType[]).map((type) => {
@@ -437,18 +542,20 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
               return (
                 <button
                   key={type}
+                  type="button"
                   onClick={() => handleAddNode(type)}
-                  className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center border transition-all ${cfg.bgColor} ${cfg.borderColor} ${cfg.textColor} hover:scale-105`}
+                  aria-label={`Add ${cfg.label} component`}
                   title={`Add ${cfg.label}`}
+                  className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex flex-col items-center justify-center border transition-all cursor-pointer ${cfg.bgColor} ${cfg.borderColor} ${cfg.textColor} hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1`}
                 >
-                  <span className="text-xs">{renderIcon(type)}</span>
-                  <span className="text-[7px] font-mono leading-none truncate max-w-[36px] mt-0.5">
+                  <span className="text-sm">{renderIcon(type)}</span>
+                  <span className="text-[8px] font-mono leading-none truncate max-w-[38px] mt-0.5">
                     {type.split('_')[0]}
                   </span>
                 </button>
               );
             })}
-          </div>
+          </aside>
         )}
 
         {/* SVG/HTML Canvas Viewport */}
@@ -508,7 +615,19 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
                 return (
                   <g
                     key={edge.id}
-                    className="pointer-events-auto cursor-pointer"
+                    tabIndex={readOnly ? -1 : 0}
+                    role="button"
+                    aria-label={`Connection ${edge.label || 'edge'} from ${srcNode.label} to ${tgtNode.label}`}
+                    aria-selected={isSelected}
+                    onKeyDown={(e) => {
+                      if (readOnly) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedEdgeId(edge.id);
+                        setSelectedNodeId(null);
+                      }
+                    }}
+                    className="pointer-events-auto cursor-pointer focus-visible:outline-none"
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedEdgeId(edge.id);
@@ -561,6 +680,39 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
               return (
                 <div
                   key={node.id}
+                  tabIndex={readOnly ? -1 : 0}
+                  role="button"
+                  aria-label={`${node.label}, ${node.type.replace('_', ' ')} component`}
+                  aria-selected={isSelected}
+                  onKeyDown={(e) => {
+                    if (readOnly) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (connectingSourceId) {
+                        if (connectingSourceId !== node.id) {
+                          const newEdge: SystemDesignEdge = {
+                            id: `edge_${Date.now()}`,
+                            source: connectingSourceId,
+                            target: node.id,
+                            label: connectLabel,
+                          };
+                          updateState({
+                            ...diagramState,
+                            edges: [...diagramState.edges, newEdge],
+                            updatedAt: new Date().toISOString(),
+                          });
+                        }
+                        setConnectingSourceId(null);
+                      } else {
+                        setSelectedNodeId(node.id);
+                        setSelectedEdgeId(null);
+                      }
+                    } else if (e.key === 'F2') {
+                      e.preventDefault();
+                      setEditingNodeId(node.id);
+                      setEditLabelText(node.label);
+                    }
+                  }}
                   onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
@@ -573,7 +725,7 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
                     width: `${node.width || cfg.defaultWidth}px`,
                     height: `${node.height || cfg.defaultHeight}px`,
                   }}
-                  className={`absolute rounded-xl border p-2 flex items-center justify-start gap-2 shadow-soft backdrop-blur-md transition-shadow cursor-grab active:cursor-grabbing z-10 ${
+                  className={`absolute rounded-xl border p-2 flex items-center justify-start gap-2 shadow-soft backdrop-blur-md transition-shadow cursor-grab active:cursor-grabbing z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                     cfg.bgColor
                   } ${
                     isSelected
@@ -600,14 +752,25 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
                   {/* Connect Pin Handle */}
                   {!readOnly && (
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setConnectingSourceId(isConnectSource ? null : node.id);
                       }}
-                      className="w-5 h-5 rounded-full bg-border/60 hover:bg-primary text-text-secondary hover:text-text-on-primary flex items-center justify-center shrink-0 transition-colors"
-                      title="Connect edge to target"
+                      aria-label={
+                        isConnectSource
+                          ? `Cancel connecting edge from ${node.label}`
+                          : `Connect edge from ${node.label}`
+                      }
+                      aria-pressed={isConnectSource}
+                      title={isConnectSource ? `Cancel connection from ${node.label}` : `Connect edge from ${node.label}`}
+                      className={`w-7 h-7 min-w-[28px] min-h-[28px] rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
+                        isConnectSource
+                          ? 'bg-warning text-text-on-primary ring-2 ring-warning'
+                          : 'bg-border/60 hover:bg-primary text-text-secondary hover:text-text-on-primary'
+                      }`}
                     >
-                      <FaPlug size={8} />
+                      <FaPlug size={10} aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -619,30 +782,46 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
 
       {/* ── EDIT LABEL MODAL ─────────────────────────────────────────────────── */}
       {editingNodeId && (
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-30 p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rename-node-dialog-title"
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-30 p-4"
+        >
           <div className="bg-bg-surface border border-border rounded-2xl p-5 max-w-xs w-full space-y-4 shadow-soft">
-            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
+            <h4
+              id="rename-node-dialog-title"
+              className="text-xs font-bold text-text-primary uppercase tracking-wider"
+            >
               Rename Component Node
             </h4>
             <input
               type="text"
               value={editLabelText}
               onChange={(e) => setEditLabelText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSaveNodeLabel()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveNodeLabel();
+                if (e.key === 'Escape') setEditingNodeId(null);
+              }}
               autoFocus
-              className="w-full px-3 py-2 bg-bg-surface-alt border border-border rounded-xl text-xs text-text-primary focus:border-primary focus:outline-none"
+              aria-label="Component node label"
+              className="w-full px-3 py-2 bg-bg-surface-alt border border-border rounded-xl text-xs text-text-primary focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               placeholder="Node Label"
             />
             <div className="flex justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setEditingNodeId(null)}
-                className="px-3 py-1.5 rounded-lg bg-bg-surface-alt hover:bg-border text-xs text-text-primary"
+                aria-label="Cancel renaming component"
+                className="min-h-[40px] px-3.5 py-1.5 rounded-lg bg-bg-surface-alt hover:bg-border text-xs text-text-primary font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSaveNodeLabel}
-                className="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-xs text-text-on-primary font-bold"
+                aria-label="Save component label"
+                className="min-h-[40px] px-4 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-xs text-text-on-primary font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
               >
                 Save
               </button>
@@ -653,20 +832,31 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
 
       {/* ── FIRST-TIME USAGE SYSTEM DESIGN TOOLTIP OVERLAY ──────────────────── */}
       {showTooltip && (
-        <div className="absolute top-12 left-4 right-4 z-40 bg-bg-surface/95 backdrop-blur-md border border-primary/40 rounded-2xl p-4 shadow-soft space-y-3">
+        <aside
+          role="region"
+          aria-label="System design canvas guide"
+          className="absolute top-12 left-4 right-4 z-40 bg-bg-surface/95 backdrop-blur-md border border-primary/40 rounded-2xl p-4 shadow-soft space-y-3"
+        >
           <div className="flex items-start justify-between gap-3 border-b border-border pb-2">
             <div className="flex items-center gap-2">
-              <span className="h-6 w-6 rounded-lg bg-primary-soft text-primary flex items-center justify-center font-bold text-xs">💡</span>
+              <span
+                className="h-6 w-6 rounded-lg bg-primary-soft text-primary flex items-center justify-center font-bold text-xs"
+                aria-hidden="true"
+              >
+                💡
+              </span>
               <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
                 System Design Canvas Guide
               </h4>
             </div>
             <button
+              type="button"
               onClick={dismissTooltip}
-              className="text-text-secondary hover:text-text-primary transition-colors p-1"
+              aria-label="Dismiss System Design Guide"
               title="Dismiss Guide"
+              className="min-h-[36px] min-w-[36px] flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors p-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
             >
-              <FaTimes size={12} />
+              <FaTimes size={13} aria-hidden="true" />
             </button>
           </div>
 
@@ -674,32 +864,34 @@ export const SystemDesignCanvas: React.FC<SystemDesignCanvasProps> = ({
             <div className="bg-bg-surface-alt p-2.5 rounded-xl border border-border space-y-1">
               <span className="text-primary font-bold block">1. Add & Drag Components</span>
               <p className="text-[10px] text-text-secondary leading-tight">
-                Click preset nodes (Client, Load Balancer, DB, Cache) in the top toolbar to add them. Drag to position.
+                Click preset nodes in the left palette to add them. Drag to position.
               </p>
             </div>
             <div className="bg-bg-surface-alt p-2.5 rounded-xl border border-border space-y-1">
               <span className="text-secondary font-bold block">2. Connect Data Flows</span>
               <p className="text-[10px] text-text-secondary leading-tight">
-                Click the plug pin <FaPlug className="inline text-text-secondary" size={8} /> on a node to select it, then click any target node to draw a connected edge.
+                Click the plug pin on a node to select it, then click any target node to draw a connected edge.
               </p>
             </div>
             <div className="bg-bg-surface-alt p-2.5 rounded-xl border border-border space-y-1">
               <span className="text-primary font-bold block">3. Rename & Adjust</span>
               <p className="text-[10px] text-text-secondary leading-tight">
-                Double-click nodes to edit labels. Select and click delete to remove components or edges.
+                Double-click nodes to edit labels. Select and click delete or press Backspace/Delete to remove components or edges.
               </p>
             </div>
           </div>
 
           <div className="flex justify-end pt-1">
             <button
+              type="button"
               onClick={dismissTooltip}
-              className="px-4 py-1.5 rounded-xl bg-primary text-text-on-primary text-xs font-bold shadow-soft hover:scale-102 active:scale-98 transition cursor-pointer"
+              aria-label="Acknowledge and dismiss guide"
+              className="min-h-[40px] px-4 py-2 rounded-xl bg-primary text-text-on-primary text-xs font-bold shadow-soft hover:scale-102 active:scale-98 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
               Got it, start designing!
             </button>
           </div>
-        </div>
+        </aside>
       )}
     </div>
   );
