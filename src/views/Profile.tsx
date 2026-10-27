@@ -37,6 +37,7 @@ export default function Profile() {
     setAnswers,
     setResults,
     setSetupData,
+    setHistoricalSession,
   } = useInterview();
 
 
@@ -206,6 +207,7 @@ export default function Profile() {
       setSetupData,
       setQuestions,
       setAnswers,
+      setHistoricalSession,
       router,
     });
   };

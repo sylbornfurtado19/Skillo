@@ -56,6 +56,7 @@ export default function Dashboard() {
     setAnswers,
     setupData,
     sessionHistory,
+    setHistoricalSession,
   } = useInterview();
 
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'highest'>('newest');
@@ -262,6 +263,7 @@ export default function Dashboard() {
       setSetupData,
       setQuestions,
       setAnswers,
+      setHistoricalSession,
       router,
     });
   };

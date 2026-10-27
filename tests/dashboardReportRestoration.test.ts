@@ -89,7 +89,14 @@ describe('Dashboard Historical Assessment Report Restoration', () => {
     });
 
     // 1. Must restore authentic results
-    expect(mockSetResults).toHaveBeenCalledWith(authenticReportSession.report);
+    expect(mockSetResults).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...authenticReportSession.report,
+        sessionId: 'session_real_987',
+        sessionDate: '2026-10-20',
+      }),
+      { addToHistory: false }
+    );
     const restoredResults = mockSetResults.mock.calls[0][0];
     expect(restoredResults.overallScore).toBe(91);
     expect(restoredResults.interviewerComments).toBe('Exceptional incident management and circuit breaking logic.');

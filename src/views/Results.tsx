@@ -36,6 +36,7 @@ import { INTERVIEWER_PERSONAS } from '../services/constants';
 import { useInterview } from '../context/InterviewContext';
 import {
   isValidReport,
+  isValidSessionItem,
   findLatestValidSessionReport,
   buildHistoricalResults,
   loadPastReport,
@@ -133,37 +134,63 @@ export default function Results() {
     sessionHistory,
     setIsRetry,
     setRetryQuestionIndex,
+    historicalSession,
+    setHistoricalSession,
+    clearHistoricalSession,
   } = useInterview();
 
   const latestValidSession = useMemo(() => {
     return findLatestValidSessionReport(sessionHistory);
   }, [sessionHistory]);
 
+  const isHistoricalUnavailable = useMemo(() => {
+    return Boolean(historicalSession && !isValidSessionItem(historicalSession));
+  }, [historicalSession]);
+
   const activeResults = useMemo(() => {
+    // 1. If viewing an explicit historical session:
+    if (historicalSession) {
+      if (isValidSessionItem(historicalSession)) {
+        if (isValidReport(contextResults) && (contextResults as any).sessionId === historicalSession.id) {
+          return contextResults;
+        }
+        return buildHistoricalResults(historicalSession);
+      }
+      // Never fall back to another session if the selected historical session is invalid
+      return null;
+    }
+
+    // 2. Active live interview results
     if (isValidReport(contextResults)) {
       return contextResults;
     }
+
+    // 3. Fallback to latest valid session if directly visiting /results without an active session
     if (latestValidSession) {
       return buildHistoricalResults(latestValidSession);
     }
+
     return null;
-  }, [contextResults, latestValidSession]);
+  }, [historicalSession, contextResults, latestValidSession]);
 
   // Synchronize restored historical session into context state in background if needed
   useEffect(() => {
-    if (!isValidReport(contextResults) && latestValidSession) {
+    // Only synchronize latestValidSession if NO historical session was explicitly selected and contextResults is not valid
+    if (!historicalSession && !isValidReport(contextResults) && latestValidSession) {
       loadPastReport(latestValidSession, {
         setResults,
         setSetupData,
         setQuestions,
         setAnswers,
+        setHistoricalSession,
       });
     }
-  }, [contextResults, latestValidSession, setResults, setSetupData, setQuestions, setAnswers]);
+  }, [historicalSession, contextResults, latestValidSession, setResults, setSetupData, setQuestions, setAnswers, setHistoricalSession]);
 
   const results = activeResults;
 
   const handleRetryQuestion = (questionIndex: number, questionText: string) => {
+    clearHistoricalSession();
     setIsRetry(true);
     setRetryQuestionIndex(questionIndex);
     setQuestions([questionText]);
@@ -300,6 +327,48 @@ export default function Results() {
   };
 
   if (!results) {
+    if (isHistoricalUnavailable) {
+      return (
+        <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 space-y-8 animate-fadeIn text-center">
+          <Card variant="default" className="p-8 sm:p-12 flex flex-col items-center justify-center border border-border shadow-soft">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-danger/10 border border-danger/20 flex items-center justify-center text-danger text-3xl sm:text-4xl mb-6 shadow-sm">
+              <FaExclamationTriangle aria-hidden="true" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-heading font-bold text-text-primary mb-3">
+              Historical Session Report Unavailable
+            </h2>
+            <p className="text-sm sm:text-base text-text-secondary max-w-md mx-auto mb-8 leading-relaxed">
+              The selected historical session data is missing or corrupted and cannot be restored. Your persisted session history remains intact.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <Button
+                onClick={() => {
+                  clearHistoricalSession();
+                  router.push('/dashboard');
+                }}
+                variant="primary"
+                size="lg"
+                className="w-full sm:w-auto px-6"
+              >
+                Return to Dashboard
+              </Button>
+              <Button
+                onClick={() => {
+                  clearHistoricalSession();
+                  router.push('/profile');
+                }}
+                variant="secondary"
+                size="lg"
+                className="w-full sm:w-auto px-6"
+              >
+                View Session History
+              </Button>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 space-y-8 animate-fadeIn text-center">
         <Card variant="default" className="p-8 sm:p-12 flex flex-col items-center justify-center border border-border shadow-soft">
@@ -314,7 +383,10 @@ export default function Results() {
           </p>
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <Button
-              onClick={() => router.push('/setup')}
+              onClick={() => {
+                clearHistoricalSession();
+                router.push('/setup');
+              }}
               variant="primary"
               size="lg"
               className="w-full sm:w-auto px-8"
@@ -323,7 +395,10 @@ export default function Results() {
               Start Mock Interview
             </Button>
             <Button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => {
+                clearHistoricalSession();
+                router.push('/dashboard');
+              }}
               variant="secondary"
               size="lg"
               className="w-full sm:w-auto px-6"
@@ -501,6 +576,7 @@ export default function Results() {
   };
 
   const handlePracticeAgain = () => {
+    clearHistoricalSession();
     setResults(null);
     setQuestions([]);
     setCurrentQuestionIndex(0);
@@ -509,11 +585,13 @@ export default function Results() {
   };
 
   const handleUploadNew = () => {
+    clearHistoricalSession();
     resetSession();
     router.push('/resume');
   };
 
   const handleGoDashboard = () => {
+    clearHistoricalSession();
     router.push('/dashboard');
   };
 

@@ -3,14 +3,13 @@ import type { EvaluationReport } from '../types/index';
 
 /**
  * Checks if an object is a valid evaluation report / interview results structure.
+ * Distinguishes valid reports with legitimately empty optional fields (e.g. breakdown, categories)
+ * from invalid or corrupt objects with missing or non-finite overallScores.
  */
 export function isValidReport(report: unknown): report is InterviewResults | EvaluationReport {
-  return Boolean(
-    report &&
-      typeof report === 'object' &&
-      typeof (report as any).overallScore === 'number' &&
-      !isNaN((report as any).overallScore)
-  );
+  if (!report || typeof report !== 'object') return false;
+  const score = (report as any).overallScore;
+  return typeof score === 'number' && Number.isFinite(score) && score >= 0 && score <= 100;
 }
 
 /**
@@ -19,10 +18,12 @@ export function isValidReport(report: unknown): report is InterviewResults | Eva
 export function isValidSessionItem(item: unknown): item is SessionHistoryItem {
   if (!item || typeof item !== 'object') return false;
   const s = item as SessionHistoryItem;
+  if (!s.id || typeof s.id !== 'string' || s.id.trim().length === 0) return false;
+
   if (s.report && isValidReport(s.report)) {
     return true;
   }
-  if (typeof s.score === 'number' && !isNaN(s.score)) {
+  if (typeof s.score === 'number' && Number.isFinite(s.score) && s.score >= 0 && s.score <= 100) {
     return true;
   }
   return false;
@@ -49,11 +50,15 @@ export function findLatestValidSessionReport(
 
 /**
  * Builds an authentic or minimal results object from a historical session item.
- * Never synthesizes fabricated answers or fake rubric scores.
+ * Preserves session identity and timestamps. Never synthesizes fabricated answers or fake rubric scores.
  */
 export function buildHistoricalResults(interview: SessionHistoryItem): InterviewResults {
   if (interview.report && isValidReport(interview.report)) {
-    return interview.report as InterviewResults;
+    return {
+      ...(interview.report as InterviewResults),
+      sessionId: interview.id,
+      sessionDate: interview.date,
+    };
   }
 
   const setupDataObj = {
@@ -70,6 +75,8 @@ export function buildHistoricalResults(interview: SessionHistoryItem): Interview
   };
   const cats = interview.categories || {};
   return {
+    sessionId: interview.id,
+    sessionDate: interview.date,
     overallScore: interview.score,
     categories: {
       technicalAccuracy: cats.technicalAccuracy ?? cats.techKnowledge ?? interview.score,
@@ -86,22 +93,41 @@ export function buildHistoricalResults(interview: SessionHistoryItem): Interview
 
 /**
  * Restores an authentic historical assessment report into the interview state.
- * Preserves real questions, candidate answers, rubric feedback, and avoids fabricating data.
+ * Preserves real questions, candidate answers, rubric feedback, and prevents history duplication.
  */
 export function loadPastReport(
   interview: SessionHistoryItem,
   callbacks: {
-    setResults: (results: any) => void;
+    setResults: (results: any, options?: { addToHistory?: boolean }) => void;
     setSetupData: (data: any) => void;
     setQuestions: (q: string[]) => void;
     setAnswers: (a: any[]) => void;
+    setHistoricalSession?: (session: SessionHistoryItem | null) => void;
     router?: { push: (path: string) => void };
   }
-): void {
-  const { setResults, setSetupData, setQuestions, setAnswers, router } = callbacks;
+): boolean {
+  const { setResults, setSetupData, setQuestions, setAnswers, setHistoricalSession, router } = callbacks;
+
+  if (setHistoricalSession) {
+    setHistoricalSession(interview);
+  }
+
+  // Defensively validate session before attempting restoration
+  if (!isValidSessionItem(interview)) {
+    setResults(null, { addToHistory: false });
+    if (router?.push) {
+      router.push('/results');
+    }
+    return false;
+  }
 
   if (interview.report && isValidReport(interview.report)) {
-    setResults(interview.report);
+    const reportWithSession = {
+      ...interview.report,
+      sessionId: interview.id,
+      sessionDate: interview.date,
+    };
+    setResults(reportWithSession, { addToHistory: false });
 
     if (interview.report.setupData) {
       setSetupData(interview.report.setupData as any);
@@ -135,17 +161,18 @@ export function loadPastReport(
     if (router?.push) {
       router.push('/results');
     }
-    return;
+    return true;
   }
 
   // Fallback for legacy session history records lacking a full EvaluationReport
   const fallbackResults = buildHistoricalResults(interview);
   setSetupData(fallbackResults.setupData as any);
-  setResults(fallbackResults);
+  setResults(fallbackResults, { addToHistory: false });
   setQuestions([]);
   setAnswers([]);
 
   if (router?.push) {
     router.push('/results');
   }
+  return true;
 }

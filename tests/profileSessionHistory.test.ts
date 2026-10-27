@@ -284,7 +284,14 @@ describe('Profile - Real Session History Integration', () => {
       });
 
       // 1. Must restore the actual stored EvaluationReport directly
-      expect(setResults).toHaveBeenCalledWith(storedReport);
+      expect(setResults).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...storedReport,
+          sessionId: 'session_kernel_101',
+          sessionDate: '2026-08-20',
+        }),
+        { addToHistory: false }
+      );
 
       // 2. Must restore setupData from the report
       expect(setSetupData).toHaveBeenCalledWith(storedReport.setupData);
@@ -349,7 +356,8 @@ describe('Profile - Real Session History Integration', () => {
             depth: 82,
             timeManagement: 82,
           },
-        })
+        }),
+        { addToHistory: false }
       );
 
       // 2. Empty questions and answers

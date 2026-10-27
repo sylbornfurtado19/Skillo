@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { InterviewQuestion, EvaluationReport } from '../types/index';
 import type { IVPEvidenceReceipt } from '@/types/ivpEvidence';
 import type { SessionIntegrityReport } from '@/types/integrity';
+import { isValidSessionItem } from '../services/interviewReport';
 
 export type { InterviewQuestion };
 export type QuestionItem = string | InterviewQuestion;
@@ -100,6 +101,10 @@ export interface InterviewContextValue {
   setAnswers: (answers: AnswerRecord[]) => void;
   results: InterviewResults | null;
   setResults: (results: InterviewResults | null, options?: { addToHistory?: boolean }) => void;
+  currentResults: InterviewResults | null;
+  historicalSession: SessionHistoryItem | null;
+  setHistoricalSession: (session: SessionHistoryItem | null) => void;
+  clearHistoricalSession: () => void;
   sessionHistory: SessionHistoryItem[];
   setSessionHistory: React.Dispatch<React.SetStateAction<SessionHistoryItem[]>>;
   isRetry: boolean;
@@ -293,11 +298,31 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
 
-  // Results
+  // Active in-progress/just-completed live interview results
+  const [currentResults, setCurrentResults] = useState<InterviewResults | null>(null);
+
+  // Historical session currently being viewed (null if viewing live session)
+  const [historicalSession, setHistoricalSessionState] = useState<SessionHistoryItem | null>(null);
+
+  // Results currently displayed
   const [results, _setResults] = useState<InterviewResults | null>(null);
 
   // Session history (persisted to localStorage)
   const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>([]);
+
+  const setHistoricalSession = (session: SessionHistoryItem | null) => {
+    setHistoricalSessionState(session);
+    safeSessionSet('iq_historical_session', session);
+  };
+
+  const clearHistoricalSession = () => {
+    setHistoricalSessionState(null);
+    safeSessionSet('iq_historical_session', null);
+    if (currentResults) {
+      _setResults(currentResults);
+      safeSessionSet('iq_results', currentResults);
+    }
+  };
 
   // Rehydrate from storage on mount (client-only)
   useEffect(() => {
@@ -306,8 +331,21 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
     setQuestions(safeSessionGet<(string | InterviewQuestion)[]>('iq_questions', []));
     setCurrentQuestionIndex(safeSessionGet<number>('iq_question_index', 0));
     setAnswers(safeSessionGet<AnswerRecord[]>('iq_answers', []));
-    _setResults(safeSessionGet<InterviewResults | null>('iq_results', null));
-    setSessionHistory(safeLocalGet<SessionHistoryItem[]>('session_history', []));
+
+    const savedCurrent = safeSessionGet<InterviewResults | null>('iq_current_results', null);
+    setCurrentResults(savedCurrent);
+
+    const savedHistorical = safeSessionGet<SessionHistoryItem | null>('iq_historical_session', null);
+    setHistoricalSessionState(savedHistorical);
+
+    const savedResults = safeSessionGet<InterviewResults | null>('iq_results', null);
+    _setResults(savedResults ?? savedCurrent);
+
+    const rawHistory = safeLocalGet<SessionHistoryItem[]>('session_history', []);
+    const validHistory = Array.isArray(rawHistory)
+      ? rawHistory.filter(isValidSessionItem)
+      : [];
+    setSessionHistory(validHistory);
   }, []);
 
   // Persist to sessionStorage on changes
@@ -335,19 +373,42 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
     safeSessionSet('iq_results', results);
   }, [results]);
 
+  useEffect(() => {
+    safeSessionSet('iq_current_results', currentResults);
+  }, [currentResults]);
+
+  useEffect(() => {
+    safeSessionSet('iq_historical_session', historicalSession);
+  }, [historicalSession]);
+
   const setResults = (
     newResults: InterviewResults | null,
     options?: { addToHistory?: boolean }
   ) => {
     _setResults(newResults);
-    if (newResults && options?.addToHistory !== false) {
+    safeSessionSet('iq_results', newResults);
+
+    // If viewing a historical session or addToHistory is explicitly false, do not mutate current results or history
+    const isHistorical = Boolean(
+      options?.addToHistory === false ||
+      (newResults as any)?.sessionId ||
+      (newResults as any)?.isHistorical ||
+      historicalSession
+    );
+
+    if (!isHistorical && newResults) {
+      setCurrentResults(newResults);
+      safeSessionSet('iq_current_results', newResults);
+    }
+
+    if (newResults && !isHistorical && options?.addToHistory !== false) {
       const cats = (newResults.categories || {}) as Record<string, number>;
       const historyItem: SessionHistoryItem = {
-        id: `session_${Date.now()}`,
+        id: (newResults as any).sessionId || `session_${Date.now()}`,
         role: newResults.setupData?.role ?? 'Software Engineer',
         type: newResults.setupData?.type ?? 'Technical',
         difficulty: newResults.setupData?.experienceLevel ?? 'Mid-Level',
-        date: new Date().toISOString().split('T')[0],
+        date: (newResults as any).sessionDate || new Date().toISOString().split('T')[0],
         score: newResults.overallScore,
         categories: {
           techKnowledge: cats.technicalAccuracy ?? 80,
@@ -364,15 +425,15 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
         interviewModeId: newResults.setupData?.interviewModeId,
         report: newResults,
       };
-      setSessionHistory((prev) => {
-        const alreadyExists = prev.some(
-          (item) => item.report === newResults || (item.id && (newResults as any).sessionId === item.id)
-        );
-        if (alreadyExists) return prev;
-        const updated = [historyItem, ...prev].slice(0, SESSION_HISTORY_MAX);
+      const currentStored = safeLocalGet<SessionHistoryItem[]>('session_history', sessionHistory);
+      const alreadyExists = currentStored.some(
+        (item) => item.report === newResults || (item.id && (newResults as any).sessionId === item.id)
+      );
+      if (!alreadyExists) {
+        const updated = [historyItem, ...currentStored].slice(0, SESSION_HISTORY_MAX);
         safeLocalSet('session_history', updated);
-        return updated;
-      });
+        setSessionHistory(updated);
+      }
     }
   };
 
@@ -399,6 +460,8 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
     setCurrentQuestionIndex(0);
     setAnswers([]);
     _setResults(null);
+    setCurrentResults(null);
+    setHistoricalSessionState(null);
     setPastCritiques([]);
     setRecalledMemoryNotice('');
     if (typeof window !== 'undefined') {
@@ -406,6 +469,8 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
         sessionStorage.removeItem('iq_resume_data');
         sessionStorage.removeItem('iq_setup_data');
         sessionStorage.removeItem('iq_results');
+        sessionStorage.removeItem('iq_current_results');
+        sessionStorage.removeItem('iq_historical_session');
       } catch {
         // Silently ignore
       }
@@ -461,6 +526,10 @@ export const InterviewProvider = ({ children }: { children: React.ReactNode }) =
     setAnswers,
     results,
     setResults,
+    currentResults,
+    historicalSession,
+    setHistoricalSession,
+    clearHistoricalSession,
     sessionHistory,
     setSessionHistory,
     isRetry,
