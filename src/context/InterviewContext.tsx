@@ -139,7 +139,7 @@ export interface InterviewContextValue {
 
 // ── Context ────────────────────────────────────────────────────────────────────
 
-const InterviewContext = createContext<InterviewContextValue | undefined>(undefined);
+export const InterviewContext = createContext<InterviewContextValue | undefined>(undefined);
 
 export const useInterview = (): InterviewContextValue => {
   const context = useContext(InterviewContext);
@@ -147,6 +147,29 @@ export const useInterview = (): InterviewContextValue => {
     throw new Error('useInterview must be used within an InterviewProvider');
   }
   return context;
+};
+
+export const useOptionalInterview = (): InterviewContextValue | undefined => {
+  return useContext(InterviewContext);
+};
+
+export const useTheme = () => {
+  const context = useContext(InterviewContext);
+  if (context) {
+    return {
+      theme: context.theme,
+      setTheme: context.setTheme,
+    };
+  }
+  return {
+    theme:
+      typeof document !== 'undefined'
+        ? document.documentElement.getAttribute('data-theme') ||
+          document.documentElement.dataset?.theme ||
+          'onyx'
+        : 'onyx',
+    setTheme: (_newTheme: string) => {},
+  };
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

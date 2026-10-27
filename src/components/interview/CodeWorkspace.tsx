@@ -1,35 +1,63 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaPlay } from 'react-icons/fa';
 import Button from '../ui/Button';
 import { getAuthToken } from '../../services/auth';
 import type { CodeAnswer } from '../../types';
+import { getMonacoTheme, type MonacoTheme } from '../../types/themes';
+import { useOptionalInterview } from '../../context/InterviewContext';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
-interface CodeWorkspaceProps {
+export interface CodeWorkspaceProps {
   value: CodeAnswer;
   onChange: (value: CodeAnswer) => void;
+  theme?: string;
+  editorOptions?: Record<string, unknown>;
 }
 
-export default function CodeWorkspace({ value, onChange }: CodeWorkspaceProps) {
-  const [editorTheme, setEditorTheme] = useState<'vs' | 'vs-dark'>('vs-dark');
+export default function CodeWorkspace({
+  value,
+  onChange,
+  theme: propTheme,
+  editorOptions,
+}: CodeWorkspaceProps) {
+  const context = useOptionalInterview();
+  const [domTheme, setDomTheme] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [runMessage, setRunMessage] = useState('');
   const [timeMs, setTimeMs] = useState<number | null>(null);
 
   useEffect(() => {
-    const updateTheme = () => {
-      setEditorTheme(document.documentElement.dataset.theme === 'light' ? 'vs' : 'vs-dark');
+    // When theme is provided via prop or InterviewContext, context is authoritative.
+    // Only fall back to observing DOM attributes when rendered standalone without context.
+    if (propTheme || context || typeof document === 'undefined') return;
+
+    const readDomTheme = () => {
+      const current =
+        document.documentElement.getAttribute('data-theme') ||
+        document.documentElement.dataset?.theme ||
+        null;
+      setDomTheme(current);
     };
 
-    updateTheme();
-    const observer = new MutationObserver(updateTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => observer.disconnect();
-  }, []);
+    readDomTheme();
+
+    if (typeof MutationObserver !== 'undefined') {
+      const observer = new MutationObserver(readDomTheme);
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme'],
+      });
+      return () => observer.disconnect();
+    }
+  }, [propTheme, context]);
+
+  // Derive Monaco theme from prop > context > DOM attribute > fallback
+  const activeThemeId = propTheme ?? context?.theme ?? domTheme;
+  const editorTheme: MonacoTheme = getMonacoTheme(activeThemeId);
 
   const runCode = async () => {
     setIsRunning(true);
@@ -102,7 +130,13 @@ export default function CodeWorkspace({ value, onChange }: CodeWorkspaceProps) {
           theme={editorTheme}
           value={value.source}
           onChange={(source) => onChange({ ...value, source: source ?? '' })}
-          options={{ minimap: { enabled: false }, fontSize: 13, automaticLayout: true, tabSize: 2 }}
+          options={{
+            minimap: { enabled: false },
+            fontSize: 13,
+            automaticLayout: true,
+            tabSize: 2,
+            ...editorOptions,
+          }}
         />
       </div>
 

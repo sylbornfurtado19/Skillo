@@ -40,11 +40,39 @@ export const THEME_PRESETS: Record<ThemeId, ThemePreset> = {
   },
 };
 
-export function getThemePreset(id: string): ThemePreset {
+export function getThemePreset(id?: string | null): ThemePreset {
+  if (!id) return THEME_PRESETS.onyx;
   if (id === 'nmims' || id === 'light') return THEME_PRESETS.onyx;
   if (id === 'dark') return THEME_PRESETS.cyberpunk;
   if (id in THEME_PRESETS) {
     return THEME_PRESETS[id as ThemeId];
   }
   return THEME_PRESETS.onyx;
+}
+
+export type MonacoTheme = 'vs' | 'vs-dark';
+
+/**
+ * Resolves the corresponding Monaco editor theme ('vs' or 'vs-dark')
+ * based on canonical theme metadata.
+ *
+ * Light presets (e.g. 'onyx', 'light', 'nmims') resolve to 'vs'.
+ * Dark presets (e.g. 'cyberpunk', 'dark') resolve to 'vs-dark'.
+ * Unrecognized, missing, or null themes fall back safely to the default light theme 'vs'.
+ */
+export function getMonacoTheme(themeId?: string | null): MonacoTheme {
+  let effectiveId = themeId;
+  if (!effectiveId && typeof document !== 'undefined') {
+    try {
+      effectiveId =
+        document.documentElement.getAttribute('data-theme') ||
+        document.documentElement.dataset?.theme ||
+        null;
+    } catch {
+      // In case document attributes are not accessible in restricted environments
+    }
+  }
+
+  const preset = getThemePreset(effectiveId);
+  return preset.isLight ? 'vs' : 'vs-dark';
 }
