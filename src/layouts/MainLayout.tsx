@@ -29,7 +29,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       {/* Main page content area */}
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-6 py-8 relative z-10 outline-none">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" initial={false}>
           <PageTransition key={pathname}>
             {children}
           </PageTransition>

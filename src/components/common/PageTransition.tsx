@@ -80,9 +80,9 @@ export default function PageTransition({
   return (
     <motion.div
       variants={variants as unknown as Variants}
-      initial="initial"
+      initial={shouldReduceMotion ? false : 'initial'}
       animate="animate"
-      exit="exit"
+      exit={shouldReduceMotion ? undefined : 'exit'}
       className={`w-full flex-1 flex flex-col min-h-full ${className}`.trim()}
     >
       {children}

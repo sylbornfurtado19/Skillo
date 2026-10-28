@@ -433,7 +433,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-6 md:p-8 relative outline-none">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             <PageTransition key={pathname}>{children}</PageTransition>
           </AnimatePresence>
         </main>

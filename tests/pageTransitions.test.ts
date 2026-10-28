@@ -143,19 +143,19 @@ describe('Page Transitions & Layout Stability', () => {
       expect(cssContent).toMatch(/scrollbar-gutter:\s*stable/);
     });
 
-    it('AppLayout contains AnimatePresence mode="wait" wrapping PageTransition', () => {
+    it('AppLayout contains AnimatePresence mode="wait" initial={false} wrapping PageTransition', () => {
       const appLayoutPath = path.resolve(__dirname, '../src/layouts/AppLayout.tsx');
       const content = fs.readFileSync(appLayoutPath, 'utf8');
 
-      expect(content).toContain('<AnimatePresence mode="wait">');
+      expect(content).toContain('<AnimatePresence mode="wait" initial={false}>');
       expect(content).toContain('<PageTransition key={pathname}>{children}</PageTransition>');
     });
 
-    it('MainLayout contains AnimatePresence mode="wait" wrapping PageTransition', () => {
+    it('MainLayout contains AnimatePresence mode="wait" initial={false} wrapping PageTransition', () => {
       const mainLayoutPath = path.resolve(__dirname, '../src/layouts/MainLayout.tsx');
       const content = fs.readFileSync(mainLayoutPath, 'utf8');
 
-      expect(content).toContain('<AnimatePresence mode="wait">');
+      expect(content).toContain('<AnimatePresence mode="wait" initial={false}>');
       expect(content).toContain('<PageTransition key={pathname}>');
     });
 
@@ -171,6 +171,21 @@ describe('Page Transitions & Layout Stability', () => {
 
       expect(appContent).toContain('id="main-content"');
       expect(appContent).toContain('tabIndex={-1}');
+    });
+
+    it('verifies body and layout containers enforce overflow-x protection against mobile scrollbar shifts', () => {
+      const cssPath = path.resolve(__dirname, '../src/index.css');
+      const cssContent = fs.readFileSync(cssPath, 'utf8');
+
+      expect(cssContent).toContain('overflow-x: hidden');
+
+      const mainLayoutPath = path.resolve(__dirname, '../src/layouts/MainLayout.tsx');
+      const mainLayoutContent = fs.readFileSync(mainLayoutPath, 'utf8');
+      expect(mainLayoutContent).toContain('overflow-x-hidden');
+
+      const appLayoutPath = path.resolve(__dirname, '../src/layouts/AppLayout.tsx');
+      const appLayoutContent = fs.readFileSync(appLayoutPath, 'utf8');
+      expect(appLayoutContent).toContain('overflow-hidden');
     });
   });
 
@@ -194,6 +209,31 @@ describe('Page Transitions & Layout Stability', () => {
       expect(html).toContain('var(--primary)');
       expect(html).toContain('var(--text-secondary)');
       expect(html).toContain('min-h-[50vh]');
+    });
+
+    it('confirms loading components do not contain duplicate PageTransition or motion layers', () => {
+      const loadingPath = path.resolve(__dirname, '../app/loading.tsx');
+      const appLoadingPath = path.resolve(__dirname, '../app/(app)/loading.tsx');
+
+      const loadingContent = fs.readFileSync(loadingPath, 'utf8');
+      const appLoadingContent = fs.readFileSync(appLoadingPath, 'utf8');
+
+      expect(loadingContent).not.toContain('PageTransition');
+      expect(loadingContent).not.toContain('motion.');
+      expect(appLoadingContent).not.toContain('PageTransition');
+      expect(appLoadingContent).not.toContain('motion.');
+    });
+  });
+
+  describe('7. Transition Lifecycle & Callback Independence', () => {
+    it('PageTransition implementation defines exit variant that blocks pointer interactions', () => {
+      const pageTransitionPath = path.resolve(__dirname, '../src/components/common/PageTransition.tsx');
+      const content = fs.readFileSync(pageTransitionPath, 'utf8');
+
+      expect(content).toContain("pointerEvents: 'none'");
+      // Bypasses exit animation when reduced motion is preferred to avoid stuck callbacks
+      expect(content).toContain("exit={shouldReduceMotion ? undefined : 'exit'}");
+      expect(content).toContain("initial={shouldReduceMotion ? false : 'initial'}");
     });
   });
 });
