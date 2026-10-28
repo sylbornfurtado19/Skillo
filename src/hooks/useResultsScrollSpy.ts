@@ -30,6 +30,192 @@ export interface UseResultsScrollSpyReturn {
   setActiveTab: React.Dispatch<React.SetStateAction<ResultsTabKey>>;
   scrollToSection: (id: string, tab: ResultsTabKey) => void;
   isProgrammaticScrolling: () => boolean;
+  tabsContainerRef: React.RefObject<HTMLDivElement | null>;
+  tabRefs: React.RefObject<Record<string, HTMLButtonElement | null>>;
+  canScrollLeft: boolean;
+  canScrollRight: boolean;
+  handleTabsScroll: () => void;
+  scrollTabIntoView: (tab: ResultsTabKey) => void;
+  updateOverflow: () => void;
+}
+
+export interface ScrollOverflowState {
+  canScrollLeft: boolean;
+  canScrollRight: boolean;
+}
+
+/**
+ * Calculates horizontal scroll overflow states for a tab strip container.
+ * - Left cue is visible if container has been scrolled right past the tolerance threshold.
+ * - Right cue is visible if content extends beyond current scrollLeft + clientWidth.
+ * - Neither cue is visible if content fits within the client width.
+ */
+export function checkScrollOverflow(
+  scrollLeft: number,
+  clientWidth: number,
+  scrollWidth: number,
+  tolerance: number = 2
+): ScrollOverflowState {
+  if (scrollWidth <= clientWidth + tolerance) {
+    return { canScrollLeft: false, canScrollRight: false };
+  }
+  const canScrollLeft = scrollLeft > tolerance;
+  const canScrollRight = scrollLeft + clientWidth < scrollWidth - tolerance;
+  return { canScrollLeft, canScrollRight };
+}
+
+/**
+ * Calculates the horizontal scroll position required to ensure an active or focused tab
+ * button is fully visible within its scroll container with a comfortable cushion.
+ * Returns null if the button is already comfortably in view.
+ */
+export function calculateTabScrollOffset(
+  containerRect: { left: number; right: number },
+  buttonRect: { left: number; right: number },
+  currentScrollLeft: number,
+  padding: number = 16
+): number | null {
+  if (containerRect.right <= containerRect.left || buttonRect.right <= buttonRect.left) {
+    return null;
+  }
+  // Button is cut off or off-screen to the left
+  if (buttonRect.left < containerRect.left + padding) {
+    const diff = buttonRect.left - (containerRect.left + padding);
+    return Math.max(0, currentScrollLeft + diff);
+  }
+  // Button is cut off or off-screen to the right
+  if (buttonRect.right > containerRect.right - padding) {
+    const diff = buttonRect.right - (containerRect.right - padding);
+    return currentScrollLeft + diff;
+  }
+  return null;
+}
+
+export interface UseHorizontalTabsOverflowOptions {
+  activeTab: ResultsTabKey;
+  navItems: ResultsNavItem[];
+}
+
+export interface UseHorizontalTabsOverflowReturn {
+  tabsContainerRef: React.RefObject<HTMLDivElement | null>;
+  tabRefs: React.RefObject<Record<string, HTMLButtonElement | null>>;
+  canScrollLeft: boolean;
+  canScrollRight: boolean;
+  handleTabsScroll: () => void;
+  scrollTabIntoView: (tab: ResultsTabKey) => void;
+  updateOverflow: () => void;
+}
+
+/**
+ * Hook to manage horizontal tab overflow indicators and scroll-into-view behavior.
+ */
+export function useHorizontalTabsOverflow({
+  activeTab,
+  navItems,
+}: UseHorizontalTabsOverflowOptions): UseHorizontalTabsOverflowReturn {
+  const tabsContainerRef = useRef<HTMLDivElement | null>(null);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [overflow, setOverflow] = useState<ScrollOverflowState>({
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
+
+  const updateOverflow = useCallback(() => {
+    const container = tabsContainerRef.current;
+    if (!container) return;
+    const next = checkScrollOverflow(
+      container.scrollLeft,
+      container.clientWidth,
+      container.scrollWidth
+    );
+    setOverflow((prev) => {
+      if (
+        prev.canScrollLeft === next.canScrollLeft &&
+        prev.canScrollRight === next.canScrollRight
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, []);
+
+  const scrollTabIntoView = useCallback((tab: ResultsTabKey) => {
+    const container = tabsContainerRef.current;
+    const btn = tabRefs.current[tab];
+    if (!container || !btn) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    const targetOffset = calculateTabScrollOffset(
+      containerRect,
+      btnRect,
+      container.scrollLeft
+    );
+
+    if (targetOffset !== null) {
+      const prefersReducedMotion =
+        typeof window !== 'undefined' &&
+        window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (typeof container.scrollTo === 'function') {
+        container.scrollTo({
+          left: targetOffset,
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        });
+      } else {
+        container.scrollLeft = targetOffset;
+      }
+    }
+  }, []);
+
+  const handleTabsScroll = useCallback(() => {
+    updateOverflow();
+  }, [updateOverflow]);
+
+  // Ensure active tab is brought into view whenever activeTab changes
+  useEffect(() => {
+    scrollTabIntoView(activeTab);
+    updateOverflow();
+  }, [activeTab, scrollTabIntoView, updateOverflow]);
+
+  // Synchronize on mount, nav items change, window resize, and container ResizeObserver
+  useEffect(() => {
+    updateOverflow();
+
+    const container = tabsContainerRef.current;
+    if (!container || typeof window === 'undefined') return;
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        updateOverflow();
+      });
+      resizeObserver.observe(container);
+    }
+
+    const onWindowResize = () => {
+      updateOverflow();
+    };
+    window.addEventListener('resize', onWindowResize, { passive: true });
+
+    return () => {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      window.removeEventListener('resize', onWindowResize);
+    };
+  }, [navItems, updateOverflow]);
+
+  return {
+    tabsContainerRef,
+    tabRefs,
+    canScrollLeft: overflow.canScrollLeft,
+    canScrollRight: overflow.canScrollRight,
+    handleTabsScroll,
+    scrollTabIntoView,
+    updateOverflow,
+  };
 }
 
 /**
@@ -368,10 +554,16 @@ export function useResultsScrollSpy({
     return controllerRef.current?.getIsProgrammaticScrolling() ?? false;
   }, []);
 
+  const horizontalTabs = useHorizontalTabsOverflow({
+    activeTab,
+    navItems,
+  });
+
   return {
     activeTab,
     setActiveTab,
     scrollToSection,
     isProgrammaticScrolling,
+    ...horizontalTabs,
   };
 }

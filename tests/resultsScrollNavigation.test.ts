@@ -22,6 +22,8 @@ import {
   calculateSectionReadingScore,
   resolveActiveNavItem,
   ResultsNavItem,
+  checkScrollOverflow,
+  calculateTabScrollOffset,
 } from '../src/hooks/useResultsScrollSpy';
 
 // ── Next.js / Router Mocks ───────────────────────────────────────────────────
@@ -663,6 +665,149 @@ describe('Prompt 07 — Results Navigation & Scroll Synchronization', () => {
       expect(html).toContain('<nav aria-label="Assessment report sections"');
       expect(html).toContain('Overview');
       expect(html).toContain('Detailed Responses');
+    });
+  });
+
+  describe('9. Mobile Results Navigation & Overflow Cues (Prompt 13)', () => {
+    it('1. shows right overflow cue and hides left cue when tabs extend beyond container at scroll start', () => {
+      // scrollLeft = 0, clientWidth = 360, scrollWidth = 850
+      const overflow = checkScrollOverflow(0, 360, 850);
+      expect(overflow.canScrollLeft).toBe(false);
+      expect(overflow.canScrollRight).toBe(true);
+    });
+
+    it('2. hides the left cue when scrolled back to the very start (scrollLeft <= tolerance)', () => {
+      const atZero = checkScrollOverflow(0, 360, 850);
+      expect(atZero.canScrollLeft).toBe(false);
+
+      const withinTolerance = checkScrollOverflow(1, 360, 850, 2);
+      expect(withinTolerance.canScrollLeft).toBe(false);
+
+      const pastTolerance = checkScrollOverflow(10, 360, 850, 2);
+      expect(pastTolerance.canScrollLeft).toBe(true);
+    });
+
+    it('3. hides the right cue when scrolled to the end of the tabs container', () => {
+      // scrollLeft = 490, clientWidth = 360, scrollWidth = 850 -> scrollLeft + clientWidth = 850
+      const atEnd = checkScrollOverflow(490, 360, 850);
+      expect(atEnd.canScrollLeft).toBe(true);
+      expect(atEnd.canScrollRight).toBe(false);
+
+      // Within 2px tolerance
+      const nearEnd = checkScrollOverflow(489, 360, 850, 2);
+      expect(nearEnd.canScrollRight).toBe(false);
+    });
+
+    it('4. calculates horizontal scroll offset to bring active tab into view with cushion', () => {
+      const containerRect = { left: 0, right: 360 };
+
+      // Button is cut off to the right (x: 320 to 450)
+      const offscreenRightBtn = { left: 320, right: 450 };
+      const rightScrollOffset = calculateTabScrollOffset(containerRect, offscreenRightBtn, 0, 16);
+      expect(rightScrollOffset).not.toBeNull();
+      // Should scroll right by: 450 - (360 - 16) = 106px
+      expect(rightScrollOffset).toBe(106);
+
+      // Button is cut off to the left (x: -50 to 40)
+      const offscreenLeftBtn = { left: -50, right: 40 };
+      const leftScrollOffset = calculateTabScrollOffset(containerRect, offscreenLeftBtn, 200, 16);
+      expect(leftScrollOffset).not.toBeNull();
+      // Should scroll left: 200 + (-50 - 16) = 134px
+      expect(leftScrollOffset).toBe(134);
+
+      // Button is already fully within visible bounds with cushion (x: 40 to 180)
+      const visibleBtn = { left: 40, right: 180 };
+      const noScrollOffset = calculateTabScrollOffset(containerRect, visibleBtn, 100, 16);
+      expect(noScrollOffset).toBeNull();
+    });
+
+    it('5. scroll-spy section activation updates active tab for tabstrip synchronization', () => {
+      const controller = new ResultsScrollSpyController({
+        navItems: sampleNavItems,
+        defaultTab: 'overview',
+      });
+
+      // User scrolls down to "Audio & Latency"
+      controller.handleIntersectionEntries([
+        {
+          target: { id: 'sec-overview' },
+          isIntersecting: false,
+          boundingClientRect: { top: -2000, bottom: -1200 },
+        },
+        {
+          target: { id: 'sec-sync' },
+          isIntersecting: true,
+          boundingClientRect: { top: 120, bottom: 800 },
+          intersectionRatio: 0.8,
+        },
+      ]);
+
+      expect(controller.getActiveTab()).toBe('sync');
+      controller.destroy();
+    });
+
+    it('6. browser history / URL hash navigation updates active section and enables tab alignment', () => {
+      const controller = new ResultsScrollSpyController({
+        navItems: sampleNavItems,
+        defaultTab: 'overview',
+      });
+
+      const matched = controller.syncHash('#sec-gaze');
+      expect(matched).toBe(true);
+      expect(controller.getActiveTab()).toBe('gaze');
+
+      controller.destroy();
+    });
+
+    it('7. renders decorative edge fade cues with pointer-events-none and aria-hidden="true"', () => {
+      mockInterviewState = {
+        ...mockInterviewState,
+        results: resultsWithBiometrics,
+      };
+
+      const html = renderToStaticMarkup(React.createElement(Results));
+
+      // Left cue
+      expect(html).toContain('data-testid="overflow-cue-left"');
+      expect(html).toContain('aria-hidden="true"');
+      expect(html).toContain('pointer-events-none');
+
+      // Right cue
+      expect(html).toContain('data-testid="overflow-cue-right"');
+      expect(html).toContain('from-bg-surface');
+      expect(html).toContain('to-transparent');
+    });
+
+    it('8. prevents page-level horizontal overflow by scoping tab strip with relative max-w-full overflow-hidden', () => {
+      mockInterviewState = {
+        ...mockInterviewState,
+        results: standardResults,
+      };
+
+      const html = renderToStaticMarkup(React.createElement(Results));
+
+      expect(html).toContain('relative w-full max-w-full overflow-hidden');
+      expect(html).toContain('data-testid="results-nav-tabs-container"');
+      expect(html).toContain('overflow-x-auto no-scrollbar');
+    });
+
+    it('9. ensures theme compatibility and reduced-motion compliance', () => {
+      // 1. Theme colors: gradient uses theme surface token from-bg-surface
+      mockInterviewState = {
+        ...mockInterviewState,
+        results: standardResults,
+      };
+      const html = renderToStaticMarkup(React.createElement(Results));
+      expect(html).toContain('bg-gradient-to-r from-bg-surface to-transparent');
+      expect(html).toContain('bg-gradient-to-l from-bg-surface to-transparent');
+
+      // 2. Reduced motion: no animated infinite pulses or moving gradients
+      expect(html).not.toContain('animate-pulse');
+
+      // 3. Overflow check returns false when content fits (e.g. desktop widescreen)
+      const widescreenNoOverflow = checkScrollOverflow(0, 1200, 800);
+      expect(widescreenNoOverflow.canScrollLeft).toBe(false);
+      expect(widescreenNoOverflow.canScrollRight).toBe(false);
     });
   });
 });

@@ -234,10 +234,35 @@ export default function Results() {
     return items;
   }, [results]);
 
-  const { activeTab, scrollToSection } = useResultsScrollSpy({
+  const {
+    activeTab,
+    scrollToSection,
+    tabsContainerRef,
+    tabRefs,
+    canScrollLeft,
+    canScrollRight,
+    handleTabsScroll,
+    scrollTabIntoView,
+  } = useResultsScrollSpy({
     navItems,
     defaultTab: 'overview',
   });
+
+  const handleTabKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      const nextIndex = (index + 1) % navItems.length;
+      const nextItem = navItems[nextIndex];
+      tabRefs.current[nextItem.tab]?.focus();
+      scrollToSection(nextItem.id, nextItem.tab);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prevIndex = (index - 1 + navItems.length) % navItems.length;
+      const prevItem = navItems[prevIndex];
+      tabRefs.current[prevItem.tab]?.focus();
+      scrollToSection(prevItem.id, prevItem.tab);
+    }
+  };
 
   const [,setMounted] = useState(false);
   const [resultsError, setResultsError] = useState<string | null>(null);
@@ -822,25 +847,56 @@ export default function Results() {
         aria-label="Assessment report sections"
         className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-bg-surface border-b border-border shadow-soft"
       >
-        <div className="flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1">
-          {navItems.map((item) => {
-            const isActive = activeTab === item.tab;
-            return (
-              <button
-                key={item.tab}
-                type="button"
-                onClick={() => scrollToSection(item.id, item.tab)}
-                aria-current={isActive ? 'location' : undefined}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
-                  isActive
-                    ? 'bg-primary text-text-on-primary shadow-sm'
-                    : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+        <div className="relative w-full max-w-full overflow-hidden">
+          {/* Left overflow cue: subtle edge fade visible when scrolled right */}
+          <div
+            data-testid="overflow-cue-left"
+            aria-hidden="true"
+            className={`pointer-events-none absolute left-0 top-0 bottom-0 w-8 sm:w-12 bg-gradient-to-r from-bg-surface to-transparent z-10 transition-opacity duration-200 ${
+              canScrollLeft ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+
+          {/* Horizontal scrollable tabs container */}
+          <div
+            ref={tabsContainerRef}
+            data-testid="results-nav-tabs-container"
+            onScroll={handleTabsScroll}
+            className="flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1 scroll-smooth"
+          >
+            {navItems.map((item, index) => {
+              const isActive = activeTab === item.tab;
+              return (
+                <button
+                  key={item.tab}
+                  ref={(el) => {
+                    tabRefs.current[item.tab] = el;
+                  }}
+                  type="button"
+                  onClick={() => scrollToSection(item.id, item.tab)}
+                  onFocus={() => scrollTabIntoView(item.tab)}
+                  onKeyDown={(e) => handleTabKeyDown(e, index)}
+                  aria-current={isActive ? 'location' : undefined}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap ${
+                    isActive
+                      ? 'bg-primary text-text-on-primary shadow-sm'
+                      : 'text-text-secondary hover:text-text-primary bg-bg-surface-alt hover:bg-border'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right overflow cue: subtle edge fade visible when more tabs exist off-screen */}
+          <div
+            data-testid="overflow-cue-right"
+            aria-hidden="true"
+            className={`pointer-events-none absolute right-0 top-0 bottom-0 w-8 sm:w-12 bg-gradient-to-l from-bg-surface to-transparent z-10 transition-opacity duration-200 ${
+              canScrollRight ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
         </div>
       </nav>
 
