@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import type { LATSTreeNode, LATSTreeState, LATSActionType } from '@/types/index';
 import Badge from './Badge';
 import Card from './Card';
@@ -63,10 +64,30 @@ export default function LATSTreeVisualizer({
   const renderNodeTree = (node: LATSTreeNode, level: number = 0) => {
     const isSelected = node.isSelectedTrajectory;
     const qDisplay = node.qValue !== undefined ? (node.qValue * 100).toFixed(0) : (node.prmScore * 100).toFixed(0);
+    const connectorPath = "M 0 0 L 0 14 Q 0 22 8 22 L 16 22";
 
     return (
       <div key={node.id} className="relative space-y-2 pl-4 sm:pl-6 border-l-2 border-border my-2 text-left">
-        <div
+        {level > 0 && (
+          <svg
+            className="absolute -left-4 sm:-left-6 top-0 w-4 sm:w-6 h-8 overflow-visible pointer-events-none z-10"
+            aria-hidden="true"
+          >
+            <motion.path
+              d={connectorPath}
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.8, delay: Math.min(level * 0.15, 0.6), ease: 'easeOut' }}
+              stroke={isSelected ? 'var(--primary)' : 'var(--border)'}
+              strokeWidth={isSelected ? 2.5 : 1.5}
+              fill="none"
+            />
+          </svg>
+        )}
+        <motion.div
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, delay: Math.min(level * 0.15, 0.6) }}
           onMouseEnter={() => setHoveredNode(node)}
           onMouseLeave={() => setHoveredNode(null)}
           data-testid={`lats-node-${node.id}`}
@@ -107,7 +128,7 @@ export default function LATSTreeVisualizer({
           </div>
           <p className="text-xs text-text-primary font-semibold mt-2 leading-relaxed">{node.questionText}</p>
           <p className="text-[11px] text-text-secondary italic mt-1 font-mono">"{node.rationale}"</p>
-        </div>
+        </motion.div>
         {node.children && node.children.length > 0 && (
           <div className="space-y-2 mt-2">
             {node.children.map((child) => renderNodeTree(child, level + 1))}

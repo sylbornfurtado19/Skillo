@@ -38,9 +38,30 @@ import { loadPastReport } from '../services/interviewReport';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import AnimatedScore from '../components/ui/AnimatedScore';
 import { Skeleton } from '../components/ui/Skeleton';
 import { OnboardingProgressWidget } from '../components/dashboard/OnboardingProgressWidget';
 import { generateStudyPlan } from '../lib/services/studyPlan';
+import { motion } from 'framer-motion';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' },
+  },
+};
 
 export default function Dashboard() {
   const router = useRouter();
@@ -504,78 +525,93 @@ export default function Dashboard() {
 
       {/* ── DASHBOARD STAT CARDS ── */}
       <div className="space-y-6">
-        <div className={`grid gap-4 sm:gap-6 ${totalCompleted > 0 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>
-          <Card variant="default" className="p-5 flex items-center gap-4">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-lg sm:text-xl shrink-0">
-              <FaCalendarCheck aria-hidden="true" />
-            </div>
-            <div>
-              <span className="text-xs text-text-secondary uppercase tracking-wider font-mono font-bold">
-                Completed
-              </span>
-              {loading ? (
-                <div className="h-6 w-12 bg-bg-surface-alt rounded animate-pulse mt-1" />
-              ) : (
-                <p className="text-xl sm:text-2xl font-heading font-extrabold text-text-primary mt-0.5">{totalCompleted}</p>
-              )}
-            </div>
-          </Card>
-
-          <Card variant="default" className="p-5 flex items-center gap-4">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary text-lg sm:text-xl shrink-0">
-              <FaAward aria-hidden="true" />
-            </div>
-            <div>
-              <span className="text-xs text-text-secondary uppercase tracking-wider font-mono font-bold">Avg Index</span>
-              {loading ? (
-                <div className="h-6 w-16 bg-bg-surface-alt rounded animate-pulse mt-1" />
-              ) : (
-                <p className="text-xl sm:text-2xl font-heading font-extrabold text-text-primary mt-0.5">
-                  {totalCompleted > 0 ? `${averageScore}%` : 'Unrated'}
-                </p>
-              )}
-            </div>
-          </Card>
-
-          <Card variant="default" className="p-5 flex items-center gap-4">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary-soft border border-primary/20 flex items-center justify-center text-primary text-lg sm:text-xl shrink-0">
-              <FaFileAlt aria-hidden="true" />
-            </div>
-            <div>
-              <span className="text-xs text-text-secondary uppercase tracking-wider font-mono font-bold">
-                Resume Health
-              </span>
-              {loading ? (
-                <div className="h-6 w-16 bg-bg-surface-alt rounded animate-pulse mt-1" />
-              ) : (
-                <p className="text-xl sm:text-2xl font-heading font-extrabold text-text-primary mt-0.5">
-                  {resumeScore ? `${resumeScore}%` : 'Unrated'}
-                </p>
-              )}
-            </div>
-          </Card>
-
-          {/* Hide readiness index when there is no session history */}
-          {totalCompleted > 0 && (
-            <Card variant="default" className="p-5 flex items-center gap-4">
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-success/10 border border-success/20 flex items-center justify-center text-success text-lg sm:text-xl shrink-0">
-                <FaChartLine aria-hidden="true" />
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className={`grid gap-4 sm:gap-6 ${totalCompleted > 0 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}
+        >
+          <motion.div variants={itemVariants}>
+            <Card variant="default" className="p-5 flex items-center gap-4 h-full">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-lg sm:text-xl shrink-0">
+                <FaCalendarCheck aria-hidden="true" />
               </div>
               <div>
                 <span className="text-xs text-text-secondary uppercase tracking-wider font-mono font-bold">
-                  Readiness Index
+                  Completed
                 </span>
                 {loading ? (
-                  <div className="h-6 w-16 bg-bg-surface-alt rounded animate-pulse mt-1" />
+                  <div className="h-6 w-12 bg-bg-surface-alt rounded animate-pulse mt-1" />
                 ) : (
-                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-success mt-0.5">
-                    {readinessIndex}%
+                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-text-primary mt-0.5">
+                    <AnimatedScore value={totalCompleted} />
                   </p>
                 )}
               </div>
             </Card>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <Card variant="default" className="p-5 flex items-center gap-4 h-full">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary text-lg sm:text-xl shrink-0">
+                <FaAward aria-hidden="true" />
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary uppercase tracking-wider font-mono font-bold">Avg Index</span>
+                {loading ? (
+                  <div className="h-6 w-16 bg-bg-surface-alt rounded animate-pulse mt-1" />
+                ) : (
+                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-text-primary mt-0.5">
+                    {totalCompleted > 0 ? <AnimatedScore value={averageScore} suffix="%" /> : 'Unrated'}
+                  </p>
+                )}
+              </div>
+            </Card>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <Card variant="default" className="p-5 flex items-center gap-4 h-full">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary-soft border border-primary/20 flex items-center justify-center text-primary text-lg sm:text-xl shrink-0">
+                <FaFileAlt aria-hidden="true" />
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary uppercase tracking-wider font-mono font-bold">
+                  Resume Health
+                </span>
+                {loading ? (
+                  <div className="h-6 w-16 bg-bg-surface-alt rounded animate-pulse mt-1" />
+                ) : (
+                  <p className="text-xl sm:text-2xl font-heading font-extrabold text-text-primary mt-0.5">
+                    {resumeScore ? <AnimatedScore value={resumeScore} suffix="%" /> : 'Unrated'}
+                  </p>
+                )}
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Hide readiness index when there is no session history */}
+          {totalCompleted > 0 && (
+            <motion.div variants={itemVariants}>
+              <Card variant="default" className="p-5 flex items-center gap-4 h-full">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-success/10 border border-success/20 flex items-center justify-center text-success text-lg sm:text-xl shrink-0">
+                  <FaChartLine aria-hidden="true" />
+                </div>
+                <div>
+                  <span className="text-xs text-text-secondary uppercase tracking-wider font-mono font-bold">
+                    Readiness Index
+                  </span>
+                  {loading ? (
+                    <div className="h-6 w-16 bg-bg-surface-alt rounded animate-pulse mt-1" />
+                  ) : (
+                    <p className="text-xl sm:text-2xl font-heading font-extrabold text-success mt-0.5">
+                      <AnimatedScore value={readinessIndex} suffix="%" />
+                    </p>
+                  )}
+                </div>
+              </Card>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
 
         <Card variant="default" className="p-5">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

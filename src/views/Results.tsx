@@ -50,6 +50,8 @@ import { calculateDeliveryComposite, DELIVERY_COMPOSITE_WEIGHTS } from '../lib/s
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import AnimatedScore from '../components/ui/AnimatedScore';
+import { motion } from 'framer-motion';
 
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import SUQConfidenceDashboard from '../components/ui/SUQConfidenceDashboard';
@@ -118,6 +120,26 @@ function renderHighlightedAnswer(answerText: string, quotes: string[]) {
 
 
 
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: 'easeOut' },
+  },
+};
 
 export default function Results() {
   const router = useRouter();
@@ -733,7 +755,14 @@ export default function Results() {
           <div className="text-right">
             <p className="text-xs font-mono uppercase tracking-wider text-text-secondary">Composite</p>
             <p className="text-3xl font-heading font-extrabold text-primary">
-              {typeof deliveryComposite === 'number' ? `${Math.round(deliveryComposite)}/100` : 'N/A'}
+              {typeof deliveryComposite === 'number' ? (
+                <>
+                  <AnimatedScore value={Math.round(deliveryComposite)} />
+                  <span className="text-xl font-normal text-text-secondary">/100</span>
+                </>
+              ) : (
+                'N/A'
+              )}
             </p>
           </div>
         </div>
@@ -746,7 +775,11 @@ export default function Results() {
                 <span className="text-[10px] text-text-muted font-mono">{component.weightPct}% weight</span>
               </div>
               <p className="mt-2 text-2xl font-heading font-extrabold text-text-primary">
-                {component.value !== undefined ? `${Math.round(component.value)}` : 'N/A'}
+                {component.value !== undefined ? (
+                  <AnimatedScore value={Math.round(component.value)} />
+                ) : (
+                  'N/A'
+                )}
                 <span className="ml-1 text-sm font-mono font-semibold text-text-secondary">/100</span>
               </p>
               <p className="mt-1 text-xs text-text-secondary">
@@ -902,187 +935,211 @@ export default function Results() {
 
 
       {/* SECTION 1: OVERVIEW & COMPARISON */}
-      <div id="sec-overview" className="scroll-mt-32 space-y-6">
+      <motion.div
+        id="sec-overview"
+        className="scroll-mt-32 space-y-6"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* 2. Compare to Previous Session Panel (rendered if prior session and category data exist) */}
         {previousSession && prevScores && (
-          <Card variant="default" className="p-5 border border-border bg-bg-surface flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-base shrink-0">
-                <FaExchangeAlt />
-              </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-text-primary uppercase tracking-wider">Session Progression Comparison</span>
-                  <Badge variant="accent" size="sm">Compared with {previousSession.date}</Badge>
+          <motion.div variants={itemVariants}>
+            <Card variant="default" className="p-5 border border-border bg-bg-surface flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-base shrink-0">
+                  <FaExchangeAlt />
                 </div>
-                <p className="text-xs text-text-secondary">
-                  Current score (<strong className="text-text-primary">{results.overallScore}%</strong>) vs Previous session (<strong className="text-text-secondary">{previousSession.score}%</strong>) for {results.setupData?.role || 'Engineer'}.
-                </p>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-text-primary uppercase tracking-wider">Session Progression Comparison</span>
+                    <Badge variant="accent" size="sm">Compared with {previousSession.date}</Badge>
+                  </div>
+                  <p className="text-xs text-text-secondary">
+                    Current score (<strong className="text-text-primary">{results.overallScore}%</strong>) vs Previous session (<strong className="text-text-secondary">{previousSession.score}%</strong>) for {results.setupData?.role || 'Engineer'}.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2 text-xs font-mono shrink-0">
-              <span className={`px-2.5 py-1 rounded-lg font-bold ${results.overallScore >= previousSession.score ? 'bg-success/15 text-success border border-success/30' : 'bg-warning/15 text-warning border border-warning/30'}`}>
-                {results.overallScore >= previousSession.score ? `+${results.overallScore - previousSession.score}% Delta` : `${results.overallScore - previousSession.score}% Delta`}
-              </span>
-            </div>
-          </Card>
+              <div className="flex items-center gap-2 text-xs font-mono shrink-0">
+                <span className={`px-2.5 py-1 rounded-lg font-bold ${results.overallScore >= previousSession.score ? 'bg-success/15 text-success border border-success/30' : 'bg-warning/15 text-warning border border-warning/30'}`}>
+                  {results.overallScore >= previousSession.score ? `+${results.overallScore - previousSession.score}% Delta` : `${results.overallScore - previousSession.score}% Delta`}
+                </span>
+              </div>
+            </Card>
+          </motion.div>
         )}
 
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          <Card variant="default" className="lg:col-span-4 flex flex-col justify-between items-center text-center py-8 min-h-[340px]">
-            <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block border-b border-border pb-2 w-full">
-              Overall Score Index
-            </span>
-
-            <div className="relative h-44 w-44 flex items-center justify-center my-6">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle
-                  cx="88"
-                  cy="88"
-                  r="72"
-                  stroke="var(--border)"
-                  strokeWidth="10"
-                  fill="transparent"
-                />
-                <circle
-                  cx="88"
-                  cy="88"
-                  r="72"
-                  stroke="url(#resultsGrad)"
-                  strokeWidth="10"
-                  strokeDasharray={452.4}
-                  strokeDashoffset={452.4 - (452.4 * results.overallScore) / 100}
-                  strokeLinecap="round"
-                  fill="transparent"
-                />
-                <defs>
-                  <linearGradient id="resultsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="var(--primary)" />
-                    <stop offset="100%" stopColor="var(--primary-hover)" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-5xl font-heading font-extrabold text-text-primary">
-                  {results.overallScore}
-                </span>
-                <span className="text-xs text-text-secondary font-bold uppercase tracking-wider font-mono mt-1">
-                  Out of 100
-                </span>
-              </div>
-            </div>
-
-            <div className="w-full space-y-1">
-              <span className="text-sm font-semibold text-primary flex items-center justify-center gap-1.5">
-                {results.overallScore >= 85 ? (
-                  <>
-                    <FaCheckCircle className="text-success text-xs shrink-0" aria-hidden="true" />
-                    <span>Exceptional Fit</span>
-                  </>
-                ) : results.overallScore >= 75 ? (
-                  <>
-                    <FaCheckCircle className="text-primary text-xs shrink-0" aria-hidden="true" />
-                    <span>Strong Candidate</span>
-                  </>
-                ) : (
-                  <>
-                    <FaExclamationTriangle className="text-warning text-xs shrink-0" aria-hidden="true" />
-                    <span>Focus Needed</span>
-                  </>
-                )}
+          <motion.div variants={itemVariants} className="lg:col-span-4 flex flex-col">
+            <Card variant="default" className="flex-1 flex flex-col justify-between items-center text-center py-8 min-h-[340px]">
+              <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block border-b border-border pb-2 w-full">
+                Overall Score Index
               </span>
-              <p className="text-xs text-text-secondary uppercase font-mono tracking-wide">
-                Target seniority: {results.setupData?.experienceLevel ?? 'Mid-Level'}
-              </p>
-              {suq?.confidenceLevel && (
-                <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
-                  <Badge
-                    variant={
-                      suq.confidenceLevel === 'HIGH'
-                        ? 'success'
-                        : suq.confidenceLevel === 'MEDIUM'
-                        ? 'warning'
-                        : 'danger'
-                    }
-                    size="sm"
-                    className="font-mono text-xs flex items-center gap-1"
-                  >
-                    {suq.confidenceLevel === 'HIGH' ? (
-                      <FaCheckCircle className="text-xs shrink-0" aria-hidden="true" />
-                    ) : suq.confidenceLevel === 'MEDIUM' ? (
-                      <FaExclamationTriangle className="text-xs shrink-0" aria-hidden="true" />
-                    ) : (
-                      <FaTimesCircle className="text-xs shrink-0" aria-hidden="true" />
-                    )}
-                    <span>SUQ Confidence: {suq.confidenceLevel}</span>
-                  </Badge>
-                  {deltaCard?.rewardScore !== undefined && (
-                    <span className="px-2 py-0.5 rounded-lg bg-primary-soft border border-primary/30 text-primary font-mono text-xs font-bold">
-                      SimPO: +{deltaCard.rewardScore.toFixed(2)} pts
-                    </span>
-                  )}
+
+              <div className="relative h-44 w-44 flex items-center justify-center my-6">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="88"
+                    cy="88"
+                    r="72"
+                    stroke="var(--border)"
+                    strokeWidth="10"
+                    fill="transparent"
+                  />
+                  <motion.circle
+                    cx="88"
+                    cy="88"
+                    r="72"
+                    stroke="url(#resultsGrad)"
+                    strokeWidth="10"
+                    strokeDasharray={452.4}
+                    initial={{ strokeDashoffset: 452.4 }}
+                    animate={{ strokeDashoffset: 452.4 - (452.4 * results.overallScore) / 100 }}
+                    transition={{ duration: 1.2, ease: 'easeOut' }}
+                    strokeLinecap="round"
+                    fill="transparent"
+                  />
+                  <defs>
+                    <linearGradient id="resultsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="var(--primary)" />
+                      <stop offset="100%" stopColor="var(--primary-hover)" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-5xl font-heading font-extrabold text-text-primary">
+                    <AnimatedScore value={results.overallScore} />
+                  </span>
+                  <span className="text-xs text-text-secondary font-bold uppercase tracking-wider font-mono mt-1">
+                    Out of 100
+                  </span>
                 </div>
-              )}
-            </div>
-          </Card>
+              </div>
 
-          <Card variant="default" className="lg:col-span-8 flex flex-col justify-between items-center text-center min-h-[340px]">
-            <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block border-b border-border pb-2 w-full">
-              Evaluation Matrix Profile {previousSession ? '(Overlay Comparison)' : ''}
-            </span>
+              <div className="w-full space-y-1">
+                <span className="text-sm font-semibold text-primary flex items-center justify-center gap-1.5">
+                  {results.overallScore >= 85 ? (
+                    <>
+                      <FaCheckCircle className="text-success text-xs shrink-0" aria-hidden="true" />
+                      <span>Exceptional Fit</span>
+                    </>
+                  ) : results.overallScore >= 75 ? (
+                    <>
+                      <FaCheckCircle className="text-primary text-xs shrink-0" aria-hidden="true" />
+                      <span>Strong Candidate</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaExclamationTriangle className="text-warning text-xs shrink-0" aria-hidden="true" />
+                      <span>Focus Needed</span>
+                    </>
+                  )}
+                </span>
+                <p className="text-xs text-text-secondary uppercase font-mono tracking-wide">
+                  Target seniority: {results.setupData?.experienceLevel ?? 'Mid-Level'}
+                </p>
+                {suq?.confidenceLevel && (
+                  <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
+                    <Badge
+                      variant={
+                        suq.confidenceLevel === 'HIGH'
+                          ? 'success'
+                          : suq.confidenceLevel === 'MEDIUM'
+                          ? 'warning'
+                          : 'danger'
+                      }
+                      size="sm"
+                      className="font-mono text-xs flex items-center gap-1"
+                    >
+                      {suq.confidenceLevel === 'HIGH' ? (
+                        <FaCheckCircle className="text-xs shrink-0" aria-hidden="true" />
+                      ) : suq.confidenceLevel === 'MEDIUM' ? (
+                        <FaExclamationTriangle className="text-xs shrink-0" aria-hidden="true" />
+                      ) : (
+                        <FaTimesCircle className="text-xs shrink-0" aria-hidden="true" />
+                      )}
+                      <span>SUQ Confidence: {suq.confidenceLevel}</span>
+                    </Badge>
+                    {deltaCard?.rewardScore !== undefined && (
+                      <span className="px-2 py-0.5 rounded-lg bg-primary-soft border border-primary/30 text-primary font-mono text-xs font-bold">
+                        SimPO: +{deltaCard.rewardScore.toFixed(2)} pts
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+          </motion.div>
 
-            <div className="w-full h-56 relative my-4">
-              <Radar key={`results-radar-${chartTheme.themeKey}`} data={radarData} options={radarOptions} />
-            </div>
+          <motion.div variants={itemVariants} className="lg:col-span-8 flex flex-col">
+            <Card variant="default" className="flex-1 flex flex-col justify-between items-center text-center min-h-[340px]">
+              <span className="text-xs text-text-secondary font-bold uppercase tracking-wider block border-b border-border pb-2 w-full">
+                Evaluation Matrix Profile {previousSession ? '(Overlay Comparison)' : ''}
+              </span>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full text-xs text-text-secondary font-mono border-t border-border pt-4">
-              <div className="space-y-0.5">
-                <span>Technical Accuracy</span>
-                <p className="text-text-primary font-bold text-xs">{scores.techAccuracy}%</p>
+              <div className="w-full h-56 relative my-4">
+                <Radar key={`results-radar-${chartTheme.themeKey}`} data={radarData} options={radarOptions} />
               </div>
-              <div className="space-y-0.5">
-                <span>System Architecture &amp; Logic</span>
-                <p className="text-text-primary font-bold text-xs">{scores.systemDesignLogic}%</p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full text-xs text-text-secondary font-mono border-t border-border pt-4">
+                <div className="space-y-0.5">
+                  <span>Technical Accuracy</span>
+                  <p className="text-text-primary font-bold text-xs">
+                    <AnimatedScore value={scores.techAccuracy} suffix="%" />
+                  </p>
+                </div>
+                <div className="space-y-0.5">
+                  <span>System Architecture &amp; Logic</span>
+                  <p className="text-text-primary font-bold text-xs">
+                    <AnimatedScore value={scores.systemDesignLogic} suffix="%" />
+                  </p>
+                </div>
+                <div className="space-y-0.5">
+                  <span>Edge-Case Awareness</span>
+                  <p className="text-text-primary font-bold text-xs">
+                    <AnimatedScore value={scores.edgeCaseHandling} suffix="%" />
+                  </p>
+                </div>
+                <div className="space-y-0.5">
+                  <span>Communication &amp; Tone</span>
+                  <p className="text-text-primary font-bold text-xs">
+                    <AnimatedScore value={scores.communication} suffix="%" />
+                  </p>
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <span>Edge-Case Awareness</span>
-                <p className="text-text-primary font-bold text-xs">{scores.edgeCaseHandling}%</p>
-              </div>
-              <div className="space-y-0.5">
-                <span>Communication &amp; Tone</span>
-                <p className="text-text-primary font-bold text-xs">{scores.communication}%</p>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </motion.div>
         </div>
 
-        <Card variant="default" className="flex flex-col md:flex-row gap-6 items-center">
-          <div className="shrink-0 flex flex-col items-center text-center space-y-2">
-            <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-border shadow-md">
-              <Image
-                src={persona.avatar}
-                alt={persona.name}
-                width={56}
-                height={56}
-                className="object-cover h-full w-full"
-              />
+        <motion.div variants={itemVariants}>
+          <Card variant="default" className="flex flex-col md:flex-row gap-6 items-center">
+            <div className="shrink-0 flex flex-col items-center text-center space-y-2">
+              <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-border shadow-md">
+                <Image
+                  src={persona.avatar}
+                  alt={persona.name}
+                  width={56}
+                  height={56}
+                  className="object-cover h-full w-full"
+                />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-text-primary leading-none">{persona.name}</h4>
+                <p className="text-xs text-text-secondary uppercase font-mono">{persona.role}</p>
+              </div>
             </div>
-            <div>
-              <h4 className="text-xs font-bold text-text-primary leading-none">{persona.name}</h4>
-              <p className="text-xs text-text-secondary uppercase font-mono">{persona.role}</p>
-            </div>
-          </div>
 
-          <div className="space-y-1.5 flex-1">
-            <span className="text-xs text-primary font-bold uppercase tracking-wider font-mono">Assessor Evaluation Details</span>
-            <p className="text-xs text-text-secondary leading-relaxed italic">
-              "{typeof results.interviewerComments === 'string' ? results.interviewerComments : 'Solid technical breakdown across foundational questions.'}"
-            </p>
-          </div>
-        </Card>
-      </div>
+            <div className="space-y-1.5 flex-1">
+              <span className="text-xs text-primary font-bold uppercase tracking-wider font-mono">Assessor Evaluation Details</span>
+              <p className="text-xs text-text-secondary leading-relaxed italic">
+                "{typeof results.interviewerComments === 'string' ? results.interviewerComments : 'Solid technical breakdown across foundational questions.'}"
+              </p>
+            </div>
+          </Card>
+        </motion.div>
+      </motion.div>
 
       {/* SECTION 2: CONFIDENCE ANALYSIS */}
       <div id="sec-confidence" className="scroll-mt-32">
@@ -1102,59 +1159,68 @@ export default function Results() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-40px' }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-6"
+        >
+          <motion.div variants={itemVariants}>
+            <Card variant="default" className="space-y-4 h-full">
+              <h4 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider border-b border-border pb-2">
+                Skill Analytics Breakdown
+              </h4>
 
-          <Card variant="default" className="space-y-4">
-            <h4 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider border-b border-border pb-2">
-              Skill Analytics Breakdown
-            </h4>
-
-            <div className="space-y-4 text-xs">
-              <div className="space-y-2">
-                <span className="text-xs text-success font-bold uppercase tracking-wider block">Key Strengths</span>
-                <ul className="space-y-2">
-                  {strengths.map((str, idx) => (
-                    <li key={idx} className="flex gap-2 items-start text-text-secondary leading-relaxed">
-                      <span className="text-success font-bold mt-0.5">&bull;</span>
-                      <span>{str}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="space-y-2">
-                <span className="text-xs text-warning font-bold uppercase tracking-wider block">Focus Limitations</span>
-                <ul className="space-y-2">
-                  {weaknesses.map((wk, idx) => (
-                    <li key={idx} className="flex gap-2 items-start text-text-secondary leading-relaxed">
-                      <span className="text-warning font-bold mt-0.5">&bull;</span>
-                      <span>{wk}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </Card>
-
-          <Card variant="default" className="space-y-4">
-            <h4 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider border-b border-border pb-2 flex items-center gap-2">
-              <FaAward className="text-primary" />
-              <span>Actionable Improvement Plan</span>
-            </h4>
-
-            <div className="space-y-3.5">
-              {plan.map((item, idx) => (
-                <div key={idx} className="p-3 bg-bg-surface-alt border border-border rounded-xl text-xs space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-text-primary">{item.topic}</span>
-                    <Badge variant="primary" size="sm">Topic {idx + 1}</Badge>
-                  </div>
-                  <p className="text-xs text-text-secondary leading-relaxed">{item.desc}</p>
+              <div className="space-y-4 text-xs">
+                <div className="space-y-2">
+                  <span className="text-xs text-success font-bold uppercase tracking-wider block">Key Strengths</span>
+                  <ul className="space-y-2">
+                    {strengths.map((str, idx) => (
+                      <li key={idx} className="flex gap-2 items-start text-text-secondary leading-relaxed">
+                        <span className="text-success font-bold mt-0.5">&bull;</span>
+                        <span>{str}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+
+                <div className="space-y-2">
+                  <span className="text-xs text-warning font-bold uppercase tracking-wider block">Focus Limitations</span>
+                  <ul className="space-y-2">
+                    {weaknesses.map((wk, idx) => (
+                      <li key={idx} className="flex gap-2 items-start text-text-secondary leading-relaxed">
+                        <span className="text-warning font-bold mt-0.5">&bull;</span>
+                        <span>{wk}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <Card variant="default" className="space-y-4 h-full">
+              <h4 className="text-sm font-heading font-bold text-text-primary uppercase tracking-wider border-b border-border pb-2 flex items-center gap-2">
+                <FaAward className="text-primary" />
+                <span>Actionable Improvement Plan</span>
+              </h4>
+
+              <div className="space-y-3.5">
+                {plan.map((item, idx) => (
+                  <div key={idx} className="p-3 bg-bg-surface-alt border border-border rounded-xl text-xs space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-text-primary">{item.topic}</span>
+                      <Badge variant="primary" size="sm">Topic {idx + 1}</Badge>
+                    </div>
+                    <p className="text-xs text-text-secondary leading-relaxed">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </motion.div>
+        </motion.div>
       </div>
 
       {/* SECTION 3a: SYNCHRONIZED IVP MULTI-MODAL TIMELINE */}
