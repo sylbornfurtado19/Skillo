@@ -113,7 +113,7 @@ export default function IVPTelemetryTimeline({
               <FaClock className="text-sm" />
             </div>
             <h3 className="text-base font-semibold text-text-primary">
-              Synchronized IVP Multi-Modal Telemetry Timeline
+              Synchronized Visual Telemetry Timeline
             </h3>
           </div>
           <p className="text-xs text-text-secondary mt-1">

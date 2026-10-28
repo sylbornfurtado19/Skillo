@@ -51,7 +51,7 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import AnimatedScore from '../components/ui/AnimatedScore';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 
 import { SectionHeader } from '../components/ui/FeedbackHelpers';
 import SUQConfidenceDashboard from '../components/ui/SUQConfidenceDashboard';
@@ -121,7 +121,7 @@ function renderHighlightedAnswer(answerText: string, quotes: string[]) {
 
 
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -132,7 +132,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: {
     opacity: 1,

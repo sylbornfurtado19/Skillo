@@ -271,7 +271,7 @@ export default function IVPCameraPreview({
   return (
     <div
       className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${className} ${!visible ? 'hidden' : ''}`}
-      aria-label="Live Camera Feed & Neural IVP Diagnostics"
+      aria-label="Live Camera Feed & Neural Vision Diagnostics"
     >
       {/* ── Viewport 1: L2CS-Net Gaze Ray ───────────────────────────────────── */}
       <div className="relative rounded-xl overflow-hidden bg-surface border border-border shadow-soft max-h-[160px]">

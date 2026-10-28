@@ -69,7 +69,7 @@ export default function Landing() {
     },
     {
       q: 'Do I need a camera or microphone?',
-      a: 'A microphone is recommended for full spoken mock interviews, and a camera enables the optional IVP telemetry to track eye contact and posture. However, neither is mandatory — you can also practice by typing your responses, and all camera features can be toggled off at any time.',
+      a: 'A microphone is recommended for full spoken mock interviews, and a camera enables optional visual telemetry to track eye contact and posture. However, neither is mandatory — you can also practice by typing your responses, and all camera features can be toggled off at any time.',
     },
   ];
 

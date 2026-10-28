@@ -169,7 +169,7 @@ export default function SessionPreflight({
           </div>
           <ul className="text-xs text-text-secondary space-y-1.5 list-disc list-inside leading-relaxed">
             <li>
-              <strong className="text-text-primary">100% On-Device CV:</strong> Image &amp; video processing runs strictly in your local browser thread/worker. No video or audio is ever uploaded or recorded.
+              <strong className="text-text-primary">100% On-Device CV:</strong> Visual analysis runs strictly in your local browser thread/worker. No video or audio is ever uploaded or recorded.
             </li>
             <li>
               <strong className="text-text-primary">Evaluation Independence:</strong> Vision and delivery indicators provide physical feedback only and never change your technical problem-solving scores.

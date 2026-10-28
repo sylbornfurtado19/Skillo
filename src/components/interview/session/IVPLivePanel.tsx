@@ -124,7 +124,7 @@ export default function IVPLivePanel({
           </div>
           <div>
             <h3 className="text-xs font-bold font-heading text-text-primary tracking-tight">
-              Classical IVP Pipeline
+              Classical Vision Pipeline
             </h3>
             <p className="text-[10px] text-text-secondary">
               Units 2, 4, 6–8 · On-device diagnostics

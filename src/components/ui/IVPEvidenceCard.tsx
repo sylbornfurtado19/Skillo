@@ -39,7 +39,7 @@ export default function IVPEvidenceCard({
           Classical IVP Evidence Not Recorded
         </h3>
         <p className="text-xs text-text-secondary max-w-md mx-auto">
-          Classical on-device image and video processing evidence was not recorded for this session.
+          Classical on-device visual analysis evidence was not recorded for this session.
           Practice in the live interview to generate cryptographic edge receipts.
         </p>
       </Card>
