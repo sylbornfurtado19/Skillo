@@ -74,6 +74,7 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
   const [droppedFramesCount, setDroppedFramesCount] = useState(0);
 
   const workerRef = useRef<Worker | null>(null);
+  const fallbackCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const inFlightRef = useRef(false);
   const frameIdCounterRef = useRef(0);
   const frameMetadataMapRef = useRef<Map<number, FrameMetadata>>(new Map());
@@ -194,13 +195,29 @@ export function useONNXWorker(options: UseONNXWorkerOptions = {}): UseONNXWorker
         if (inFlightRef.current) return false;
         inFlightRef.current = true;
         try {
+          let canvasSource: HTMLCanvasElement;
           if (source instanceof HTMLCanvasElement) {
-            const isROI = Boolean(metadata?.faceBox && metadata.faceBox.width > 0 && metadata.faceBox.height > 0);
-            const res = await runContinuousUnifiedONNX(source, 0.35, isROI);
-            setTelemetry(res);
-            if (onTelemetryRef.current) onTelemetryRef.current(res, undefined, metadata);
-            return true;
+            canvasSource = source;
+          } else {
+            const w = source instanceof HTMLVideoElement ? (source.videoWidth || 320) : (source.width || 320);
+            const h = source instanceof HTMLVideoElement ? (source.videoHeight || 240) : (source.height || 240);
+            if (!fallbackCanvasRef.current) {
+              fallbackCanvasRef.current = document.createElement('canvas');
+            }
+            fallbackCanvasRef.current.width = w;
+            fallbackCanvasRef.current.height = h;
+            const ctx = fallbackCanvasRef.current.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(source, 0, 0, w, h);
+            }
+            canvasSource = fallbackCanvasRef.current;
           }
+
+          const isROI = Boolean(metadata?.faceBox && metadata.faceBox.width > 0 && metadata.faceBox.height > 0);
+          const res = await runContinuousUnifiedONNX(canvasSource, 0.35, isROI);
+          setTelemetry(res);
+          if (onTelemetryRef.current) onTelemetryRef.current(res, undefined, metadata);
+          return true;
         } catch (err) {
           console.warn('[useONNXWorker] Direct inference error:', err);
         } finally {

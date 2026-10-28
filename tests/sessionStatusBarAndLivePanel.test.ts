@@ -20,6 +20,7 @@ describe('Phase 4: SessionStatusBar & IVPLivePanel (O4 verification)', () => {
           currentQuestionIndex: 1,
           totalQuestions: 5,
           timeLeftSec: 125,
+          showIvpEngineChip: true,
         })
       );
 
@@ -44,6 +45,7 @@ describe('Phase 4: SessionStatusBar & IVPLivePanel (O4 verification)', () => {
           currentQuestionIndex: 2,
           totalQuestions: 5,
           timeLeftSec: 25,
+          showIvpEngineChip: true,
         })
       );
 
@@ -53,7 +55,7 @@ describe('Phase 4: SessionStatusBar & IVPLivePanel (O4 verification)', () => {
       expect(pausedHtml).toContain('0:25');
       expect(pausedHtml).toContain('CAM OFF');
 
-      // 3. Idle state
+      // 3. Idle state (by default showIvpEngineChip is false to hide diagnostic chip on frontend)
       const idleHtml = renderToStaticMarkup(
         React.createElement(SessionStatusBar, {
           cameraActive: false,
@@ -69,7 +71,8 @@ describe('Phase 4: SessionStatusBar & IVPLivePanel (O4 verification)', () => {
         })
       );
 
-      expect(idleHtml).toContain('IDLE');
+      expect(idleHtml).not.toContain('IVP ENGINE');
+      expect(idleHtml).toContain('Secure · 0 flags');
     });
   });
 

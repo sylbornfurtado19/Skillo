@@ -122,15 +122,33 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
 
   // Single authoritative video DOM element reference
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Headless offscreen video fallback to guarantee pipeline runs even if UI component mounting was delayed
+  const headlessVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const getActiveVideo = useCallback((): HTMLVideoElement | null => {
+    let video = videoRef.current;
+    if (!video) {
+      if (typeof document === 'undefined') return null;
+      if (!headlessVideoRef.current) {
+        const hv = document.createElement('video');
+        hv.muted = true;
+        hv.playsInline = true;
+        hv.autoplay = true;
+        headlessVideoRef.current = hv;
+      }
+      video = headlessVideoRef.current;
+    }
+    return video;
+  }, []);
 
   // Synchronize video element with authoritative MediaStream from useInterviewCamera
   useEffect(() => {
-    const video = videoRef.current;
+    const video = getActiveVideo();
     if (video && mediaStream && video.srcObject !== mediaStream) {
       video.srcObject = mediaStream;
       video.play().catch(() => {});
     }
-  }, [mediaStream]);
+  }, [mediaStream, getActiveVideo]);
 
   // Session start time for monotonically increasing timestamps
   const sessionStartRef = useRef<number>(Date.now());
@@ -317,8 +335,21 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
     const intervalMs = isThrottled ? 180 : 100;
     const timer = setInterval(() => {
       if (isTabPaused || paused) return;
-      const video = videoRef.current;
-      if (!video || video.readyState < 2 || video.paused || video.ended) return;
+      const video = getActiveVideo();
+      if (!video) return;
+
+      // Ensure stream is bound to the video element
+      if (mediaStream && video.srcObject !== mediaStream) {
+        video.srcObject = mediaStream;
+        video.play().catch(() => {});
+      }
+
+      // Resume playback if paused
+      if (video.paused && mediaStream && video.srcObject === mediaStream) {
+        video.play().catch(() => {});
+      }
+
+      if (video.readyState < 2 || video.paused || video.ended) return;
 
       // Off-main-thread MediaPipe FaceLandmarker
       processVisionWorkerFrame(video);
@@ -334,8 +365,14 @@ export function useIVPSessionPipeline(options: UseIVPSessionPipelineOptions = {}
       });
     }, intervalMs);
 
-    return () => clearInterval(timer);
-  }, [isSpeaking, mediaStream, paused, isTabPaused, isThrottled, processVisionWorkerFrame, submitONNXFrame, lastLandmarks]);
+    return () => {
+      clearInterval(timer);
+      if (headlessVideoRef.current) {
+        headlessVideoRef.current.srcObject = null;
+        headlessVideoRef.current = null;
+      }
+    };
+  }, [isSpeaking, mediaStream, paused, isTabPaused, isThrottled, processVisionWorkerFrame, submitONNXFrame, lastLandmarks, getActiveVideo]);
 
   // Reset per-question counts & smoothing filters on question change
   const clearPerQuestionFrames = useCallback(() => {

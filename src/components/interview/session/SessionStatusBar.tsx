@@ -23,6 +23,8 @@ export interface SessionStatusBarProps {
   totalQuestions: number;
   timeLeftSec: number;
   className?: string;
+  /** Diagnostic engine status display. Defaults to false so it is removed from the candidate UI. */
+  showIvpEngineChip?: boolean;
 }
 
 export default function SessionStatusBar({
@@ -37,6 +39,7 @@ export default function SessionStatusBar({
   totalQuestions,
   timeLeftSec,
   className = '',
+  showIvpEngineChip = false,
 }: SessionStatusBarProps) {
   const minutes = Math.floor(Math.max(0, timeLeftSec) / 60);
   const seconds = Math.max(0, timeLeftSec) % 60;
@@ -112,40 +115,42 @@ export default function SessionStatusBar({
         </div>
       </div>
 
-      {/* Center group: Live IVP Engine Chip + Integrity Status Chip */}
+      {/* Center group: Live IVP Engine Chip (diagnostic-only) + Integrity Status Chip */}
       <div className="flex items-center gap-2">
-        {/* IVP Engine Chip (O4) */}
-        <div
-          data-testid="ivp-engine-status-chip"
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-colors ${
-            ivpStatus === 'active'
-              ? 'border-accent/40 bg-accent/10 text-accent'
-              : ivpStatus === 'paused'
-              ? 'border-warning/40 bg-warning/10 text-warning'
-              : 'border-border bg-bg-surface-alt text-text-secondary'
-          }`}
-          title="On-device classical IVP engine running histogram equalization, Otsu mask, Sobel gradients, and temporal motion analysis"
-        >
-          <FaMicrochip className="text-[10px]" aria-hidden="true" />
-          <span className="font-bold">IVP ENGINE</span>
-          <FaCircle
-            className={`text-[6px] ${
+        {/* IVP Engine Chip (O4) - Hidden by default from candidate frontend */}
+        {showIvpEngineChip && (
+          <div
+            data-testid="ivp-engine-status-chip"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-colors ${
               ivpStatus === 'active'
-                ? 'text-accent animate-pulse'
+                ? 'border-accent/40 bg-accent/10 text-accent'
                 : ivpStatus === 'paused'
-                ? 'text-warning'
-                : 'text-text-tertiary'
+                ? 'border-warning/40 bg-warning/10 text-warning'
+                : 'border-border bg-bg-surface-alt text-text-secondary'
             }`}
-            aria-hidden="true"
-          />
-          <span>
-            {ivpStatus === 'active'
-              ? `ACTIVE · ${framesAnalyzed} frames · ${samplingHz} Hz`
-              : ivpStatus === 'paused'
-              ? `PAUSED · ${framesAnalyzed} frames`
-              : 'IDLE'}
-          </span>
-        </div>
+            title="On-device classical IVP engine running histogram equalization, Otsu mask, Sobel gradients, and temporal motion analysis"
+          >
+            <FaMicrochip className="text-[10px]" aria-hidden="true" />
+            <span className="font-bold">IVP ENGINE</span>
+            <FaCircle
+              className={`text-[6px] ${
+                ivpStatus === 'active'
+                  ? 'text-accent animate-pulse'
+                  : ivpStatus === 'paused'
+                  ? 'text-warning'
+                  : 'text-text-tertiary'
+              }`}
+              aria-hidden="true"
+            />
+            <span>
+              {ivpStatus === 'active'
+                ? `ACTIVE · ${framesAnalyzed} frames · ${samplingHz} Hz`
+                : ivpStatus === 'paused'
+                ? `PAUSED · ${framesAnalyzed} frames`
+                : 'IDLE'}
+            </span>
+          </div>
+        )}
 
         {/* Integrity status chip */}
         <div

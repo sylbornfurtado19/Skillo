@@ -89,6 +89,17 @@ export default function IVPCameraPreview({
   const poseCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
+  // Synchronize stream with video element
+  useEffect(() => {
+    const video = videoRef?.current;
+    if (video && mediaStream) {
+      if (video.srcObject !== mediaStream) {
+        video.srcObject = mediaStream;
+      }
+      video.play().catch(() => {});
+    }
+  }, [mediaStream, videoRef]);
+
   // Synchronize gaze ray overlay
   const renderGazeOverlay = useCallback(() => {
     const canvas = gazeCanvasRef.current;
@@ -284,8 +295,12 @@ export default function IVPCameraPreview({
           {/* Authoritative Single HTMLVideoElement */}
           <video
             ref={videoRef}
+            autoPlay
             playsInline
             muted
+            onLoadedMetadata={(e) => {
+              e.currentTarget.play().catch(() => {});
+            }}
             className="w-full h-full object-cover"
             style={{ transform: 'scaleX(-1)' }}
           />
